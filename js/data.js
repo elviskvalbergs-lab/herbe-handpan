@@ -125,7 +125,7 @@ export const SCALES = [
 
   { id:'C#-Kurd', name:'C# Kurd / Annaziska', family:'Kurd',
     desc:'Also sold as Annaziska. Deeply resonant with a mysterious, exotic character.',
-    top:{ ding:'C#3', notes:['G#3','A3','B3','C#4','Eb4','E4','G#4','A4'], capacity:8 },
+    top:{ ding:'C#3', notes:['G#3','A3','B3','C#4','Eb4','E4','F#4','G#4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
   { id:'A-Low-Kurd', name:'A Low Kurd', family:'Kurd',
@@ -238,7 +238,7 @@ export const SCALES = [
 
   { id:'E-Equinox', name:'E Equinox', family:'Equinox',
     desc:'Bright and versatile. Major feel with a melancholic minor tinge.',
-    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G4','B4','D5'], capacity:8 },
+    top:{ ding:'E3', notes:['G3','B3','C4','D4','E4','F#4','G4','B4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
   // ── HIJAZ (Phrygian Dominant / augmented 2nd feel) ───────────────────────

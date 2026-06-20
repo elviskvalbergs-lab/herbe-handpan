@@ -1,5 +1,19 @@
 export const PAN_SVG_ID = 'handpan-svg';
 
+// Physical handpan ring layout (confirmed from klangzeug.de for all scales).
+// Notes sorted ascending (n1=lowest, nN=highest) are placed clockwise from 12 o'clock:
+//  7-ring: [n7, n5, n3, n1, n2, n4, n6]
+//  8-ring: [n8, n7, n5, n3, n1, n2, n4, n6]
+//  9-ring: [n9, n7, n5, n3, n1, n2, n4, n6, n8]
+// 10-ring: [n10,n7, n5, n3, n1, n2, n4, n6, n8, n9]
+function physicalOrder(n) {
+  if (n === 7)  return [6,4,2,0,1,3,5];
+  if (n === 8)  return [7,6,4,2,0,1,3,5];
+  if (n === 9)  return [8,6,4,2,0,1,3,5,7];
+  if (n === 10) return [9,6,4,2,0,1,3,5,7,8];
+  return null;
+}
+
 function circlePositions(count, cx, cy, r) {
   return Array.from({ length: count }, (_, i) => {
     const angle = (i * 2 * Math.PI / count) - Math.PI / 2;
@@ -99,11 +113,16 @@ export function renderPan(layout, opts = {}) {
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', true);
 
-  // Ring slots (in scale data order, ascending pitch)
+  // Ring slots — apply physical instrument layout for standard scales
   const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
   const ringPos = circlePositions(ringCount, cx, cy, 145);
+  let ringSlots = layout.top.slots;
+  if (!layout.isCustom) {
+    const order = physicalOrder(layout.top.slots.length);
+    if (order) ringSlots = order.map(i => layout.top.slots[i] ?? { note: null });
+  }
   for (let i = 0; i < ringCount; i++) {
-    const slot = layout.top.slots[i] ?? { note: null };
+    const slot = ringSlots[i] ?? { note: null };
     const pos = ringPos[i];
     svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`);
   }
