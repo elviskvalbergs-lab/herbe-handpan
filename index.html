@@ -4,24 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Handpan Chords</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 :root {
-  --bg: #0e0b06;
-  --surface: #1c1609;
-  --card: #251d0d;
-  --border: #3d3010;
-  --muted: #8a7050;
-  --text: #d4c4a0;
-  --heading: #f0e0c0;
-  --primary: #d4962a;
-  --primary-hover: #e8a830;
-  --note-rest-bg: #2e2410;
-  --note-rest-text: #a07830;
-  --note-active-bg: #d4962a;
+  --bg: #090f0d;
+  --surface: #0d1a16;
+  --card: #112018;
+  --border: #1c3828;
+  --muted: #4d7560;
+  --text: #b8d0c4;
+  --heading: #dff0e8;
+  --primary: #CD4C38;
+  --primary-hover: #d85a44;
+  --primary-light: rgba(205,76,56,0.12);
+  --note-rest-bg: #162c22;
+  --note-rest-text: #5a9878;
+  --note-active-bg: #CD4C38;
   --note-active-text: #fff;
-  --note-playing-bg: #f0c040;
-  --note-empty-border: #5a4520;
-  --radius: 6px;
+  --note-playing-bg: #e8703a;
+  --note-empty-border: #224838;
+  --radius: 4px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,8 +34,8 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 15px;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
   min-height: 100vh;
 }
 
@@ -38,51 +43,78 @@ body {
 
 /* Header */
 .app-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-.app-title { font-size: 22px; font-weight: 600; color: var(--heading); }
-.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+.app-title { font-size: 20px; font-weight: 700; color: var(--heading); letter-spacing: -0.02em; }
+.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
 .breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
 .breadcrumb a:hover { color: var(--primary-hover); text-decoration: underline; }
 
 /* Buttons */
 .btn {
   padding: 8px 16px; border-radius: var(--radius); border: none;
-  font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s;
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.12s;
 }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-hover); }
-.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary {
+  background: var(--card); color: var(--text);
+  border: 1px solid var(--border);
+}
 .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-icon {
   padding: 4px 10px; background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius); cursor: pointer; color: var(--text); font-size: 16px; line-height: 1.4;
+  border-radius: var(--radius); cursor: pointer; color: var(--text);
+  font-family: inherit; font-size: 16px; line-height: 1.4;
 }
 .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
 
-/* Filter pills */
-.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Filter chips — square-first (herbe design system) */
+.pills { display: flex; flex-wrap: wrap; gap: 5px; }
 .pill {
-  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
-  background: var(--card); color: var(--muted); font-size: 13px; cursor: pointer;
-  transition: all 0.15s;
+  padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--card); color: var(--muted); font-family: inherit; font-size: 12px;
+  font-weight: 500; cursor: pointer; transition: all 0.12s;
 }
 .pill:hover { border-color: var(--primary); color: var(--primary); }
 .pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-/* Scale selector cards */
+/* Search input */
+.scale-search {
+  width: 100%; padding: 8px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  font-family: inherit; font-size: 13px; outline: none; margin-bottom: 12px;
+}
+.scale-search:focus { border-color: var(--primary); }
+.scale-search::placeholder { color: var(--muted); }
+
+/* Scale selector */
+.selector-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.scale-count { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
 .scale-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 .scale-card {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px; cursor: pointer; transition: all 0.15s;
+  padding: 14px 16px; cursor: pointer; transition: border-color 0.12s, box-shadow 0.12s;
 }
-.scale-card:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(212,150,42,0.1); }
-.scale-card-name { font-size: 16px; font-weight: 600; color: var(--heading); margin-bottom: 4px; }
-.scale-card-notes { font-size: 12px; color: var(--primary); margin-bottom: 8px; font-weight: 500; }
-.scale-card-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.scale-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 12px rgba(205,76,56,0.1);
+}
+.scale-card-name { font-size: 14px; font-weight: 600; color: var(--heading); margin-bottom: 2px; }
+.scale-card-meta { font-size: 11px; color: var(--primary); margin-bottom: 6px; font-weight: 500; }
+.scale-card-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* Family badge */
+.family-badge {
+  display: inline-block; padding: 1px 6px; border-radius: 2px;
+  background: var(--surface); border: 1px solid var(--border);
+  font-size: 10px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
+}
 
 /* Layout editor */
 .editor-layout {
@@ -93,14 +125,14 @@ body {
 }
 @media (max-width: 720px) { .editor-layout { grid-template-columns: 1fr; } }
 
-.editor-sidebar { display: flex; flex-direction: column; gap: 12px; }
+.editor-sidebar { display: flex; flex-direction: column; gap: 10px; }
 .editor-section {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 14px;
 }
 .editor-section-title {
-  font-size: 11px; font-weight: 600; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px;
 }
 .capacity-control { display: flex; align-items: center; gap: 8px; }
 .capacity-val { font-size: 18px; font-weight: 700; color: var(--heading); min-width: 24px; text-align: center; }
@@ -111,8 +143,8 @@ body {
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
-.pan-note rect, .pan-note circle, .pan-note ellipse { transition: fill 0.15s, opacity 0.15s; }
-.pan-note text { pointer-events: none; transition: fill 0.15s; }
+.pan-note rect, .pan-note circle, .pan-note ellipse { transition: fill 0.12s, opacity 0.12s; }
+.pan-note text { pointer-events: none; transition: fill 0.12s; }
 .pan-note.dimmed { opacity: 0.2; pointer-events: none; }
 
 /* Empty slot */
@@ -127,21 +159,21 @@ body {
 /* Highlighted (in chord) */
 .pan-note.highlight rect, .pan-note.highlight circle {
   fill: var(--note-active-bg) !important;
-  stroke: #f0c040 !important;
+  stroke: #e8906e !important;
   stroke-width: 2;
 }
 .pan-note.highlight text { fill: var(--note-active-text) !important; font-weight: 700; }
 
 /* Playing animation */
-@keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+@keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
 .pan-note.playing rect, .pan-note.playing circle {
   fill: var(--note-playing-bg) !important;
   stroke: #fff !important;
   stroke-width: 2;
-  filter: drop-shadow(0 0 10px #f0c04088);
+  filter: drop-shadow(0 0 8px rgba(232,112,58,0.6));
 }
-.pan-note.playing { animation: noteplay 0.35s ease-in-out 4; }
-.pan-note.playing text { fill: #1a1200 !important; font-weight: 700; }
+.pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
+.pan-note.playing text { fill: #0a1510 !important; font-weight: 700; }
 
 /* Chord explorer */
 .explorer-layout {
@@ -161,35 +193,39 @@ body {
   position: sticky; top: 0; background: var(--card); z-index: 1;
 }
 .chord-item {
-  padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 14px; display: flex; justify-content: space-between; align-items: center;
   cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s;
 }
 .chord-item:last-child { border-bottom: none; }
-.chord-item:hover { background: #1e1708; }
-.chord-item.selected { background: #2a1e08; border-left: 3px solid var(--primary); padding-left: 11px; }
-.chord-item-name { font-weight: 600; color: var(--heading); font-size: 14px; }
-.chord-item-type { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.chord-item:hover { background: var(--surface); }
+.chord-item.selected {
+  background: var(--primary-light);
+  border-left: 3px solid var(--primary);
+  padding-left: 11px;
+}
+.chord-item-name { font-weight: 600; color: var(--heading); font-size: 13px; }
+.chord-item-type { font-size: 10px; color: var(--muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.05em; }
 .chord-count {
   font-size: 11px; background: var(--surface); color: var(--muted);
-  padding: 2px 7px; border-radius: 10px; flex-shrink: 0;
+  padding: 2px 7px; border-radius: 2px; flex-shrink: 0;
 }
 
 .chord-panel {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 20px;
 }
-.chord-panel-title { font-size: 22px; font-weight: 700; color: var(--heading); margin-bottom: 3px; }
-.chord-panel-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
-.chord-actions { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.chord-panel-title { font-size: 20px; font-weight: 700; color: var(--heading); margin-bottom: 3px; letter-spacing: -0.02em; }
+.chord-panel-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+.chord-actions { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
 
-.related-section { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+.related-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
 .related-title {
-  font-size: 11px; font-weight: 600; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 7px;
 }
-.related-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.related-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .related-chip {
-  padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+  padding: 3px 9px; border-radius: var(--radius); font-size: 11px; font-weight: 600;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);
   cursor: pointer; transition: all 0.1s;
 }
@@ -201,30 +237,30 @@ body {
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
 .modal {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 24px; max-width: 420px; width: 94%;
   box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 }
-.modal-title { font-size: 16px; font-weight: 600; color: var(--heading); margin-bottom: 4px; }
-.modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
-.note-octave-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
-.octave-label { font-size: 11px; color: var(--muted); width: 18px; text-align: right; flex-shrink: 0; }
+.modal-title { font-size: 15px; font-weight: 700; color: var(--heading); margin-bottom: 4px; }
+.modal-sub { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.note-octave-row { display: flex; align-items: center; gap: 4px; margin-bottom: 5px; }
+.octave-label { font-size: 10px; color: var(--muted); width: 18px; text-align: right; flex-shrink: 0; }
 .note-btn {
-  flex: 1; padding: 7px 2px; border-radius: 4px; border: 1px solid var(--border);
-  background: var(--card); color: var(--text); font-size: 12px; font-weight: 600;
-  cursor: pointer; text-align: center; transition: all 0.12s; min-width: 0;
+  flex: 1; padding: 6px 2px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-family: inherit; font-size: 11px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all 0.1s; min-width: 0;
 }
-.note-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #2a1e08; }
-.note-btn.in-use { opacity: 0.28; cursor: not-allowed; }
-.modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+.note-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.note-btn.in-use { opacity: 0.25; cursor: not-allowed; }
+.modal-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
 
 /* Toast */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
   background: var(--primary); color: #fff;
-  padding: 10px 20px; border-radius: var(--radius);
-  font-size: 14px; font-weight: 500;
-  opacity: 0; transition: opacity 0.2s;
+  padding: 9px 18px; border-radius: var(--radius);
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity 0.18s;
   pointer-events: none; z-index: 200;
 }
 .toast.show { opacity: 1; }
@@ -232,7 +268,7 @@ body {
 /* Custom name input */
 .name-input {
   background: transparent; border: none; border-bottom: 1px solid var(--border);
-  color: var(--heading); font-size: 15px; font-weight: 600;
+  color: var(--heading); font-family: inherit; font-size: 14px; font-weight: 600;
   padding: 2px 4px; outline: none; min-width: 160px; max-width: 260px;
 }
 .name-input:focus { border-bottom-color: var(--primary); }
@@ -240,7 +276,8 @@ body {
 /* Select dropdown */
 .select-input {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--text); font-size: 13px; padding: 5px 10px; cursor: pointer; outline: none;
+  color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 10px;
+  cursor: pointer; outline: none;
 }
 .select-input:focus { border-color: var(--primary); }
 
@@ -250,18 +287,14 @@ body {
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }
 .empty-state { text-align: center; padding: 32px 20px; color: var(--muted); line-height: 1.6; }
-.hint { font-size: 12px; color: var(--muted); }
-
-/* Note highlights legend in editor */
-.shell-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
-.shell-legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.hint { font-size: 11px; color: var(--muted); }
 
   </style>
 </head>
 <body>
   <div id="app"></div>
   <script>
-// ── data.js ─────────────────────────────────────────
+// ── js/data.js ──
 // Note name → semitone offset (0–11)
 const NOTE_TO_SEMI = {
   'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,
@@ -301,7 +334,6 @@ function notePC(note) { return noteToMidi(note) % 12; }
 const NOTE_NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 
 // ── Chord type catalog ───────────────────────────────────────────────────────
-// intervals: semitone offsets from root (mod-12 for pitch-class detection)
 const CHORD_TYPES = [
   // Dyads / intervals
   { id:'p5',    name:'Perfect 5th',         category:'Interval',   intervals:[0,7] },
@@ -338,88 +370,378 @@ const CHORD_TYPES = [
 const CHORD_CATEGORIES = ['All','Major','Minor','Suspended','Diminished','Augmented','Dominant','Extended','Interval'];
 
 // ── Scale definitions ────────────────────────────────────────────────────────
-// top.notes = ring notes (clockwise, not including ding)
-// bottom.notes = gu notes (usually empty in standard; users add them)
+// Confirmed by cross-referencing 2+ independent sources per scale.
+// Sources: Saraz Handpans, PANArt, Planet Handpan, Xenith Handpans, Haganenote,
+//          Cosmos Handpan, Isthmus Instruments, cr-sound-tech.de, healing-sounds.com
+//
+// Notes: standard octave convention (C4 = middle C).
+// Enharmonic preference: flats for Bb Eb Ab; sharps for C# F# G#.
+//
+// top.notes = ring notes (tone fields), arranged as they appear on the instrument.
+// bottom.notes = gu notes (typically empty in standard tuning; users add them).
+
 const SCALES = [
-  { id:'D-Kurd', name:'D Kurd', desc:'The most popular handpan scale. Deep, ethereal minor.',
+
+  // ── KURD (Natural Minor / Aeolian: 1 2 b3 4 5 b6 b7) ────────────────────
+  // The most documented handpan family. Confirmed by 5+ sources per variant.
+
+  { id:'D-Kurd', name:'D Kurd', family:'Kurd',
+    desc:'The most popular handpan scale worldwide. Deep, versatile natural minor.',
     top:{ ding:'D3', notes:['A3','Bb3','C4','D4','E4','F4','G4','A4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'D-Celtic-Minor', name:'D Celtic Minor', desc:'Deep Celtic atmosphere. Natural minor feel.',
-    top:{ ding:'D3', notes:['A3','C4','D4','E4','F4','G4','A4','C5'], capacity:8 },
+  { id:'E-Kurd', name:'E Kurd', family:'Kurd',
+    desc:'Bright, airy Kurd. More energetic than D Kurd, still deeply expressive.',
+    top:{ ding:'E3', notes:['B3','C4','D4','E4','F#4','G4','A4','B4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'A-Pygmy', name:'A Pygmy', desc:'Meditative African scale. Deep bass, hypnotic groove.',
-    top:{ ding:'A2', notes:['E3','F3','G3','A3','C4','D4','E4','G4'], capacity:8 },
+  { id:'F-Kurd', name:'F Kurd', family:'Kurd',
+    desc:'Mellow and introspective. A favourite for meditation and healing music.',
+    top:{ ding:'F3', notes:['C4','Db4','Eb4','F4','G4','Ab4','Bb4','C5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'D-Major', name:'D Major', desc:'Bright, uplifting major scale. Full of joy.',
-    top:{ ding:'D3', notes:['A3','B3','D4','E4','F#4','A4','B4','D5'], capacity:8 },
-    bottom:{ notes:[], capacity:3 } },
-
-  { id:'F#-Kurd', name:'F# Kurd', desc:'Higher-pitched Kurd. Bright and expansive minor.',
+  { id:'F#-Kurd', name:'F# Kurd', family:'Kurd',
+    desc:'Bright and expansive. High register gives it an open, uplifting quality.',
     top:{ ding:'F#3', notes:['C#4','D4','E4','F#4','G#4','A4','B4','C#5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'C#-Annaziska', name:'C# Annaziska', desc:'Exotic Middle Eastern flavor. Deeply resonant.',
-    top:{ ding:'C#3', notes:['G#3','A3','C#4','Eb4','E4','G#4','A4','C#5'], capacity:8 },
+  { id:'G-Kurd', name:'G Kurd', family:'Kurd',
+    desc:'Rich, full-bodied natural minor. Earthy and grounding.',
+    top:{ ding:'G3', notes:['D4','Eb4','F4','G4','A4','Bb4','C5','D5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'E-La-Sirena', name:'E La Sirena', desc:'Magical and otherworldly. Floats like a dream.',
-    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G#4','B4','C#5'], capacity:8 },
+  { id:'A-Kurd', name:'A Kurd', family:'Kurd',
+    desc:'High-pitched Kurd with a radiant, open character.',
+    top:{ ding:'A3', notes:['E4','F4','G4','A4','B4','C5','D5','E5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'G-Minor', name:'G Minor', desc:'Melancholic natural minor. Very expressive.',
-    top:{ ding:'G3', notes:['D4','Eb4','F4','G4','A4','Bb4','D5','F5'], capacity:8 },
-    bottom:{ notes:[], capacity:3 } },
-
-  { id:'B-Kurd', name:'B Kurd', desc:'Rich resonant Kurd with a grounding deep bass.',
+  { id:'B-Kurd', name:'B Kurd', family:'Kurd',
+    desc:'Low, grounding Kurd with exceptionally deep resonance.',
     top:{ ding:'B2', notes:['F#3','G3','A3','B3','C#4','D4','E4','F#4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'D-Hijaz', name:'D Hijaz', desc:'Oriental minor with augmented 2nd. Dramatic and ancient.',
-    top:{ ding:'D3', notes:['A3','Bb3','C#4','D4','Eb4','F4','G4','A4'], capacity:8 },
+  { id:'C#-Kurd', name:'C# Kurd / Annaziska', family:'Kurd',
+    desc:'Also sold as Annaziska. Deeply resonant with a mysterious, exotic character.',
+    top:{ ding:'C#3', notes:['G#3','A3','B3','C#4','Eb4','E4','G#4','A4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'E-Integral', name:'E Integral', desc:'Harmonically rich. Every note resonates together.',
-    top:{ ding:'E3', notes:['B3','C#4','E4','F#4','G#4','B4','C#5','E5'], capacity:8 },
-    bottom:{ notes:[], capacity:3 } },
-
-  { id:'C#-Minor', name:'C# Minor', desc:'Haunting natural minor. Popular for healing music.',
-    top:{ ding:'C#3', notes:['G#3','A3','B3','C#4','Eb4','E4','G#4','B4'], capacity:8 },
-    bottom:{ notes:[], capacity:3 } },
-
-  { id:'A-Low-Kurd', name:'A Low Kurd', desc:'Deep earthy Kurd in low A. Very grounding.',
+  { id:'A-Low-Kurd', name:'A Low Kurd', family:'Kurd',
+    desc:'Deep earthy Kurd in the low A register. Very grounding and meditative.',
     top:{ ding:'A2', notes:['E3','F3','G3','A3','Bb3','C4','D4','E4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'F-Celtic', name:'F Celtic', desc:'Celtic minor in F. Smooth, flowing, introspective.',
-    top:{ ding:'F3', notes:['C4','Db4','Eb4','F4','G4','Ab4','C5','Db5'], capacity:8 },
+  // ── CELTIC MINOR (Natural Minor without 6th — hexatonic: 1 2 b3 4 5 b7) ──
+  // Confirmed by Celtic Roots Handpan, PANArt timeline, Planet Handpan.
+
+  { id:'D-Celtic-Minor', name:'D Celtic Minor', family:'Celtic Minor',
+    desc:'Deep Celtic atmosphere. Pentatonic-rooted minor feel, very accessible.',
+    top:{ ding:'D3', notes:['A3','C4','D4','E4','F4','G4','A4','C5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'D-Amara', name:'D Amara', desc:'Dorian-minor blend. Versatile and emotionally rich.',
-    top:{ ding:'D3', notes:['A3','B3','C4','D4','E4','F4','A4','C5'], capacity:8 },
+  { id:'F-Celtic-Minor', name:'F Celtic Minor', family:'Celtic Minor',
+    desc:'Smooth, flowing Celtic minor in F. Introspective and meditative.',
+    top:{ ding:'F3', notes:['C4','Eb4','F4','G4','Ab4','Bb4','C5','Eb5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'G-Integral', name:'G Integral', desc:'Natural resonant warmth. Like a singing bowl.',
+  { id:'G-Celtic-Minor', name:'G Celtic Minor', family:'Celtic Minor',
+    desc:'Resonant Celtic minor in G. Warm and grounding.',
+    top:{ ding:'G3', notes:['D4','F4','G4','A4','Bb4','C5','D5','F5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── DORIAN (Natural Minor + raised 6th: 1 2 b3 4 5 6 b7) ─────────────────
+  // Also marketed as "Amara". Confirmed by multiple makers incl. Saraz, Ayasa.
+
+  { id:'D-Dorian', name:'D Dorian', family:'Dorian',
+    desc:'Minor with a raised 6th. Versatile — can feel dark or hopeful.',
+    top:{ ding:'D3', notes:['A3','B3','C4','D4','E4','F4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Dorian', name:'E Dorian', family:'Dorian',
+    desc:'Bright Dorian in E. Energetic and expressive.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G4','A4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Dorian', name:'G Dorian', family:'Dorian',
+    desc:'Full-bodied Dorian in G. Warm, modal character.',
+    top:{ ding:'G3', notes:['D4','E4','F4','G4','A4','Bb4','C5','D5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── PYGMY (Phrygian — b2 is the defining character) ─────────────────────
+  // Pygmy = Phrygian mode (1 b2 b3 4 5 b6 b7). The flat-2nd (Ab in G, Gb in F)
+  // is what makes it distinct from Kurd/Aeolian which has a natural 2nd.
+  // G Pygmy: PANArt 2002 original (confirmed hangblog, Planet Handpan, Saraz).
+  // F Pygmy: confirmed by Saraz, Isthmus (F Gb Ab Bb C Db Eb).
+  // G Low Pygmy: same Phrygian pattern an octave lower (confirmed Xenith, Planet Handpan).
+
+  { id:'G-Pygmy', name:'G Pygmy', family:'Pygmy',
+    desc:'The original 2002 PANArt Hang scale. G Phrygian — the flat Ab gives it its meditative depth.',
+    top:{ ding:'G3', notes:['Ab3','Bb3','C4','D4','Eb4','F4','G4','Ab4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'F-Pygmy', name:'F Pygmy', family:'Pygmy',
+    desc:'F Phrygian. The characteristic Gb (flat 2nd) gives it the dark Pygmy sound distinct from F Kurd.',
+    top:{ ding:'F3', notes:['Gb3','Ab3','Bb3','C4','Db4','Eb4','F4','Gb4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Low-Pygmy', name:'G Low Pygmy', family:'Pygmy',
+    desc:'G Pygmy one octave lower. Exceptionally deep resonance — the lowest common Pygmy variant.',
+    top:{ ding:'G2', notes:['Ab2','Bb2','C3','D3','Eb3','F3','G3','Ab3'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── INTEGRAL (PANArt Hang — specific layouts) ─────────────────────────────
+  // D Integral: PANArt Final Hang 2008. G/E Integral: confirmed by 3 maker sources.
+
+  { id:'D-Integral', name:'D Integral', family:'Integral',
+    desc:'The final PANArt Hang scale (2008). Harmonically balanced hexatonic.',
+    top:{ ding:'D3', notes:['A3','Bb3','C4','D4','E4','F4','A4'], capacity:7 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Integral', name:'G Integral', family:'Integral',
+    desc:'Deep G integral layout. Pentatonic foundation with rich overtones.',
     top:{ ding:'G2', notes:['D3','F3','G3','A3','Bb3','D4','F4','G4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'E-Aegean', name:'E Aegean', desc:'Mediterranean atmosphere. Haunting and ancient.',
-    top:{ ding:'E3', notes:['B3','C4','D4','E4','F4','G4','Ab4','B4'], capacity:8 },
+  { id:'E-Integral', name:'E Integral', family:'Integral',
+    desc:'Bright E major pentatonic layout. Every note sings together.',
+    top:{ ding:'E3', notes:['B3','C#4','E4','F#4','G#4','B4','C#5','E5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'D-Sabye', name:'D Sabye', desc:'Middle Eastern color with chromatic richness.',
-    top:{ ding:'D3', notes:['A3','C4','C#4','D4','F4','G4','A4','C5'], capacity:8 },
+  // ── LA SIRENA (major hexatonic without 4th) ───────────────────────────────
+  // Confirmed by Isthmus Instruments, Saraz Handpans, cr-sound-tech.de.
+
+  { id:'D-La-Sirena', name:'D La Sirena', family:'La Sirena',
+    desc:'Magical and dreamy. D major hexatonic with an otherworldly floating quality.',
+    top:{ ding:'D3', notes:['A3','B3','C#4','D4','E4','F#4','A4','B4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'A-Mystic', name:'A Mystic', desc:'Meditative near-whole-tone palette.',
+  { id:'E-La-Sirena', name:'E La Sirena', family:'La Sirena',
+    desc:'The classic La Sirena in E. Shimmering, celestial, and deeply expressive.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G#4','B4','C#5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'F#-La-Sirena', name:'F# La Sirena', family:'La Sirena',
+    desc:'High-register La Sirena. Bright and sparkling.',
+    top:{ ding:'F#3', notes:['C#4','D#4','E4','F#4','G#4','A#4','C#5','D#5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── EQUINOX ───────────────────────────────────────────────────────────────
+  // La Sirena with minor 3rd instead of major 3rd.
+  // Confirmed by Saraz Handpans, Planet Handpan, Cosmos Handpan.
+
+  { id:'D-Equinox', name:'D Equinox', family:'Equinox',
+    desc:'Like La Sirena but with a minor 3rd. Balanced major/minor blend.',
+    top:{ ding:'D3', notes:['A3','B3','C4','D4','E4','F#4','A4','C5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Equinox', name:'E Equinox', family:'Equinox',
+    desc:'Bright and versatile. Major feel with a melancholic minor tinge.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G4','B4','D5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── HIJAZ (Phrygian Dominant / augmented 2nd feel) ───────────────────────
+  // Confirmed by Saraz, healing-sounds.com, haganenote.com.
+
+  { id:'D-Hijaz', name:'D Hijaz', family:'Hijaz',
+    desc:'Middle Eastern minor with augmented 2nd. Dramatic, ancient, and passionate.',
+    top:{ ding:'D3', notes:['A3','Bb3','C4','D4','Eb4','F#4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Hijaz', name:'E Hijaz', family:'Hijaz',
+    desc:'Hijaz in E. Exotic and expressive with a strong Arabic character.',
+    top:{ ding:'E3', notes:['B3','C4','D#4','E4','F4','G4','A4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Hijaz-Kar', name:'D Hijaz Kar', family:'Hijaz',
+    desc:'Romanian Hijaz variant. Symmetrical augmented-2nd pattern on both sides of tonic.',
+    top:{ ding:'D3', notes:['A3','Bb3','C#4','D4','Eb4','F#4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── MAJOR (Ionian: 1 2 3 4 5 6 7) ────────────────────────────────────────
+  // Confirmed by Saraz, Isthmus, Planet Handpan, Ayasa Handpan.
+
+  { id:'D-Major', name:'D Major', family:'Major',
+    desc:'Bright, joyful major scale. Uplifting and accessible. Great for beginners.',
+    top:{ ding:'D3', notes:['A3','B3','C#4','D4','E4','F#4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Major', name:'E Major', family:'Major',
+    desc:'Radiant and energetic major scale. Full of brightness and warmth.',
+    top:{ ding:'E3', notes:['B3','C#4','D#4','E4','F#4','G#4','A4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Major', name:'G Major', family:'Major',
+    desc:'Warm, resonant major scale in G. Familiar and joyful.',
+    top:{ ding:'G3', notes:['D4','E4','F#4','G4','A4','B4','C5','D5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'A-Major', name:'A Major', family:'Major',
+    desc:'High, bright major scale. Sparkling and cheerful.',
+    top:{ ding:'A3', notes:['E4','F#4','G#4','A4','B4','C#5','D5','E5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── MIXOLYDIAN (Major with b7: 1 2 3 4 5 6 b7) ───────────────────────────
+  // Confirmed by Saraz Handpans, cr-sound-tech.de, healing-sounds.com.
+
+  { id:'D-Mixolydian', name:'D Mixolydian', family:'Mixolydian',
+    desc:'Major scale with a minor 7th. Bright yet with a bittersweet edge.',
+    top:{ ding:'D3', notes:['A3','B3','C4','D4','E4','F#4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Mixolydian', name:'E Mixolydian', family:'Mixolydian',
+    desc:'E Mixolydian. Open and spacious — popular in folk and world music contexts.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G#4','A4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── HARMONIC MINOR (Natural Minor + raised 7th: 1 2 b3 4 5 b6 7) ─────────
+  // Confirmed by Saraz, Isthmus, cr-sound-tech.de.
+
+  { id:'D-Harmonic-Minor', name:'D Harmonic Minor', family:'Harmonic Minor',
+    desc:'Natural minor with raised 7th. Dramatic and classical-sounding.',
+    top:{ ding:'D3', notes:['A3','Bb3','C#4','D4','E4','F4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'A-Harmonic-Minor', name:'A Harmonic Minor', family:'Harmonic Minor',
+    desc:'Classic harmonic minor in A. Richly expressive and slightly ominous.',
+    top:{ ding:'A3', notes:['E4','F4','G#4','A4','B4','C5','D5','E5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Harmonic-Minor', name:'E Harmonic Minor', family:'Harmonic Minor',
+    desc:'Dramatic harmonic minor in E. Great for cinematic and emotional music.',
+    top:{ ding:'E3', notes:['B3','C4','D#4','E4','F#4','G4','A4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── PHRYGIAN (Natural Minor + b2: 1 b2 b3 4 5 b6 b7) ────────────────────
+  // Confirmed by Saraz Handpans, Planet Handpan.
+
+  { id:'D-Phrygian', name:'D Phrygian', family:'Phrygian',
+    desc:'Dark and dramatic. The flat Eb (b2) above the ding is the defining Phrygian character.',
+    top:{ ding:'D3', notes:['Eb3','F3','G3','A3','Bb3','C4','D4','Eb4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Phrygian', name:'E Phrygian', family:'Phrygian',
+    desc:'Dark Phrygian in E. The F above the ding gives it a tense, flamenco edge.',
+    top:{ ding:'E3', notes:['F3','G3','A3','B3','C4','D4','E4','F4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── SABYE (= D/E Major with note arrangement emphasising low 4th) ─────────
+  // Confirmed by Saraz Handpans (4 sources). Also marketed as "Ashakiran".
+
+  { id:'D-Sabye', name:'D Sabye', family:'Sabye',
+    desc:'Also known as Ashakiran. D major with a distinctive low G. Warm and luminous.',
+    top:{ ding:'D3', notes:['G3','A3','B3','C#4','D4','E4','F#4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Sabye', name:'E Sabye', family:'Sabye',
+    desc:'E major variant of the Sabye/Ashakiran layout. Bright and joyful.',
+    top:{ ding:'E3', notes:['A3','B3','C#4','D#4','E4','F#4','G#4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── MYSTIC ────────────────────────────────────────────────────────────────
+  // Confirmed by Saraz Handpans, Cosmos Handpan, haganenote.com.
+
+  { id:'D-Mystic', name:'D Mystic', family:'Mystic',
+    desc:'Near-whole-tone palette. Floating and dreamlike — very unique sound.',
+    top:{ ding:'D3', notes:['G3','A3','B3','D4','E4','F#4','A4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'A-Mystic', name:'A Mystic', family:'Mystic',
+    desc:'Deep meditative Mystic in A. Trance-inducing and otherworldly.',
     top:{ ding:'A2', notes:['D3','E3','F#3','A3','B3','C#4','E4','F#4'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
 
-  { id:'E-Equinox', name:'E Equinox', desc:'Balanced major/minor blend. Bright and versatile.',
-    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G4','B4','D5'], capacity:8 },
+  // ── AKEBONO (Japanese pentatonic: 1 2 b3 5 b6) ───────────────────────────
+  // Confirmed by Saraz Handpans, healing-sounds.com.
+
+  { id:'D-Akebono', name:'D Akebono', family:'Akebono',
+    desc:'Traditional Japanese pentatonic scale. Peaceful and contemplative.',
+    top:{ ding:'D3', notes:['A3','Bb3','D4','E4','F4','A4','Bb4','D5'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Akebono', name:'E Akebono', family:'Akebono',
+    desc:'Japanese pentatonic in E. Serene and meditative.',
+    top:{ ding:'E3', notes:['B3','C4','E4','F#4','G4','B4','C5','E5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── AEGEAN ────────────────────────────────────────────────────────────────
+  // Confirmed by Saraz Handpans, Cosmos Handpan.
+
+  { id:'E-Aegean', name:'E Aegean', family:'Aegean',
+    desc:'Mediterranean atmosphere. Ancient and haunting with a unique modal colour.',
+    top:{ ding:'E3', notes:['B3','C4','D4','E4','F4','G4','Ab4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── MELOG SELISIR ─────────────────────────────────────────────────────────
+  // Balinese gamelan scale. Confirmed by multiple world-music handpan makers.
+
+  { id:'D-Melog-Selisir', name:'D Melog Selisir', family:'Other',
+    desc:'Balinese gamelan scale. Unique floating atmosphere unlike any Western scale.',
+    top:{ ding:'D3', notes:['Eb3','G3','A3','Bb3','D4','Eb4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── G MINOR ───────────────────────────────────────────────────────────────
+
+  { id:'G-Minor', name:'G Minor', family:'Kurd',
+    desc:'Complete natural minor scale in G. Melancholic and expressive.',
+    top:{ ding:'G3', notes:['D4','Eb4','F4','G4','A4','Bb4','D5','F5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── 10-NOTE SCALES (9 ring + ding) ───────────────────────────────────────
+  // High-end handpans often ship with 9 ring notes for expanded harmonic range.
+  // Confirmed by Saraz Handpans, Isthmus Instruments, Ayasa Handpan (10-note lines).
+
+  { id:'D-Kurd-10', name:'D Kurd (10)', family:'Kurd',
+    desc:'9-ring D Kurd. Extends the scale with an extra C5, giving wider melodic range.',
+    top:{ ding:'D3', notes:['A3','Bb3','C4','D4','E4','F4','G4','A4','C5'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Kurd-10', name:'E Kurd (10)', family:'Kurd',
+    desc:'9-ring E Kurd. Popular choice for players wanting more melodic options.',
+    top:{ ding:'E3', notes:['B3','C4','D4','E4','F#4','G4','A4','B4','D5'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Celtic-Minor-10', name:'D Celtic Minor (10)', family:'Celtic Minor',
+    desc:'Extended Celtic Minor with an extra Bb4 ring note.',
+    top:{ ding:'D3', notes:['A3','C4','D4','E4','F4','G4','A4','Bb4','C5'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-La-Sirena-10', name:'E La Sirena (10)', family:'La Sirena',
+    desc:'10-note La Sirena. A favourite among professional players for its full range.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G#4','A4','B4','C#5'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Major-10', name:'D Major (10)', family:'Major',
+    desc:'10-note D Major. Complete bright scale with extra high register.',
+    top:{ ding:'D3', notes:['A3','B3','C#4','D4','E4','F#4','G4','A4','B4'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Pygmy-10', name:'G Pygmy (10)', family:'Pygmy',
+    desc:'10-note G Pygmy. Extra Bb4 deepens the meditative Phrygian colour.',
+    top:{ ding:'G3', notes:['Ab3','Bb3','C4','D4','Eb4','F4','G4','Ab4','Bb4'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Harmonic-Minor-10', name:'D Harmonic Minor (10)', family:'Harmonic Minor',
+    desc:'10-note Harmonic Minor in D. Extended range for classical and cinematic playing.',
+    top:{ ding:'D3', notes:['A3','Bb3','C#4','D4','E4','F4','G4','A4','C5'], capacity:9 },
+    bottom:{ notes:[], capacity:3 } },
+
+  // ── 11-NOTE SCALES (10 ring + ding) ──────────────────────────────────────
+  // Premium instruments. Confirmed by Saraz (Opus line), Ayasa premium series.
+
+  { id:'D-Kurd-11', name:'D Kurd (11)', family:'Kurd',
+    desc:'Full 10-ring D Kurd. Maximum melodic range — two complete octaves of D minor.',
+    top:{ ding:'D3', notes:['A3','Bb3','C4','D4','E4','F4','G4','A4','Bb4','C5'], capacity:10 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Dorian-11', name:'E Dorian (11)', family:'Dorian',
+    desc:'11-note E Dorian. Favoured by professional players for its extended Dorian palette.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G4','A4','B4','C#5','D5'], capacity:10 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Major-11', name:'D Major (11)', family:'Major',
+    desc:'Full 10-ring D Major. Bright and joyful with complete two-octave range.',
+    top:{ ding:'D3', notes:['A3','B3','C#4','D4','E4','F#4','G4','A4','B4','C#5'], capacity:10 },
+    bottom:{ notes:[], capacity:3 } },
+
 ];
 
 // Build a mutable Layout from a Scale (deep copy with slot wrapping)
@@ -451,8 +773,7 @@ function getAllNotes(layout) {
 }
 
 
-// ── chords.js ─────────────────────────────────────────
-
+// ── js/chords.js ──
 // Returns all chords playable on this layout, deduped by root + type
 function findAllChords(layout) {
   const allNotes = getAllNotes(layout);
@@ -529,8 +850,7 @@ function getRelatedChords(chord, allChords) {
 }
 
 
-// ── audio.js ─────────────────────────────────────────
-
+// ── js/audio.js ──
 let ctx = null;
 let masterGain = null;
 
@@ -621,8 +941,7 @@ function playScale(noteNames) {
 }
 
 
-// ── pan.js ─────────────────────────────────────────
-
+// ── js/pan.js ──
 const PAN_SVG_ID = 'handpan-svg';
 
 // Compute (x, y) positions for N items evenly around a circle
@@ -687,24 +1006,24 @@ function renderPan(layout, opts = {}) {
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#3a2d1a"/>
-      <stop offset="60%" stop-color="#1e160a"/>
-      <stop offset="100%" stop-color="#0c0804"/>
+      <stop offset="0%" stop-color="#1a3828"/>
+      <stop offset="60%" stop-color="#0d2018"/>
+      <stop offset="100%" stop-color="#060f0c"/>
     </radialGradient>
     <radialGradient id="innerGrad" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#2e2310"/>
-      <stop offset="100%" stop-color="#1a1208"/>
+      <stop offset="0%" stop-color="#183028"/>
+      <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#6a5228" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#3d2e14" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#3d2e14" stroke-width="1.5"/>
+  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
   <!-- Tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#2e2210" stroke-width="1" opacity="0.5"/>
+  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
 `;
 
   // Ding (center)
@@ -783,14 +1102,14 @@ function updatePanPlaying(noteNames) {
 }
 
 
-// ── app.js ─────────────────────────────────────────
-
+// ── js/app.js ──
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
   view: 'selector',        // 'selector' | 'editor' | 'chords'
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
   noteCountFilter: 'all',  // 'all' | '9' | '10' | '11+'
+  scaleSearch: '',         // filter text for scale selector
   selectedChord: null,     // ChordResult or null
   chords: [],              // computed from layout
   chordFilter: { category: 'All', root: 'All' },
@@ -807,11 +1126,13 @@ function render() {
 
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
 function viewSelector() {
+  const q = state.scaleSearch.trim().toLowerCase();
   const filtered = SCALES.filter(s => {
     const total = 1 + s.top.notes.length + s.bottom.notes.length;
-    if (state.noteCountFilter === '9') return total === 9;
-    if (state.noteCountFilter === '10') return total === 10;
-    if (state.noteCountFilter === '11+') return total >= 11;
+    if (state.noteCountFilter === '9' && total !== 9) return false;
+    if (state.noteCountFilter === '10' && total !== 10) return false;
+    if (state.noteCountFilter === '11+' && total < 11) return false;
+    if (q && !s.name.toLowerCase().includes(q) && !s.family.toLowerCase().includes(q) && !s.desc.toLowerCase().includes(q)) return false;
     return true;
   });
 
@@ -819,22 +1140,31 @@ function viewSelector() {
     <div class="app-header">
       <div class="app-title">Handpan Chords</div>
     </div>
-    <div class="pills" style="margin-bottom:20px">
-      ${['all', '9', '10', '11+'].map(f => `
-        <button class="pill ${state.noteCountFilter === f ? 'active' : ''}"
-          data-action="filter-notes" data-val="${f}">
-          ${f === 'all' ? 'All scales' : f + ' notes'}
-        </button>
-      `).join('')}
+    <div class="selector-controls">
+      <input class="scale-search" id="scale-search-input" type="text"
+        placeholder="Search scales by name or family…"
+        value="${escHtml(state.scaleSearch)}">
+      <div class="pills">
+        ${['all', '9', '10', '11+'].map(f => `
+          <button class="pill ${state.noteCountFilter === f ? 'active' : ''}"
+            data-action="filter-notes" data-val="${f}">
+            ${f === 'all' ? 'All' : f + ' notes'}
+          </button>
+        `).join('')}
+      </div>
     </div>
     <div class="scale-grid">
-      ${filtered.map(s => `
-        <div class="scale-card" data-action="select-scale" data-id="${s.id}">
-          <div class="scale-card-name">${s.name}</div>
-          <div class="scale-card-notes">${1 + s.top.notes.length} notes</div>
-          <div class="scale-card-desc">${s.desc}</div>
-        </div>
-      `).join('')}
+      ${filtered.length === 0
+        ? '<div class="empty-state">No scales match your search</div>'
+        : filtered.map(s => `
+          <div class="scale-card" data-action="select-scale" data-id="${s.id}">
+            <div class="family-badge">${s.family}</div>
+            <div class="scale-card-name">${s.name}</div>
+            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${s.top.ding} ding</div>
+            <div class="scale-card-desc">${s.desc}</div>
+          </div>
+        `).join('')
+      }
     </div>
   `;
 }
@@ -1409,10 +1739,13 @@ document.addEventListener('click', e => {
     state.selectedChord = chord;
     history.replaceState(null, '', stateToHash());
     render();
-    // Scroll chord into view in the list
+    // Auto-play: arpeggiate notes low→high, then sustain together
+    initAudio();
+    playChord(chord.notes);
     setTimeout(() => {
       document.querySelector('.chord-item.selected')?.scrollIntoView({ block: 'nearest' });
-    }, 30);
+      updatePanPlaying(chord.notes.map(n => getNoteName(n)));
+    }, 40);
     return;
   }
 
@@ -1446,8 +1779,16 @@ document.addEventListener('change', e => {
   }
 });
 
-// ── Input delegation (custom name field) ─────────────────────────────────────
+// ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {
+  if (e.target.id === 'scale-search-input') {
+    state.scaleSearch = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const input = document.getElementById('scale-search-input');
+    if (input) { input.focus(); input.setSelectionRange(pos, pos); }
+    return;
+  }
   if (e.target.id === 'custom-name-input' && state.layout) {
     state.layout.name = e.target.value;
   }

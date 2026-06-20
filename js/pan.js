@@ -64,24 +64,24 @@ export function renderPan(layout, opts = {}) {
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#3a2d1a"/>
-      <stop offset="60%" stop-color="#1e160a"/>
-      <stop offset="100%" stop-color="#0c0804"/>
+      <stop offset="0%" stop-color="#1a3828"/>
+      <stop offset="60%" stop-color="#0d2018"/>
+      <stop offset="100%" stop-color="#060f0c"/>
     </radialGradient>
     <radialGradient id="innerGrad" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#2e2310"/>
-      <stop offset="100%" stop-color="#1a1208"/>
+      <stop offset="0%" stop-color="#183028"/>
+      <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#6a5228" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#3d2e14" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#3d2e14" stroke-width="1.5"/>
+  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
   <!-- Tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#2e2210" stroke-width="1" opacity="0.5"/>
+  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
 `;
 
   // Ding (center)

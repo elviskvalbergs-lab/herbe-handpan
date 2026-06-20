@@ -12,6 +12,7 @@ const state = {
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
   noteCountFilter: 'all',  // 'all' | '9' | '10' | '11+'
+  scaleSearch: '',         // filter text for scale selector
   selectedChord: null,     // ChordResult or null
   chords: [],              // computed from layout
   chordFilter: { category: 'All', root: 'All' },
@@ -28,11 +29,13 @@ function render() {
 
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
 function viewSelector() {
+  const q = state.scaleSearch.trim().toLowerCase();
   const filtered = SCALES.filter(s => {
     const total = 1 + s.top.notes.length + s.bottom.notes.length;
-    if (state.noteCountFilter === '9') return total === 9;
-    if (state.noteCountFilter === '10') return total === 10;
-    if (state.noteCountFilter === '11+') return total >= 11;
+    if (state.noteCountFilter === '9' && total !== 9) return false;
+    if (state.noteCountFilter === '10' && total !== 10) return false;
+    if (state.noteCountFilter === '11+' && total < 11) return false;
+    if (q && !s.name.toLowerCase().includes(q) && !s.family.toLowerCase().includes(q) && !s.desc.toLowerCase().includes(q)) return false;
     return true;
   });
 
@@ -40,22 +43,31 @@ function viewSelector() {
     <div class="app-header">
       <div class="app-title">Handpan Chords</div>
     </div>
-    <div class="pills" style="margin-bottom:20px">
-      ${['all', '9', '10', '11+'].map(f => `
-        <button class="pill ${state.noteCountFilter === f ? 'active' : ''}"
-          data-action="filter-notes" data-val="${f}">
-          ${f === 'all' ? 'All scales' : f + ' notes'}
-        </button>
-      `).join('')}
+    <div class="selector-controls">
+      <input class="scale-search" id="scale-search-input" type="text"
+        placeholder="Search scales by name or family…"
+        value="${escHtml(state.scaleSearch)}">
+      <div class="pills">
+        ${['all', '9', '10', '11+'].map(f => `
+          <button class="pill ${state.noteCountFilter === f ? 'active' : ''}"
+            data-action="filter-notes" data-val="${f}">
+            ${f === 'all' ? 'All' : f + ' notes'}
+          </button>
+        `).join('')}
+      </div>
     </div>
     <div class="scale-grid">
-      ${filtered.map(s => `
-        <div class="scale-card" data-action="select-scale" data-id="${s.id}">
-          <div class="scale-card-name">${s.name}</div>
-          <div class="scale-card-notes">${1 + s.top.notes.length} notes</div>
-          <div class="scale-card-desc">${s.desc}</div>
-        </div>
-      `).join('')}
+      ${filtered.length === 0
+        ? '<div class="empty-state">No scales match your search</div>'
+        : filtered.map(s => `
+          <div class="scale-card" data-action="select-scale" data-id="${s.id}">
+            <div class="family-badge">${s.family}</div>
+            <div class="scale-card-name">${s.name}</div>
+            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${s.top.ding} ding</div>
+            <div class="scale-card-desc">${s.desc}</div>
+          </div>
+        `).join('')
+      }
     </div>
   `;
 }
@@ -630,10 +642,13 @@ document.addEventListener('click', e => {
     state.selectedChord = chord;
     history.replaceState(null, '', stateToHash());
     render();
-    // Scroll chord into view in the list
+    // Auto-play: arpeggiate notes low→high, then sustain together
+    initAudio();
+    playChord(chord.notes);
     setTimeout(() => {
       document.querySelector('.chord-item.selected')?.scrollIntoView({ block: 'nearest' });
-    }, 30);
+      updatePanPlaying(chord.notes.map(n => getNoteName(n)));
+    }, 40);
     return;
   }
 
@@ -667,8 +682,16 @@ document.addEventListener('change', e => {
   }
 });
 
-// ── Input delegation (custom name field) ─────────────────────────────────────
+// ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {
+  if (e.target.id === 'scale-search-input') {
+    state.scaleSearch = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const input = document.getElementById('scale-search-input');
+    if (input) { input.focus(); input.setSelectionRange(pos, pos); }
+    return;
+  }
   if (e.target.id === 'custom-name-input' && state.layout) {
     state.layout.name = e.target.value;
   }
