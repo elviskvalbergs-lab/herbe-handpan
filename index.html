@@ -4,10 +4,1466 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Handpan Chords</title>
-  <link rel="stylesheet" href="styles.css">
+  <style>
+:root {
+  --bg: #0e0b06;
+  --surface: #1c1609;
+  --card: #251d0d;
+  --border: #3d3010;
+  --muted: #8a7050;
+  --text: #d4c4a0;
+  --heading: #f0e0c0;
+  --primary: #d4962a;
+  --primary-hover: #e8a830;
+  --note-rest-bg: #2e2410;
+  --note-rest-text: #a07830;
+  --note-active-bg: #d4962a;
+  --note-active-text: #fff;
+  --note-playing-bg: #f0c040;
+  --note-empty-border: #5a4520;
+  --radius: 6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+#app { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+/* Header */
+.app-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.app-title { font-size: 22px; font-weight: 600; color: var(--heading); }
+.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+.breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
+.breadcrumb a:hover { color: var(--primary-hover); text-decoration: underline; }
+
+/* Buttons */
+.btn {
+  padding: 8px 16px; border-radius: var(--radius); border: none;
+  font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.15s;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon {
+  padding: 4px 10px; background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); cursor: pointer; color: var(--text); font-size: 16px; line-height: 1.4;
+}
+.btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Filter pills */
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--card); color: var(--muted); font-size: 13px; cursor: pointer;
+  transition: all 0.15s;
+}
+.pill:hover { border-color: var(--primary); color: var(--primary); }
+.pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* Scale selector cards */
+.scale-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.scale-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; cursor: pointer; transition: all 0.15s;
+}
+.scale-card:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(212,150,42,0.1); }
+.scale-card-name { font-size: 16px; font-weight: 600; color: var(--heading); margin-bottom: 4px; }
+.scale-card-notes { font-size: 12px; color: var(--primary); margin-bottom: 8px; font-weight: 500; }
+.scale-card-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+/* Layout editor */
+.editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 720px) { .editor-layout { grid-template-columns: 1fr; } }
+
+.editor-sidebar { display: flex; flex-direction: column; gap: 12px; }
+.editor-section {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px;
+}
+.editor-section-title {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+}
+.capacity-control { display: flex; align-items: center; gap: 8px; }
+.capacity-val { font-size: 18px; font-weight: 700; color: var(--heading); min-width: 24px; text-align: center; }
+
+/* Pan SVG container */
+.pan-wrap { display: flex; justify-content: center; }
+.pan-wrap svg { max-width: 100%; height: auto; }
+
+/* SVG pan note base styles */
+.pan-note { cursor: pointer; }
+.pan-note rect, .pan-note circle, .pan-note ellipse { transition: fill 0.15s, opacity 0.15s; }
+.pan-note text { pointer-events: none; transition: fill 0.15s; }
+.pan-note.dimmed { opacity: 0.2; pointer-events: none; }
+
+/* Empty slot */
+.pan-note.empty rect, .pan-note.empty circle {
+  fill: transparent !important;
+  stroke: var(--note-empty-border) !important;
+  stroke-dasharray: 5 4;
+  stroke-width: 1.5;
+}
+.pan-note.empty text { fill: var(--note-empty-border) !important; font-size: 18px !important; }
+
+/* Highlighted (in chord) */
+.pan-note.highlight rect, .pan-note.highlight circle {
+  fill: var(--note-active-bg) !important;
+  stroke: #f0c040 !important;
+  stroke-width: 2;
+}
+.pan-note.highlight text { fill: var(--note-active-text) !important; font-weight: 700; }
+
+/* Playing animation */
+@keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+.pan-note.playing rect, .pan-note.playing circle {
+  fill: var(--note-playing-bg) !important;
+  stroke: #fff !important;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 10px #f0c04088);
+}
+.pan-note.playing { animation: noteplay 0.35s ease-in-out 4; }
+.pan-note.playing text { fill: #1a1200 !important; font-weight: 700; }
+
+/* Chord explorer */
+.explorer-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 720px) { .explorer-layout { grid-template-columns: 1fr; } }
+
+.chord-list {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  max-height: 75vh; overflow-y: auto;
+}
+.chord-list-header {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--card); z-index: 1;
+}
+.chord-item {
+  padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s;
+}
+.chord-item:last-child { border-bottom: none; }
+.chord-item:hover { background: #1e1708; }
+.chord-item.selected { background: #2a1e08; border-left: 3px solid var(--primary); padding-left: 11px; }
+.chord-item-name { font-weight: 600; color: var(--heading); font-size: 14px; }
+.chord-item-type { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.chord-count {
+  font-size: 11px; background: var(--surface); color: var(--muted);
+  padding: 2px 7px; border-radius: 10px; flex-shrink: 0;
+}
+
+.chord-panel {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px;
+}
+.chord-panel-title { font-size: 22px; font-weight: 700; color: var(--heading); margin-bottom: 3px; }
+.chord-panel-sub { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+.chord-actions { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+
+.related-section { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+.related-title {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+}
+.related-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.related-chip {
+  padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  cursor: pointer; transition: all 0.1s;
+}
+.related-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Note picker modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 24px; max-width: 420px; width: 94%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.modal-title { font-size: 16px; font-weight: 600; color: var(--heading); margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.note-octave-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.octave-label { font-size: 11px; color: var(--muted); width: 18px; text-align: right; flex-shrink: 0; }
+.note-btn {
+  flex: 1; padding: 7px 2px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-align: center; transition: all 0.12s; min-width: 0;
+}
+.note-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: #2a1e08; }
+.note-btn.in-use { opacity: 0.28; cursor: not-allowed; }
+.modal-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--primary); color: #fff;
+  padding: 10px 20px; border-radius: var(--radius);
+  font-size: 14px; font-weight: 500;
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none; z-index: 200;
+}
+.toast.show { opacity: 1; }
+
+/* Custom name input */
+.name-input {
+  background: transparent; border: none; border-bottom: 1px solid var(--border);
+  color: var(--heading); font-size: 15px; font-weight: 600;
+  padding: 2px 4px; outline: none; min-width: 160px; max-width: 260px;
+}
+.name-input:focus { border-bottom-color: var(--primary); }
+
+/* Select dropdown */
+.select-input {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-size: 13px; padding: 5px 10px; cursor: pointer; outline: none;
+}
+.select-input:focus { border-color: var(--primary); }
+
+/* Utility */
+.flex-row { display: flex; align-items: center; gap: 8px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.empty-state { text-align: center; padding: 32px 20px; color: var(--muted); line-height: 1.6; }
+.hint { font-size: 12px; color: var(--muted); }
+
+/* Note highlights legend in editor */
+.shell-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.shell-legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+  </style>
 </head>
 <body>
   <div id="app"></div>
-  <script type="module" src="js/app.js"></script>
+  <script>
+// ── data.js ─────────────────────────────────────────
+// Note name → semitone offset (0–11)
+const NOTE_TO_SEMI = {
+  'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,
+  'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11
+};
+
+// Normalize to preferred flat/sharp spelling
+const ENHARMONIC = { 'D#':'Eb','A#':'Bb','G#':'Ab','Db':'C#','Gb':'F#' };
+
+function normalizeNote(note) {
+  const m = note.match(/^([A-G][#b]?)(\d)$/);
+  if (!m) return note;
+  const name = ENHARMONIC[m[1]] ?? m[1];
+  return name + m[2];
+}
+
+function noteToMidi(note) {
+  const m = note.match(/^([A-G][#b]?)(\d)$/);
+  if (!m) return 0;
+  return (parseInt(m[2]) + 1) * 12 + NOTE_TO_SEMI[m[1]];
+}
+
+function midiToFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function noteToFreq(note) { return midiToFreq(noteToMidi(note)); }
+
+function getNoteName(note) {
+  const m = note.match(/^([A-G][#b]?)/);
+  return m ? m[1] : note;
+}
+
+function notePC(note) { return noteToMidi(note) % 12; }
+
+// 12 preferred note names in chromatic order
+const NOTE_NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+// ── Chord type catalog ───────────────────────────────────────────────────────
+// intervals: semitone offsets from root (mod-12 for pitch-class detection)
+const CHORD_TYPES = [
+  // Dyads / intervals
+  { id:'p5',    name:'Perfect 5th',         category:'Interval',   intervals:[0,7] },
+  { id:'m3i',   name:'Minor 3rd',           category:'Interval',   intervals:[0,3] },
+  { id:'M3i',   name:'Major 3rd',           category:'Interval',   intervals:[0,4] },
+  { id:'p4',    name:'Perfect 4th',         category:'Interval',   intervals:[0,5] },
+  { id:'M6i',   name:'Major 6th',           category:'Interval',   intervals:[0,9] },
+  // Triads
+  { id:'maj',   name:'Major',               category:'Major',      intervals:[0,4,7] },
+  { id:'min',   name:'Minor',               category:'Minor',      intervals:[0,3,7] },
+  { id:'dim',   name:'Diminished',          category:'Diminished', intervals:[0,3,6] },
+  { id:'aug',   name:'Augmented',           category:'Augmented',  intervals:[0,4,8] },
+  { id:'sus2',  name:'Sus2',                category:'Suspended',  intervals:[0,2,7] },
+  { id:'sus4',  name:'Sus4',                category:'Suspended',  intervals:[0,5,7] },
+  // Seventh chords
+  { id:'maj7',  name:'Major 7th',           category:'Major',      intervals:[0,4,7,11] },
+  { id:'min7',  name:'Minor 7th',           category:'Minor',      intervals:[0,3,7,10] },
+  { id:'dom7',  name:'Dominant 7th',        category:'Dominant',   intervals:[0,4,7,10] },
+  { id:'dim7',  name:'Diminished 7th',      category:'Diminished', intervals:[0,3,6,9] },
+  { id:'hdim7', name:'Half-Dim 7th',        category:'Diminished', intervals:[0,3,6,10] },
+  { id:'mmaj7', name:'Minor-Major 7th',     category:'Minor',      intervals:[0,3,7,11] },
+  { id:'augM7', name:'Augmented Maj 7th',   category:'Augmented',  intervals:[0,4,8,11] },
+  // 6th chords
+  { id:'maj6',  name:'Major 6th',           category:'Major',      intervals:[0,4,7,9] },
+  { id:'min6',  name:'Minor 6th',           category:'Minor',      intervals:[0,3,7,9] },
+  // Add/extended chords
+  { id:'add9',  name:'Add9',                category:'Extended',   intervals:[0,4,7,2] },
+  { id:'madd9', name:'Minor Add9',          category:'Extended',   intervals:[0,3,7,2] },
+  { id:'maj9',  name:'Major 9th',           category:'Extended',   intervals:[0,4,7,11,2] },
+  { id:'min9',  name:'Minor 9th',           category:'Extended',   intervals:[0,3,7,10,2] },
+  { id:'dom9',  name:'Dominant 9th',        category:'Dominant',   intervals:[0,4,7,10,2] },
+];
+
+const CHORD_CATEGORIES = ['All','Major','Minor','Suspended','Diminished','Augmented','Dominant','Extended','Interval'];
+
+// ── Scale definitions ────────────────────────────────────────────────────────
+// top.notes = ring notes (clockwise, not including ding)
+// bottom.notes = gu notes (usually empty in standard; users add them)
+const SCALES = [
+  { id:'D-Kurd', name:'D Kurd', desc:'The most popular handpan scale. Deep, ethereal minor.',
+    top:{ ding:'D3', notes:['A3','Bb3','C4','D4','E4','F4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Celtic-Minor', name:'D Celtic Minor', desc:'Deep Celtic atmosphere. Natural minor feel.',
+    top:{ ding:'D3', notes:['A3','C4','D4','E4','F4','G4','A4','C5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'A-Pygmy', name:'A Pygmy', desc:'Meditative African scale. Deep bass, hypnotic groove.',
+    top:{ ding:'A2', notes:['E3','F3','G3','A3','C4','D4','E4','G4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Major', name:'D Major', desc:'Bright, uplifting major scale. Full of joy.',
+    top:{ ding:'D3', notes:['A3','B3','D4','E4','F#4','A4','B4','D5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'F#-Kurd', name:'F# Kurd', desc:'Higher-pitched Kurd. Bright and expansive minor.',
+    top:{ ding:'F#3', notes:['C#4','D4','E4','F#4','G#4','A4','B4','C#5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'C#-Annaziska', name:'C# Annaziska', desc:'Exotic Middle Eastern flavor. Deeply resonant.',
+    top:{ ding:'C#3', notes:['G#3','A3','C#4','Eb4','E4','G#4','A4','C#5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-La-Sirena', name:'E La Sirena', desc:'Magical and otherworldly. Floats like a dream.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G#4','B4','C#5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Minor', name:'G Minor', desc:'Melancholic natural minor. Very expressive.',
+    top:{ ding:'G3', notes:['D4','Eb4','F4','G4','A4','Bb4','D5','F5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'B-Kurd', name:'B Kurd', desc:'Rich resonant Kurd with a grounding deep bass.',
+    top:{ ding:'B2', notes:['F#3','G3','A3','B3','C#4','D4','E4','F#4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Hijaz', name:'D Hijaz', desc:'Oriental minor with augmented 2nd. Dramatic and ancient.',
+    top:{ ding:'D3', notes:['A3','Bb3','C#4','D4','Eb4','F4','G4','A4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Integral', name:'E Integral', desc:'Harmonically rich. Every note resonates together.',
+    top:{ ding:'E3', notes:['B3','C#4','E4','F#4','G#4','B4','C#5','E5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'C#-Minor', name:'C# Minor', desc:'Haunting natural minor. Popular for healing music.',
+    top:{ ding:'C#3', notes:['G#3','A3','B3','C#4','Eb4','E4','G#4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'A-Low-Kurd', name:'A Low Kurd', desc:'Deep earthy Kurd in low A. Very grounding.',
+    top:{ ding:'A2', notes:['E3','F3','G3','A3','Bb3','C4','D4','E4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'F-Celtic', name:'F Celtic', desc:'Celtic minor in F. Smooth, flowing, introspective.',
+    top:{ ding:'F3', notes:['C4','Db4','Eb4','F4','G4','Ab4','C5','Db5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Amara', name:'D Amara', desc:'Dorian-minor blend. Versatile and emotionally rich.',
+    top:{ ding:'D3', notes:['A3','B3','C4','D4','E4','F4','A4','C5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'G-Integral', name:'G Integral', desc:'Natural resonant warmth. Like a singing bowl.',
+    top:{ ding:'G2', notes:['D3','F3','G3','A3','Bb3','D4','F4','G4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Aegean', name:'E Aegean', desc:'Mediterranean atmosphere. Haunting and ancient.',
+    top:{ ding:'E3', notes:['B3','C4','D4','E4','F4','G4','Ab4','B4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'D-Sabye', name:'D Sabye', desc:'Middle Eastern color with chromatic richness.',
+    top:{ ding:'D3', notes:['A3','C4','C#4','D4','F4','G4','A4','C5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'A-Mystic', name:'A Mystic', desc:'Meditative near-whole-tone palette.',
+    top:{ ding:'A2', notes:['D3','E3','F#3','A3','B3','C#4','E4','F#4'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'E-Equinox', name:'E Equinox', desc:'Balanced major/minor blend. Bright and versatile.',
+    top:{ ding:'E3', notes:['B3','C#4','D4','E4','F#4','G4','B4','D5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+];
+
+// Build a mutable Layout from a Scale (deep copy with slot wrapping)
+function createLayoutFromScale(scale) {
+  return {
+    id: scale.id,
+    name: scale.name,
+    isCustom: false,
+    top: {
+      ding: scale.top.ding,
+      slots: scale.top.notes.map(n => ({ note: n })),
+      capacity: scale.top.capacity,
+    },
+    bottom: {
+      slots: Array.from({ length: scale.bottom.capacity }, (_, i) => ({
+        note: scale.bottom.notes[i] ?? null,
+      })),
+      capacity: scale.bottom.capacity,
+    },
+  };
+}
+
+// Collect all non-null notes from a layout (ding + ring + gu)
+function getAllNotes(layout) {
+  const notes = [layout.top.ding];
+  layout.top.slots.forEach(s => { if (s.note) notes.push(s.note); });
+  layout.bottom.slots.forEach(s => { if (s.note) notes.push(s.note); });
+  return notes;
+}
+
+
+// ── chords.js ─────────────────────────────────────────
+
+// Returns all chords playable on this layout, deduped by root + type
+function findAllChords(layout) {
+  const allNotes = getAllNotes(layout);
+  const pcs = allNotes.map(notePC);
+  const uniquePCs = [...new Set(pcs)];
+  const results = [];
+  const seen = new Set();
+
+  for (const rootPC of uniquePCs) {
+    for (const type of CHORD_TYPES) {
+      const key = `${rootPC}-${type.id}`;
+      if (seen.has(key)) continue;
+
+      // Octave dyad: same pitch class, different octave
+      if (type.id === 'oct') {
+        const rootNotes = allNotes.filter(n => notePC(n) === rootPC);
+        if (rootNotes.length >= 2) {
+          const sorted = [...rootNotes].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+          seen.add(key);
+          results.push({
+            id: `${getNoteName(sorted[0])}-oct`,
+            rootName: getNoteName(sorted[0]),
+            rootNote: sorted[0],
+            type,
+            notes: sorted,
+            noteCount: 2,
+          });
+        }
+        continue;
+      }
+
+      const requiredPCs = type.intervals.map(i => (rootPC + i) % 12);
+      if (!requiredPCs.every(pc => uniquePCs.includes(pc))) continue;
+
+      // Pick one representative note per required PC (lowest pitch on instrument)
+      const chordNotes = requiredPCs.map(pc => {
+        const matches = allNotes.filter(n => notePC(n) === pc);
+        return matches.sort((a, b) => noteToMidi(a) - noteToMidi(b))[0];
+      });
+
+      const rootNote = allNotes
+        .filter(n => notePC(n) === rootPC)
+        .sort((a, b) => noteToMidi(a) - noteToMidi(b))[0];
+
+      seen.add(key);
+      results.push({
+        id: `${getNoteName(rootNote)}-${type.id}`,
+        rootName: getNoteName(rootNote),
+        rootNote,
+        type,
+        notes: chordNotes,
+        noteCount: type.intervals.length,
+      });
+    }
+  }
+
+  return results;
+}
+
+// Returns related chords: same type / other roots, and chords sharing 2+ notes
+function getRelatedChords(chord, allChords) {
+  const sameType = allChords.filter(c =>
+    c.type.id === chord.type.id && c.id !== chord.id
+  );
+
+  const chordPCs = new Set(chord.notes.map(notePC));
+  const sharedNotes = allChords.filter(c => {
+    if (c.id === chord.id || c.type.id === chord.type.id) return false;
+    const sharedCount = c.notes.filter(n => chordPCs.has(notePC(n))).length;
+    return sharedCount >= 2;
+  });
+
+  return { sameType, sharedNotes };
+}
+
+
+// ── audio.js ─────────────────────────────────────────
+
+let ctx = null;
+let masterGain = null;
+
+function initAudio() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = 0.65;
+  masterGain.connect(ctx.destination);
+}
+
+function playFreq(freq, startTime) {
+  if (!ctx) return;
+  const now = startTime ?? ctx.currentTime;
+
+  // Fundamental + 2nd harmonic + 3rd harmonic with individual decay envelopes
+  const harmonics = [
+    { mult: 1,   gain: 0.65, decay: 5.0 },
+    { mult: 2,   gain: 0.30, decay: 2.8 },
+    { mult: 3,   gain: 0.10, decay: 1.4 },
+  ];
+
+  const reverbSend = ctx.createGain();
+  reverbSend.gain.value = 0;
+  reverbSend.connect(masterGain);
+
+  harmonics.forEach(({ mult, gain, decay }) => {
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = freq * mult;
+
+    env.gain.setValueAtTime(0, now);
+    env.gain.linearRampToValueAtTime(gain, now + 0.003);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+    osc.connect(env);
+    env.connect(masterGain);
+
+    // Reverb: feed fundamental into delay loop
+    if (mult === 1) {
+      const delayNode = ctx.createDelay(0.7);
+      const feedbackGain = ctx.createGain();
+      const delayEnv = ctx.createGain();
+
+      delayNode.delayTime.value = 0.24;
+      feedbackGain.gain.value = 0.26;
+
+      delayEnv.gain.setValueAtTime(0.14, now + 0.003);
+      delayEnv.gain.exponentialRampToValueAtTime(0.0001, now + 4);
+
+      env.connect(delayNode);
+      delayNode.connect(feedbackGain);
+      feedbackGain.connect(delayNode);
+      delayNode.connect(delayEnv);
+      delayEnv.connect(masterGain);
+
+      osc.start(now);
+      osc.stop(now + 5);
+    } else {
+      osc.start(now);
+      osc.stop(now + decay + 0.1);
+    }
+  });
+}
+
+function playNote(noteName) {
+  if (!ctx) initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  playFreq(noteToFreq(noteName));
+}
+
+function playChord(noteNames) {
+  if (!ctx) initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  const now = ctx.currentTime;
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.08));
+}
+
+function playScale(noteNames) {
+  if (!ctx) initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  const now = ctx.currentTime;
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.15));
+}
+
+
+// ── pan.js ─────────────────────────────────────────
+
+const PAN_SVG_ID = 'handpan-svg';
+
+// Compute (x, y) positions for N items evenly around a circle
+function circlePositions(count, cx, cy, r) {
+  return Array.from({ length: count }, (_, i) => {
+    const angle = (i * 2 * Math.PI / count) - Math.PI / 2; // start at top
+    return {
+      x: Math.round(cx + r * Math.cos(angle)),
+      y: Math.round(cy + r * Math.sin(angle)),
+    };
+  });
+}
+
+// Render a filled or empty note slot as SVG string
+function noteSlotSvg(x, y, note, extraClasses, noteId, isCircle = false) {
+  const label = note ? getNoteName(note) : '+';
+  const isEmpty = !note;
+  const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
+
+  if (isCircle) {
+    const r = 30;
+    return `<g class="${allClasses}" data-note-id="${noteId}">
+  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
+  <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
+    font-family="system-ui,sans-serif" font-size="${isEmpty ? 20 : 13}" font-weight="600"
+    fill="var(--note-rest-text)">${label}</text>
+</g>`;
+  }
+
+  // Rounded rectangle for ring slots
+  const w = 50, h = 38;
+  return `<g class="${allClasses}" data-note-id="${noteId}">
+  <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="8"
+    fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
+  <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
+    font-family="system-ui,sans-serif" font-size="${isEmpty ? 18 : 13}" font-weight="600"
+    fill="var(--note-rest-text)">${label}</text>
+</g>`;
+}
+
+// Render the full handpan as an SVG string
+function renderPan(layout, opts = {}) {
+  const { shellMode = 'both', highlightNotes = [] } = opts;
+
+  const cx = 250, cy = 240;
+  const hlNames = new Set(highlightNotes.map(n =>
+    typeof n === 'string' ? getNoteName(n) : n
+  ));
+
+  const dimTop = shellMode === 'bottom';
+  const dimBottom = shellMode === 'top';
+
+  function noteClass(note, isTopShell) {
+    const classes = [];
+    if (!note) classes.push('empty');
+    else if (hlNames.has(getNoteName(note))) classes.push('highlight');
+    if (isTopShell && dimTop) classes.push('dimmed');
+    if (!isTopShell && dimBottom) classes.push('dimmed');
+    return classes.join(' ');
+  }
+
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="panGrad" cx="38%" cy="32%">
+      <stop offset="0%" stop-color="#3a2d1a"/>
+      <stop offset="60%" stop-color="#1e160a"/>
+      <stop offset="100%" stop-color="#0c0804"/>
+    </radialGradient>
+    <radialGradient id="innerGrad" cx="50%" cy="50%">
+      <stop offset="0%" stop-color="#2e2310"/>
+      <stop offset="100%" stop-color="#1a1208"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Pan body -->
+  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#6a5228" stroke-width="2"/>
+  <!-- Outer groove ring -->
+  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#3d2e14" stroke-width="1" stroke-dasharray="3 7"/>
+  <!-- Inner center dome -->
+  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#3d2e14" stroke-width="1.5"/>
+  <!-- Tone field guide ring -->
+  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#2e2210" stroke-width="1" opacity="0.5"/>
+`;
+
+  // Ding (center)
+  const dingNote = layout.top.ding;
+  const dingClass = [
+    !dingNote ? 'empty' : '',
+    dingNote && hlNames.has(getNoteName(dingNote)) ? 'highlight' : '',
+    dimTop ? 'dimmed' : '',
+  ].filter(Boolean).join(' ');
+  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', true);
+
+  // Ring slots
+  const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
+  const ringPos = circlePositions(ringCount, cx, cy, 145);
+
+  for (let i = 0; i < ringCount; i++) {
+    const slot = layout.top.slots[i] ?? { note: null };
+    const pos = ringPos[i];
+    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`);
+  }
+
+  // Gu (bottom shell) slots — centered below the main circle
+  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
+  const guSpacing = 76;
+  const guStartX = cx - ((guCount - 1) * guSpacing) / 2;
+  const guY = 496;
+
+  for (let i = 0; i < guCount; i++) {
+    const slot = layout.bottom.slots[i] ?? { note: null };
+    const gx = guStartX + i * guSpacing;
+    svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, true);
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
+// Update highlight classes on the existing SVG without full re-render
+function updatePanHighlight(noteNames) {
+  const svg = document.getElementById(PAN_SVG_ID);
+  if (!svg) return;
+  const nameSet = new Set(noteNames.map(n => getNoteName(n)));
+  svg.querySelectorAll('.pan-note').forEach(el => {
+    if (el.classList.contains('empty')) return;
+    const label = el.querySelector('text')?.textContent;
+    el.classList.toggle('highlight', !!(label && nameSet.has(label)));
+  });
+}
+
+// Update shell dimming without re-render
+function updatePanShellMode(mode) {
+  const svg = document.getElementById(PAN_SVG_ID);
+  if (!svg) return;
+  svg.querySelectorAll('.pan-note').forEach(el => {
+    const isTop = el.classList.contains('ding') || el.classList.contains('ring');
+    const isBottom = el.classList.contains('gu');
+    if (mode === 'top') el.classList.toggle('dimmed', isBottom);
+    else if (mode === 'bottom') el.classList.toggle('dimmed', isTop);
+    else el.classList.remove('dimmed');
+  });
+}
+
+// Briefly add 'playing' class to notes then remove it
+function updatePanPlaying(noteNames) {
+  const svg = document.getElementById(PAN_SVG_ID);
+  if (!svg) return;
+  const nameSet = new Set(noteNames.map(n => getNoteName(n)));
+  svg.querySelectorAll('.pan-note').forEach(el => {
+    if (el.classList.contains('empty')) return;
+    const label = el.querySelector('text')?.textContent;
+    if (label && nameSet.has(label)) {
+      el.classList.add('playing');
+      setTimeout(() => el.classList.remove('playing'), 2200);
+    }
+  });
+}
+
+
+// ── app.js ─────────────────────────────────────────
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+  view: 'selector',        // 'selector' | 'editor' | 'chords'
+  layout: null,            // current Layout object
+  shellMode: 'both',       // 'top' | 'bottom' | 'both'
+  noteCountFilter: 'all',  // 'all' | '9' | '10' | '11+'
+  selectedChord: null,     // ChordResult or null
+  chords: [],              // computed from layout
+  chordFilter: { category: 'All', root: 'All' },
+  pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
+};
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  if (state.view === 'selector') app.innerHTML = viewSelector();
+  else if (state.view === 'editor') app.innerHTML = viewEditor();
+  else if (state.view === 'chords') app.innerHTML = viewChords();
+}
+
+// ── View 1: Scale Selector ───────────────────────────────────────────────────
+function viewSelector() {
+  const filtered = SCALES.filter(s => {
+    const total = 1 + s.top.notes.length + s.bottom.notes.length;
+    if (state.noteCountFilter === '9') return total === 9;
+    if (state.noteCountFilter === '10') return total === 10;
+    if (state.noteCountFilter === '11+') return total >= 11;
+    return true;
+  });
+
+  return `
+    <div class="app-header">
+      <div class="app-title">Handpan Chords</div>
+    </div>
+    <div class="pills" style="margin-bottom:20px">
+      ${['all', '9', '10', '11+'].map(f => `
+        <button class="pill ${state.noteCountFilter === f ? 'active' : ''}"
+          data-action="filter-notes" data-val="${f}">
+          ${f === 'all' ? 'All scales' : f + ' notes'}
+        </button>
+      `).join('')}
+    </div>
+    <div class="scale-grid">
+      ${filtered.map(s => `
+        <div class="scale-card" data-action="select-scale" data-id="${s.id}">
+          <div class="scale-card-name">${s.name}</div>
+          <div class="scale-card-notes">${1 + s.top.notes.length} notes</div>
+          <div class="scale-card-desc">${s.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── View 2: Layout Editor ────────────────────────────────────────────────────
+function viewEditor() {
+  const layout = state.layout;
+  const isCustom = layout.isCustom;
+
+  const panSvg = renderPan(layout, {
+    shellMode: state.shellMode,
+    highlightNotes: [],
+  });
+
+  const topFilled = layout.top.slots.filter(s => s.note).length;
+  const topEmpty = layout.top.slots.filter(s => !s.note).length;
+  const bottomFilled = layout.bottom.slots.filter(s => s.note).length;
+
+  return `
+    <div class="app-header">
+      <div class="breadcrumb">
+        <a data-action="back-selector">← Scales</a>
+        <span>/</span>
+        ${isCustom
+          ? `<input class="name-input" id="custom-name-input"
+               value="${escHtml(layout.name)}" placeholder="Layout name">`
+          : `<span>${escHtml(layout.name)}</span>`
+        }
+      </div>
+    </div>
+
+    <div class="editor-layout">
+      <div>
+        <div class="pills" style="margin-bottom:14px">
+          ${['both', 'top', 'bottom'].map(m => `
+            <button class="pill ${state.shellMode === m ? 'active' : ''}"
+              data-action="shell-mode" data-mode="${m}">
+              ${m === 'both' ? 'Both Shells' : m === 'top' ? 'Top Shell' : 'Bottom Shell'}
+            </button>
+          `).join('')}
+        </div>
+        <div class="pan-wrap">
+          ${panSvg}
+        </div>
+        ${isCustom ? `
+          <p class="hint" style="text-align:center;margin-top:10px">
+            Click a note to remove it · Click an empty slot (+) to add a note
+          </p>
+        ` : ''}
+      </div>
+
+      <div class="editor-sidebar">
+        ${!isCustom ? `
+          <button class="btn btn-secondary" data-action="clone-layout" style="width:100%">
+            Clone &amp; Customize
+          </button>
+        ` : ''}
+
+        <div class="editor-section">
+          <div class="editor-section-title">Top shell — ring slots</div>
+          <div class="capacity-control">
+            <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
+              ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
+            <span class="capacity-val">${layout.top.capacity}</span>
+            <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
+          </div>
+          <div class="hint" style="margin-top:6px">
+            ${topFilled + 1} notes total (incl. ding) · ${topEmpty} empty slot${topEmpty !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-section-title">Bottom shell — gu</div>
+          <div class="capacity-control">
+            <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
+              ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
+            <span class="capacity-val">${layout.bottom.capacity}</span>
+            <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
+          </div>
+          <div class="hint" style="margin-top:6px">
+            ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
+          </div>
+        </div>
+
+        <button class="btn btn-primary" data-action="go-chords" style="width:100%;margin-top:4px">
+          Find Chords →
+        </button>
+      </div>
+    </div>
+
+    ${state.pendingSlot ? renderNotePicker() : ''}
+  `;
+}
+
+function renderNotePicker() {
+  const allNotes = getAllNotes(state.layout);
+  const usedPCs = new Set(allNotes.map(notePC));
+  const octaves = [2, 3, 4, 5];
+
+  const rows = octaves.map(oct => {
+    const cols = NOTE_NAMES.map(name => {
+      const noteStr = `${name}${oct}`;
+      const pc = NOTE_NAMES.indexOf(name);
+      const inUse = usedPCs.has(pc);
+      return `<button class="note-btn ${inUse ? 'in-use' : ''}"
+        data-action="pick-note" data-note="${noteStr}"
+        ${inUse ? 'disabled' : ''}>${name}</button>`;
+    }).join('');
+    return `<div class="note-octave-row">
+      <span class="octave-label">${oct}</span>
+      ${cols}
+    </div>`;
+  }).join('');
+
+  const slotLabel = state.pendingSlot.shell === 'ding'
+    ? 'ding (center)'
+    : `${state.pendingSlot.shell === 'top' ? 'ring' : 'gu'} slot ${state.pendingSlot.index + 1}`;
+
+  return `
+    <div class="modal-overlay" data-action="close-picker">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Choose a note</div>
+        <div class="modal-sub">For ${slotLabel} · Grayed notes already on instrument</div>
+        ${rows}
+        <div class="modal-actions">
+          <button class="btn btn-secondary btn-sm" data-action="close-picker">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── View 3: Chord Explorer ───────────────────────────────────────────────────
+function viewChords() {
+  const { chords, chordFilter, selectedChord, layout } = state;
+
+  // Collect available root names for the dropdown
+  const ROOT_ORDER = NOTE_NAMES;
+  const roots = ['All', ...ROOT_ORDER.filter(r => chords.some(c => c.rootName === r))];
+
+  // Apply filters
+  const filtered = chords.filter(c => {
+    if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
+    if (chordFilter.root !== 'All' && c.rootName !== chordFilter.root) return false;
+    return true;
+  }).sort((a, b) => {
+    const ri = ROOT_ORDER.indexOf(a.rootName) - ROOT_ORDER.indexOf(b.rootName);
+    return ri !== 0 ? ri : b.noteCount - a.noteCount;
+  });
+
+  // Pan with chord highlighted
+  const highlightNotes = selectedChord
+    ? selectedChord.notes.map(n => getNoteName(n))
+    : [];
+  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes });
+
+  // Related chords panel
+  let relatedHtml = '';
+  if (selectedChord) {
+    const { sameType, sharedNotes } = getRelatedChords(selectedChord, chords);
+    const sameTypeChips = sameType.map(c =>
+      `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
+        ${c.rootName} ${c.type.name}
+      </span>`
+    ).join('');
+    const sharedChips = sharedNotes.slice(0, 10).map(c =>
+      `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
+        ${c.rootName} ${c.type.name}
+      </span>`
+    ).join('');
+
+    relatedHtml = `
+      <div class="related-section">
+        ${sameType.length > 0 ? `
+          <div class="related-title">Same type, other roots</div>
+          <div class="related-chips">${sameTypeChips}</div>
+        ` : ''}
+        ${sharedNotes.length > 0 ? `
+          <div class="related-title mt-12">Shares 2+ notes</div>
+          <div class="related-chips">${sharedChips}</div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="app-header">
+      <div class="breadcrumb">
+        <a data-action="back-selector">← Scales</a>
+        <span>/</span>
+        <a data-action="back-editor">← ${escHtml(layout.name)}</a>
+        <span>/</span>
+        <span>Chords</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" data-action="copy-url"
+        style="margin-left:auto;flex-shrink:0">
+        Copy URL
+      </button>
+    </div>
+
+    <div class="explorer-layout">
+      <div class="chord-list">
+        <div class="chord-list-header">
+          <div class="pills" style="margin-bottom:8px">
+            ${CHORD_CATEGORIES.map(cat => `
+              <button class="pill ${chordFilter.category === cat ? 'active' : ''}"
+                data-action="filter-category" data-cat="${cat}">${cat}</button>
+            `).join('')}
+          </div>
+          <div class="flex-row" style="margin-top:8px">
+            <select class="select-input" data-action="filter-root">
+              ${roots.map(r => `<option value="${r}" ${chordFilter.root === r ? 'selected' : ''}>${r}</option>`).join('')}
+            </select>
+            <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        ${filtered.length === 0
+          ? '<div class="empty-state">No chords match these filters</div>'
+          : filtered.map(c => `
+            <div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
+              data-action="select-chord" data-id="${c.id}">
+              <div>
+                <div class="chord-item-name">${c.rootName} ${c.type.name}</div>
+                <div class="chord-item-type">${c.type.category}</div>
+              </div>
+              <span class="chord-count">${c.noteCount}</span>
+            </div>
+          `).join('')
+        }
+      </div>
+
+      <div>
+        <div class="pan-wrap" style="margin-bottom:16px">
+          ${panSvg}
+        </div>
+        <div class="chord-panel">
+          ${selectedChord ? `
+            <div class="chord-panel-title">${selectedChord.rootName} ${selectedChord.type.name}</div>
+            <div class="chord-panel-sub">
+              ${selectedChord.type.category} · ${selectedChord.noteCount} notes:
+              ${selectedChord.notes.map(n => getNoteName(n)).join(', ')}
+            </div>
+            <div class="chord-actions">
+              <button class="btn btn-primary" data-action="play-chord">▶ Play Chord</button>
+              <button class="btn btn-secondary" data-action="play-scale">▶ All Notes</button>
+            </div>
+            ${relatedHtml}
+          ` : `
+            <div class="empty-state">
+              Select a chord from the list<br>to see and hear it on the pan
+            </div>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── URL serialization ────────────────────────────────────────────────────────
+function stateToHash() {
+  if (!state.layout) return '';
+  const chordSuffix = state.selectedChord ? `&chord=${state.selectedChord.id}` : '';
+
+  if (!state.layout.isCustom) {
+    return `#scale=${state.layout.id}${chordSuffix}`;
+  }
+
+  const topSlots = state.layout.top.slots.map(s => s.note ?? 'null').join(',');
+  const bottomSlots = state.layout.bottom.slots.map(s => s.note ?? 'null').join(',');
+  const params = new URLSearchParams({
+    ding: state.layout.top.ding,
+    top: topSlots,
+    bottom: bottomSlots,
+    tc: state.layout.top.capacity,
+    bc: state.layout.bottom.capacity,
+    name: state.layout.name,
+  });
+  return `#custom?${params}${chordSuffix}`;
+}
+
+function loadFromHash() {
+  const hash = window.location.hash;
+  if (!hash || hash === '#') return;
+
+  let chordId = null;
+
+  if (hash.startsWith('#scale=')) {
+    const raw = hash.slice(7);
+    const [scaleId, ...rest] = raw.split('&chord=');
+    chordId = rest[0] || null;
+    const scale = SCALES.find(s => s.id === scaleId);
+    if (scale) {
+      state.layout = createLayoutFromScale(scale);
+      state.chords = findAllChords(state.layout);
+      state.view = chordId ? 'chords' : 'editor';
+    }
+  } else if (hash.startsWith('#custom?')) {
+    const rawParams = hash.slice(8);
+    const chordMarker = rawParams.indexOf('&chord=');
+    const paramStr = chordMarker >= 0 ? rawParams.slice(0, chordMarker) : rawParams;
+    chordId = chordMarker >= 0 ? rawParams.slice(chordMarker + 7) : null;
+
+    const params = new URLSearchParams(paramStr);
+    const topSlots = (params.get('top') || '').split(',').map(n => ({ note: n === 'null' ? null : n }));
+    const bottomSlots = (params.get('bottom') || '').split(',').map(n => ({ note: n === 'null' ? null : n }));
+    state.layout = {
+      id: 'custom',
+      name: params.get('name') || 'Custom Layout',
+      isCustom: true,
+      top: {
+        ding: params.get('ding') || 'D3',
+        slots: topSlots,
+        capacity: parseInt(params.get('tc') || '8'),
+      },
+      bottom: {
+        slots: bottomSlots,
+        capacity: parseInt(params.get('bc') || '3'),
+      },
+    };
+    state.chords = findAllChords(state.layout);
+    state.view = chordId ? 'chords' : 'editor';
+  }
+
+  if (chordId && state.chords.length) {
+    state.selectedChord = state.chords.find(c => c.id === chordId) || null;
+  }
+}
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showToast(msg) {
+  let toast = document.querySelector('.toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ── Bootstrap ────────────────────────────────────────────────────────────────
+loadFromHash();
+render();
+
+// ── Global click delegation ───────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+
+  // ── Selector ──────────────────────────────────────────────────────────────
+  if (action === 'filter-notes') {
+    state.noteCountFilter = el.dataset.val;
+    render();
+    return;
+  }
+
+  if (action === 'select-scale') {
+    const scale = SCALES.find(s => s.id === el.dataset.id);
+    if (!scale) return;
+    state.layout = createLayoutFromScale(scale);
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = null;
+    state.shellMode = 'both';
+    state.chordFilter = { category: 'All', root: 'All' };
+    state.view = 'editor';
+    history.pushState(null, '', stateToHash());
+    render();
+    return;
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  if (action === 'back-selector') {
+    state.view = 'selector';
+    state.layout = null;
+    state.selectedChord = null;
+    state.pendingSlot = null;
+    history.pushState(null, '', location.pathname);
+    render();
+    return;
+  }
+
+  if (action === 'back-editor') {
+    state.view = 'editor';
+    state.selectedChord = null;
+    history.replaceState(null, '', stateToHash());
+    render();
+    return;
+  }
+
+  // ── Editor ────────────────────────────────────────────────────────────────
+  if (action === 'shell-mode') {
+    state.shellMode = el.dataset.mode;
+    render();
+    return;
+  }
+
+  if (action === 'clone-layout') {
+    state.layout = {
+      ...state.layout,
+      isCustom: true,
+      id: 'custom',
+      name: state.layout.name + ' (Custom)',
+      top: {
+        ...state.layout.top,
+        slots: state.layout.top.slots.map(s => ({ ...s })),
+      },
+      bottom: {
+        ...state.layout.bottom,
+        slots: state.layout.bottom.slots.map(s => ({ ...s })),
+      },
+    };
+    render();
+    return;
+  }
+
+  if (action === 'go-chords') {
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = null;
+    state.chordFilter = { category: 'All', root: 'All' };
+    state.view = 'chords';
+    history.pushState(null, '', stateToHash());
+    render();
+    return;
+  }
+
+  if (action === 'adjust-capacity') {
+    const shell = el.dataset.shell;
+    const delta = parseInt(el.dataset.delta);
+    const target = state.layout[shell];
+    const newCap = Math.max(0, Math.min(12, target.capacity + delta));
+    if (newCap === target.capacity) return;
+
+    if (delta > 0) {
+      target.slots.push({ note: null });
+    } else {
+      // Only remove last slot if it's empty
+      const lastIdx = target.slots.length - 1;
+      if (lastIdx >= 0 && target.slots[lastIdx].note === null) {
+        target.slots.pop();
+      } else {
+        showToast('Remove the last note first');
+        return;
+      }
+    }
+    target.capacity = newCap;
+    state.chords = findAllChords(state.layout);
+    render();
+    return;
+  }
+
+  // Note picker: cancel
+  if (action === 'close-picker') {
+    state.pendingSlot = null;
+    render();
+    return;
+  }
+
+  // Note picker: pick a note
+  if (action === 'pick-note') {
+    const note = el.dataset.note;
+    const slot = state.pendingSlot;
+    if (!slot) return;
+
+    if (slot.shell === 'ding') {
+      state.layout.top.ding = note;
+    } else if (slot.shell === 'top') {
+      while (state.layout.top.slots.length <= slot.index) {
+        state.layout.top.slots.push({ note: null });
+      }
+      state.layout.top.slots[slot.index].note = note;
+    } else {
+      while (state.layout.bottom.slots.length <= slot.index) {
+        state.layout.bottom.slots.push({ note: null });
+      }
+      state.layout.bottom.slots[slot.index].note = note;
+    }
+
+    state.pendingSlot = null;
+    state.chords = findAllChords(state.layout);
+    initAudio();
+    playNote(note);
+    render();
+    return;
+  }
+
+  // ── Pan note click ─────────────────────────────────────────────────────────
+  const noteEl = e.target.closest('.pan-note');
+  if (noteEl) {
+    const noteId = noteEl.dataset.noteId;
+    const isEmpty = noteEl.classList.contains('empty');
+    const isCustom = state.layout?.isCustom;
+
+    // Always play the note on click (if not empty)
+    if (!isEmpty) {
+      let noteToPlay = null;
+      if (noteId === 'ding') {
+        noteToPlay = state.layout.top.ding;
+      } else if (noteId?.startsWith('ring-')) {
+        const idx = parseInt(noteId.split('-')[1]);
+        noteToPlay = state.layout.top.slots[idx]?.note;
+      } else if (noteId?.startsWith('gu-')) {
+        const idx = parseInt(noteId.split('-')[1]);
+        noteToPlay = state.layout.bottom.slots[idx]?.note;
+      }
+      if (noteToPlay) { initAudio(); playNote(noteToPlay); }
+    }
+
+    if (!isCustom) return; // non-editable in standard view
+
+    if (isEmpty) {
+      // Open note picker for this slot
+      if (noteId === 'ding') {
+        state.pendingSlot = { shell: 'ding', index: -1 };
+      } else if (noteId?.startsWith('ring-')) {
+        state.pendingSlot = { shell: 'top', index: parseInt(noteId.split('-')[1]) };
+      } else if (noteId?.startsWith('gu-')) {
+        state.pendingSlot = { shell: 'bottom', index: parseInt(noteId.split('-')[1]) };
+      }
+      render();
+      return;
+    }
+
+    // Remove note (deselect) from active shell
+    if (noteId === 'ding') {
+      // Ding change: open picker
+      state.pendingSlot = { shell: 'ding', index: -1 };
+      render();
+      return;
+    }
+
+    if (noteId?.startsWith('ring-') && (state.shellMode === 'top' || state.shellMode === 'both')) {
+      const idx = parseInt(noteId.split('-')[1]);
+      state.layout.top.slots[idx].note = null;
+      state.chords = findAllChords(state.layout);
+      render();
+      return;
+    }
+
+    if (noteId?.startsWith('gu-') && (state.shellMode === 'bottom' || state.shellMode === 'both')) {
+      const idx = parseInt(noteId.split('-')[1]);
+      if (state.layout.bottom.slots[idx]) {
+        state.layout.bottom.slots[idx].note = null;
+        state.chords = findAllChords(state.layout);
+        render();
+      }
+      return;
+    }
+
+    return;
+  }
+
+  // ── Chord explorer ─────────────────────────────────────────────────────────
+  if (action === 'filter-category') {
+    state.chordFilter.category = el.dataset.cat;
+    render();
+    return;
+  }
+
+  if (action === 'select-chord') {
+    const chord = state.chords.find(c => c.id === el.dataset.id);
+    if (!chord) return;
+    state.selectedChord = chord;
+    history.replaceState(null, '', stateToHash());
+    render();
+    // Scroll chord into view in the list
+    setTimeout(() => {
+      document.querySelector('.chord-item.selected')?.scrollIntoView({ block: 'nearest' });
+    }, 30);
+    return;
+  }
+
+  if (action === 'play-chord') {
+    if (!state.selectedChord) return;
+    initAudio();
+    playChord(state.selectedChord.notes);
+    updatePanPlaying(state.selectedChord.notes.map(n => getNoteName(n)));
+    return;
+  }
+
+  if (action === 'play-scale') {
+    initAudio();
+    playScale(getAllNotes(state.layout));
+    updatePanPlaying(getAllNotes(state.layout).map(n => getNoteName(n)));
+    return;
+  }
+
+  if (action === 'copy-url') {
+    const url = location.origin + location.pathname + stateToHash();
+    navigator.clipboard.writeText(url).then(() => showToast('URL copied!'));
+    return;
+  }
+});
+
+// ── Change delegation (select dropdowns) ─────────────────────────────────────
+document.addEventListener('change', e => {
+  if (e.target.dataset.action === 'filter-root') {
+    state.chordFilter.root = e.target.value;
+    render();
+  }
+});
+
+// ── Input delegation (custom name field) ─────────────────────────────────────
+document.addEventListener('input', e => {
+  if (e.target.id === 'custom-name-input' && state.layout) {
+    state.layout.name = e.target.value;
+  }
+});
+
+// ── Browser back/forward ──────────────────────────────────────────────────────
+window.addEventListener('popstate', () => {
+  Object.assign(state, {
+    view: 'selector', layout: null, selectedChord: null,
+    pendingSlot: null, chords: [], shellMode: 'both',
+    chordFilter: { category: 'All', root: 'All' },
+  });
+  loadFromHash();
+  render();
+});
+
+  </script>
 </body>
 </html>
