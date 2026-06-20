@@ -930,6 +930,9 @@ function playChord(noteNames) {
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const now = ctx.currentTime;
   sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.08));
+  // Strike all together after arpeggiation
+  const together = now + sorted.length * 0.08 + 0.1;
+  sorted.forEach(n => playFreq(noteToFreq(n), together));
 }
 
 function playScale(noteNames) {
@@ -944,10 +947,9 @@ function playScale(noteNames) {
 // ── js/pan.js ──
 const PAN_SVG_ID = 'handpan-svg';
 
-// Compute (x, y) positions for N items evenly around a circle
 function circlePositions(count, cx, cy, r) {
   return Array.from({ length: count }, (_, i) => {
-    const angle = (i * 2 * Math.PI / count) - Math.PI / 2; // start at top
+    const angle = (i * 2 * Math.PI / count) - Math.PI / 2;
     return {
       x: Math.round(cx + r * Math.cos(angle)),
       y: Math.round(cy + r * Math.sin(angle)),
@@ -955,41 +957,66 @@ function circlePositions(count, cx, cy, r) {
   });
 }
 
-// Render a filled or empty note slot as SVG string
+// Traditional handpan interlocking ring layout: highest note at top (12 o'clock),
+// alternating high-low going clockwise. For 8 notes sorted ascending (n1=lowest, n8=highest):
+// positions: n8, n3, n5, n7, n1, n6, n4, n2
+function applyPhysicalLayout(sorted) {
+  const n = sorted.length;
+  if (n === 8) {
+    const [n1, n2, n3, n4, n5, n6, n7, n8] = sorted;
+    return [n8, n3, n5, n7, n1, n6, n4, n2];
+  }
+  if (n === 7) {
+    const [n1, n2, n3, n4, n5, n6, n7] = sorted;
+    return [n7, n3, n5, n1, n6, n4, n2];
+  }
+  return sorted;
+}
+
 function noteSlotSvg(x, y, note, extraClasses, noteId, isCircle = false) {
-  const label = note ? getNoteName(note) : '+';
   const isEmpty = !note;
   const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
+  const noteAttr = note ? ` data-note="${note}"` : '';
+
+  let textHtml;
+  if (isEmpty) {
+    textHtml = `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
+      font-family="system-ui,sans-serif" font-size="${isCircle ? 20 : 18}" font-weight="600"
+      fill="var(--note-rest-text)">+</text>`;
+  } else {
+    const name = note.replace(/\d+$/, '');
+    const oct = (note.match(/\d+$/) ?? [''])[0];
+    const nameFontSize = name.length > 1 ? 12 : 14;
+    textHtml = `<text x="${x}" y="${y - 4}" text-anchor="middle" dominant-baseline="auto"
+      font-family="system-ui,sans-serif" font-size="${nameFontSize}" font-weight="600"
+      fill="var(--note-rest-text)">${name}</text>
+<text x="${x}" y="${y + 11}" text-anchor="middle" dominant-baseline="auto"
+      font-family="system-ui,sans-serif" font-size="9" font-weight="400"
+      fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+  }
 
   if (isCircle) {
     const r = 30;
-    return `<g class="${allClasses}" data-note-id="${noteId}">
+    return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
   <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
-  <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="${isEmpty ? 20 : 13}" font-weight="600"
-    fill="var(--note-rest-text)">${label}</text>
+  ${textHtml}
 </g>`;
   }
 
-  // Rounded rectangle for ring slots
   const w = 50, h = 38;
-  return `<g class="${allClasses}" data-note-id="${noteId}">
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
   <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="8"
     fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
-  <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="${isEmpty ? 18 : 13}" font-weight="600"
-    fill="var(--note-rest-text)">${label}</text>
+  ${textHtml}
 </g>`;
 }
 
-// Render the full handpan as an SVG string
 function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [] } = opts;
 
   const cx = 250, cy = 240;
-  const hlNames = new Set(highlightNotes.map(n =>
-    typeof n === 'string' ? getNoteName(n) : n
-  ));
+  // Match full note strings (with octave) for precise highlighting
+  const hlSet = new Set(highlightNotes);
 
   const dimTop = shellMode === 'bottom';
   const dimBottom = shellMode === 'top';
@@ -997,7 +1024,7 @@ function renderPan(layout, opts = {}) {
   function noteClass(note, isTopShell) {
     const classes = [];
     if (!note) classes.push('empty');
-    else if (hlNames.has(getNoteName(note))) classes.push('highlight');
+    else if (hlSet.has(note)) classes.push('highlight');
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -1030,22 +1057,34 @@ function renderPan(layout, opts = {}) {
   const dingNote = layout.top.ding;
   const dingClass = [
     !dingNote ? 'empty' : '',
-    dingNote && hlNames.has(getNoteName(dingNote)) ? 'highlight' : '',
+    dingNote && hlSet.has(dingNote) ? 'highlight' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', true);
 
-  // Ring slots
+  // Ring slots — apply traditional interlocking layout for standard (non-custom) instruments
   const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
-  const ringPos = circlePositions(ringCount, cx, cy, 145);
+  let ringSlots = Array.from({ length: ringCount }, (_, i) => ({
+    note: (layout.top.slots[i] ?? { note: null }).note,
+    dataIdx: i,
+  }));
 
-  for (let i = 0; i < ringCount; i++) {
-    const slot = layout.top.slots[i] ?? { note: null };
-    const pos = ringPos[i];
-    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`);
+  if (!layout.isCustom) {
+    const filled = ringSlots
+      .filter(s => s.note)
+      .sort((a, b) => noteToMidi(a.note) - noteToMidi(b.note));
+    const empty = ringSlots.filter(s => !s.note);
+    ringSlots = [...applyPhysicalLayout(filled), ...empty];
   }
 
-  // Gu (bottom shell) slots — centered below the main circle
+  const ringPos = circlePositions(ringSlots.length, cx, cy, 145);
+  for (let i = 0; i < ringSlots.length; i++) {
+    const slot = ringSlots[i];
+    const pos = ringPos[i];
+    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${slot.dataIdx}`);
+  }
+
+  // Gu (bottom shell)
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
   const guSpacing = 76;
   const guStartX = cx - ((guCount - 1) * guSpacing) / 2;
@@ -1061,19 +1100,18 @@ function renderPan(layout, opts = {}) {
   return svg;
 }
 
-// Update highlight classes on the existing SVG without full re-render
+// Update highlight using full note strings (with octave)
 function updatePanHighlight(noteNames) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
-  const nameSet = new Set(noteNames.map(n => getNoteName(n)));
+  const nameSet = new Set(noteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
-    const label = el.querySelector('text')?.textContent;
-    el.classList.toggle('highlight', !!(label && nameSet.has(label)));
+    const note = el.dataset.note;
+    el.classList.toggle('highlight', !!(note && nameSet.has(note)));
   });
 }
 
-// Update shell dimming without re-render
 function updatePanShellMode(mode) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
@@ -1086,15 +1124,15 @@ function updatePanShellMode(mode) {
   });
 }
 
-// Briefly add 'playing' class to notes then remove it
+// Briefly add 'playing' class — matches against full note strings (with octave)
 function updatePanPlaying(noteNames) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
-  const nameSet = new Set(noteNames.map(n => getNoteName(n)));
+  const nameSet = new Set(noteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
-    const label = el.querySelector('text')?.textContent;
-    if (label && nameSet.has(label)) {
+    const note = el.dataset.note;
+    if (note && nameSet.has(note)) {
       el.classList.add('playing');
       setTimeout(() => el.classList.remove('playing'), 2200);
     }
@@ -1108,11 +1146,12 @@ const state = {
   view: 'selector',        // 'selector' | 'editor' | 'chords'
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
-  noteCountFilter: 'all',  // 'all' | '9' | '10' | '11+'
-  scaleSearch: '',         // filter text for scale selector
-  selectedChord: null,     // ChordResult or null
-  chords: [],              // computed from layout
+  noteCountFilter: 'all',     // 'all' | '9' | '10' | '11+'
+  scaleSearch: '',            // filter text for scale selector
+  selectedChord: null,        // ChordResult or null
+  chords: [],                 // computed from layout
   chordFilter: { category: 'All', root: 'All' },
+  chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
 
@@ -1307,6 +1346,7 @@ function viewChords() {
 
   // Apply filters
   const filtered = chords.filter(c => {
+    if (state.chordCountFilter === 'simple' && c.noteCount > 3) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All' && c.rootName !== chordFilter.root) return false;
     return true;
@@ -1315,10 +1355,8 @@ function viewChords() {
     return ri !== 0 ? ri : b.noteCount - a.noteCount;
   });
 
-  // Pan with chord highlighted
-  const highlightNotes = selectedChord
-    ? selectedChord.notes.map(n => getNoteName(n))
-    : [];
+  // Pan with chord highlighted — use full note strings (with octave) for precise matching
+  const highlightNotes = selectedChord ? selectedChord.notes : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes });
 
   // Related chords panel
@@ -1369,6 +1407,12 @@ function viewChords() {
       <div class="chord-list">
         <div class="chord-list-header">
           <div class="pills" style="margin-bottom:8px">
+            <button class="pill ${state.chordCountFilter === 'simple' ? 'active' : ''}"
+              data-action="filter-chord-count" data-val="simple">2–3 notes</button>
+            <button class="pill ${state.chordCountFilter === 'all' ? 'active' : ''}"
+              data-action="filter-chord-count" data-val="all">All</button>
+          </div>
+          <div class="pills" style="margin-bottom:8px">
             ${CHORD_CATEGORIES.map(cat => `
               <button class="pill ${chordFilter.category === cat ? 'active' : ''}"
                 data-action="filter-category" data-cat="${cat}">${cat}</button>
@@ -1405,16 +1449,19 @@ function viewChords() {
             <div class="chord-panel-title">${selectedChord.rootName} ${selectedChord.type.name}</div>
             <div class="chord-panel-sub">
               ${selectedChord.type.category} · ${selectedChord.noteCount} notes:
-              ${selectedChord.notes.map(n => getNoteName(n)).join(', ')}
+              ${selectedChord.notes.join(', ')}
             </div>
             <div class="chord-actions">
               <button class="btn btn-primary" data-action="play-chord">▶ Play Chord</button>
-              <button class="btn btn-secondary" data-action="play-scale">▶ All Notes</button>
+              <button class="btn btn-secondary" data-action="play-scale">▶ Play Scale</button>
             </div>
             ${relatedHtml}
           ` : `
             <div class="empty-state">
               Select a chord from the list<br>to see and hear it on the pan
+            </div>
+            <div class="chord-actions" style="margin-top:16px">
+              <button class="btn btn-secondary" data-action="play-scale">▶ Play Scale</button>
             </div>
           `}
         </div>
@@ -1667,19 +1714,14 @@ document.addEventListener('click', e => {
     const isEmpty = noteEl.classList.contains('empty');
     const isCustom = state.layout?.isCustom;
 
-    // Always play the note on click (if not empty)
+    // Always play the note on click (if not empty) with visual feedback
     if (!isEmpty) {
-      let noteToPlay = null;
-      if (noteId === 'ding') {
-        noteToPlay = state.layout.top.ding;
-      } else if (noteId?.startsWith('ring-')) {
-        const idx = parseInt(noteId.split('-')[1]);
-        noteToPlay = state.layout.top.slots[idx]?.note;
-      } else if (noteId?.startsWith('gu-')) {
-        const idx = parseInt(noteId.split('-')[1]);
-        noteToPlay = state.layout.bottom.slots[idx]?.note;
+      const noteToPlay = noteEl.dataset.note;
+      if (noteToPlay) {
+        initAudio();
+        playNote(noteToPlay);
+        setTimeout(() => updatePanPlaying([noteToPlay]), 0);
       }
-      if (noteToPlay) { initAudio(); playNote(noteToPlay); }
     }
 
     if (!isCustom) return; // non-editable in standard view
@@ -1738,14 +1780,17 @@ document.addEventListener('click', e => {
     if (!chord) return;
     state.selectedChord = chord;
     history.replaceState(null, '', stateToHash());
+    // Preserve chord list scroll position across render
+    const chordList = document.querySelector('.chord-list');
+    const savedScroll = chordList?.scrollTop ?? 0;
     render();
-    // Auto-play: arpeggiate notes low→high, then sustain together
+    const newChordList = document.querySelector('.chord-list');
+    if (newChordList) newChordList.scrollTop = savedScroll;
+    // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
     playChord(chord.notes);
-    setTimeout(() => {
-      document.querySelector('.chord-item.selected')?.scrollIntoView({ block: 'nearest' });
-      updatePanPlaying(chord.notes.map(n => getNoteName(n)));
-    }, 40);
+    const arpMs = chord.notes.length * 80 + 120;
+    setTimeout(() => updatePanPlaying(chord.notes), arpMs);
     return;
   }
 
@@ -1753,14 +1798,22 @@ document.addEventListener('click', e => {
     if (!state.selectedChord) return;
     initAudio();
     playChord(state.selectedChord.notes);
-    updatePanPlaying(state.selectedChord.notes.map(n => getNoteName(n)));
+    const arpMs = state.selectedChord.notes.length * 80 + 120;
+    setTimeout(() => updatePanPlaying(state.selectedChord.notes), arpMs);
     return;
   }
 
   if (action === 'play-scale') {
+    const allNotes = getAllNotes(state.layout);
     initAudio();
-    playScale(getAllNotes(state.layout));
-    updatePanPlaying(getAllNotes(state.layout).map(n => getNoteName(n)));
+    playScale(allNotes);
+    updatePanPlaying(allNotes);
+    return;
+  }
+
+  if (action === 'filter-chord-count') {
+    state.chordCountFilter = el.dataset.val;
+    render();
     return;
   }
 

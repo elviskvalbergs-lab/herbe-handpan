@@ -1,11 +1,10 @@
-import { getNoteName } from './data.js';
+import { noteToMidi } from './data.js';
 
 export const PAN_SVG_ID = 'handpan-svg';
 
-// Compute (x, y) positions for N items evenly around a circle
 function circlePositions(count, cx, cy, r) {
   return Array.from({ length: count }, (_, i) => {
-    const angle = (i * 2 * Math.PI / count) - Math.PI / 2; // start at top
+    const angle = (i * 2 * Math.PI / count) - Math.PI / 2;
     return {
       x: Math.round(cx + r * Math.cos(angle)),
       y: Math.round(cy + r * Math.sin(angle)),
@@ -13,41 +12,66 @@ function circlePositions(count, cx, cy, r) {
   });
 }
 
-// Render a filled or empty note slot as SVG string
+// Traditional handpan interlocking ring layout: highest note at top (12 o'clock),
+// alternating high-low going clockwise. For 8 notes sorted ascending (n1=lowest, n8=highest):
+// positions: n8, n3, n5, n7, n1, n6, n4, n2
+function applyPhysicalLayout(sorted) {
+  const n = sorted.length;
+  if (n === 8) {
+    const [n1, n2, n3, n4, n5, n6, n7, n8] = sorted;
+    return [n8, n3, n5, n7, n1, n6, n4, n2];
+  }
+  if (n === 7) {
+    const [n1, n2, n3, n4, n5, n6, n7] = sorted;
+    return [n7, n3, n5, n1, n6, n4, n2];
+  }
+  return sorted;
+}
+
 function noteSlotSvg(x, y, note, extraClasses, noteId, isCircle = false) {
-  const label = note ? getNoteName(note) : '+';
   const isEmpty = !note;
   const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
+  const noteAttr = note ? ` data-note="${note}"` : '';
+
+  let textHtml;
+  if (isEmpty) {
+    textHtml = `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
+      font-family="system-ui,sans-serif" font-size="${isCircle ? 20 : 18}" font-weight="600"
+      fill="var(--note-rest-text)">+</text>`;
+  } else {
+    const name = note.replace(/\d+$/, '');
+    const oct = (note.match(/\d+$/) ?? [''])[0];
+    const nameFontSize = name.length > 1 ? 12 : 14;
+    textHtml = `<text x="${x}" y="${y - 4}" text-anchor="middle" dominant-baseline="auto"
+      font-family="system-ui,sans-serif" font-size="${nameFontSize}" font-weight="600"
+      fill="var(--note-rest-text)">${name}</text>
+<text x="${x}" y="${y + 11}" text-anchor="middle" dominant-baseline="auto"
+      font-family="system-ui,sans-serif" font-size="9" font-weight="400"
+      fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+  }
 
   if (isCircle) {
     const r = 30;
-    return `<g class="${allClasses}" data-note-id="${noteId}">
+    return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
   <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
-  <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="${isEmpty ? 20 : 13}" font-weight="600"
-    fill="var(--note-rest-text)">${label}</text>
+  ${textHtml}
 </g>`;
   }
 
-  // Rounded rectangle for ring slots
   const w = 50, h = 38;
-  return `<g class="${allClasses}" data-note-id="${noteId}">
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
   <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="8"
     fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
-  <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="${isEmpty ? 18 : 13}" font-weight="600"
-    fill="var(--note-rest-text)">${label}</text>
+  ${textHtml}
 </g>`;
 }
 
-// Render the full handpan as an SVG string
 export function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [] } = opts;
 
   const cx = 250, cy = 240;
-  const hlNames = new Set(highlightNotes.map(n =>
-    typeof n === 'string' ? getNoteName(n) : n
-  ));
+  // Match full note strings (with octave) for precise highlighting
+  const hlSet = new Set(highlightNotes);
 
   const dimTop = shellMode === 'bottom';
   const dimBottom = shellMode === 'top';
@@ -55,7 +79,7 @@ export function renderPan(layout, opts = {}) {
   function noteClass(note, isTopShell) {
     const classes = [];
     if (!note) classes.push('empty');
-    else if (hlNames.has(getNoteName(note))) classes.push('highlight');
+    else if (hlSet.has(note)) classes.push('highlight');
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -88,22 +112,34 @@ export function renderPan(layout, opts = {}) {
   const dingNote = layout.top.ding;
   const dingClass = [
     !dingNote ? 'empty' : '',
-    dingNote && hlNames.has(getNoteName(dingNote)) ? 'highlight' : '',
+    dingNote && hlSet.has(dingNote) ? 'highlight' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', true);
 
-  // Ring slots
+  // Ring slots — apply traditional interlocking layout for standard (non-custom) instruments
   const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
-  const ringPos = circlePositions(ringCount, cx, cy, 145);
+  let ringSlots = Array.from({ length: ringCount }, (_, i) => ({
+    note: (layout.top.slots[i] ?? { note: null }).note,
+    dataIdx: i,
+  }));
 
-  for (let i = 0; i < ringCount; i++) {
-    const slot = layout.top.slots[i] ?? { note: null };
-    const pos = ringPos[i];
-    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`);
+  if (!layout.isCustom) {
+    const filled = ringSlots
+      .filter(s => s.note)
+      .sort((a, b) => noteToMidi(a.note) - noteToMidi(b.note));
+    const empty = ringSlots.filter(s => !s.note);
+    ringSlots = [...applyPhysicalLayout(filled), ...empty];
   }
 
-  // Gu (bottom shell) slots — centered below the main circle
+  const ringPos = circlePositions(ringSlots.length, cx, cy, 145);
+  for (let i = 0; i < ringSlots.length; i++) {
+    const slot = ringSlots[i];
+    const pos = ringPos[i];
+    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${slot.dataIdx}`);
+  }
+
+  // Gu (bottom shell)
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
   const guSpacing = 76;
   const guStartX = cx - ((guCount - 1) * guSpacing) / 2;
@@ -119,19 +155,18 @@ export function renderPan(layout, opts = {}) {
   return svg;
 }
 
-// Update highlight classes on the existing SVG without full re-render
+// Update highlight using full note strings (with octave)
 export function updatePanHighlight(noteNames) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
-  const nameSet = new Set(noteNames.map(n => getNoteName(n)));
+  const nameSet = new Set(noteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
-    const label = el.querySelector('text')?.textContent;
-    el.classList.toggle('highlight', !!(label && nameSet.has(label)));
+    const note = el.dataset.note;
+    el.classList.toggle('highlight', !!(note && nameSet.has(note)));
   });
 }
 
-// Update shell dimming without re-render
 export function updatePanShellMode(mode) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
@@ -144,15 +179,15 @@ export function updatePanShellMode(mode) {
   });
 }
 
-// Briefly add 'playing' class to notes then remove it
+// Briefly add 'playing' class — matches against full note strings (with octave)
 export function updatePanPlaying(noteNames) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
-  const nameSet = new Set(noteNames.map(n => getNoteName(n)));
+  const nameSet = new Set(noteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
-    const label = el.querySelector('text')?.textContent;
-    if (label && nameSet.has(label)) {
+    const note = el.dataset.note;
+    if (note && nameSet.has(note)) {
       el.classList.add('playing');
       setTimeout(() => el.classList.remove('playing'), 2200);
     }

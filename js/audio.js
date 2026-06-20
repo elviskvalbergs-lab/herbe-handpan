@@ -79,6 +79,9 @@ export function playChord(noteNames) {
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const now = ctx.currentTime;
   sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.08));
+  // Strike all together after arpeggiation
+  const together = now + sorted.length * 0.08 + 0.1;
+  sorted.forEach(n => playFreq(noteToFreq(n), together));
 }
 
 export function playScale(noteNames) {

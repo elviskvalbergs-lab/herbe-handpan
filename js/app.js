@@ -11,11 +11,12 @@ const state = {
   view: 'selector',        // 'selector' | 'editor' | 'chords'
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
-  noteCountFilter: 'all',  // 'all' | '9' | '10' | '11+'
-  scaleSearch: '',         // filter text for scale selector
-  selectedChord: null,     // ChordResult or null
-  chords: [],              // computed from layout
+  noteCountFilter: 'all',     // 'all' | '9' | '10' | '11+'
+  scaleSearch: '',            // filter text for scale selector
+  selectedChord: null,        // ChordResult or null
+  chords: [],                 // computed from layout
   chordFilter: { category: 'All', root: 'All' },
+  chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
 
@@ -210,6 +211,7 @@ function viewChords() {
 
   // Apply filters
   const filtered = chords.filter(c => {
+    if (state.chordCountFilter === 'simple' && c.noteCount > 3) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All' && c.rootName !== chordFilter.root) return false;
     return true;
@@ -218,10 +220,8 @@ function viewChords() {
     return ri !== 0 ? ri : b.noteCount - a.noteCount;
   });
 
-  // Pan with chord highlighted
-  const highlightNotes = selectedChord
-    ? selectedChord.notes.map(n => getNoteName(n))
-    : [];
+  // Pan with chord highlighted — use full note strings (with octave) for precise matching
+  const highlightNotes = selectedChord ? selectedChord.notes : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes });
 
   // Related chords panel
@@ -272,6 +272,12 @@ function viewChords() {
       <div class="chord-list">
         <div class="chord-list-header">
           <div class="pills" style="margin-bottom:8px">
+            <button class="pill ${state.chordCountFilter === 'simple' ? 'active' : ''}"
+              data-action="filter-chord-count" data-val="simple">2–3 notes</button>
+            <button class="pill ${state.chordCountFilter === 'all' ? 'active' : ''}"
+              data-action="filter-chord-count" data-val="all">All</button>
+          </div>
+          <div class="pills" style="margin-bottom:8px">
             ${CHORD_CATEGORIES.map(cat => `
               <button class="pill ${chordFilter.category === cat ? 'active' : ''}"
                 data-action="filter-category" data-cat="${cat}">${cat}</button>
@@ -308,16 +314,19 @@ function viewChords() {
             <div class="chord-panel-title">${selectedChord.rootName} ${selectedChord.type.name}</div>
             <div class="chord-panel-sub">
               ${selectedChord.type.category} · ${selectedChord.noteCount} notes:
-              ${selectedChord.notes.map(n => getNoteName(n)).join(', ')}
+              ${selectedChord.notes.join(', ')}
             </div>
             <div class="chord-actions">
               <button class="btn btn-primary" data-action="play-chord">▶ Play Chord</button>
-              <button class="btn btn-secondary" data-action="play-scale">▶ All Notes</button>
+              <button class="btn btn-secondary" data-action="play-scale">▶ Play Scale</button>
             </div>
             ${relatedHtml}
           ` : `
             <div class="empty-state">
               Select a chord from the list<br>to see and hear it on the pan
+            </div>
+            <div class="chord-actions" style="margin-top:16px">
+              <button class="btn btn-secondary" data-action="play-scale">▶ Play Scale</button>
             </div>
           `}
         </div>
@@ -570,19 +579,14 @@ document.addEventListener('click', e => {
     const isEmpty = noteEl.classList.contains('empty');
     const isCustom = state.layout?.isCustom;
 
-    // Always play the note on click (if not empty)
+    // Always play the note on click (if not empty) with visual feedback
     if (!isEmpty) {
-      let noteToPlay = null;
-      if (noteId === 'ding') {
-        noteToPlay = state.layout.top.ding;
-      } else if (noteId?.startsWith('ring-')) {
-        const idx = parseInt(noteId.split('-')[1]);
-        noteToPlay = state.layout.top.slots[idx]?.note;
-      } else if (noteId?.startsWith('gu-')) {
-        const idx = parseInt(noteId.split('-')[1]);
-        noteToPlay = state.layout.bottom.slots[idx]?.note;
+      const noteToPlay = noteEl.dataset.note;
+      if (noteToPlay) {
+        initAudio();
+        playNote(noteToPlay);
+        setTimeout(() => updatePanPlaying([noteToPlay]), 0);
       }
-      if (noteToPlay) { initAudio(); playNote(noteToPlay); }
     }
 
     if (!isCustom) return; // non-editable in standard view
@@ -641,14 +645,17 @@ document.addEventListener('click', e => {
     if (!chord) return;
     state.selectedChord = chord;
     history.replaceState(null, '', stateToHash());
+    // Preserve chord list scroll position across render
+    const chordList = document.querySelector('.chord-list');
+    const savedScroll = chordList?.scrollTop ?? 0;
     render();
-    // Auto-play: arpeggiate notes low→high, then sustain together
+    const newChordList = document.querySelector('.chord-list');
+    if (newChordList) newChordList.scrollTop = savedScroll;
+    // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
     playChord(chord.notes);
-    setTimeout(() => {
-      document.querySelector('.chord-item.selected')?.scrollIntoView({ block: 'nearest' });
-      updatePanPlaying(chord.notes.map(n => getNoteName(n)));
-    }, 40);
+    const arpMs = chord.notes.length * 80 + 120;
+    setTimeout(() => updatePanPlaying(chord.notes), arpMs);
     return;
   }
 
@@ -656,14 +663,22 @@ document.addEventListener('click', e => {
     if (!state.selectedChord) return;
     initAudio();
     playChord(state.selectedChord.notes);
-    updatePanPlaying(state.selectedChord.notes.map(n => getNoteName(n)));
+    const arpMs = state.selectedChord.notes.length * 80 + 120;
+    setTimeout(() => updatePanPlaying(state.selectedChord.notes), arpMs);
     return;
   }
 
   if (action === 'play-scale') {
+    const allNotes = getAllNotes(state.layout);
     initAudio();
-    playScale(getAllNotes(state.layout));
-    updatePanPlaying(getAllNotes(state.layout).map(n => getNoteName(n)));
+    playScale(allNotes);
+    updatePanPlaying(allNotes);
+    return;
+  }
+
+  if (action === 'filter-chord-count') {
+    state.chordCountFilter = el.dataset.val;
+    render();
     return;
   }
 
