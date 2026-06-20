@@ -78,9 +78,9 @@ export function playChord(noteNames) {
   if (ctx.state === 'suspended') ctx.resume();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const now = ctx.currentTime;
-  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.08));
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.3));
   // Strike all together after arpeggiation
-  const together = now + sorted.length * 0.08 + 0.1;
+  const together = now + sorted.length * 0.3 + 0.35;
   sorted.forEach(n => playFreq(noteToFreq(n), together));
 }
 

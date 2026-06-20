@@ -1,5 +1,3 @@
-import { noteToMidi } from './data.js';
-
 export const PAN_SVG_ID = 'handpan-svg';
 
 function circlePositions(count, cx, cy, r) {
@@ -10,22 +8,6 @@ function circlePositions(count, cx, cy, r) {
       y: Math.round(cy + r * Math.sin(angle)),
     };
   });
-}
-
-// Traditional handpan interlocking ring layout: highest note at top (12 o'clock),
-// alternating high-low going clockwise. For 8 notes sorted ascending (n1=lowest, n8=highest):
-// positions: n8, n3, n5, n7, n1, n6, n4, n2
-function applyPhysicalLayout(sorted) {
-  const n = sorted.length;
-  if (n === 8) {
-    const [n1, n2, n3, n4, n5, n6, n7, n8] = sorted;
-    return [n8, n3, n5, n7, n1, n6, n4, n2];
-  }
-  if (n === 7) {
-    const [n1, n2, n3, n4, n5, n6, n7] = sorted;
-    return [n7, n3, n5, n1, n6, n4, n2];
-  }
-  return sorted;
 }
 
 function noteSlotSvg(x, y, note, extraClasses, noteId, isCircle = false) {
@@ -117,26 +99,13 @@ export function renderPan(layout, opts = {}) {
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', true);
 
-  // Ring slots — apply traditional interlocking layout for standard (non-custom) instruments
+  // Ring slots (in scale data order, ascending pitch)
   const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
-  let ringSlots = Array.from({ length: ringCount }, (_, i) => ({
-    note: (layout.top.slots[i] ?? { note: null }).note,
-    dataIdx: i,
-  }));
-
-  if (!layout.isCustom) {
-    const filled = ringSlots
-      .filter(s => s.note)
-      .sort((a, b) => noteToMidi(a.note) - noteToMidi(b.note));
-    const empty = ringSlots.filter(s => !s.note);
-    ringSlots = [...applyPhysicalLayout(filled), ...empty];
-  }
-
-  const ringPos = circlePositions(ringSlots.length, cx, cy, 145);
-  for (let i = 0; i < ringSlots.length; i++) {
-    const slot = ringSlots[i];
+  const ringPos = circlePositions(ringCount, cx, cy, 145);
+  for (let i = 0; i < ringCount; i++) {
+    const slot = layout.top.slots[i] ?? { note: null };
     const pos = ringPos[i];
-    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${slot.dataIdx}`);
+    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`);
   }
 
   // Gu (bottom shell)

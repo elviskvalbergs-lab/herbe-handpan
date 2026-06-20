@@ -432,6 +432,48 @@ render();
 
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {
+  // ── Pan note click — must be checked BEFORE the data-action early return ──
+  const noteEl = e.target.closest('.pan-note');
+  if (noteEl && state.layout) {
+    const noteId = noteEl.dataset.noteId;
+    const isEmpty = noteEl.classList.contains('empty');
+    const isCustom = state.layout.isCustom;
+
+    if (!isEmpty) {
+      const noteToPlay = noteEl.dataset.note;
+      if (noteToPlay) {
+        initAudio();
+        playNote(noteToPlay);
+        setTimeout(() => updatePanPlaying([noteToPlay]), 0);
+      }
+    }
+
+    if (!isCustom) return;
+
+    if (isEmpty) {
+      if (noteId === 'ding') state.pendingSlot = { shell: 'ding', index: -1 };
+      else if (noteId?.startsWith('ring-')) state.pendingSlot = { shell: 'top', index: parseInt(noteId.split('-')[1]) };
+      else if (noteId?.startsWith('gu-')) state.pendingSlot = { shell: 'bottom', index: parseInt(noteId.split('-')[1]) };
+      render();
+      return;
+    }
+
+    if (noteId === 'ding') { state.pendingSlot = { shell: 'ding', index: -1 }; render(); return; }
+    if (noteId?.startsWith('ring-') && (state.shellMode === 'top' || state.shellMode === 'both')) {
+      const idx = parseInt(noteId.split('-')[1]);
+      state.layout.top.slots[idx].note = null;
+      state.chords = findAllChords(state.layout);
+      render();
+      return;
+    }
+    if (noteId?.startsWith('gu-') && (state.shellMode === 'bottom' || state.shellMode === 'both')) {
+      const idx = parseInt(noteId.split('-')[1]);
+      if (state.layout.bottom.slots[idx]) { state.layout.bottom.slots[idx].note = null; state.chords = findAllChords(state.layout); render(); }
+      return;
+    }
+    return;
+  }
+
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const action = el.dataset.action;
@@ -572,67 +614,6 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // ── Pan note click ─────────────────────────────────────────────────────────
-  const noteEl = e.target.closest('.pan-note');
-  if (noteEl) {
-    const noteId = noteEl.dataset.noteId;
-    const isEmpty = noteEl.classList.contains('empty');
-    const isCustom = state.layout?.isCustom;
-
-    // Always play the note on click (if not empty) with visual feedback
-    if (!isEmpty) {
-      const noteToPlay = noteEl.dataset.note;
-      if (noteToPlay) {
-        initAudio();
-        playNote(noteToPlay);
-        setTimeout(() => updatePanPlaying([noteToPlay]), 0);
-      }
-    }
-
-    if (!isCustom) return; // non-editable in standard view
-
-    if (isEmpty) {
-      // Open note picker for this slot
-      if (noteId === 'ding') {
-        state.pendingSlot = { shell: 'ding', index: -1 };
-      } else if (noteId?.startsWith('ring-')) {
-        state.pendingSlot = { shell: 'top', index: parseInt(noteId.split('-')[1]) };
-      } else if (noteId?.startsWith('gu-')) {
-        state.pendingSlot = { shell: 'bottom', index: parseInt(noteId.split('-')[1]) };
-      }
-      render();
-      return;
-    }
-
-    // Remove note (deselect) from active shell
-    if (noteId === 'ding') {
-      // Ding change: open picker
-      state.pendingSlot = { shell: 'ding', index: -1 };
-      render();
-      return;
-    }
-
-    if (noteId?.startsWith('ring-') && (state.shellMode === 'top' || state.shellMode === 'both')) {
-      const idx = parseInt(noteId.split('-')[1]);
-      state.layout.top.slots[idx].note = null;
-      state.chords = findAllChords(state.layout);
-      render();
-      return;
-    }
-
-    if (noteId?.startsWith('gu-') && (state.shellMode === 'bottom' || state.shellMode === 'both')) {
-      const idx = parseInt(noteId.split('-')[1]);
-      if (state.layout.bottom.slots[idx]) {
-        state.layout.bottom.slots[idx].note = null;
-        state.chords = findAllChords(state.layout);
-        render();
-      }
-      return;
-    }
-
-    return;
-  }
-
   // ── Chord explorer ─────────────────────────────────────────────────────────
   if (action === 'filter-category') {
     state.chordFilter.category = el.dataset.cat;
@@ -654,7 +635,7 @@ document.addEventListener('click', e => {
     // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
     playChord(chord.notes);
-    const arpMs = chord.notes.length * 80 + 120;
+    const arpMs = chord.notes.length * 300 + 350;
     setTimeout(() => updatePanPlaying(chord.notes), arpMs);
     return;
   }
@@ -663,7 +644,7 @@ document.addEventListener('click', e => {
     if (!state.selectedChord) return;
     initAudio();
     playChord(state.selectedChord.notes);
-    const arpMs = state.selectedChord.notes.length * 80 + 120;
+    const arpMs = state.selectedChord.notes.length * 300 + 350;
     setTimeout(() => updatePanPlaying(state.selectedChord.notes), arpMs);
     return;
   }
