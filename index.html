@@ -955,13 +955,18 @@ function initAudio() {
 }
 
 // Schedule fn() only once the context is confirmed running.
-// On iOS, ctx.resume() is async; calling ctx.currentTime before it
-// resolves gives a stale value, causing all notes to burst together.
+// IMPORTANT: always go through ctx.resume() — even for a fresh context,
+// iOS Safari requires the resume promise to resolve before ctx.currentTime
+// is valid. Calling ctx.currentTime while still suspended gives a stale
+// value that puts all scheduled notes in the past.
 function whenRunning(fn) {
-  if (!ctx) { initAudio(); fn(); return; }
-  if (ctx.state === 'running') { fn(); return; }
+  if (!ctx) initAudio();
   ctx.resume().then(fn);
 }
+
+// Extra time (seconds) added to every note's start. Gives iOS audio
+// hardware time to spin up so the attack is not clipped.
+const START_OFFSET = 0.05;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;
@@ -1008,7 +1013,7 @@ function playFreq(freq, startTime) {
 
 function playNote(noteName) {
   initAudio();
-  whenRunning(() => playFreq(noteToFreq(noteName)));
+  whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
 }
 
 // Returns { arpTimings: [{note, delayMs}], togetherMs } for visual sync.
@@ -1018,13 +1023,13 @@ function playChord(noteNames) {
   const ARP = 0.3;
   const togetherOffset = sorted.length * ARP + 0.35;
   whenRunning(() => {
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + START_OFFSET;
     sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * ARP));
     sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset));
   });
   return {
-    arpTimings: sorted.map((note, i) => ({ note, delayMs: Math.round(i * ARP * 1000) })),
-    togetherMs: Math.round(togetherOffset * 1000),
+    arpTimings: sorted.map((note, i) => ({ note, delayMs: Math.round((START_OFFSET + i * ARP) * 1000) })),
+    togetherMs: Math.round((START_OFFSET + togetherOffset) * 1000),
   };
 }
 
@@ -1037,10 +1042,10 @@ function playScale(noteNames) {
   const all = [...asc, ...desc];
   const INTERVAL = 0.4;
   whenRunning(() => {
-    const now = ctx.currentTime;
+    const now = ctx.currentTime + START_OFFSET;
     all.forEach((n, i) => playFreq(noteToFreq(n), now + i * INTERVAL));
   });
-  return all.map((note, i) => ({ note, delayMs: Math.round(i * INTERVAL * 1000) }));
+  return all.map((note, i) => ({ note, delayMs: Math.round((START_OFFSET + i * INTERVAL) * 1000) }));
 }
 
 
