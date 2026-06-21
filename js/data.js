@@ -7,6 +7,18 @@ const NOTE_TO_SEMI = {
 // Normalize to preferred flat/sharp spelling
 const ENHARMONIC = { 'D#':'Eb','A#':'Bb','G#':'Ab','Db':'C#','Gb':'F#' };
 
+export const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+export const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+// Display a note using sharp or flat spelling. Accepts 'G#3' or 'G#'.
+export function displayNote(note, useFlats) {
+  const m = note.match(/^([A-G][#b]?)(\d*)$/);
+  if (!m) return note;
+  const pc = NOTE_TO_SEMI[m[1]];
+  if (pc === undefined) return note;
+  return (useFlats ? FLAT_NAMES : SHARP_NAMES)[pc] + m[2];
+}
+
 export function normalizeNote(note) {
   const m = note.match(/^([A-G][#b]?)(\d)$/);
   if (!m) return note;

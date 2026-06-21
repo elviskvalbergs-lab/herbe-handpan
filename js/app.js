@@ -1,6 +1,6 @@
 import {
   SCALES, CHORD_TYPES, CHORD_CATEGORIES, createLayoutFromScale,
-  getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi,
+  getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote,
 } from './data.js';
 import { findAllChords, getRelatedChords } from './chords.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
@@ -17,6 +17,7 @@ const state = {
   selectedChord: null,        // ChordResult or null
   chords: [],                 // computed from layout
   chordFilter: { category: 'All', root: 'All' },
+  useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
   chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
@@ -56,6 +57,10 @@ function viewSelector() {
             ${f === 'all' ? 'All' : f + ' notes'}
           </button>
         `).join('')}
+        <button class="pill ${state.useFlats ? 'active' : ''}"
+          data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
+          ♭ Flats
+        </button>
       </div>
     </div>
     <div class="scale-grid">
@@ -65,7 +70,7 @@ function viewSelector() {
           <div class="scale-card" data-action="select-scale" data-id="${s.id}">
             <div class="family-badge">${s.family}</div>
             <div class="scale-card-name">${s.name}</div>
-            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${s.top.ding} ding</div>
+            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${displayNote(s.top.ding, state.useFlats)} ding</div>
             <div class="scale-card-desc">${s.desc}</div>
           </div>
         `).join('')
@@ -83,6 +88,7 @@ function viewEditor() {
     shellMode: state.shellMode,
     highlightNotes: [],
     rotated: state.ringRotated,
+    useFlats: state.useFlats,
   });
 
   const topFilled = layout.top.slots.filter(s => s.note).length;
@@ -115,6 +121,10 @@ function viewEditor() {
             data-action="toggle-rotation"
             title="Rotate the ring so two lowest notes face you instead of one">
             ⟳ Rotate
+          </button>
+          <button class="pill ${state.useFlats ? 'active' : ''}"
+            data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
+            ♭ Flats
           </button>
         </div>
         <div class="pan-wrap">
@@ -176,13 +186,13 @@ function renderNotePicker() {
   const octaves = [2, 3, 4, 5];
 
   const rows = octaves.map(oct => {
-    const cols = NOTE_NAMES.map(name => {
+    const cols = NOTE_NAMES.map((name, i) => {
       const noteStr = `${name}${oct}`;
-      const pc = NOTE_NAMES.indexOf(name);
-      const inUse = usedPCs.has(pc);
+      const inUse = usedPCs.has(i); // NOTE_NAMES index = pitch class
+      const label = displayNote(name, state.useFlats);
       return `<button class="note-btn ${inUse ? 'in-use' : ''}"
         data-action="pick-note" data-note="${noteStr}"
-        ${inUse ? 'disabled' : ''}>${name}</button>`;
+        ${inUse ? 'disabled' : ''}>${label}</button>`;
     }).join('');
     return `<div class="note-octave-row">
       <span class="octave-label">${oct}</span>
@@ -211,38 +221,41 @@ function renderNotePicker() {
 // ── View 3: Chord Explorer ───────────────────────────────────────────────────
 function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
+  const uf = state.useFlats;
 
-  // Collect available root names for the dropdown
+  // Root options: NOTE_NAMES[i] is at PC i — filter by which PCs have chords.
   const ROOT_ORDER = NOTE_NAMES;
-  const roots = ['All', ...ROOT_ORDER.filter(r => chords.some(c => c.rootName === r))];
+  const usedRootPCs = new Set(chords.map(c => notePC(c.rootNote)));
+  const roots = ['All', ...ROOT_ORDER.filter((_, i) => usedRootPCs.has(i))];
 
-  // Apply filters
+  // Apply filters — compare root by PC to handle G# ↔ Ab equivalence.
   const filtered = chords.filter(c => {
     if (state.chordCountFilter === 'simple' && c.noteCount > 3) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
-    if (chordFilter.root !== 'All' && c.rootName !== chordFilter.root) return false;
+    if (chordFilter.root !== 'All') {
+      const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
+      if (notePC(c.rootNote) !== filterPC) return false;
+    }
     return true;
   }).sort((a, b) => {
-    const ri = ROOT_ORDER.indexOf(a.rootName) - ROOT_ORDER.indexOf(b.rootName);
-    return ri !== 0 ? ri : b.noteCount - a.noteCount;
+    const rA = notePC(a.rootNote), rB = notePC(b.rootNote);
+    return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
   });
 
-  // Pan with chord highlighted — use full note strings (with octave) for precise matching
   const highlightNotes = selectedChord ? selectedChord.notes : [];
-  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, rotated: state.ringRotated });
+  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, rotated: state.ringRotated, useFlats: uf });
 
-  // Related chords panel
   let relatedHtml = '';
   if (selectedChord) {
     const { sameType, sharedNotes } = getRelatedChords(selectedChord, chords);
     const sameTypeChips = sameType.map(c =>
       `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${c.rootName} ${c.type.name}
+        ${displayNote(c.rootName, uf)} ${c.type.name}
       </span>`
     ).join('');
     const sharedChips = sharedNotes.slice(0, 10).map(c =>
       `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${c.rootName} ${c.type.name}
+        ${displayNote(c.rootName, uf)} ${c.type.name}
       </span>`
     ).join('');
 
@@ -283,6 +296,10 @@ function viewChords() {
               data-action="filter-chord-count" data-val="simple">2–3 notes</button>
             <button class="pill ${state.chordCountFilter === 'all' ? 'active' : ''}"
               data-action="filter-chord-count" data-val="all">All</button>
+            <button class="pill ${uf ? 'active' : ''}"
+              data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
+              ♭ Flats
+            </button>
           </div>
           <div class="pills" style="margin-bottom:8px">
             ${CHORD_CATEGORIES.map(cat => `
@@ -292,7 +309,9 @@ function viewChords() {
           </div>
           <div class="flex-row" style="margin-top:8px">
             <select class="select-input" data-action="filter-root">
-              ${roots.map(r => `<option value="${r}" ${chordFilter.root === r ? 'selected' : ''}>${r}</option>`).join('')}
+              ${roots.map(r => `<option value="${r}" ${chordFilter.root === r ? 'selected' : ''}>
+                ${r === 'All' ? 'All' : displayNote(r, uf)}
+              </option>`).join('')}
             </select>
             <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
           </div>
@@ -303,7 +322,7 @@ function viewChords() {
             <div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
               data-action="select-chord" data-id="${c.id}">
               <div>
-                <div class="chord-item-name">${c.rootName} ${c.type.name}</div>
+                <div class="chord-item-name">${displayNote(c.rootName, uf)} ${c.type.name}</div>
                 <div class="chord-item-type">${c.type.category}</div>
               </div>
               <span class="chord-count">${c.noteCount}</span>
@@ -324,10 +343,10 @@ function viewChords() {
         </div>
         <div class="chord-panel">
           ${selectedChord ? `
-            <div class="chord-panel-title">${selectedChord.rootName} ${selectedChord.type.name}</div>
+            <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf)} ${selectedChord.type.name}</div>
             <div class="chord-panel-sub">
               ${selectedChord.type.category} · ${selectedChord.noteCount} notes:
-              ${selectedChord.notes.join(', ')}
+              ${selectedChord.notes.map(n => displayNote(n, uf)).join(', ')}
             </div>
             <div class="chord-actions">
               <button class="btn btn-primary" data-action="play-chord">▶ Play Chord</button>
@@ -534,6 +553,12 @@ document.addEventListener('click', e => {
   // ── Pan rotation ──────────────────────────────────────────────────────────
   if (action === 'toggle-rotation') {
     state.ringRotated = !state.ringRotated;
+    render();
+    return;
+  }
+
+  if (action === 'toggle-flats') {
+    state.useFlats = !state.useFlats;
     render();
     return;
   }
