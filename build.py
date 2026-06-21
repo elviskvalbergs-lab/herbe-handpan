@@ -18,7 +18,7 @@ def strip_modules(js):
 css = read('styles.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/chords.js', 'js/audio.js', 'js/pan.js', 'js/app.js']
+js_files = ['js/data.js', 'js/chords.js', 'js/audio.js', 'js/pan.js', 'js/storage.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -33,6 +33,13 @@ html = f'''<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Handpan Chords</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Handpan">
+  <meta name="theme-color" content="#1a3828">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -43,6 +50,11 @@ html = f'''<!DOCTYPE html>
   <div id="app"></div>
   <script>
 {js_bundle}
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {{
+      navigator.serviceWorker.register('/sw.js');
+    }}
   </script>
 </body>
 </html>'''

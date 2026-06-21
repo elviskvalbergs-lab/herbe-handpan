@@ -1,0 +1,23 @@
+{
+  "name": "Handpan Chords",
+  "short_name": "Handpan",
+  "description": "Explore handpan scales, layouts and chords",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090f0d",
+  "theme_color": "#1a3828",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

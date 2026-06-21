@@ -2,6 +2,10 @@ import {
   SCALES, CHORD_TYPES, CHORD_CATEGORIES, createLayoutFromScale,
   getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote,
 } from './data.js';
+import {
+  getSavedLayouts, saveLayout, deleteLayout,
+  getFavorites, toggleFavorite, isFavorite,
+} from './storage.js';
 import { findAllChords, getRelatedChords } from './chords.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
@@ -18,6 +22,8 @@ const state = {
   chords: [],                 // computed from layout
   chordFilter: { category: 'All', root: 'All' },
   useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
+  savedLayouts: getSavedLayouts(),
+  favorites: getFavorites(),
   chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
@@ -42,6 +48,37 @@ function viewSelector() {
     return true;
   });
 
+  const { savedLayouts, favorites, useFlats } = state;
+
+  const savedSection = savedLayouts.length === 0 ? '' : `
+    <div class="pwa-section">
+      <div class="pwa-section-title">My Layouts</div>
+      <div class="pwa-scroll">
+        ${savedLayouts.map(l => `
+          <div class="saved-card" data-action="load-saved" data-id="${escHtml(l.id)}">
+            <div class="saved-card-name">${escHtml(l.name)}</div>
+            <div class="saved-card-meta">${l.noteCount} notes</div>
+            <button class="saved-del" data-action="delete-saved" data-id="${escHtml(l.id)}" title="Remove">×</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  const favsSection = favorites.length === 0 ? '' : `
+    <div class="pwa-section">
+      <div class="pwa-section-title">My Chords</div>
+      <div class="pwa-scroll">
+        ${favorites.map(f => `
+          <div class="fav-chip" data-action="open-favorite" data-id="${escHtml(f.id)}">
+            <div class="fav-chip-chord">${escHtml(displayNote(f.rootName, useFlats))} ${escHtml(f.typeName)}</div>
+            <div class="fav-chip-scale">${escHtml(f.scaleName)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
   return `
     <div class="app-header">
       <div class="app-title">Handpan Chords</div>
@@ -57,12 +94,13 @@ function viewSelector() {
             ${f === 'all' ? 'All' : f + ' notes'}
           </button>
         `).join('')}
-        <button class="pill ${state.useFlats ? 'active' : ''}"
+        <button class="pill ${useFlats ? 'active' : ''}"
           data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
           ♭ Flats
         </button>
       </div>
     </div>
+    ${savedSection}${favsSection}
     <div class="scale-grid">
       ${filtered.length === 0
         ? '<div class="empty-state">No scales match your search</div>'
@@ -70,7 +108,7 @@ function viewSelector() {
           <div class="scale-card" data-action="select-scale" data-id="${s.id}">
             <div class="family-badge">${s.family}</div>
             <div class="scale-card-name">${s.name}</div>
-            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${displayNote(s.top.ding, state.useFlats)} ding</div>
+            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${displayNote(s.top.ding, useFlats)} ding</div>
             <div class="scale-card-desc">${s.desc}</div>
           </div>
         `).join('')
@@ -143,6 +181,13 @@ function viewEditor() {
             Clone &amp; Customize
           </button>
         ` : ''}
+        ${(() => {
+          const savedId = isCustom ? layout.savedId : layout.id;
+          const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
+          return `<button class="btn btn-secondary" data-action="save-layout" style="width:100%">
+            ${isSaved ? '✓ Saved' : '⬇ Save Layout'}
+          </button>`;
+        })()}
 
         <div class="editor-section">
           <div class="editor-section-title">Top shell — ring slots</div>
@@ -316,19 +361,27 @@ function viewChords() {
             <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
-        ${filtered.length === 0
-          ? '<div class="empty-state">No chords match these filters</div>'
-          : filtered.map(c => `
-            <div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
-              data-action="select-chord" data-id="${c.id}">
-              <div>
-                <div class="chord-item-name">${displayNote(c.rootName, uf)} ${c.type.name}</div>
-                <div class="chord-item-type">${c.type.category}</div>
-              </div>
-              <span class="chord-count">${c.noteCount}</span>
-            </div>
-          `).join('')
-        }
+        ${(() => {
+          const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
+          const favIds = new Set(state.favorites.map(f => f.id));
+          return filtered.length === 0
+            ? '<div class="empty-state">No chords match these filters</div>'
+            : filtered.map(c => {
+              const favId = `${layoutId}-${c.id}`;
+              return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
+                data-action="select-chord" data-id="${c.id}">
+                <div>
+                  <div class="chord-item-name">${displayNote(c.rootName, uf)} ${c.type.name}</div>
+                  <div class="chord-item-type">${c.type.category}</div>
+                </div>
+                <div class="chord-item-right">
+                  <button class="fav-btn ${favIds.has(favId) ? 'active' : ''}"
+                    data-action="toggle-favorite" data-chord-id="${c.id}" title="Save to My Chords">♥</button>
+                  <span class="chord-count">${c.noteCount}</span>
+                </div>
+              </div>`;
+            }).join('');
+        })()}
       </div>
 
       <div>
@@ -526,6 +579,97 @@ document.addEventListener('click', e => {
     state.shellMode = 'both';
     state.chordFilter = { category: 'All', root: 'All' };
     state.view = 'editor';
+    history.pushState(null, '', stateToHash());
+    render();
+    return;
+  }
+
+  // ── Saved layouts ─────────────────────────────────────────────────────────
+  if (action === 'save-layout') {
+    if (state.layout.isCustom && !state.layout.savedId) {
+      state.layout.savedId = 'c-' + Date.now();
+    }
+    const id = state.layout.isCustom ? state.layout.savedId : state.layout.id;
+    const total = 1 + state.layout.top.slots.filter(s => s.note).length
+                    + state.layout.bottom.slots.filter(s => s.note).length;
+    saveLayout({
+      id,
+      name: state.layout.name,
+      noteCount: total,
+      layout: JSON.parse(JSON.stringify(state.layout)),
+      savedAt: Date.now(),
+    });
+    state.savedLayouts = getSavedLayouts();
+    showToast('Saved to My Layouts');
+    render();
+    return;
+  }
+
+  if (action === 'load-saved') {
+    const saved = state.savedLayouts.find(l => l.id === el.dataset.id);
+    if (!saved) return;
+    state.layout = saved.layout;
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = null;
+    state.shellMode = 'both';
+    state.chordFilter = { category: 'All', root: 'All' };
+    state.view = 'editor';
+    render();
+    return;
+  }
+
+  if (action === 'delete-saved') {
+    deleteLayout(el.dataset.id);
+    state.savedLayouts = getSavedLayouts();
+    render();
+    return;
+  }
+
+  // ── Favorites ─────────────────────────────────────────────────────────────
+  if (action === 'toggle-favorite') {
+    const chordId = el.dataset.chordId;
+    const chord = state.chords.find(c => c.id === chordId);
+    if (!chord || !state.layout) return;
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    const favId = `${layoutId}-${chord.id}`;
+    const added = toggleFavorite({
+      id: favId,
+      layoutId,
+      layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
+      scaleName: state.layout.name,
+      chordId: chord.id,
+      rootName: chord.rootName,
+      typeName: chord.type.name,
+      category: chord.type.category,
+      notes: chord.notes,
+      noteCount: chord.noteCount,
+    });
+    state.favorites = getFavorites();
+    showToast(added ? '♥ Added to My Chords' : 'Removed from My Chords');
+    render();
+    return;
+  }
+
+  if (action === 'open-favorite') {
+    const fav = state.favorites.find(f => f.id === el.dataset.id);
+    if (!fav) return;
+    if (fav.layoutData) {
+      state.layout = fav.layoutData;
+    } else {
+      const saved = state.savedLayouts.find(l => l.id === fav.layoutId);
+      if (saved) {
+        state.layout = saved.layout;
+      } else {
+        const scale = SCALES.find(s => s.id === fav.layoutId);
+        if (!scale) { showToast('Scale not found'); return; }
+        state.layout = createLayoutFromScale(scale);
+      }
+    }
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
+    state.shellMode = 'both';
+    state.chordFilter = { category: 'All', root: 'All' };
+    state.view = 'chords';
     history.pushState(null, '', stateToHash());
     render();
     return;

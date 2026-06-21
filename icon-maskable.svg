@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Maskable: safe zone is inner 80% so keep content within ~r=77 from center -->
+  <rect width="192" height="192" fill="#0d2018"/>
+  <!-- Pan body (slightly smaller for maskable safe zone) -->
+  <circle cx="96" cy="96" r="80" fill="#0d2018" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="96" cy="96" r="68" fill="none" stroke="#1c3828" stroke-width="1.5" stroke-dasharray="3 5"/>
+  <circle cx="96" cy="96" r="52" fill="none" stroke="#183028" stroke-width="1"/>
+  <circle cx="96" cy="96" r="20" fill="#183028" stroke="#1c3828" stroke-width="1.5"/>
+  <circle cx="96" cy="44" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="132" cy="60" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="148" cy="96" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="132" cy="132" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="96" cy="148" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="60" cy="132" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="44" cy="96" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="8" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+</svg>

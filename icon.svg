@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- Background -->
+  <rect width="192" height="192" fill="#090f0d"/>
+  <!-- Pan body -->
+  <circle cx="96" cy="96" r="88" fill="#0d2018" stroke="#2a5040" stroke-width="2"/>
+  <!-- Outer groove ring -->
+  <circle cx="96" cy="96" r="76" fill="none" stroke="#1c3828" stroke-width="1.5" stroke-dasharray="3 5"/>
+  <!-- Tone field guide ring -->
+  <circle cx="96" cy="96" r="58" fill="none" stroke="#183028" stroke-width="1"/>
+  <!-- Dome -->
+  <circle cx="96" cy="96" r="24" fill="#183028" stroke="#1c3828" stroke-width="1.5"/>
+  <!-- Tone fields (8 notes in physical ring order) -->
+  <circle cx="96" cy="38" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="137" cy="55" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="154" cy="96" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="137" cy="137" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="96" cy="154" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="55" cy="137" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="38" cy="96" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="55" cy="55" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+</svg>
