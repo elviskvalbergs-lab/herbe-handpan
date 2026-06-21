@@ -121,6 +121,8 @@ body {
 
 .editor-sidebar { display: flex; flex-direction: column; gap: 10px; }
 .editor-secondary-actions { display: flex; gap: 6px; }
+.editor-shells { display: flex; gap: 10px; }
+.editor-shells .editor-section { flex: 1; min-width: 0; }
 .editor-section {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 14px;

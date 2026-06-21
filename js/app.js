@@ -191,29 +191,31 @@ function viewEditor() {
           })()}
         </div>
 
-        <div class="editor-section">
-          <div class="editor-section-title">Top shell — ring slots</div>
-          <div class="capacity-control">
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
-              ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
-            <span class="capacity-val">${layout.top.capacity}</span>
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
+        <div class="editor-shells">
+          <div class="editor-section">
+            <div class="editor-section-title">Top shell</div>
+            <div class="capacity-control">
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
+                ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
+              <span class="capacity-val">${layout.top.capacity}</span>
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
+            </div>
+            <div class="hint" style="margin-top:6px">
+              ${topFilled + 1} notes (incl. ding) · ${topEmpty} empty
+            </div>
           </div>
-          <div class="hint" style="margin-top:6px">
-            ${topFilled + 1} notes total (incl. ding) · ${topEmpty} empty slot${topEmpty !== 1 ? 's' : ''}
-          </div>
-        </div>
 
-        <div class="editor-section">
-          <div class="editor-section-title">Bottom shell — gu</div>
-          <div class="capacity-control">
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
-              ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
-            <span class="capacity-val">${layout.bottom.capacity}</span>
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
-          </div>
-          <div class="hint" style="margin-top:6px">
-            ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
+          <div class="editor-section">
+            <div class="editor-section-title">Bottom shell</div>
+            <div class="capacity-control">
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
+                ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
+              <span class="capacity-val">${layout.bottom.capacity}</span>
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
+            </div>
+            <div class="hint" style="margin-top:6px">
+              ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
+            </div>
           </div>
         </div>
 

@@ -22,10 +22,15 @@ export function initAudio() {
 
 function whenRunning(fn) {
   if (!ctx) initAudio();
-  if (ctx.state === 'running') { fn(); return; }
-  // This is always called from a user-gesture handler (click/touch),
-  // so resume() is allowed by iOS regardless of prior suspension.
-  ctx.resume().then(fn);
+  // Always call fn() synchronously so we stay inside the iOS user-gesture
+  // window. Promise .then() callbacks are async microtasks — iOS treats them
+  // as outside the gesture, silently blocking audio.
+  // If the context is suspended, ctx.currentTime is frozen at its last value
+  // (or 0 on first unlock). Calling resume() before fn() queues the context
+  // start; notes scheduled at currentTime + START_OFFSET will play once the
+  // context starts, which happens within a few ms of resume().
+  if (ctx.state !== 'running') ctx.resume();
+  fn();
 }
 
 // 80ms — enough time for ctx.resume() to resolve asynchronously on iOS
