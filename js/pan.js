@@ -75,8 +75,52 @@ function ringNoteRadius(sortedIndex, total) {
   return Math.round(maxR - (maxR - minR) * t);
 }
 
+function renderBottomShell(layout, opts = {}) {
+  const { highlightNotes = [], useFlats = false } = opts;
+  const cx = 250, cy = 240;
+  const hlSet = new Set(highlightNotes);
+  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
+
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="panGrad" cx="38%" cy="32%">
+      <stop offset="0%" stop-color="#1a3828"/>
+      <stop offset="60%" stop-color="#0d2018"/>
+      <stop offset="100%" stop-color="#060f0c"/>
+    </radialGradient>
+  </defs>
+  <!-- Pan body -->
+  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <!-- Outer groove ring -->
+  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <!-- Gu ring guide -->
+  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
+  <!-- Inner groove ring -->
+  <circle cx="${cx}" cy="${cy}" r="80" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="2 5" opacity="0.6"/>
+  <!-- Center hole -->
+  <circle cx="${cx}" cy="${cy}" r="50" fill="#030a06" stroke="#1c3828" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="47" fill="none" stroke="#0a1a12" stroke-width="2" opacity="0.7"/>
+`;
+
+  if (guCount > 0) {
+    const guPos = circlePositions(guCount, cx, cy, 145, 0);
+    for (let i = 0; i < guCount; i++) {
+      const slot = layout.bottom.slots[i] ?? { note: null };
+      const isHighlighted = !!(slot.note && hlSet.has(slot.note));
+      const cls = ['gu', !slot.note ? 'empty' : '', isHighlighted ? 'highlight' : ''].filter(Boolean).join(' ');
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, cls, `gu-${i}`, 24, useFlats);
+    }
+  }
+
+  svg += '</svg>';
+  return svg;
+}
+
 export function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [], rotated = false, useFlats = false } = opts;
+
+  // Bottom shell gets its own dedicated view.
+  if (shellMode === 'bottom') return renderBottomShell(layout, opts);
 
   const cx = 250, cy = 240;
   const hlSet = new Set(highlightNotes);
