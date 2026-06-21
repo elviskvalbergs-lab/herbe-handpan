@@ -133,7 +133,7 @@ body {
 
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
-.pan-wrap svg { max-width: 100%; max-height: 65vh; width: auto; height: auto; }
+.pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
