@@ -111,15 +111,14 @@ function viewEditor() {
               ${m === 'both' ? 'Both Shells' : m === 'top' ? 'Top Shell' : 'Bottom Shell'}
             </button>
           `).join('')}
+          <button class="pill ${state.ringRotated ? 'active' : ''}"
+            data-action="toggle-rotation"
+            title="Rotate the ring so two lowest notes face you instead of one">
+            ⟳ Rotate
+          </button>
         </div>
         <div class="pan-wrap">
           ${panSvg}
-        </div>
-        <div style="text-align:center;margin-top:10px">
-          <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
-            title="Rotate the ring so two lowest notes face you instead of one">
-            ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
-          </button>
         </div>
         ${isCustom ? `
           <p class="hint" style="text-align:center;margin-top:8px">

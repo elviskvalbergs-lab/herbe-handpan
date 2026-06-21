@@ -1,17 +1,25 @@
 export const PAN_SVG_ID = 'handpan-svg';
 
 // Physical handpan ring layout (confirmed from klangzeug.de for all scales).
-// Notes sorted ascending (n1=lowest, nN=highest) are placed clockwise from 12 o'clock:
-//  7-ring: [n7, n5, n3, n1, n2, n4, n6]
-//  8-ring: [n8, n7, n5, n3, n1, n2, n4, n6]
-//  9-ring: [n9, n7, n5, n3, n1, n2, n4, n6, n8]
-// 10-ring: [n10,n7, n5, n3, n1, n2, n4, n6, n8, n9]
+// Notes sorted ascending (n1=lowest, nN=highest) placed clockwise from 12 o'clock.
+// For 10-ring instruments, n9+n10 go on a separate inner ring (see renderPan).
 function physicalOrder(n) {
   if (n === 7)  return [6,4,2,0,1,3,5];
   if (n === 8)  return [7,6,4,2,0,1,3,5];
   if (n === 9)  return [8,6,4,2,0,1,3,5,7];
-  if (n === 10) return [9,6,4,2,0,1,3,5,7,8];
   return null;
+}
+
+// Outer ring physical order for 10-ring instruments (n1-n8, same as 8-ring).
+const OUTER_8_ORDER = [7,6,4,2,0,1,3,5];
+
+// Positions for inner ring notes — symmetric around 12 o'clock at ±45°.
+function innerRingPositions(cx, cy, r) {
+  const angles = [-Math.PI / 2 - Math.PI / 4, -Math.PI / 2 + Math.PI / 4];
+  return angles.map(a => ({
+    x: Math.round(cx + r * Math.cos(a)),
+    y: Math.round(cy + r * Math.sin(a)),
+  }));
 }
 
 function circlePositions(count, cx, cy, r, rotationOffset = 0) {
@@ -68,7 +76,6 @@ export function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [], rotated = false } = opts;
 
   const cx = 250, cy = 240;
-  // Match full note strings (with octave) for precise highlighting
   const hlSet = new Set(highlightNotes);
 
   const dimTop = shellMode === 'bottom';
@@ -82,6 +89,10 @@ export function renderPan(layout, opts = {}) {
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
   }
+
+  // 10-ring scales split into outer (n1-n8) + inner (n9, n10) rings.
+  const totalRingSlots = layout.top.slots.length;
+  const hasInnerRing = !layout.isCustom && totalRingSlots >= 10;
 
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -103,13 +114,15 @@ export function renderPan(layout, opts = {}) {
   <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
   <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
-  <!-- Gu separator groove (bottom zone) — arc at y=cy+175 on the r=195 groove ring -->
+  <!-- Gu separator groove -->
   <path d="M ${cx - 90},${cy + 175} A 195,195 0 0,1 ${cx + 90},${cy + 175}"
     fill="none" stroke="#2a5040" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.9"/>
   <!-- Inner center dome -->
   <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
-  <!-- Tone field guide ring -->
+  <!-- Outer tone field guide ring -->
   <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
+  ${hasInnerRing ? `<!-- Inner tone field guide ring -->
+  <circle cx="${cx}" cy="${cy}" r="100" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
@@ -121,30 +134,51 @@ export function renderPan(layout, opts = {}) {
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 30);
 
-  // Ring slots — physical layout + rotation
-  const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
-  // When rotated: shift so the gap between the two lowest notes faces the player.
-  // Formula: π(N−9)/N puts the n1/n2 midpoint at the bottom for any ring size.
-  const rotationRad = rotated ? Math.PI * (ringCount - 9) / ringCount : 0;
-  const ringPos = circlePositions(ringCount, cx, cy, 145, rotationRad);
-
-  let ringSlots = layout.top.slots;
-  let sortedIndices = null;
-  if (!layout.isCustom) {
-    const order = physicalOrder(layout.top.slots.length);
-    if (order) {
-      ringSlots = order.map(i => layout.top.slots[i] ?? { note: null });
-      sortedIndices = order; // order[i] = original sorted index for position i
+  if (hasInnerRing) {
+    // 10-ring: outer ring gets 8 lower notes (n1-n8), inner ring gets n9 and n10.
+    const outerSlots = OUTER_8_ORDER.map(i => layout.top.slots[i] ?? { note: null });
+    const rotationRad = rotated ? Math.PI * (8 - 9) / 8 : 0;
+    const outerPos = circlePositions(8, cx, cy, 145, rotationRad);
+    for (let i = 0; i < 8; i++) {
+      const slot = outerSlots[i];
+      const sortedIdx = OUTER_8_ORDER[i]; // position in original slots array (0-7)
+      const r = ringNoteRadius(sortedIdx, totalRingSlots);
+      svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r);
     }
-  }
+    // Inner ring: n9 (index 8) and n10 (index 9)
+    const innerPos = innerRingPositions(cx, cy, 100);
+    for (let i = 0; i < Math.min(2, totalRingSlots - 8); i++) {
+      const sortedIdx = 8 + i;
+      const slot = layout.top.slots[sortedIdx] ?? { note: null };
+      const r = ringNoteRadius(sortedIdx, totalRingSlots);
+      svg += noteSlotSvg(innerPos[i].x, innerPos[i].y, slot.note,
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r);
+    }
+  } else {
+    // Standard: all ring slots on one ring.
+    const ringCount = Math.max(layout.top.capacity, totalRingSlots);
+    const rotationRad = rotated ? Math.PI * (ringCount - 9) / ringCount : 0;
+    const ringPos = circlePositions(ringCount, cx, cy, 145, rotationRad);
 
-  for (let i = 0; i < ringCount; i++) {
-    const slot = ringSlots[i] ?? { note: null };
-    const pos = ringPos[i];
-    const r = sortedIndices
-      ? ringNoteRadius(sortedIndices[i], layout.top.slots.length)
-      : 22; // fallback for custom layouts
-    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r);
+    let ringSlots = layout.top.slots;
+    let sortedIndices = null;
+    if (!layout.isCustom) {
+      const order = physicalOrder(totalRingSlots);
+      if (order) {
+        ringSlots = order.map(i => layout.top.slots[i] ?? { note: null });
+        sortedIndices = order;
+      }
+    }
+
+    for (let i = 0; i < ringCount; i++) {
+      const slot = ringSlots[i] ?? { note: null };
+      const pos = ringPos[i];
+      const r = sortedIndices
+        ? ringNoteRadius(sortedIndices[i], totalRingSlots)
+        : 22;
+      svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r);
+    }
   }
 
   // Gu (bottom shell) — placed inside the pan body, lower zone
