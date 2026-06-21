@@ -81,7 +81,7 @@ function renderBottomShell(layout, opts = {}) {
   const hlSet = new Set(highlightNotes);
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" xmlns="http://www.w3.org/2000/svg">
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
@@ -141,7 +141,7 @@ export function renderPan(layout, opts = {}) {
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = !layout.isCustom && totalRingSlots >= 10;
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" xmlns="http://www.w3.org/2000/svg">
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
