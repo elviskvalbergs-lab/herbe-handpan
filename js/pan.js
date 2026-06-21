@@ -14,9 +14,9 @@ function physicalOrder(n) {
   return null;
 }
 
-function circlePositions(count, cx, cy, r) {
+function circlePositions(count, cx, cy, r, rotationOffset = 0) {
   return Array.from({ length: count }, (_, i) => {
-    const angle = (i * 2 * Math.PI / count) - Math.PI / 2;
+    const angle = (i * 2 * Math.PI / count) - Math.PI / 2 + rotationOffset;
     return {
       x: Math.round(cx + r * Math.cos(angle)),
       y: Math.round(cy + r * Math.sin(angle)),
@@ -24,7 +24,8 @@ function circlePositions(count, cx, cy, r) {
   });
 }
 
-function noteSlotSvg(x, y, note, extraClasses, noteId, isCircle = false) {
+// All tone fields are circles. r controls size; lower notes get larger circles.
+function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24) {
   const isEmpty = !note;
   const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
   const noteAttr = note ? ` data-note="${note}"` : '';
@@ -32,38 +33,39 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, isCircle = false) {
   let textHtml;
   if (isEmpty) {
     textHtml = `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"
-      font-family="system-ui,sans-serif" font-size="${isCircle ? 20 : 18}" font-weight="600"
+      font-family="system-ui,sans-serif" font-size="${Math.round(r * 0.7)}" font-weight="600"
       fill="var(--note-rest-text)">+</text>`;
   } else {
     const name = note.replace(/\d+$/, '');
     const oct = (note.match(/\d+$/) ?? [''])[0];
-    const nameFontSize = name.length > 1 ? 12 : 14;
-    textHtml = `<text x="${x}" y="${y - 4}" text-anchor="middle" dominant-baseline="auto"
+    const nameFontSize = Math.max(8, Math.round((name.length > 1 ? 12 : 14) * r / 26));
+    const octFontSize  = Math.max(6, Math.round(9 * r / 26));
+    const nameY = y - Math.round(r * 0.14);
+    const octY  = y + Math.round(r * 0.40);
+    textHtml = `<text x="${x}" y="${nameY}" text-anchor="middle" dominant-baseline="auto"
       font-family="system-ui,sans-serif" font-size="${nameFontSize}" font-weight="600"
       fill="var(--note-rest-text)">${name}</text>
-<text x="${x}" y="${y + 11}" text-anchor="middle" dominant-baseline="auto"
-      font-family="system-ui,sans-serif" font-size="9" font-weight="400"
+<text x="${x}" y="${octY}" text-anchor="middle" dominant-baseline="auto"
+      font-family="system-ui,sans-serif" font-size="${octFontSize}" font-weight="400"
       fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
   }
 
-  if (isCircle) {
-    const r = 30;
-    return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
-  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
-  ${textHtml}
-</g>`;
-  }
-
-  const w = 50, h = 38;
   return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
-  <rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="8"
-    fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
+  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
   ${textHtml}
 </g>`;
 }
 
+// Radius for a ring note at sorted index i (0=lowest, n-1=highest).
+// Lower notes are physically larger on a real handpan.
+function ringNoteRadius(sortedIndex, total) {
+  const minR = 18, maxR = 26;
+  const t = total <= 1 ? 0 : sortedIndex / (total - 1);
+  return Math.round(maxR - (maxR - minR) * t);
+}
+
 export function renderPan(layout, opts = {}) {
-  const { shellMode = 'both', highlightNotes = [] } = opts;
+  const { shellMode = 'both', highlightNotes = [], rotated = false } = opts;
 
   const cx = 250, cy = 240;
   // Match full note strings (with octave) for precise highlighting
@@ -111,20 +113,32 @@ export function renderPan(layout, opts = {}) {
     dingNote && hlSet.has(dingNote) ? 'highlight' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
-  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', true);
+  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 30);
 
-  // Ring slots — apply physical instrument layout for standard scales
+  // Ring slots — physical layout + rotation
   const ringCount = Math.max(layout.top.capacity, layout.top.slots.length);
-  const ringPos = circlePositions(ringCount, cx, cy, 145);
+  // When rotated: shift so the gap between the two lowest notes faces the player.
+  // Formula: π(N−9)/N puts the n1/n2 midpoint at the bottom for any ring size.
+  const rotationRad = rotated ? Math.PI * (ringCount - 9) / ringCount : 0;
+  const ringPos = circlePositions(ringCount, cx, cy, 145, rotationRad);
+
   let ringSlots = layout.top.slots;
+  let sortedIndices = null;
   if (!layout.isCustom) {
     const order = physicalOrder(layout.top.slots.length);
-    if (order) ringSlots = order.map(i => layout.top.slots[i] ?? { note: null });
+    if (order) {
+      ringSlots = order.map(i => layout.top.slots[i] ?? { note: null });
+      sortedIndices = order; // order[i] = original sorted index for position i
+    }
   }
+
   for (let i = 0; i < ringCount; i++) {
     const slot = ringSlots[i] ?? { note: null };
     const pos = ringPos[i];
-    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`);
+    const r = sortedIndices
+      ? ringNoteRadius(sortedIndices[i], layout.top.slots.length)
+      : 22; // fallback for custom layouts
+    svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r);
   }
 
   // Gu (bottom shell)
@@ -136,7 +150,7 @@ export function renderPan(layout, opts = {}) {
   for (let i = 0; i < guCount; i++) {
     const slot = layout.bottom.slots[i] ?? { note: null };
     const gx = guStartX + i * guSpacing;
-    svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, true);
+    svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 24);
   }
 
   svg += '</svg>';

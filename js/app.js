@@ -11,6 +11,7 @@ const state = {
   view: 'selector',        // 'selector' | 'editor' | 'chords'
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
+  ringRotated: false,      // false = standard; true = rotated half-slot
   noteCountFilter: 'all',     // 'all' | '9' | '10' | '11+'
   scaleSearch: '',            // filter text for scale selector
   selectedChord: null,        // ChordResult or null
@@ -81,6 +82,7 @@ function viewEditor() {
   const panSvg = renderPan(layout, {
     shellMode: state.shellMode,
     highlightNotes: [],
+    rotated: state.ringRotated,
   });
 
   const topFilled = layout.top.slots.filter(s => s.note).length;
@@ -113,8 +115,14 @@ function viewEditor() {
         <div class="pan-wrap">
           ${panSvg}
         </div>
+        <div style="text-align:center;margin-top:10px">
+          <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
+            title="Rotate the ring so two lowest notes face you instead of one">
+            ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
+          </button>
+        </div>
         ${isCustom ? `
-          <p class="hint" style="text-align:center;margin-top:10px">
+          <p class="hint" style="text-align:center;margin-top:8px">
             Click a note to remove it · Click an empty slot (+) to add a note
           </p>
         ` : ''}
@@ -222,7 +230,7 @@ function viewChords() {
 
   // Pan with chord highlighted — use full note strings (with octave) for precise matching
   const highlightNotes = selectedChord ? selectedChord.notes : [];
-  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes });
+  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, rotated: state.ringRotated });
 
   // Related chords panel
   let relatedHtml = '';
@@ -306,8 +314,14 @@ function viewChords() {
       </div>
 
       <div>
-        <div class="pan-wrap" style="margin-bottom:16px">
+        <div class="pan-wrap" style="margin-bottom:8px">
           ${panSvg}
+        </div>
+        <div style="text-align:center;margin-bottom:16px">
+          <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
+            title="Rotate the ring so two lowest notes face you instead of one">
+            ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
+          </button>
         </div>
         <div class="chord-panel">
           ${selectedChord ? `
@@ -514,6 +528,13 @@ document.addEventListener('click', e => {
     state.view = 'editor';
     state.selectedChord = null;
     history.replaceState(null, '', stateToHash());
+    render();
+    return;
+  }
+
+  // ── Pan rotation ──────────────────────────────────────────────────────────
+  if (action === 'toggle-rotation') {
+    state.ringRotated = !state.ringRotated;
     render();
     return;
   }
