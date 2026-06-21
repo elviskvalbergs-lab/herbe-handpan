@@ -114,7 +114,10 @@ body {
   gap: 24px;
   align-items: start;
 }
-@media (max-width: 720px) { .editor-layout { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  #app { padding: 12px 12px; }
+  .editor-layout { grid-template-columns: 1fr; }
+}
 
 .editor-sidebar { display: flex; flex-direction: column; gap: 10px; }
 .editor-section {
@@ -130,7 +133,7 @@ body {
 
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
-.pan-wrap svg { max-width: 100%; height: auto; }
+.pan-wrap svg { max-width: 100%; max-height: 65vh; width: auto; height: auto; }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
@@ -173,11 +176,21 @@ body {
   gap: 24px;
   align-items: start;
 }
-@media (max-width: 720px) { .explorer-layout { grid-template-columns: 1fr; } }
+@media (max-width: 720px) {
+  /* Stack chord view vertically; pan before chord list */
+  .explorer-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .explorer-layout .chord-list {
+    order: 2;
+    max-height: 45vh;
+  }
+}
 
 .chord-list {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: 75vh; overflow-y: auto;
+  max-height: 75vh; overflow-y: auto; min-height: 0;
 }
 .chord-list-header {
   padding: 12px 14px; border-bottom: 1px solid var(--border);
