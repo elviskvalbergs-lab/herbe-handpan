@@ -939,11 +939,22 @@ let ctx = null;
 let masterGain = null;
 
 function initAudio() {
-  if (ctx) return;
+  if (ctx) {
+    if (ctx.state === 'suspended') ctx.resume();
+    return;
+  }
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ctx.createGain();
   masterGain.gain.value = 0.65;
   masterGain.connect(ctx.destination);
+  // iOS Safari requires a resume() call AND a silent buffer played inside the
+  // user gesture handler to fully unlock audio output.
+  ctx.resume();
+  const silentBuf = ctx.createBuffer(1, 1, 22050);
+  const silentSrc = ctx.createBufferSource();
+  silentSrc.buffer = silentBuf;
+  silentSrc.connect(ctx.destination);
+  silentSrc.start(0);
 }
 
 function playFreq(freq, startTime) {
@@ -1003,28 +1014,39 @@ function playFreq(freq, startTime) {
 }
 
 function playNote(noteName) {
-  if (!ctx) initAudio();
-  if (ctx.state === 'suspended') ctx.resume();
+  initAudio();
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => playFreq(noteToFreq(noteName)));
+    return;
+  }
   playFreq(noteToFreq(noteName));
 }
 
+// Returns { arpTimings: [{note, delayMs}], togetherMs } for visual sync.
 function playChord(noteNames) {
-  if (!ctx) initAudio();
+  initAudio();
   if (ctx.state === 'suspended') ctx.resume();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  const ARP = 0.3;
   const now = ctx.currentTime;
-  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.3));
-  // Strike all together after arpeggiation
-  const together = now + sorted.length * 0.3 + 0.35;
-  sorted.forEach(n => playFreq(noteToFreq(n), together));
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * ARP));
+  const togetherOffset = sorted.length * ARP + 0.35;
+  sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset));
+  return {
+    arpTimings: sorted.map((note, i) => ({ note, delayMs: Math.round(i * ARP * 1000) })),
+    togetherMs: Math.round(togetherOffset * 1000),
+  };
 }
 
+// Returns [{note, delayMs}] for visual sync. Notes play at 0.4s intervals.
 function playScale(noteNames) {
-  if (!ctx) initAudio();
+  initAudio();
   if (ctx.state === 'suspended') ctx.resume();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  const INTERVAL = 0.4;
   const now = ctx.currentTime;
-  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.15));
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * INTERVAL));
+  return sorted.map((note, i) => ({ note, delayMs: Math.round(i * INTERVAL * 1000) }));
 }
 
 
@@ -1303,19 +1325,24 @@ function updatePanShellMode(mode) {
   });
 }
 
-// Briefly add 'playing' class — matches against full note strings (with octave)
+// Highlight the currently playing note(s). Clears any previous playing state
+// so only the most-recently-requested notes are lit. Auto-clears after 2.2s.
+let _playTimer = null;
 function updatePanPlaying(noteNames) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
+  if (_playTimer !== null) { clearTimeout(_playTimer); _playTimer = null; }
+  svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
   const nameSet = new Set(noteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
     const note = el.dataset.note;
-    if (note && nameSet.has(note)) {
-      el.classList.add('playing');
-      setTimeout(() => el.classList.remove('playing'), 2200);
-    }
+    if (note && nameSet.has(note)) el.classList.add('playing');
   });
+  _playTimer = setTimeout(() => {
+    svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
+    _playTimer = null;
+  }, 2200);
 }
 
 
@@ -2174,26 +2201,32 @@ document.addEventListener('click', e => {
     if (newChordList) newChordList.scrollTop = savedScroll;
     // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
-    playChord(chord.notes);
-    const arpMs = chord.notes.length * 300 + 350;
-    setTimeout(() => updatePanPlaying(chord.notes), arpMs);
+    const { arpTimings, togetherMs } = playChord(chord.notes);
+    arpTimings.forEach(({ note, delayMs }) =>
+      setTimeout(() => updatePanPlaying([note]), delayMs)
+    );
+    setTimeout(() => updatePanPlaying(chord.notes), togetherMs);
     return;
   }
 
   if (action === 'play-chord') {
     if (!state.selectedChord) return;
     initAudio();
-    playChord(state.selectedChord.notes);
-    const arpMs = state.selectedChord.notes.length * 300 + 350;
-    setTimeout(() => updatePanPlaying(state.selectedChord.notes), arpMs);
+    const { arpTimings, togetherMs } = playChord(state.selectedChord.notes);
+    arpTimings.forEach(({ note, delayMs }) =>
+      setTimeout(() => updatePanPlaying([note]), delayMs)
+    );
+    setTimeout(() => updatePanPlaying(state.selectedChord.notes), togetherMs);
     return;
   }
 
   if (action === 'play-scale') {
     const allNotes = getAllNotes(state.layout);
     initAudio();
-    playScale(allNotes);
-    updatePanPlaying(allNotes);
+    const timings = playScale(allNotes);
+    timings.forEach(({ note, delayMs }) =>
+      setTimeout(() => updatePanPlaying([note]), delayMs)
+    );
     return;
   }
 

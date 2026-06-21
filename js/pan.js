@@ -274,17 +274,22 @@ export function updatePanShellMode(mode) {
   });
 }
 
-// Briefly add 'playing' class — matches against full note strings (with octave)
+// Highlight the currently playing note(s). Clears any previous playing state
+// so only the most-recently-requested notes are lit. Auto-clears after 2.2s.
+let _playTimer = null;
 export function updatePanPlaying(noteNames) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
+  if (_playTimer !== null) { clearTimeout(_playTimer); _playTimer = null; }
+  svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
   const nameSet = new Set(noteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
     const note = el.dataset.note;
-    if (note && nameSet.has(note)) {
-      el.classList.add('playing');
-      setTimeout(() => el.classList.remove('playing'), 2200);
-    }
+    if (note && nameSet.has(note)) el.classList.add('playing');
   });
+  _playTimer = setTimeout(() => {
+    svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
+    _playTimer = null;
+  }, 2200);
 }

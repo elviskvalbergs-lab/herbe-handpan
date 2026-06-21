@@ -4,11 +4,22 @@ let ctx = null;
 let masterGain = null;
 
 export function initAudio() {
-  if (ctx) return;
+  if (ctx) {
+    if (ctx.state === 'suspended') ctx.resume();
+    return;
+  }
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ctx.createGain();
   masterGain.gain.value = 0.65;
   masterGain.connect(ctx.destination);
+  // iOS Safari requires a resume() call AND a silent buffer played inside the
+  // user gesture handler to fully unlock audio output.
+  ctx.resume();
+  const silentBuf = ctx.createBuffer(1, 1, 22050);
+  const silentSrc = ctx.createBufferSource();
+  silentSrc.buffer = silentBuf;
+  silentSrc.connect(ctx.destination);
+  silentSrc.start(0);
 }
 
 function playFreq(freq, startTime) {
@@ -68,26 +79,37 @@ function playFreq(freq, startTime) {
 }
 
 export function playNote(noteName) {
-  if (!ctx) initAudio();
-  if (ctx.state === 'suspended') ctx.resume();
+  initAudio();
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => playFreq(noteToFreq(noteName)));
+    return;
+  }
   playFreq(noteToFreq(noteName));
 }
 
+// Returns { arpTimings: [{note, delayMs}], togetherMs } for visual sync.
 export function playChord(noteNames) {
-  if (!ctx) initAudio();
+  initAudio();
   if (ctx.state === 'suspended') ctx.resume();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  const ARP = 0.3;
   const now = ctx.currentTime;
-  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.3));
-  // Strike all together after arpeggiation
-  const together = now + sorted.length * 0.3 + 0.35;
-  sorted.forEach(n => playFreq(noteToFreq(n), together));
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * ARP));
+  const togetherOffset = sorted.length * ARP + 0.35;
+  sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset));
+  return {
+    arpTimings: sorted.map((note, i) => ({ note, delayMs: Math.round(i * ARP * 1000) })),
+    togetherMs: Math.round(togetherOffset * 1000),
+  };
 }
 
+// Returns [{note, delayMs}] for visual sync. Notes play at 0.4s intervals.
 export function playScale(noteNames) {
-  if (!ctx) initAudio();
+  initAudio();
   if (ctx.state === 'suspended') ctx.resume();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  const INTERVAL = 0.4;
   const now = ctx.currentTime;
-  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * 0.15));
+  sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * INTERVAL));
+  return sorted.map((note, i) => ({ note, delayMs: Math.round(i * INTERVAL * 1000) }));
 }
