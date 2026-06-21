@@ -3,38 +3,31 @@ import { noteToFreq, noteToMidi } from './data.js';
 let ctx = null;
 let masterGain = null;
 
-function playUnlockBuffer() {
-  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  src.connect(ctx.destination);
-  src.start(0);
-}
-
 export function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ctx.createGain();
   masterGain.gain.value = 0.7;
   masterGain.connect(ctx.destination);
-  playUnlockBuffer();
+  // iOS unlock: play a 1-sample buffer + resume() synchronously in the
+  // user-gesture handler.
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
   ctx.resume();
 }
 
-// Always synchronous — stays inside the iOS/Chrome user-gesture window.
-// Re-plays the unlock buffer when suspended so Chrome iOS (which may not
-// unlock from the pointerdown pre-warm) gets a fresh unlock on each gesture.
+// Always synchronous — stays inside the iOS user-gesture window.
 function whenRunning(fn) {
   if (!ctx) initAudio();
-  if (ctx.state !== 'running') {
-    playUnlockBuffer();
-    ctx.resume();
-  }
+  if (ctx.state !== 'running') ctx.resume();
   fn();
 }
 
-// 100ms — gives a freshly resumed context time to start before note hits.
-const START_OFFSET = 0.10;
+// 80ms — gives a freshly resumed context time to start.
+const START_OFFSET = 0.08;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;

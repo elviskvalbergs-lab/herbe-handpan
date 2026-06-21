@@ -115,6 +115,7 @@ body {
   align-items: start;
 }
 @media (max-width: 720px) {
+  body { min-height: 0; }
   #app { padding: 10px 10px; }
   .editor-layout { grid-template-columns: 1fr; }
   .editor-sidebar { gap: 7px; }
