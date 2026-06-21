@@ -176,18 +176,20 @@ function viewEditor() {
       </div>
 
       <div class="editor-sidebar">
-        ${!isCustom ? `
-          <button class="btn btn-secondary" data-action="clone-layout" style="width:100%">
-            Clone &amp; Customize
-          </button>
-        ` : ''}
-        ${(() => {
-          const savedId = isCustom ? layout.savedId : layout.id;
-          const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
-          return `<button class="btn btn-secondary" data-action="save-layout" style="width:100%">
-            ${isSaved ? '✓ Saved' : '⬇ Save Layout'}
-          </button>`;
-        })()}
+        <div class="editor-secondary-actions">
+          ${!isCustom ? `
+            <button class="btn btn-secondary btn-sm" data-action="clone-layout" style="flex:1">
+              Clone &amp; Customize
+            </button>
+          ` : ''}
+          ${(() => {
+            const savedId = isCustom ? layout.savedId : layout.id;
+            const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
+            return `<button class="btn btn-secondary btn-sm" data-action="save-layout" style="flex:1">
+              ${isSaved ? '✓ Saved' : '⬇ Save'}
+            </button>`;
+          })()}
+        </div>
 
         <div class="editor-section">
           <div class="editor-section-title">Top shell — ring slots</div>

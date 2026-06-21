@@ -9,42 +9,35 @@ export function initAudio() {
   masterGain = ctx.createGain();
   masterGain.gain.value = 0.7;
   masterGain.connect(ctx.destination);
-  // iOS unlock: resume() + silent buffer inside the user-gesture handler.
+
+  // iOS unlock: play a 1-sample buffer + resume() synchronously in the
+  // user-gesture handler. The buffer must be started before resume() resolves.
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
   ctx.resume();
-  const silentBuf = ctx.createBuffer(1, 1, 22050);
-  const silentSrc = ctx.createBufferSource();
-  silentSrc.buffer = silentBuf;
-  silentSrc.connect(ctx.destination);
-  silentSrc.start(0);
-  // iOS auto-suspends AudioContext after silence between interactions.
-  // Tick a 1-sample silent buffer every 2s so whenRunning() always takes
-  // the fast synchronous path and notes schedule at the correct time.
-  setInterval(() => {
-    if (!ctx) return;
-    if (ctx.state === 'suspended') { ctx.resume(); return; }
-    const b = ctx.createBuffer(1, 1, ctx.sampleRate);
-    const s = ctx.createBufferSource();
-    s.buffer = b;
-    s.connect(masterGain);
-    s.start();
-  }, 2000);
 }
 
 function whenRunning(fn) {
   if (!ctx) initAudio();
   if (ctx.state === 'running') { fn(); return; }
+  // This is always called from a user-gesture handler (click/touch),
+  // so resume() is allowed by iOS regardless of prior suspension.
   ctx.resume().then(fn);
 }
 
-const START_OFFSET = 0.02;
+// 80ms — enough time for ctx.resume() to resolve asynchronously on iOS
+// before the scheduled note start time.
+const START_OFFSET = 0.08;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;
   const now = startTime ?? ctx.currentTime;
 
-  // Two harmonics only — fundamental + octave. Three harmonics + a delay
-  // feedback loop per note creates ~50+ simultaneous nodes for a full scale,
-  // which overloads iOS audio processing and causes garbling.
+  // Two harmonics: fundamental + octave. Three or more overloads iOS
+  // audio processing during chord/scale playback.
   const harmonics = [
     { mult: 1, gain: 0.60, decay: 4.5 },
     { mult: 2, gain: 0.28, decay: 2.2 },
@@ -56,12 +49,14 @@ function playFreq(freq, startTime) {
     osc.type = 'sine';
     osc.frequency.value = freq * mult;
     env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(gain, now + 0.004);
+    env.gain.linearRampToValueAtTime(gain, now + 0.006);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
     osc.connect(env);
     env.connect(masterGain);
     osc.start(now);
     osc.stop(now + decay + 0.05);
+    // Disconnect after stop so iOS can release the nodes promptly.
+    osc.onended = () => { osc.disconnect(); env.disconnect(); };
   });
 }
 
