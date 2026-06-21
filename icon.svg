@@ -1,21 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <radialGradient id="body" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#1d4a30"/>
+      <stop offset="100%" stop-color="#091810"/>
+    </radialGradient>
+    <radialGradient id="dome" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#e8c050"/>
+      <stop offset="100%" stop-color="#a07820"/>
+    </radialGradient>
+  </defs>
   <!-- Background -->
-  <rect width="192" height="192" fill="#090f0d"/>
+  <rect width="192" height="192" fill="#091810"/>
   <!-- Pan body -->
-  <circle cx="96" cy="96" r="88" fill="#0d2018" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="96" cy="96" r="88" fill="url(#body)" stroke="#4a8060" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="96" cy="96" r="76" fill="none" stroke="#1c3828" stroke-width="1.5" stroke-dasharray="3 5"/>
-  <!-- Tone field guide ring -->
-  <circle cx="96" cy="96" r="58" fill="none" stroke="#183028" stroke-width="1"/>
+  <circle cx="96" cy="96" r="76" fill="none" stroke="#2d5a42" stroke-width="1.5" stroke-dasharray="3 5"/>
   <!-- Dome -->
-  <circle cx="96" cy="96" r="24" fill="#183028" stroke="#1c3828" stroke-width="1.5"/>
-  <!-- Tone fields (8 notes in physical ring order) -->
-  <circle cx="96" cy="38" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="137" cy="55" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="154" cy="96" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="137" cy="137" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="96" cy="154" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="55" cy="137" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="38" cy="96" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="55" cy="55" r="9" fill="#1a3828" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="96" cy="96" r="24" fill="url(#dome)" stroke="#c8a030" stroke-width="1.5"/>
+  <!-- Tone fields — vibrant green with lighter stroke -->
+  <circle cx="96" cy="38"  r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="137" cy="55" r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="154" cy="96" r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="137" cy="137" r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="96" cy="154" r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="55" cy="137" r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="38" cy="96"  r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <circle cx="55" cy="55"  r="10" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
 </svg>
