@@ -955,18 +955,19 @@ function initAudio() {
 }
 
 // Schedule fn() only once the context is confirmed running.
-// IMPORTANT: always go through ctx.resume() — even for a fresh context,
-// iOS Safari requires the resume promise to resolve before ctx.currentTime
-// is valid. Calling ctx.currentTime while still suspended gives a stale
-// value that puts all scheduled notes in the past.
+// Fast path: if already running, call synchronously (no delay).
+// Slow path: context suspended (first call / iOS auto-suspend) — wait for
+// resume before capturing ctx.currentTime, otherwise stale time puts notes
+// in the past and only the decay tail is audible.
 function whenRunning(fn) {
   if (!ctx) initAudio();
+  if (ctx.state === 'running') { fn(); return; }
   ctx.resume().then(fn);
 }
 
-// Extra time (seconds) added to every note's start. Gives iOS audio
-// hardware time to spin up so the attack is not clipped.
-const START_OFFSET = 0.05;
+// Small buffer (seconds) added to every scheduled note so iOS audio hardware
+// has time to output the attack before we start writing frames.
+const START_OFFSET = 0.02;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;
@@ -1891,6 +1892,11 @@ function showToast(msg) {
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 loadFromHash();
 render();
+
+// Pre-warm AudioContext on the very first user touch so that by the time
+// the user taps Play, the context is already running and there is no
+// resume-induced delay in the audio output.
+document.addEventListener('pointerdown', () => initAudio(), { once: true });
 
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {

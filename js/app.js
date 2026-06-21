@@ -515,6 +515,11 @@ function showToast(msg) {
 loadFromHash();
 render();
 
+// Pre-warm AudioContext on the very first user touch so that by the time
+// the user taps Play, the context is already running and there is no
+// resume-induced delay in the audio output.
+document.addEventListener('pointerdown', () => initAudio(), { once: true });
+
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {
   // ── Pan note click — must be checked BEFORE the data-action early return ──
