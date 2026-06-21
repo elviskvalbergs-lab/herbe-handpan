@@ -184,11 +184,13 @@ body {
   .explorer-layout {
     display: flex;
     flex-direction: column;
+    align-items: stretch; /* override grid's align-items: start */
   }
   .explorer-layout .chord-list {
     order: 2;
     max-height: 45vh;
   }
+  .pan-wrap svg { max-width: 100%; }
 }
 
 .chord-list {

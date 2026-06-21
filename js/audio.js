@@ -4,45 +4,39 @@ let ctx = null;
 let masterGain = null;
 
 export function initAudio() {
-  if (ctx) return;
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = ctx.createGain();
-  masterGain.gain.value = 0.7;
-  masterGain.connect(ctx.destination);
-
-  // iOS unlock: play a 1-sample buffer + resume() synchronously in the
-  // user-gesture handler. The buffer must be started before resume() resolves.
-  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  src.connect(ctx.destination);
-  src.start(0);
-  ctx.resume();
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(ctx.destination);
+  }
+  // Play a silent buffer + resume() to unlock the audio system.
+  // Called on every user gesture that triggers audio so Chrome iOS
+  // (which may not unlock from pointerdown alone) gets a fresh unlock.
+  if (ctx.state !== 'running') {
+    const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.start(0);
+    ctx.resume();
+  }
 }
 
+// Always synchronous — stays inside the iOS/Chrome user-gesture window.
 function whenRunning(fn) {
-  if (!ctx) initAudio();
-  // Always call fn() synchronously so we stay inside the iOS user-gesture
-  // window. Promise .then() callbacks are async microtasks — iOS treats them
-  // as outside the gesture, silently blocking audio.
-  // If the context is suspended, ctx.currentTime is frozen at its last value
-  // (or 0 on first unlock). Calling resume() before fn() queues the context
-  // start; notes scheduled at currentTime + START_OFFSET will play once the
-  // context starts, which happens within a few ms of resume().
-  if (ctx.state !== 'running') ctx.resume();
-  fn();
+  initAudio(); // create + unlock if needed
+  fn();        // schedule within the same gesture
 }
 
-// 80ms — enough time for ctx.resume() to resolve asynchronously on iOS
-// before the scheduled note start time.
-const START_OFFSET = 0.08;
+// 100ms gives the audio engine time to start on a freshly resumed context.
+const START_OFFSET = 0.10;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;
   const now = startTime ?? ctx.currentTime;
 
-  // Two harmonics: fundamental + octave. Three or more overloads iOS
-  // audio processing during chord/scale playback.
+  // Two harmonics only — fundamental + octave.
   const harmonics = [
     { mult: 1, gain: 0.60, decay: 4.5 },
     { mult: 2, gain: 0.28, decay: 2.2 },
@@ -60,18 +54,15 @@ function playFreq(freq, startTime) {
     env.connect(masterGain);
     osc.start(now);
     osc.stop(now + decay + 0.05);
-    // Disconnect after stop so iOS can release the nodes promptly.
     osc.onended = () => { osc.disconnect(); env.disconnect(); };
   });
 }
 
 export function playNote(noteName) {
-  initAudio();
   whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
 }
 
 export function playChord(noteNames, onArp, onTogether) {
-  initAudio();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const ARP = 0.3;
   const togetherOffset = sorted.length * ARP + 0.35;
@@ -87,7 +78,6 @@ export function playChord(noteNames, onArp, onTogether) {
 }
 
 export function playScale(noteNames, onNote) {
-  initAudio();
   const asc = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const desc = asc.slice(0, -1).reverse();
   const all = [...asc, ...desc];

@@ -331,10 +331,15 @@ function viewChords() {
         <span>/</span>
         <span>Chords</span>
       </div>
-      <button class="btn btn-secondary btn-sm" data-action="copy-url"
-        style="margin-left:auto;flex-shrink:0">
-        Copy URL
-      </button>
+      <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0">
+        <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
+          title="Rotate the ring so two lowest notes face you instead of one">
+          ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
+        </button>
+        <button class="btn btn-secondary btn-sm" data-action="copy-url">
+          Copy URL
+        </button>
+      </div>
     </div>
 
     <div class="explorer-layout">
@@ -389,14 +394,8 @@ function viewChords() {
       </div>
 
       <div>
-        <div class="pan-wrap" style="margin-bottom:8px">
+        <div class="pan-wrap" style="margin-bottom:16px">
           ${panSvg}
-        </div>
-        <div style="text-align:center;margin-bottom:16px">
-          <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
-            title="Rotate the ring so two lowest notes face you instead of one">
-            ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
-          </button>
         </div>
         <div class="chord-panel">
           ${selectedChord ? `
