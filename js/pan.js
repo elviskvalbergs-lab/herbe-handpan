@@ -83,7 +83,7 @@ export function renderPan(layout, opts = {}) {
     return classes.join(' ');
   }
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 560" xmlns="http://www.w3.org/2000/svg">
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
@@ -94,12 +94,18 @@ export function renderPan(layout, opts = {}) {
       <stop offset="0%" stop-color="#183028"/>
       <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
+    <clipPath id="panClip">
+      <circle cx="${cx}" cy="${cy}" r="218"/>
+    </clipPath>
   </defs>
 
   <!-- Pan body -->
   <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
   <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <!-- Gu separator groove (bottom zone) — arc at y=cy+175 on the r=195 groove ring -->
+  <path d="M ${cx - 90},${cy + 175} A 195,195 0 0,1 ${cx + 90},${cy + 175}"
+    fill="none" stroke="#2a5040" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.9"/>
   <!-- Inner center dome -->
   <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
   <!-- Tone field guide ring -->
@@ -141,16 +147,22 @@ export function renderPan(layout, opts = {}) {
     svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r);
   }
 
-  // Gu (bottom shell)
+  // Gu (bottom shell) — placed inside the pan body, lower zone
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-  const guSpacing = 76;
-  const guStartX = cx - ((guCount - 1) * guSpacing) / 2;
-  const guY = 496;
+  if (guCount > 0) {
+    const guR = 20;
+    const guY = cy + 197; // inside the pan (pan bottom edge = cy+220)
+    const guSpacing = Math.min(60, guCount > 1 ? 180 / (guCount - 1) : 0);
+    const guStartX = guCount === 1 ? cx : cx - ((guCount - 1) * guSpacing) / 2;
 
-  for (let i = 0; i < guCount; i++) {
-    const slot = layout.bottom.slots[i] ?? { note: null };
-    const gx = guStartX + i * guSpacing;
-    svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 24);
+    // Clip group so circles don't bleed outside the pan body
+    svg += `<g clip-path="url(#panClip)">`;
+    for (let i = 0; i < guCount; i++) {
+      const slot = layout.bottom.slots[i] ?? { note: null };
+      const gx = guCount === 1 ? cx : guStartX + i * guSpacing;
+      svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, guR);
+    }
+    svg += `</g>`;
   }
 
   svg += '</svg>';
