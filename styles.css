@@ -115,8 +115,12 @@ body {
   align-items: start;
 }
 @media (max-width: 720px) {
-  #app { padding: 12px 12px; }
+  #app { padding: 10px 10px; }
   .editor-layout { grid-template-columns: 1fr; }
+  .editor-sidebar { gap: 7px; }
+  .editor-shells { gap: 7px; }
+  .editor-section { padding: 10px; }
+  .editor-section-title { margin-bottom: 7px; }
 }
 
 .editor-sidebar { display: flex; flex-direction: column; gap: 10px; }

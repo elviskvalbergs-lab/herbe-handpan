@@ -219,7 +219,7 @@ function viewEditor() {
           </div>
         </div>
 
-        <button class="btn btn-primary" data-action="go-chords" style="width:100%;margin-top:4px">
+        <button class="btn btn-primary" data-action="go-chords" style="width:100%">
           Find Chords →
         </button>
       </div>

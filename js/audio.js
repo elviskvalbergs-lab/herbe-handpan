@@ -3,40 +3,43 @@ import { noteToFreq, noteToMidi } from './data.js';
 let ctx = null;
 let masterGain = null;
 
+function playUnlockBuffer() {
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+}
+
 export function initAudio() {
-  if (!ctx) {
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    masterGain = ctx.createGain();
-    masterGain.gain.value = 0.7;
-    masterGain.connect(ctx.destination);
-  }
-  // Play a silent buffer + resume() to unlock the audio system.
-  // Called on every user gesture that triggers audio so Chrome iOS
-  // (which may not unlock from pointerdown alone) gets a fresh unlock.
-  if (ctx.state !== 'running') {
-    const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(ctx.destination);
-    src.start(0);
-    ctx.resume();
-  }
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = 0.7;
+  masterGain.connect(ctx.destination);
+  playUnlockBuffer();
+  ctx.resume();
 }
 
 // Always synchronous — stays inside the iOS/Chrome user-gesture window.
+// Re-plays the unlock buffer when suspended so Chrome iOS (which may not
+// unlock from the pointerdown pre-warm) gets a fresh unlock on each gesture.
 function whenRunning(fn) {
-  initAudio(); // create + unlock if needed
-  fn();        // schedule within the same gesture
+  if (!ctx) initAudio();
+  if (ctx.state !== 'running') {
+    playUnlockBuffer();
+    ctx.resume();
+  }
+  fn();
 }
 
-// 100ms gives the audio engine time to start on a freshly resumed context.
+// 100ms — gives a freshly resumed context time to start before note hits.
 const START_OFFSET = 0.10;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;
   const now = startTime ?? ctx.currentTime;
 
-  // Two harmonics only — fundamental + octave.
   const harmonics = [
     { mult: 1, gain: 0.60, decay: 4.5 },
     { mult: 2, gain: 0.28, decay: 2.2 },
@@ -59,10 +62,12 @@ function playFreq(freq, startTime) {
 }
 
 export function playNote(noteName) {
+  initAudio();
   whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
 }
 
 export function playChord(noteNames, onArp, onTogether) {
+  initAudio();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const ARP = 0.3;
   const togetherOffset = sorted.length * ARP + 0.35;
@@ -78,6 +83,7 @@ export function playChord(noteNames, onArp, onTogether) {
 }
 
 export function playScale(noteNames, onNote) {
+  initAudio();
   const asc = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const desc = asc.slice(0, -1).reverse();
   const all = [...asc, ...desc];
