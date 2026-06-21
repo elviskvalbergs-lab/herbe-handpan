@@ -1017,36 +1017,39 @@ function playNote(noteName) {
   whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
 }
 
-// Returns { arpTimings: [{note, delayMs}], togetherMs } for visual sync.
-function playChord(noteNames) {
+// onArp(note) called in sync with each arpeggiated note.
+// onTogether(notes) called when all notes strike together.
+function playChord(noteNames, onArp, onTogether) {
   initAudio();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const ARP = 0.3;
   const togetherOffset = sorted.length * ARP + 0.35;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
-    sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * ARP));
+    sorted.forEach((n, i) => {
+      playFreq(noteToFreq(n), now + i * ARP);
+      if (onArp) setTimeout(() => onArp(n), Math.round(i * ARP * 1000));
+    });
     sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset));
+    if (onTogether) setTimeout(() => onTogether(sorted), Math.round(togetherOffset * 1000));
   });
-  return {
-    arpTimings: sorted.map((note, i) => ({ note, delayMs: Math.round((START_OFFSET + i * ARP) * 1000) })),
-    togetherMs: Math.round((START_OFFSET + togetherOffset) * 1000),
-  };
 }
 
 // Plays ascending then descending (top note played once).
-// Returns [{note, delayMs}] for visual sync.
-function playScale(noteNames) {
+// onNote(note) called in sync with each note.
+function playScale(noteNames, onNote) {
   initAudio();
   const asc = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
-  const desc = asc.slice(0, -1).reverse(); // exclude top note — already played
+  const desc = asc.slice(0, -1).reverse();
   const all = [...asc, ...desc];
   const INTERVAL = 0.4;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
-    all.forEach((n, i) => playFreq(noteToFreq(n), now + i * INTERVAL));
+    all.forEach((n, i) => {
+      playFreq(noteToFreq(n), now + i * INTERVAL);
+      if (onNote) setTimeout(() => onNote(n), Math.round(i * INTERVAL * 1000));
+    });
   });
-  return all.map((note, i) => ({ note, delayMs: Math.round((START_OFFSET + i * INTERVAL) * 1000) }));
 }
 
 
@@ -2206,32 +2209,27 @@ document.addEventListener('click', e => {
     if (newChordList) newChordList.scrollTop = savedScroll;
     // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
-    const { arpTimings, togetherMs } = playChord(chord.notes);
-    arpTimings.forEach(({ note, delayMs }) =>
-      setTimeout(() => updatePanPlaying([note]), delayMs)
+    playChord(chord.notes,
+      note => updatePanPlaying([note]),
+      notes => updatePanPlaying(notes)
     );
-    setTimeout(() => updatePanPlaying(chord.notes), togetherMs);
     return;
   }
 
   if (action === 'play-chord') {
     if (!state.selectedChord) return;
     initAudio();
-    const { arpTimings, togetherMs } = playChord(state.selectedChord.notes);
-    arpTimings.forEach(({ note, delayMs }) =>
-      setTimeout(() => updatePanPlaying([note]), delayMs)
+    playChord(state.selectedChord.notes,
+      note => updatePanPlaying([note]),
+      notes => updatePanPlaying(notes)
     );
-    setTimeout(() => updatePanPlaying(state.selectedChord.notes), togetherMs);
     return;
   }
 
   if (action === 'play-scale') {
     const allNotes = getAllNotes(state.layout);
     initAudio();
-    const timings = playScale(allNotes);
-    timings.forEach(({ note, delayMs }) =>
-      setTimeout(() => updatePanPlaying([note]), delayMs)
-    );
+    playScale(allNotes, note => updatePanPlaying([note]));
     return;
   }
 

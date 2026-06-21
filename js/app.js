@@ -828,32 +828,27 @@ document.addEventListener('click', e => {
     if (newChordList) newChordList.scrollTop = savedScroll;
     // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
-    const { arpTimings, togetherMs } = playChord(chord.notes);
-    arpTimings.forEach(({ note, delayMs }) =>
-      setTimeout(() => updatePanPlaying([note]), delayMs)
+    playChord(chord.notes,
+      note => updatePanPlaying([note]),
+      notes => updatePanPlaying(notes)
     );
-    setTimeout(() => updatePanPlaying(chord.notes), togetherMs);
     return;
   }
 
   if (action === 'play-chord') {
     if (!state.selectedChord) return;
     initAudio();
-    const { arpTimings, togetherMs } = playChord(state.selectedChord.notes);
-    arpTimings.forEach(({ note, delayMs }) =>
-      setTimeout(() => updatePanPlaying([note]), delayMs)
+    playChord(state.selectedChord.notes,
+      note => updatePanPlaying([note]),
+      notes => updatePanPlaying(notes)
     );
-    setTimeout(() => updatePanPlaying(state.selectedChord.notes), togetherMs);
     return;
   }
 
   if (action === 'play-scale') {
     const allNotes = getAllNotes(state.layout);
     initAudio();
-    const timings = playScale(allNotes);
-    timings.forEach(({ note, delayMs }) =>
-      setTimeout(() => updatePanPlaying([note]), delayMs)
-    );
+    playScale(allNotes, note => updatePanPlaying([note]));
     return;
   }
 

@@ -82,34 +82,37 @@ export function playNote(noteName) {
   whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
 }
 
-// Returns { arpTimings: [{note, delayMs}], togetherMs } for visual sync.
-export function playChord(noteNames) {
+// onArp(note) called in sync with each arpeggiated note.
+// onTogether(notes) called when all notes strike together.
+export function playChord(noteNames, onArp, onTogether) {
   initAudio();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const ARP = 0.3;
   const togetherOffset = sorted.length * ARP + 0.35;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
-    sorted.forEach((n, i) => playFreq(noteToFreq(n), now + i * ARP));
+    sorted.forEach((n, i) => {
+      playFreq(noteToFreq(n), now + i * ARP);
+      if (onArp) setTimeout(() => onArp(n), Math.round(i * ARP * 1000));
+    });
     sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset));
+    if (onTogether) setTimeout(() => onTogether(sorted), Math.round(togetherOffset * 1000));
   });
-  return {
-    arpTimings: sorted.map((note, i) => ({ note, delayMs: Math.round((START_OFFSET + i * ARP) * 1000) })),
-    togetherMs: Math.round((START_OFFSET + togetherOffset) * 1000),
-  };
 }
 
 // Plays ascending then descending (top note played once).
-// Returns [{note, delayMs}] for visual sync.
-export function playScale(noteNames) {
+// onNote(note) called in sync with each note.
+export function playScale(noteNames, onNote) {
   initAudio();
   const asc = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
-  const desc = asc.slice(0, -1).reverse(); // exclude top note — already played
+  const desc = asc.slice(0, -1).reverse();
   const all = [...asc, ...desc];
   const INTERVAL = 0.4;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
-    all.forEach((n, i) => playFreq(noteToFreq(n), now + i * INTERVAL));
+    all.forEach((n, i) => {
+      playFreq(noteToFreq(n), now + i * INTERVAL);
+      if (onNote) setTimeout(() => onNote(n), Math.round(i * INTERVAL * 1000));
+    });
   });
-  return all.map((note, i) => ({ note, delayMs: Math.round((START_OFFSET + i * INTERVAL) * 1000) }));
 }
