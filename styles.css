@@ -354,3 +354,10 @@ body {
 }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
+
+/* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
+@supports (-webkit-touch-callout: none) {
+  .scale-search, .name-input, .select-input {
+    font-size: 16px !important;
+  }
+}

@@ -15,13 +15,25 @@ function physicalOrder(n) {
 // Outer ring physical order for 10-ring instruments (n1-n8, same as 8-ring).
 const OUTER_8_ORDER = [7,6,4,2,0,1,3,5];
 
-// Positions for inner ring notes — symmetric around 12 o'clock at ±45°.
-function innerRingPositions(cx, cy, r) {
-  const angles = [-Math.PI / 2 - Math.PI / 4, -Math.PI / 2 + Math.PI / 4];
-  return angles.map(a => ({
-    x: Math.round(cx + r * Math.cos(a)),
-    y: Math.round(cy + r * Math.sin(a)),
-  }));
+// Inner ring note positions. 1-2 notes: symmetric at ±45° from top, r=100.
+// 3-5 notes: evenly spread across an arc from -140° to -40°, r=95.
+function innerRingPositions(cx, cy, count) {
+  if (count <= 2) {
+    const r = 100;
+    const angles = [-Math.PI * 3 / 4, -Math.PI / 4]; // -135°, -45°
+    return angles.slice(0, count).map(a => ({
+      x: Math.round(cx + r * Math.cos(a)),
+      y: Math.round(cy + r * Math.sin(a)),
+    }));
+  }
+  const r = 95;
+  const start = (-140 * Math.PI) / 180;
+  const end   = (-40 * Math.PI) / 180;
+  const step  = (end - start) / (count - 1);
+  return Array.from({ length: count }, (_, i) => {
+    const a = start + i * step;
+    return { x: Math.round(cx + r * Math.cos(a)), y: Math.round(cy + r * Math.sin(a)) };
+  });
 }
 
 function circlePositions(count, cx, cy, r, rotationOffset = 0) {
@@ -137,9 +149,9 @@ export function renderPan(layout, opts = {}) {
     return classes.join(' ');
   }
 
-  // 10-ring scales split into outer (n1-n8) + inner (n9, n10) rings.
+  // 10-13 ring scales split into outer (n1-n8) + inner (n9+) rings.
   const totalRingSlots = layout.top.slots.length;
-  const hasInnerRing = !layout.isCustom && totalRingSlots >= 10;
+  const hasInnerRing = !layout.isCustom && totalRingSlots >= 10 && totalRingSlots <= 13;
 
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -169,7 +181,7 @@ export function renderPan(layout, opts = {}) {
   <!-- Outer tone field guide ring -->
   <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
   ${hasInnerRing ? `<!-- Inner tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="100" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
@@ -193,9 +205,10 @@ export function renderPan(layout, opts = {}) {
       svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
         `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats);
     }
-    // Inner ring: n9 (index 8) and n10 (index 9)
-    const innerPos = innerRingPositions(cx, cy, 100);
-    for (let i = 0; i < Math.min(2, totalRingSlots - 8); i++) {
+    // Inner ring: slots 8+ (up to 5 for 13-ring instruments)
+    const innerCount = Math.min(5, totalRingSlots - 8);
+    const innerPos = innerRingPositions(cx, cy, innerCount);
+    for (let i = 0; i < innerCount; i++) {
       const sortedIdx = 8 + i;
       const slot = layout.top.slots[sortedIdx] ?? { note: null };
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
