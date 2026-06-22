@@ -2,20 +2,17 @@ import { noteToFreq, noteToMidi } from './data.js';
 
 let ctx = null;
 let masterGain = null;
-let reverbSend = null; // oscillators connect here to get wet + dry signal
+let reverbSend = null; // set after reverb setup; null = reverb not ready, use masterGain
 
 function buildReverb() {
-  // Exponentially decaying white noise impulse response — ~1.8 s room tail
-  const duration = 1.8;
-  const len = Math.floor(ctx.sampleRate * duration);
+  // ~1.8 s exponentially-decaying white-noise impulse response
+  const len = Math.floor(ctx.sampleRate * 1.8);
   const ir = ctx.createBuffer(2, len, ctx.sampleRate);
   for (let c = 0; c < 2; c++) {
     const d = ir.getChannelData(c);
     for (let i = 0; i < len; i++) {
-      // Early reflections boost (first 60 ms), then exponential tail
       const t = i / ctx.sampleRate;
-      const earlyBoost = t < 0.06 ? 1.4 : 1.0;
-      d[i] = (Math.random() * 2 - 1) * earlyBoost * Math.exp(-t * 3.5);
+      d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 3.5);
     }
   }
   const conv = ctx.createConvolver();
@@ -23,44 +20,50 @@ function buildReverb() {
   return conv;
 }
 
+function setupReverb() {
+  const conv = buildReverb();
+
+  const dryGain = ctx.createGain();
+  dryGain.gain.value = 0.7;
+  dryGain.connect(masterGain);
+
+  const reverbReturn = ctx.createGain();
+  reverbReturn.gain.value = 0.25;
+  conv.connect(reverbReturn);
+  reverbReturn.connect(masterGain);
+
+  reverbSend = ctx.createGain();
+  reverbSend.gain.value = 1;
+  reverbSend.connect(dryGain);
+  reverbSend.connect(conv);
+}
+
 export function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
 
   masterGain = ctx.createGain();
-  masterGain.gain.value = 0.72;
+  masterGain.gain.value = 0.7;
   masterGain.connect(ctx.destination);
 
-  // Dry path
-  const dryGain = ctx.createGain();
-  dryGain.gain.value = 0.68;
-  dryGain.connect(masterGain);
-
-  // Wet (reverb) path
-  const conv = buildReverb();
-  const reverbReturn = ctx.createGain();
-  reverbReturn.gain.value = 0.28;
-  conv.connect(reverbReturn);
-  reverbReturn.connect(masterGain);
-
-  // Single shared send that feeds both paths
-  reverbSend = ctx.createGain();
-  reverbSend.gain.value = 1;
-  reverbSend.connect(dryGain);
-  reverbSend.connect(conv);
-
-  // iOS unlock: start a silent buffer + kick off resume synchronously
-  const silentBuf = ctx.createBuffer(1, 1, ctx.sampleRate);
-  const silentSrc = ctx.createBufferSource();
-  silentSrc.buffer = silentBuf;
-  silentSrc.connect(ctx.destination);
-  silentSrc.start(0);
+  // iOS unlock: play a silent buffer + resume() synchronously in the gesture handler
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
   ctx.resume();
+
+  // Reverb is non-critical — build it asynchronously so it never blocks
+  // the gesture window or kills audio if buildReverb() throws on some browser.
+  setTimeout(() => {
+    try { setupReverb(); } catch (_) {}
+  }, 0);
 }
 
-// Await resume before scheduling so iOS Chrome doesn't silently drop notes.
-// ctx.resume() was already called synchronously inside the user-gesture handler,
-// so iOS considers the audio permission granted — the .then() still fires in time.
+// Wait for the context to actually be running before scheduling audio.
+// On iOS Chrome the context can still be 'suspended' right after resume() is called;
+// scheduling on a suspended context drops the audio silently.
 function whenRunning(fn) {
   if (!ctx) initAudio();
   if (ctx.state === 'running') {
@@ -73,10 +76,10 @@ function whenRunning(fn) {
 const START_OFFSET = 0.05;
 
 function playFreq(freq, startTime) {
-  if (!ctx || !reverbSend) return;
+  if (!ctx) return;
   const now = startTime ?? ctx.currentTime;
+  const sink = reverbSend ?? masterGain; // fall back if reverb not ready yet
 
-  // Handpan partials: fundamental + octave (dominant on real pans) + 5th + 2nd octave
   const harmonics = [
     { mult: 1,   gain: 0.52, decay: 5.5 },
     { mult: 2,   gain: 0.34, decay: 3.2 },
@@ -89,16 +92,15 @@ function playFreq(freq, startTime) {
     const env = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq * mult;
-    // Tiny random detune per partial — gives the slight "alive" shimmer of metal
     osc.detune.value = (Math.random() - 0.5) * 4;
 
     env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(gain, now + 0.004);      // fast metallic attack
-    env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18); // initial drop
+    env.gain.linearRampToValueAtTime(gain, now + 0.004);
+    env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
 
     osc.connect(env);
-    env.connect(reverbSend);
+    env.connect(sink);
     osc.start(now);
     osc.stop(now + decay + 0.1);
     osc.onended = () => { osc.disconnect(); env.disconnect(); };
