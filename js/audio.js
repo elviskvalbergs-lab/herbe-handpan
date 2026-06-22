@@ -38,6 +38,28 @@ function setupReverb() {
   reverbSend.connect(conv);
 }
 
+// Generates a 100ms 440Hz sine wave WAV at near-zero volume as a data URI.
+// Used to flip iOS's audio session from ambient (earpiece) to playback (main speaker).
+function _tinyToneDataUri() {
+  const sr = 22050, n = 2205; // 100ms mono
+  const ab = new ArrayBuffer(44 + n * 2);
+  const v = new DataView(ab);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true);
+  ws(8, 'WAVE'); ws(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  ws(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) {
+    v.setInt16(44 + i * 2, Math.round(164 * Math.sin(2 * Math.PI * 440 * i / sr)), true);
+  }
+  const bytes = new Uint8Array(ab);
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return 'data:audio/wav;base64,' + btoa(s);
+}
+
 export function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -54,14 +76,15 @@ export function initAudio() {
   src.start(0);
   ctx.resume();
 
-  // iOS sometimes routes Web Audio through the earpiece instead of the main speaker.
-  // Playing a silent <audio> element forces the OS to use the media playback session
-  // which routes through the main speaker.
-  // Tiny valid silent WAV (44 bytes): RIFF header + fmt chunk + empty data chunk.
-  const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  // iOS routes Web Audio through the earpiece by default (AVAudioSessionCategoryAmbient).
+  // Playing an *audible* <audio> element (even at near-zero volume) switches the OS
+  // session to AVAudioSessionCategoryPlayback, which routes everything — including the
+  // AudioContext — through the main speaker.
+  // A silent WAV does NOT trigger the session switch; we need actual PCM samples.
   const audioEl = document.createElement('audio');
-  audioEl.src = silentWav;
+  audioEl.src = _tinyToneDataUri();
   audioEl.setAttribute('playsinline', '');
+  audioEl.volume = 0.001; // inaudible but non-silent — enough to flip the session
   audioEl.play().catch(() => {});
 
   // Reverb is non-critical — build it asynchronously so it never blocks
