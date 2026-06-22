@@ -361,12 +361,11 @@ function viewChords() {
                 data-action="filter-category" data-cat="${cat}">${cat}</button>
             `).join('')}
           </div>
-          <div class="flex-row" style="margin-top:8px">
-            <select class="select-input" data-action="filter-root">
-              ${roots.map(r => `<option value="${r}" ${chordFilter.root === r ? 'selected' : ''}>
-                ${r === 'All' ? 'All' : displayNote(r, uf)}
-              </option>`).join('')}
-            </select>
+          <div class="pills" style="margin-bottom:4px">
+            ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
+              data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf)}</button>`).join('')}
+          </div>
+          <div style="margin-bottom:4px">
             <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
@@ -821,6 +820,12 @@ document.addEventListener('click', e => {
     return;
   }
 
+  if (action === 'filter-root') {
+    state.chordFilter.root = el.dataset.root;
+    render();
+    return;
+  }
+
   if (action === 'select-chord') {
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
@@ -871,13 +876,6 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Change delegation (select dropdowns) ─────────────────────────────────────
-document.addEventListener('change', e => {
-  if (e.target.dataset.action === 'filter-root') {
-    state.chordFilter.root = e.target.value;
-    render();
-  }
-});
 
 // ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {

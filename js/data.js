@@ -204,9 +204,9 @@ export const SCALES = [
     bottom:{ notes:[], capacity:3 } },
 
   { id:'F-Low-Pygmy-17', name:'F Low Pygmy (17)', family:'Pygmy',
-    desc:'Full 17-note F Phrygian. Three sub-bass gu notes (C3–Eb3) anchor the low end; the outer ring spans the standard octave and the inner ring extends two octaves up to Eb5.',
-    top:{ ding:'F3', notes:['Gb3','Ab3','Bb3','C4','Db4','Eb4','F4','Gb4','Ab4','Bb4','C5','Db5','Eb5'], capacity:13 },
-    bottom:{ notes:['C3','Db3','Eb3'], capacity:3 } },
+    desc:'Full 17-note F Phrygian. Five sub-bass gu notes (Ab2–Eb3) anchor the low end; 11 ring notes span from Gb3 up to C5.',
+    top:{ ding:'F3', notes:['Gb3','Ab3','Bb3','C4','Db4','Eb4','F4','Gb4','Ab4','Bb4','C5'], capacity:11 },
+    bottom:{ notes:['Eb3','Db3','C3','Bb2','Ab2'], capacity:5 } },
 
   // ── INTEGRAL (PANArt Hang — specific layouts) ─────────────────────────────
   // D Integral: PANArt Final Hang 2008. G/E Integral: confirmed by 3 maker sources.
