@@ -518,10 +518,13 @@ function showToast(msg) {
 loadFromHash();
 render();
 
-// Pre-warm AudioContext on the very first user touch so that by the time
-// the user taps Play, the context is already running and there is no
-// resume-induced delay in the audio output.
+// Pre-warm AudioContext on the very first user touch.
+// Both pointerdown and touchstart are registered: iOS Chrome (WKWebView) requires
+// a user-gesture-initiated ctx.resume(); touchstart is the historically reliable
+// trigger on older iOS while pointerdown covers desktop and modern iOS.
+// initAudio() is idempotent so firing both for the same touch is harmless.
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
+document.addEventListener('touchstart', () => initAudio(), { once: true, passive: true });
 
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {

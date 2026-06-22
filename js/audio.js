@@ -2,40 +2,86 @@ import { noteToFreq, noteToMidi } from './data.js';
 
 let ctx = null;
 let masterGain = null;
+let reverbSend = null; // oscillators connect here to get wet + dry signal
+
+function buildReverb() {
+  // Exponentially decaying white noise impulse response — ~1.8 s room tail
+  const duration = 1.8;
+  const len = Math.floor(ctx.sampleRate * duration);
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      // Early reflections boost (first 60 ms), then exponential tail
+      const t = i / ctx.sampleRate;
+      const earlyBoost = t < 0.06 ? 1.4 : 1.0;
+      d[i] = (Math.random() * 2 - 1) * earlyBoost * Math.exp(-t * 3.5);
+    }
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = ir;
+  return conv;
+}
 
 export function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
+
   masterGain = ctx.createGain();
-  masterGain.gain.value = 0.7;
+  masterGain.gain.value = 0.72;
   masterGain.connect(ctx.destination);
-  // iOS unlock: play a 1-sample buffer + resume() synchronously in the
-  // user-gesture handler.
-  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
-  src.connect(ctx.destination);
-  src.start(0);
+
+  // Dry path
+  const dryGain = ctx.createGain();
+  dryGain.gain.value = 0.68;
+  dryGain.connect(masterGain);
+
+  // Wet (reverb) path
+  const conv = buildReverb();
+  const reverbReturn = ctx.createGain();
+  reverbReturn.gain.value = 0.28;
+  conv.connect(reverbReturn);
+  reverbReturn.connect(masterGain);
+
+  // Single shared send that feeds both paths
+  reverbSend = ctx.createGain();
+  reverbSend.gain.value = 1;
+  reverbSend.connect(dryGain);
+  reverbSend.connect(conv);
+
+  // iOS unlock: start a silent buffer + kick off resume synchronously
+  const silentBuf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const silentSrc = ctx.createBufferSource();
+  silentSrc.buffer = silentBuf;
+  silentSrc.connect(ctx.destination);
+  silentSrc.start(0);
   ctx.resume();
 }
 
-// Always synchronous — stays inside the iOS user-gesture window.
+// Await resume before scheduling so iOS Chrome doesn't silently drop notes.
+// ctx.resume() was already called synchronously inside the user-gesture handler,
+// so iOS considers the audio permission granted — the .then() still fires in time.
 function whenRunning(fn) {
   if (!ctx) initAudio();
-  if (ctx.state !== 'running') ctx.resume();
-  fn();
+  if (ctx.state === 'running') {
+    fn();
+  } else {
+    ctx.resume().then(() => fn());
+  }
 }
 
-// 80ms — gives a freshly resumed context time to start.
-const START_OFFSET = 0.08;
+const START_OFFSET = 0.05;
 
 function playFreq(freq, startTime) {
-  if (!ctx) return;
+  if (!ctx || !reverbSend) return;
   const now = startTime ?? ctx.currentTime;
 
+  // Handpan partials: fundamental + octave (dominant on real pans) + 5th + 2nd octave
   const harmonics = [
-    { mult: 1, gain: 0.60, decay: 4.5 },
-    { mult: 2, gain: 0.28, decay: 2.2 },
+    { mult: 1,   gain: 0.52, decay: 5.5 },
+    { mult: 2,   gain: 0.34, decay: 3.2 },
+    { mult: 3,   gain: 0.11, decay: 2.0 },
+    { mult: 4,   gain: 0.05, decay: 1.3 },
   ];
 
   harmonics.forEach(({ mult, gain, decay }) => {
@@ -43,13 +89,18 @@ function playFreq(freq, startTime) {
     const env = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq * mult;
+    // Tiny random detune per partial — gives the slight "alive" shimmer of metal
+    osc.detune.value = (Math.random() - 0.5) * 4;
+
     env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(gain, now + 0.006);
+    env.gain.linearRampToValueAtTime(gain, now + 0.004);      // fast metallic attack
+    env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18); // initial drop
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
     osc.connect(env);
-    env.connect(masterGain);
+    env.connect(reverbSend);
     osc.start(now);
-    osc.stop(now + decay + 0.05);
+    osc.stop(now + decay + 0.1);
     osc.onended = () => { osc.disconnect(); env.disconnect(); };
   });
 }
