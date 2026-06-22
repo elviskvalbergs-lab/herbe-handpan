@@ -54,6 +54,16 @@ export function initAudio() {
   src.start(0);
   ctx.resume();
 
+  // iOS sometimes routes Web Audio through the earpiece instead of the main speaker.
+  // Playing a silent <audio> element forces the OS to use the media playback session
+  // which routes through the main speaker.
+  // Tiny valid silent WAV (44 bytes): RIFF header + fmt chunk + empty data chunk.
+  const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  const audioEl = document.createElement('audio');
+  audioEl.src = silentWav;
+  audioEl.setAttribute('playsinline', '');
+  audioEl.play().catch(() => {});
+
   // Reverb is non-critical — build it asynchronously so it never blocks
   // the gesture window or kills audio if buildReverb() throws on some browser.
   setTimeout(() => {
