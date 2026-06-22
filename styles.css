@@ -30,7 +30,7 @@ body {
   min-height: 100vh;
 }
 
-#app { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+#app { max-width: 1100px; margin: 0 auto; padding: 24px 16px max(24px, env(safe-area-inset-bottom)); }
 
 /* Header */
 .app-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -193,14 +193,14 @@ body {
   }
   .explorer-layout .chord-list {
     order: 2;
-    max-height: 45vh;
+    max-height: 45dvh;
   }
   .pan-wrap svg { max-width: 100%; }
 }
 
 .chord-list {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: 75vh; overflow-y: auto; min-height: 0;
+  max-height: calc(100dvh - 140px); overflow-y: auto; min-height: 0;
 }
 .chord-list-header {
   padding: 12px 14px; border-bottom: 1px solid var(--border);
