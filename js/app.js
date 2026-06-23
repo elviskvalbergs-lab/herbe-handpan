@@ -230,14 +230,13 @@ function viewEditor() {
 }
 
 function renderNotePicker() {
-  const allNotes = getAllNotes(state.layout);
-  const usedPCs = new Set(allNotes.map(notePC));
+  const allNotes = new Set(getAllNotes(state.layout));
   const octaves = [2, 3, 4, 5];
 
   const rows = octaves.map(oct => {
-    const cols = NOTE_NAMES.map((name, i) => {
+    const cols = NOTE_NAMES.map(name => {
       const noteStr = `${name}${oct}`;
-      const inUse = usedPCs.has(i); // NOTE_NAMES index = pitch class
+      const inUse = allNotes.has(noteStr);
       const label = displayNote(name, state.useFlats);
       return `<button class="note-btn ${inUse ? 'in-use' : ''}"
         data-action="pick-note" data-note="${noteStr}"
@@ -255,7 +254,7 @@ function renderNotePicker() {
 
   return `
     <div class="modal-overlay" data-action="close-picker">
-      <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal">
         <div class="modal-title">Choose a note</div>
         <div class="modal-sub">For ${slotLabel} · Grayed notes already on instrument</div>
         ${rows}
@@ -778,8 +777,10 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // Note picker: cancel
+  // Note picker: cancel or overlay background click
   if (action === 'close-picker') {
+    // Ignore clicks that landed inside the modal but not on the Cancel button
+    if (el.classList.contains('modal-overlay') && e.target.closest('.modal')) return;
     state.pendingSlot = null;
     render();
     return;

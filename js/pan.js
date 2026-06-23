@@ -151,7 +151,7 @@ export function renderPan(layout, opts = {}) {
 
   // 10-13 ring scales split into outer (n1-n8) + inner (n9+) rings.
   const totalRingSlots = layout.top.slots.length;
-  const hasInnerRing = !layout.isCustom && totalRingSlots >= 10 && totalRingSlots <= 13;
+  const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
 
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
