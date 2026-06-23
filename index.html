@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Handpan Chords</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -46,7 +46,7 @@ body {
   min-height: 100vh;
 }
 
-#app { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+#app { max-width: 1100px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
 
 /* Header */
 .app-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -131,11 +131,19 @@ body {
   align-items: start;
 }
 @media (max-width: 720px) {
-  #app { padding: 12px 12px; }
+  body { min-height: 0; }
+  #app { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
   .editor-layout { grid-template-columns: 1fr; }
+  .editor-sidebar { gap: 7px; }
+  .editor-shells { gap: 7px; }
+  .editor-section { padding: 10px; }
+  .editor-section-title { margin-bottom: 7px; }
 }
 
 .editor-sidebar { display: flex; flex-direction: column; gap: 10px; }
+.editor-secondary-actions { display: flex; gap: 6px; }
+.editor-shells { display: flex; gap: 10px; }
+.editor-shells .editor-section { flex: 1; min-width: 0; }
 .editor-section {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 14px;
@@ -197,16 +205,18 @@ body {
   .explorer-layout {
     display: flex;
     flex-direction: column;
+    align-items: stretch; /* override grid's align-items: start */
   }
   .explorer-layout .chord-list {
     order: 2;
-    max-height: 45vh;
+    max-height: 45dvh;
   }
+  .pan-wrap svg { max-width: 100%; }
 }
 
 .chord-list {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: 75vh; overflow-y: auto; min-height: 0;
+  max-height: calc(100dvh - 140px); overflow-y: auto; min-height: 0;
 }
 .chord-list-header {
   padding: 12px 14px; border-bottom: 1px solid var(--border);
@@ -360,6 +370,13 @@ body {
 }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
+
+/* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
+@supports (-webkit-touch-callout: none) {
+  .scale-search, .name-input, .select-input {
+    font-size: 16px !important;
+  }
+}
 
   </style>
 </head>
@@ -571,6 +588,11 @@ const SCALES = [
     desc:'G Pygmy one octave lower. Exceptionally deep resonance — the lowest common Pygmy variant.',
     top:{ ding:'G2', notes:['Ab2','Bb2','C3','D3','Eb3','F3','G3','Ab3'], capacity:8 },
     bottom:{ notes:[], capacity:3 } },
+
+  { id:'F-Low-Pygmy-17', name:'F Low Pygmy (17)', family:'Pygmy',
+    desc:'Full 17-note F Phrygian. Five sub-bass gu notes (Ab2–Eb3) anchor the low end; 11 ring notes span from Gb3 up to C5.',
+    top:{ ding:'F3', notes:['Gb3','Ab3','Bb3','C4','Db4','Eb4','F4','Gb4','Ab4','Bb4','C5'], capacity:11 },
+    bottom:{ notes:['Eb3','Db3','C3','Bb2','Ab2'], capacity:5 } },
 
   // ── INTEGRAL (PANArt Hang — specific layouts) ─────────────────────────────
   // D Integral: PANArt Final Hang 2008. G/E Integral: confirmed by 3 maker sources.
@@ -937,52 +959,111 @@ function getRelatedChords(chord, allChords) {
 // ── js/audio.js ──
 let ctx = null;
 let masterGain = null;
+let reverbSend = null; // set after reverb setup; null = reverb not ready, use masterGain
+
+function buildReverb() {
+  // ~1.8 s exponentially-decaying white-noise impulse response
+  const len = Math.floor(ctx.sampleRate * 1.8);
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      const t = i / ctx.sampleRate;
+      d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 3.5);
+    }
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = ir;
+  return conv;
+}
+
+function setupReverb() {
+  const conv = buildReverb();
+
+  const dryGain = ctx.createGain();
+  dryGain.gain.value = 0.7;
+  dryGain.connect(masterGain);
+
+  const reverbReturn = ctx.createGain();
+  reverbReturn.gain.value = 0.25;
+  conv.connect(reverbReturn);
+  reverbReturn.connect(masterGain);
+
+  reverbSend = ctx.createGain();
+  reverbSend.gain.value = 1;
+  reverbSend.connect(dryGain);
+  reverbSend.connect(conv);
+}
 
 function initAudio() {
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
+
   masterGain = ctx.createGain();
   masterGain.gain.value = 0.7;
-  masterGain.connect(ctx.destination);
-  // iOS unlock: resume() + silent buffer inside the user-gesture handler.
+
+  // iOS routes Web Audio through the earpiece (AVAudioSessionCategoryAmbient) by default.
+  // Routing masterGain → MediaStreamDestinationNode → <audio playsinline> forces iOS to
+  // use AVAudioSessionCategoryPlayback, which outputs through the main speaker.
+  // Falls back to ctx.destination if the MediaStream API is unavailable.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS && ctx.createMediaStreamDestination) {
+    try {
+      const streamDest = ctx.createMediaStreamDestination();
+      masterGain.connect(streamDest);
+      const routingEl = document.createElement('audio');
+      routingEl.setAttribute('playsinline', '');
+      routingEl.srcObject = streamDest.stream;
+      document.body.appendChild(routingEl);
+      routingEl.play().catch(() => {
+        masterGain.connect(ctx.destination); // fallback if stream play rejected
+      });
+    } catch (_) {
+      masterGain.connect(ctx.destination);
+    }
+  } else {
+    masterGain.connect(ctx.destination);
+  }
+
+  // iOS unlock: play a silent buffer + resume() synchronously in the gesture handler
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
   ctx.resume();
-  const silentBuf = ctx.createBuffer(1, 1, 22050);
-  const silentSrc = ctx.createBufferSource();
-  silentSrc.buffer = silentBuf;
-  silentSrc.connect(ctx.destination);
-  silentSrc.start(0);
-  // iOS auto-suspends AudioContext after silence between interactions.
-  // Tick a 1-sample silent buffer every 2s so whenRunning() always takes
-  // the fast synchronous path and notes schedule at the correct time.
-  setInterval(() => {
-    if (!ctx) return;
-    if (ctx.state === 'suspended') { ctx.resume(); return; }
-    const b = ctx.createBuffer(1, 1, ctx.sampleRate);
-    const s = ctx.createBufferSource();
-    s.buffer = b;
-    s.connect(masterGain);
-    s.start();
-  }, 2000);
+
+  // Reverb is non-critical — build it asynchronously so it never blocks
+  // the gesture window or kills audio if buildReverb() throws on some browser.
+  setTimeout(() => {
+    try { setupReverb(); } catch (_) {}
+  }, 0);
 }
 
+// Wait for the context to actually be running before scheduling audio.
+// On iOS Chrome the context can still be 'suspended' right after resume() is called;
+// scheduling on a suspended context drops the audio silently.
 function whenRunning(fn) {
   if (!ctx) initAudio();
-  if (ctx.state === 'running') { fn(); return; }
-  ctx.resume().then(fn);
+  if (ctx.state === 'running') {
+    fn();
+  } else {
+    ctx.resume().then(() => fn());
+  }
 }
 
-const START_OFFSET = 0.02;
+const START_OFFSET = 0.05;
 
 function playFreq(freq, startTime) {
   if (!ctx) return;
   const now = startTime ?? ctx.currentTime;
+  const sink = reverbSend ?? masterGain; // fall back if reverb not ready yet
 
-  // Two harmonics only — fundamental + octave. Three harmonics + a delay
-  // feedback loop per note creates ~50+ simultaneous nodes for a full scale,
-  // which overloads iOS audio processing and causes garbling.
   const harmonics = [
-    { mult: 1, gain: 0.60, decay: 4.5 },
-    { mult: 2, gain: 0.28, decay: 2.2 },
+    { mult: 1,   gain: 0.52, decay: 5.5 },
+    { mult: 2,   gain: 0.34, decay: 3.2 },
+    { mult: 3,   gain: 0.11, decay: 2.0 },
+    { mult: 4,   gain: 0.05, decay: 1.3 },
   ];
 
   harmonics.forEach(({ mult, gain, decay }) => {
@@ -990,13 +1071,18 @@ function playFreq(freq, startTime) {
     const env = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = freq * mult;
+    osc.detune.value = (Math.random() - 0.5) * 4;
+
     env.gain.setValueAtTime(0, now);
     env.gain.linearRampToValueAtTime(gain, now + 0.004);
+    env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
     osc.connect(env);
-    env.connect(masterGain);
+    env.connect(sink);
     osc.start(now);
-    osc.stop(now + decay + 0.05);
+    osc.stop(now + decay + 0.1);
+    osc.onended = () => { osc.disconnect(); env.disconnect(); };
   });
 }
 
@@ -1053,13 +1139,25 @@ function physicalOrder(n) {
 // Outer ring physical order for 10-ring instruments (n1-n8, same as 8-ring).
 const OUTER_8_ORDER = [7,6,4,2,0,1,3,5];
 
-// Positions for inner ring notes — symmetric around 12 o'clock at ±45°.
-function innerRingPositions(cx, cy, r) {
-  const angles = [-Math.PI / 2 - Math.PI / 4, -Math.PI / 2 + Math.PI / 4];
-  return angles.map(a => ({
-    x: Math.round(cx + r * Math.cos(a)),
-    y: Math.round(cy + r * Math.sin(a)),
-  }));
+// Inner ring note positions. 1-2 notes: symmetric at ±45° from top, r=100.
+// 3-5 notes: evenly spread across an arc from -140° to -40°, r=95.
+function innerRingPositions(cx, cy, count) {
+  if (count <= 2) {
+    const r = 100;
+    const angles = [-Math.PI * 3 / 4, -Math.PI / 4]; // -135°, -45°
+    return angles.slice(0, count).map(a => ({
+      x: Math.round(cx + r * Math.cos(a)),
+      y: Math.round(cy + r * Math.sin(a)),
+    }));
+  }
+  const r = 95;
+  const start = (-140 * Math.PI) / 180;
+  const end   = (-40 * Math.PI) / 180;
+  const step  = (end - start) / (count - 1);
+  return Array.from({ length: count }, (_, i) => {
+    const a = start + i * step;
+    return { x: Math.round(cx + r * Math.cos(a)), y: Math.round(cy + r * Math.sin(a)) };
+  });
 }
 
 function circlePositions(count, cx, cy, r, rotationOffset = 0) {
@@ -1175,11 +1273,14 @@ function renderPan(layout, opts = {}) {
     return classes.join(' ');
   }
 
-  // 10-ring scales split into outer (n1-n8) + inner (n9, n10) rings.
+  // 10-13 ring scales split into outer (n1-n8) + inner (n9+) rings.
   const totalRingSlots = layout.top.slots.length;
-  const hasInnerRing = !layout.isCustom && totalRingSlots >= 10;
+  const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
+  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
+  const svgHeight = guCount > 0 ? 548 : 490;
+
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 ${svgHeight}" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
@@ -1207,7 +1308,7 @@ function renderPan(layout, opts = {}) {
   <!-- Outer tone field guide ring -->
   <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
   ${hasInnerRing ? `<!-- Inner tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="100" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
@@ -1231,9 +1332,10 @@ function renderPan(layout, opts = {}) {
       svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
         `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats);
     }
-    // Inner ring: n9 (index 8) and n10 (index 9)
-    const innerPos = innerRingPositions(cx, cy, 100);
-    for (let i = 0; i < Math.min(2, totalRingSlots - 8); i++) {
+    // Inner ring: slots 8+ (up to 5 for 13-ring instruments)
+    const innerCount = Math.min(5, totalRingSlots - 8);
+    const innerPos = innerRingPositions(cx, cy, innerCount);
+    for (let i = 0; i < innerCount; i++) {
       const sortedIdx = 8 + i;
       const slot = layout.top.slots[sortedIdx] ?? { note: null };
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
@@ -1266,22 +1368,34 @@ function renderPan(layout, opts = {}) {
     }
   }
 
-  // Gu (bottom shell) — placed inside the pan body, lower zone
-  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
+  // Gu (bottom shell) — rendered below the pan body, sorted ascending by pitch
   if (guCount > 0) {
-    const guR = 20;
-    const guY = cy + 197; // inside the pan (pan bottom edge = cy+220)
-    const guSpacing = Math.min(60, guCount > 1 ? 180 / (guCount - 1) : 0);
+    const guR = 17;
+    const guY = 516;
+    const guSpacing = Math.min(44, guCount > 1 ? 340 / (guCount - 1) : 0);
     const guStartX = guCount === 1 ? cx : cx - ((guCount - 1) * guSpacing) / 2;
 
-    // Clip group so circles don't bleed outside the pan body
-    svg += `<g clip-path="url(#panClip)">`;
+    // Sort filled slots ascending by pitch; empty slots go at the end
+    const guEntries = Array.from({ length: guCount }, (_, i) => ({
+      slot: layout.bottom.slots[i] ?? { note: null },
+      slotIdx: i,
+    }));
+    guEntries.sort((a, b) => {
+      if (!a.slot.note && !b.slot.note) return a.slotIdx - b.slotIdx;
+      if (!a.slot.note) return 1;
+      if (!b.slot.note) return -1;
+      return noteToMidi(a.slot.note) - noteToMidi(b.slot.note);
+    });
+
+    svg += `<text x="${cx}" y="480" text-anchor="middle" font-family="system-ui,sans-serif"
+      font-size="9" font-weight="600" letter-spacing="0.08em"
+      fill="var(--note-empty-border)" opacity="0.5">BOTTOM SHELL</text>`;
+
     for (let i = 0; i < guCount; i++) {
-      const slot = layout.bottom.slots[i] ?? { note: null };
+      const { slot, slotIdx } = guEntries[i];
       const gx = guCount === 1 ? cx : guStartX + i * guSpacing;
-      svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, guR, useFlats);
+      svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${slotIdx}`, guR, useFlats);
     }
-    svg += `</g>`;
   }
 
   svg += '</svg>';
@@ -1541,46 +1655,50 @@ function viewEditor() {
       </div>
 
       <div class="editor-sidebar">
-        ${!isCustom ? `
-          <button class="btn btn-secondary" data-action="clone-layout" style="width:100%">
-            Clone &amp; Customize
-          </button>
-        ` : ''}
-        ${(() => {
-          const savedId = isCustom ? layout.savedId : layout.id;
-          const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
-          return `<button class="btn btn-secondary" data-action="save-layout" style="width:100%">
-            ${isSaved ? '✓ Saved' : '⬇ Save Layout'}
-          </button>`;
-        })()}
+        <div class="editor-secondary-actions">
+          ${!isCustom ? `
+            <button class="btn btn-secondary btn-sm" data-action="clone-layout" style="flex:1">
+              Clone &amp; Customize
+            </button>
+          ` : ''}
+          ${(() => {
+            const savedId = isCustom ? layout.savedId : layout.id;
+            const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
+            return `<button class="btn btn-secondary btn-sm" data-action="save-layout" style="flex:1">
+              ${isSaved ? '✓ Saved' : '⬇ Save'}
+            </button>`;
+          })()}
+        </div>
 
-        <div class="editor-section">
-          <div class="editor-section-title">Top shell — ring slots</div>
-          <div class="capacity-control">
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
-              ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
-            <span class="capacity-val">${layout.top.capacity}</span>
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
+        <div class="editor-shells">
+          <div class="editor-section">
+            <div class="editor-section-title">Top shell</div>
+            <div class="capacity-control">
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
+                ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
+              <span class="capacity-val">${layout.top.capacity}</span>
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
+            </div>
+            <div class="hint" style="margin-top:6px">
+              ${topFilled + 1} notes (incl. ding) · ${topEmpty} empty
+            </div>
           </div>
-          <div class="hint" style="margin-top:6px">
-            ${topFilled + 1} notes total (incl. ding) · ${topEmpty} empty slot${topEmpty !== 1 ? 's' : ''}
+
+          <div class="editor-section">
+            <div class="editor-section-title">Bottom shell</div>
+            <div class="capacity-control">
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
+                ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
+              <span class="capacity-val">${layout.bottom.capacity}</span>
+              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
+            </div>
+            <div class="hint" style="margin-top:6px">
+              ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
+            </div>
           </div>
         </div>
 
-        <div class="editor-section">
-          <div class="editor-section-title">Bottom shell — gu</div>
-          <div class="capacity-control">
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
-              ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
-            <span class="capacity-val">${layout.bottom.capacity}</span>
-            <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
-          </div>
-          <div class="hint" style="margin-top:6px">
-            ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
-          </div>
-        </div>
-
-        <button class="btn btn-primary" data-action="go-chords" style="width:100%;margin-top:4px">
+        <button class="btn btn-primary" data-action="go-chords" style="width:100%">
           Find Chords →
         </button>
       </div>
@@ -1591,14 +1709,13 @@ function viewEditor() {
 }
 
 function renderNotePicker() {
-  const allNotes = getAllNotes(state.layout);
-  const usedPCs = new Set(allNotes.map(notePC));
+  const allNotes = new Set(getAllNotes(state.layout));
   const octaves = [2, 3, 4, 5];
 
   const rows = octaves.map(oct => {
-    const cols = NOTE_NAMES.map((name, i) => {
+    const cols = NOTE_NAMES.map(name => {
       const noteStr = `${name}${oct}`;
-      const inUse = usedPCs.has(i); // NOTE_NAMES index = pitch class
+      const inUse = allNotes.has(noteStr);
       const label = displayNote(name, state.useFlats);
       return `<button class="note-btn ${inUse ? 'in-use' : ''}"
         data-action="pick-note" data-note="${noteStr}"
@@ -1616,7 +1733,7 @@ function renderNotePicker() {
 
   return `
     <div class="modal-overlay" data-action="close-picker">
-      <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal">
         <div class="modal-title">Choose a note</div>
         <div class="modal-sub">For ${slotLabel} · Grayed notes already on instrument</div>
         ${rows}
@@ -1692,10 +1809,15 @@ function viewChords() {
         <span>/</span>
         <span>Chords</span>
       </div>
-      <button class="btn btn-secondary btn-sm" data-action="copy-url"
-        style="margin-left:auto;flex-shrink:0">
-        Copy URL
-      </button>
+      <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0">
+        <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
+          title="Rotate the ring so two lowest notes face you instead of one">
+          ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
+        </button>
+        <button class="btn btn-secondary btn-sm" data-action="copy-url">
+          Copy URL
+        </button>
+      </div>
     </div>
 
     <div class="explorer-layout">
@@ -1717,12 +1839,11 @@ function viewChords() {
                 data-action="filter-category" data-cat="${cat}">${cat}</button>
             `).join('')}
           </div>
-          <div class="flex-row" style="margin-top:8px">
-            <select class="select-input" data-action="filter-root">
-              ${roots.map(r => `<option value="${r}" ${chordFilter.root === r ? 'selected' : ''}>
-                ${r === 'All' ? 'All' : displayNote(r, uf)}
-              </option>`).join('')}
-            </select>
+          <div class="pills" style="margin-bottom:4px">
+            ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
+              data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf)}</button>`).join('')}
+          </div>
+          <div style="margin-bottom:4px">
             <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
@@ -1750,14 +1871,8 @@ function viewChords() {
       </div>
 
       <div>
-        <div class="pan-wrap" style="margin-bottom:8px">
+        <div class="pan-wrap" style="margin-bottom:16px">
           ${panSvg}
-        </div>
-        <div style="text-align:center;margin-bottom:16px">
-          <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
-            title="Rotate the ring so two lowest notes face you instead of one">
-            ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
-          </button>
         </div>
         <div class="chord-panel">
           ${selectedChord ? `
@@ -1880,10 +1995,13 @@ function showToast(msg) {
 loadFromHash();
 render();
 
-// Pre-warm AudioContext on the very first user touch so that by the time
-// the user taps Play, the context is already running and there is no
-// resume-induced delay in the audio output.
+// Pre-warm AudioContext on the very first user touch.
+// Both pointerdown and touchstart are registered: iOS Chrome (WKWebView) requires
+// a user-gesture-initiated ctx.resume(); touchstart is the historically reliable
+// trigger on older iOS while pointerdown covers desktop and modern iOS.
+// initAudio() is idempotent so firing both for the same touch is harmless.
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
+document.addEventListener('touchstart', () => initAudio(), { once: true, passive: true });
 
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {
@@ -2138,8 +2256,10 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // Note picker: cancel
+  // Note picker: cancel or overlay background click
   if (action === 'close-picker') {
+    // Ignore clicks that landed inside the modal but not on the Cancel button
+    if (el.classList.contains('modal-overlay') && e.target.closest('.modal')) return;
     state.pendingSlot = null;
     render();
     return;
@@ -2176,6 +2296,12 @@ document.addEventListener('click', e => {
   // ── Chord explorer ─────────────────────────────────────────────────────────
   if (action === 'filter-category') {
     state.chordFilter.category = el.dataset.cat;
+    render();
+    return;
+  }
+
+  if (action === 'filter-root') {
+    state.chordFilter.root = el.dataset.root;
     render();
     return;
   }
@@ -2230,13 +2356,6 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Change delegation (select dropdowns) ─────────────────────────────────────
-document.addEventListener('change', e => {
-  if (e.target.dataset.action === 'filter-root') {
-    state.chordFilter.root = e.target.value;
-    render();
-  }
-});
 
 // ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {

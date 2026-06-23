@@ -1,4 +1,4 @@
-import { displayNote } from './data.js';
+import { displayNote, noteToMidi } from './data.js';
 
 export const PAN_SVG_ID = 'handpan-svg';
 
@@ -153,7 +153,10 @@ export function renderPan(layout, opts = {}) {
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
+  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
+  const svgHeight = guCount > 0 ? 548 : 490;
+
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 ${svgHeight}" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
@@ -241,22 +244,34 @@ export function renderPan(layout, opts = {}) {
     }
   }
 
-  // Gu (bottom shell) — placed inside the pan body, lower zone
-  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
+  // Gu (bottom shell) — rendered below the pan body, sorted ascending by pitch
   if (guCount > 0) {
-    const guR = 20;
-    const guY = cy + 197; // inside the pan (pan bottom edge = cy+220)
-    const guSpacing = Math.min(60, guCount > 1 ? 180 / (guCount - 1) : 0);
+    const guR = 17;
+    const guY = 516;
+    const guSpacing = Math.min(44, guCount > 1 ? 340 / (guCount - 1) : 0);
     const guStartX = guCount === 1 ? cx : cx - ((guCount - 1) * guSpacing) / 2;
 
-    // Clip group so circles don't bleed outside the pan body
-    svg += `<g clip-path="url(#panClip)">`;
+    // Sort filled slots ascending by pitch; empty slots go at the end
+    const guEntries = Array.from({ length: guCount }, (_, i) => ({
+      slot: layout.bottom.slots[i] ?? { note: null },
+      slotIdx: i,
+    }));
+    guEntries.sort((a, b) => {
+      if (!a.slot.note && !b.slot.note) return a.slotIdx - b.slotIdx;
+      if (!a.slot.note) return 1;
+      if (!b.slot.note) return -1;
+      return noteToMidi(a.slot.note) - noteToMidi(b.slot.note);
+    });
+
+    svg += `<text x="${cx}" y="480" text-anchor="middle" font-family="system-ui,sans-serif"
+      font-size="9" font-weight="600" letter-spacing="0.08em"
+      fill="var(--note-empty-border)" opacity="0.5">BOTTOM SHELL</text>`;
+
     for (let i = 0; i < guCount; i++) {
-      const slot = layout.bottom.slots[i] ?? { note: null };
+      const { slot, slotIdx } = guEntries[i];
       const gx = guCount === 1 ? cx : guStartX + i * guSpacing;
-      svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, guR, useFlats);
+      svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${slotIdx}`, guR, useFlats);
     }
-    svg += `</g>`;
   }
 
   svg += '</svg>';

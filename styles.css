@@ -30,7 +30,7 @@ body {
   min-height: 100vh;
 }
 
-#app { max-width: 1100px; margin: 0 auto; padding: 24px 16px max(24px, env(safe-area-inset-bottom)); }
+#app { max-width: 1100px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
 
 /* Header */
 .app-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -116,7 +116,7 @@ body {
 }
 @media (max-width: 720px) {
   body { min-height: 0; }
-  #app { padding: 10px 10px; }
+  #app { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
   .editor-layout { grid-template-columns: 1fr; }
   .editor-sidebar { gap: 7px; }
   .editor-shells { gap: 7px; }
