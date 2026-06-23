@@ -1368,14 +1368,11 @@ function renderPan(layout, opts = {}) {
     }
   }
 
-  // Gu (bottom shell) — rendered below the pan body, sorted ascending by pitch
+  // Gu (bottom shell) — small circular mini-pan overlapping bottom-right of main pan
   if (guCount > 0) {
-    const guR = 17;
-    const guY = 516;
-    const guSpacing = Math.min(44, guCount > 1 ? 340 / (guCount - 1) : 0);
-    const guStartX = guCount === 1 ? cx : cx - ((guCount - 1) * guSpacing) / 2;
+    const mCx = 390, mCy = 465;
+    const mOuter = 52, mNoteR = 34, mNoteCircle = 16;
 
-    // Sort filled slots ascending by pitch; empty slots go at the end
     const guEntries = Array.from({ length: guCount }, (_, i) => ({
       slot: layout.bottom.slots[i] ?? { note: null },
       slotIdx: i,
@@ -1387,14 +1384,17 @@ function renderPan(layout, opts = {}) {
       return noteToMidi(a.slot.note) - noteToMidi(b.slot.note);
     });
 
-    svg += `<text x="${cx}" y="480" text-anchor="middle" font-family="system-ui,sans-serif"
-      font-size="9" font-weight="600" letter-spacing="0.08em"
-      fill="var(--note-empty-border)" opacity="0.5">BOTTOM SHELL</text>`;
+    svg += `
+  <circle cx="${mCx}" cy="${mCy}" r="${mOuter}" fill="url(#panGrad)" stroke="#2a5040" stroke-width="1.5"/>
+  <circle cx="${mCx}" cy="${mCy}" r="${mOuter - 14}" fill="none" stroke="#1c3828" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.5"/>
+  <text x="${mCx}" y="${mCy + mOuter + 11}" text-anchor="middle" font-family="system-ui,sans-serif"
+    font-size="8" font-weight="600" letter-spacing="0.08em"
+    fill="var(--note-empty-border)" opacity="0.5">BOTTOM SHELL</text>`;
 
+    const guPos = circlePositions(guCount, mCx, mCy, mNoteR, 0);
     for (let i = 0; i < guCount; i++) {
       const { slot, slotIdx } = guEntries[i];
-      const gx = guCount === 1 ? cx : guStartX + i * guSpacing;
-      svg += noteSlotSvg(gx, guY, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${slotIdx}`, guR, useFlats);
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${slotIdx}`, mNoteCircle, useFlats);
     }
   }
 
