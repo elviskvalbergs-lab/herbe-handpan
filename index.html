@@ -1373,17 +1373,6 @@ function renderPan(layout, opts = {}) {
     const mCx = 390, mCy = 465;
     const mOuter = 52, mNoteR = 34, mNoteCircle = 16;
 
-    const guEntries = Array.from({ length: guCount }, (_, i) => ({
-      slot: layout.bottom.slots[i] ?? { note: null },
-      slotIdx: i,
-    }));
-    guEntries.sort((a, b) => {
-      if (!a.slot.note && !b.slot.note) return a.slotIdx - b.slotIdx;
-      if (!a.slot.note) return 1;
-      if (!b.slot.note) return -1;
-      return noteToMidi(a.slot.note) - noteToMidi(b.slot.note);
-    });
-
     svg += `
   <circle cx="${mCx}" cy="${mCy}" r="${mOuter}" fill="url(#panGrad)" stroke="#2a5040" stroke-width="1.5"/>
   <circle cx="${mCx}" cy="${mCy}" r="${mOuter - 14}" fill="none" stroke="#1c3828" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.5"/>
@@ -1393,8 +1382,8 @@ function renderPan(layout, opts = {}) {
 
     const guPos = circlePositions(guCount, mCx, mCy, mNoteR, 0);
     for (let i = 0; i < guCount; i++) {
-      const { slot, slotIdx } = guEntries[i];
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${slotIdx}`, mNoteCircle, useFlats);
+      const slot = layout.bottom.slots[i] ?? { note: null };
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, mNoteCircle, useFlats);
     }
   }
 
