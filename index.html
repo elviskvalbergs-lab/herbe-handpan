@@ -182,6 +182,15 @@ body {
 }
 .pan-note.highlight text { fill: var(--note-active-text) !important; font-weight: 700; }
 
+/* Alt-highlight (same pitch class as a chord note, but not in the chord itself) */
+.pan-note.alt-highlight circle {
+  fill: rgba(232, 144, 110, 0.1) !important;
+  stroke: rgba(232, 144, 110, 0.35) !important;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+.pan-note.alt-highlight text { fill: rgba(232, 190, 160, 0.65) !important; }
+
 /* Playing animation */
 @keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
 .pan-note.playing rect, .pan-note.playing circle {
@@ -352,14 +361,66 @@ body {
 }
 .saved-del:hover { color: var(--primary); }
 
-.fav-chip {
-  flex-shrink: 0; padding: 8px 11px;
+/* Playlist cards on home screen */
+.playlist-card {
+  flex-shrink: 0; padding: 8px 12px; min-width: 100px;
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   cursor: pointer; transition: border-color 0.12s;
 }
-.fav-chip:hover { border-color: var(--primary); }
-.fav-chip-chord { font-size: 12px; font-weight: 600; color: var(--heading); white-space: nowrap; }
-.fav-chip-scale { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; }
+.playlist-card:hover { border-color: var(--primary); }
+.playlist-card-name { font-size: 12px; font-weight: 600; color: var(--heading); white-space: nowrap; }
+.playlist-card-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* Playlist view */
+.playlist-view { padding: 0 0 40px; }
+.playlist-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+}
+.playlist-header .name-input { flex: 1; }
+
+.playlist-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.playlist-item-reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.playlist-item-reorder .btn-icon { font-size: 11px; padding: 2px 5px; }
+.playlist-item-info {
+  flex: 1; cursor: pointer; min-width: 0;
+}
+.playlist-item-info:hover .playlist-item-name { color: var(--primary); }
+.playlist-item-name { font-size: 14px; font-weight: 600; color: var(--heading); }
+.playlist-item-scale { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.playlist-item-notes { font-size: 11px; margin-top: 2px; }
+.playlist-item-remove {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 16px; padding: 4px 6px; line-height: 1; flex-shrink: 0;
+  transition: color 0.1s;
+}
+.playlist-item-remove:hover { color: var(--primary); }
+
+/* Playlist picker popup */
+.picker-modal { max-width: 300px; padding: 0; overflow: hidden; }
+.picker-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--muted); padding: 12px 16px 8px; text-transform: uppercase;
+}
+.picker-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px; cursor: pointer; transition: background 0.1s;
+}
+.picker-row:hover { background: rgba(255,255,255,0.04); }
+.picker-row.in-playlist { background: rgba(232,144,110,0.07); }
+.picker-check { width: 16px; text-align: center; font-size: 13px; color: var(--primary); flex-shrink: 0; }
+.picker-name { flex: 1; font-size: 13px; color: var(--heading); }
+.picker-count { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.picker-create { border-top: 1px solid var(--border); margin-top: 2px; }
+.picker-new-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px 12px; border-top: 1px solid var(--border);
+}
+.picker-new-input { flex: 1; }
+.picker-new-row .btn { flex-shrink: 0; }
 
 /* Heart button in chord list */
 .chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
@@ -1253,13 +1314,14 @@ function renderBottomShell(layout, opts = {}) {
 }
 
 function renderPan(layout, opts = {}) {
-  const { shellMode = 'both', highlightNotes = [], rotated = false, useFlats = false } = opts;
+  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false } = opts;
 
   // Bottom shell gets its own dedicated view.
   if (shellMode === 'bottom') return renderBottomShell(layout, opts);
 
   const cx = 250, cy = 240;
   const hlSet = new Set(highlightNotes);
+  const altSet = new Set(altHighlightNotes);
 
   const dimTop = shellMode === 'bottom';
   const dimBottom = shellMode === 'top';
@@ -1268,6 +1330,7 @@ function renderPan(layout, opts = {}) {
     const classes = [];
     if (!note) classes.push('empty');
     else if (hlSet.has(note)) classes.push('highlight');
+    else if (altSet.has(note)) classes.push('alt-highlight');
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -1392,14 +1455,16 @@ function renderPan(layout, opts = {}) {
 }
 
 // Update highlight using full note strings (with octave)
-function updatePanHighlight(noteNames) {
+function updatePanHighlight(noteNames, altNoteNames = []) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
   const nameSet = new Set(noteNames);
+  const altSet = new Set(altNoteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
     const note = el.dataset.note;
     el.classList.toggle('highlight', !!(note && nameSet.has(note)));
+    el.classList.toggle('alt-highlight', !!(note && !nameSet.has(note) && altSet.has(note)));
   });
 }
 
@@ -1438,12 +1503,15 @@ function updatePanPlaying(noteNames) {
 
 // ── js/storage.js ──
 const LAYOUTS_KEY = 'hp-layouts';
-const FAVS_KEY = 'hp-favorites';
+const FAVS_KEY = 'hp-favorites'; // legacy, migrated into hp-playlists on first access
+const PLAYLISTS_KEY = 'hp-playlists';
 
 function safeParse(key) {
   try { return JSON.parse(localStorage.getItem(key) || '[]'); }
   catch { return []; }
 }
+
+// ── Saved layouts ────────────────────────────────────────────────────────────
 
 function getSavedLayouts() { return safeParse(LAYOUTS_KEY); }
 
@@ -1456,25 +1524,93 @@ function saveLayout(entry) {
 }
 
 function deleteLayout(id) {
-  localStorage.setItem(LAYOUTS_KEY,
-    JSON.stringify(getSavedLayouts().filter(l => l.id !== id)));
+  localStorage.setItem(LAYOUTS_KEY, JSON.stringify(getSavedLayouts().filter(l => l.id !== id)));
 }
 
-function getFavorites() { return safeParse(FAVS_KEY); }
+// ── Playlists ────────────────────────────────────────────────────────────────
 
-// Adds if not present, removes if present. Returns true = added.
+function setPlaylists(playlists) {
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+}
+
+function getPlaylists() {
+  const raw = localStorage.getItem(PLAYLISTS_KEY);
+  if (raw !== null) {
+    try { return JSON.parse(raw); } catch { /* fall through */ }
+  }
+  // First run: create default Favorites playlist, migrate old favorites if any
+  const old = safeParse(FAVS_KEY);
+  const playlists = [{ id: 'favorites', name: 'Favorites', chords: old }];
+  setPlaylists(playlists);
+  return playlists;
+}
+
+function addPlaylist(name) {
+  const playlists = getPlaylists();
+  const id = 'pl-' + Date.now();
+  playlists.push({ id, name, chords: [] });
+  setPlaylists(playlists);
+  return id;
+}
+
+function renamePlaylist(id, name) {
+  const playlists = getPlaylists();
+  const pl = playlists.find(p => p.id === id);
+  if (pl) { pl.name = name; setPlaylists(playlists); }
+}
+
+function deletePlaylist(id) {
+  if (id === 'favorites') return;
+  setPlaylists(getPlaylists().filter(p => p.id !== id));
+}
+
+function addChordToPlaylist(playlistId, chord) {
+  const playlists = getPlaylists();
+  const pl = playlists.find(p => p.id === playlistId);
+  if (!pl || pl.chords.some(c => c.id === chord.id)) return false;
+  pl.chords.unshift(chord);
+  setPlaylists(playlists);
+  return true;
+}
+
+function removeChordFromPlaylist(playlistId, chordFavId) {
+  const playlists = getPlaylists();
+  const pl = playlists.find(p => p.id === playlistId);
+  if (!pl) return;
+  pl.chords = pl.chords.filter(c => c.id !== chordFavId);
+  setPlaylists(playlists);
+}
+
+function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
+  const playlists = getPlaylists();
+  const pl = playlists.find(p => p.id === playlistId);
+  if (!pl || fromIdx === toIdx || toIdx < 0 || toIdx >= pl.chords.length) return;
+  const [item] = pl.chords.splice(fromIdx, 1);
+  pl.chords.splice(toIdx, 0, item);
+  setPlaylists(playlists);
+}
+
+function isChordInPlaylist(playlistId, chordFavId) {
+  const pl = getPlaylists().find(p => p.id === playlistId);
+  return !!(pl && pl.chords.some(c => c.id === chordFavId));
+}
+
+function isChordInAnyPlaylist(chordFavId) {
+  return getPlaylists().some(p => p.chords.some(c => c.id === chordFavId));
+}
+
+// Legacy compat — keep old callers working
+function getFavorites() {
+  return getPlaylists().find(p => p.id === 'favorites')?.chords ?? [];
+}
 function toggleFavorite(fav) {
-  const all = getFavorites();
-  const idx = all.findIndex(f => f.id === fav.id);
-  if (idx >= 0) all.splice(idx, 1);
-  else all.unshift(fav);
-  localStorage.setItem(FAVS_KEY, JSON.stringify(all));
-  return idx < 0;
+  if (isChordInPlaylist('favorites', fav.id)) {
+    removeChordFromPlaylist('favorites', fav.id);
+    return false;
+  }
+  return addChordToPlaylist('favorites', fav);
 }
-
-function isFavorite(id) {
-  return getFavorites().some(f => f.id === id);
-}
+function isFavorite(id) { return isChordInPlaylist('favorites', id); }
 
 
 // ── js/app.js ──
@@ -1492,6 +1628,11 @@ const state = {
   useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
+  playlists: getPlaylists(),
+  activePlaylistId: null,
+  pickerChordFavId: null,
+  pickerChordObj: null,
+  pickerNewPlaylist: false,
   chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
@@ -1502,6 +1643,7 @@ function render() {
   if (state.view === 'selector') app.innerHTML = viewSelector();
   else if (state.view === 'editor') app.innerHTML = viewEditor();
   else if (state.view === 'chords') app.innerHTML = viewChords();
+  else if (state.view === 'playlist') app.innerHTML = viewPlaylist();
 }
 
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
@@ -1533,14 +1675,14 @@ function viewSelector() {
     </div>
   `;
 
-  const favsSection = favorites.length === 0 ? '' : `
+  const favsSection = state.playlists.length === 0 ? '' : `
     <div class="pwa-section">
-      <div class="pwa-section-title">My Chords</div>
+      <div class="pwa-section-title">My Playlists</div>
       <div class="pwa-scroll">
-        ${favorites.map(f => `
-          <div class="fav-chip" data-action="open-favorite" data-id="${escHtml(f.id)}">
-            <div class="fav-chip-chord">${escHtml(displayNote(f.rootName, useFlats))} ${escHtml(f.typeName)}</div>
-            <div class="fav-chip-scale">${escHtml(f.scaleName)}</div>
+        ${state.playlists.map(pl => `
+          <div class="playlist-card" data-action="open-playlist" data-id="${escHtml(pl.id)}">
+            <div class="playlist-card-name">${escHtml(pl.name)}</div>
+            <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
           </div>
         `).join('')}
       </div>
@@ -1759,7 +1901,11 @@ function viewChords() {
   });
 
   const highlightNotes = selectedChord ? selectedChord.notes : [];
-  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, rotated: state.ringRotated, useFlats: uf });
+  const chordPCs = selectedChord ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
+  const altHighlightNotes = selectedChord
+    ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !selectedChord.notes.includes(n))
+    : [];
+  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf });
 
   let relatedHtml = '';
   if (selectedChord) {
@@ -1838,11 +1984,11 @@ function viewChords() {
         </div>
         ${(() => {
           const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
-          const favIds = new Set(state.favorites.map(f => f.id));
           return filtered.length === 0
             ? '<div class="empty-state">No chords match these filters</div>'
             : filtered.map(c => {
               const favId = `${layoutId}-${c.id}`;
+              const inAny = isChordInAnyPlaylist(favId);
               return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
                 data-action="select-chord" data-id="${c.id}">
                 <div>
@@ -1850,8 +1996,8 @@ function viewChords() {
                   <div class="chord-item-type">${c.type.category}</div>
                 </div>
                 <div class="chord-item-right">
-                  <button class="fav-btn ${favIds.has(favId) ? 'active' : ''}"
-                    data-action="toggle-favorite" data-chord-id="${c.id}" title="Save to My Chords">♥</button>
+                  <button class="fav-btn ${inAny ? 'active' : ''}"
+                    data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">♥</button>
                   <span class="chord-count">${c.noteCount}</span>
                 </div>
               </div>`;
@@ -1885,6 +2031,86 @@ function viewChords() {
           `}
         </div>
       </div>
+    </div>
+    ${state.pickerChordFavId ? renderPlaylistPicker() : ''}
+  `;
+}
+
+// ── Playlist picker overlay ──────────────────────────────────────────────────
+function renderPlaylistPicker() {
+  const favId = state.pickerChordFavId;
+  return `
+    <div class="modal-overlay" data-action="close-playlist-picker">
+      <div class="modal picker-modal">
+        <div class="picker-title">Add to playlist</div>
+        ${state.playlists.map(pl => {
+          const inPl = pl.chords.some(c => c.id === favId);
+          return `<div class="picker-row ${inPl ? 'in-playlist' : ''}"
+            data-action="toggle-playlist-chord" data-playlist-id="${escHtml(pl.id)}">
+            <span class="picker-check">${inPl ? '✓' : ''}</span>
+            <span class="picker-name">${escHtml(pl.name)}</span>
+            <span class="picker-count">${pl.chords.length}</span>
+          </div>`;
+        }).join('')}
+        ${state.pickerNewPlaylist
+          ? `<div class="picker-new-row">
+               <input class="name-input picker-new-input" id="new-playlist-input" placeholder="Playlist name…">
+               <button class="btn btn-primary btn-sm" data-action="confirm-new-playlist">Create</button>
+             </div>`
+          : `<div class="picker-row picker-create" data-action="show-new-playlist-input">
+               <span class="picker-check">+</span>
+               <span class="picker-name">New playlist</span>
+             </div>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+// ── View 4: Playlist ─────────────────────────────────────────────────────────
+function viewPlaylist() {
+  const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+  if (!pl) return viewSelector();
+  const uf = state.useFlats;
+
+  return `
+    <div class="app-header">
+      <div class="breadcrumb">
+        <a data-action="back-selector">← Scales</a>
+        <span>/</span>
+        <span>${escHtml(pl.name)}</span>
+      </div>
+    </div>
+
+    <div class="playlist-view">
+      <div class="playlist-header">
+        <input class="name-input" id="playlist-name-input" value="${escHtml(pl.name)}" placeholder="Playlist name">
+        ${pl.id !== 'favorites' ? `
+          <button class="btn btn-secondary btn-sm" data-action="delete-playlist"
+            style="color:var(--error,#e05);border-color:var(--error,#e05)">Delete</button>
+        ` : ''}
+      </div>
+
+      ${pl.chords.length === 0
+        ? `<div class="empty-state" style="margin-top:40px">No chords yet.<br>
+            Use ♥ in the chord explorer to add chords here.</div>`
+        : pl.chords.map((chord, idx) => `
+          <div class="playlist-item">
+            <div class="playlist-item-reorder">
+              <button class="btn-icon" data-action="move-chord-up" data-idx="${idx}"
+                ${idx === 0 ? 'disabled' : ''}>↑</button>
+              <button class="btn-icon" data-action="move-chord-down" data-idx="${idx}"
+                ${idx === pl.chords.length - 1 ? 'disabled' : ''}>↓</button>
+            </div>
+            <div class="playlist-item-info" data-action="open-playlist-chord" data-idx="${idx}">
+              <div class="playlist-item-name">${escHtml(displayNote(chord.rootName, uf))} ${escHtml(chord.typeName)}</div>
+              <div class="playlist-item-scale">${escHtml(chord.scaleName)}</div>
+              <div class="playlist-item-notes hint">${chord.notes.map(n => displayNote(n, uf)).join(' · ')}</div>
+            </div>
+            <button class="playlist-item-remove" data-action="remove-playlist-chord" data-idx="${idx}">×</button>
+          </div>
+        `).join('')
+      }
     </div>
   `;
 }
@@ -2103,32 +2329,141 @@ document.addEventListener('click', e => {
   }
 
   // ── Favorites ─────────────────────────────────────────────────────────────
-  if (action === 'toggle-favorite') {
+  // ── Playlist picker ───────────────────────────────────────────────────────
+  if (action === 'show-playlist-picker') {
+    e.stopPropagation();
     const chordId = el.dataset.chordId;
+    const favId = el.dataset.chordFavId;
     const chord = state.chords.find(c => c.id === chordId);
-    if (!chord || !state.layout) return;
-    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-    const favId = `${layoutId}-${chord.id}`;
-    const added = toggleFavorite({
-      id: favId,
-      layoutId,
-      layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
-      scaleName: state.layout.name,
-      chordId: chord.id,
-      rootName: chord.rootName,
-      typeName: chord.type.name,
-      category: chord.type.category,
-      notes: chord.notes,
-      noteCount: chord.noteCount,
-    });
-    state.favorites = getFavorites();
-    showToast(added ? '♥ Added to My Chords' : 'Removed from My Chords');
+    if (!chord) return;
+    state.pickerChordFavId = favId;
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
     render();
     return;
   }
 
-  if (action === 'open-favorite') {
-    const fav = state.favorites.find(f => f.id === el.dataset.id);
+  if (action === 'close-playlist-picker') {
+    if (e.target.closest('.modal')) return;
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  }
+
+  if (action === 'toggle-playlist-chord') {
+    const playlistId = el.dataset.playlistId;
+    const favId = state.pickerChordFavId;
+    const chord = state.pickerChordObj;
+    if (!chord || !favId) return;
+    const pl = state.playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+    if (pl.chords.some(c => c.id === favId)) {
+      removeChordFromPlaylist(playlistId, favId);
+    } else {
+      const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+      addChordToPlaylist(playlistId, {
+        id: favId, layoutId,
+        layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
+        scaleName: state.layout.name,
+        chordId: chord.id, rootName: chord.rootName,
+        typeName: chord.type.name, category: chord.type.category,
+        notes: chord.notes, noteCount: chord.noteCount,
+      });
+    }
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    render();
+    return;
+  }
+
+  if (action === 'show-new-playlist-input') {
+    state.pickerNewPlaylist = true;
+    render();
+    setTimeout(() => document.getElementById('new-playlist-input')?.focus(), 0);
+    return;
+  }
+
+  if (action === 'confirm-new-playlist') {
+    const input = document.getElementById('new-playlist-input');
+    const name = (input?.value || '').trim();
+    if (!name) return;
+    const newId = addPlaylist(name);
+    if (state.pickerChordObj && state.pickerChordFavId) {
+      const chord = state.pickerChordObj;
+      const favId = state.pickerChordFavId;
+      const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+      addChordToPlaylist(newId, {
+        id: favId, layoutId,
+        layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
+        scaleName: state.layout.name,
+        chordId: chord.id, rootName: chord.rootName,
+        typeName: chord.type.name, category: chord.type.category,
+        notes: chord.notes, noteCount: chord.noteCount,
+      });
+    }
+    state.playlists = getPlaylists();
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    showToast('Playlist created');
+    render();
+    return;
+  }
+
+  // ── Playlist view ─────────────────────────────────────────────────────────
+  if (action === 'open-playlist') {
+    state.activePlaylistId = el.dataset.id;
+    state.view = 'playlist';
+    render();
+    return;
+  }
+
+  if (action === 'delete-playlist') {
+    if (state.activePlaylistId === 'favorites') return;
+    deletePlaylist(state.activePlaylistId);
+    state.playlists = getPlaylists();
+    state.view = 'selector';
+    state.activePlaylistId = null;
+    render();
+    return;
+  }
+
+  if (action === 'move-chord-up') {
+    const idx = parseInt(el.dataset.idx, 10);
+    reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
+    state.playlists = getPlaylists();
+    render();
+    return;
+  }
+
+  if (action === 'move-chord-down') {
+    const idx = parseInt(el.dataset.idx, 10);
+    reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
+    state.playlists = getPlaylists();
+    render();
+    return;
+  }
+
+  if (action === 'remove-playlist-chord') {
+    const idx = parseInt(el.dataset.idx, 10);
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl) return;
+    const chord = pl.chords[idx];
+    if (!chord) return;
+    removeChordFromPlaylist(state.activePlaylistId, chord.id);
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    render();
+    return;
+  }
+
+  if (action === 'open-playlist-chord') {
+    const idx = parseInt(el.dataset.idx, 10);
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl) return;
+    const fav = pl.chords[idx];
     if (!fav) return;
     if (fav.layoutData) {
       state.layout = fav.layoutData;
@@ -2358,6 +2693,22 @@ document.addEventListener('input', e => {
   }
   if (e.target.id === 'custom-name-input' && state.layout) {
     state.layout.name = e.target.value;
+  }
+  if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
+    renamePlaylist(state.activePlaylistId, e.target.value);
+    state.playlists = getPlaylists();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {
+    document.querySelector('[data-action="confirm-new-playlist"]')?.click();
+  }
+  if (e.key === 'Escape' && state.pickerChordFavId) {
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    render();
   }
 });
 

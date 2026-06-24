@@ -4,7 +4,10 @@ import {
 } from './data.js';
 import {
   getSavedLayouts, saveLayout, deleteLayout,
-  getFavorites, toggleFavorite, isFavorite,
+  getFavorites, isFavorite,
+  getPlaylists, addPlaylist, renamePlaylist, deletePlaylist,
+  addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
+  isChordInAnyPlaylist,
 } from './storage.js';
 import { findAllChords, getRelatedChords } from './chords.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
@@ -24,6 +27,11 @@ const state = {
   useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
+  playlists: getPlaylists(),
+  activePlaylistId: null,
+  pickerChordFavId: null,
+  pickerChordObj: null,
+  pickerNewPlaylist: false,
   chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
@@ -34,6 +42,7 @@ function render() {
   if (state.view === 'selector') app.innerHTML = viewSelector();
   else if (state.view === 'editor') app.innerHTML = viewEditor();
   else if (state.view === 'chords') app.innerHTML = viewChords();
+  else if (state.view === 'playlist') app.innerHTML = viewPlaylist();
 }
 
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
@@ -65,14 +74,14 @@ function viewSelector() {
     </div>
   `;
 
-  const favsSection = favorites.length === 0 ? '' : `
+  const favsSection = state.playlists.length === 0 ? '' : `
     <div class="pwa-section">
-      <div class="pwa-section-title">My Chords</div>
+      <div class="pwa-section-title">My Playlists</div>
       <div class="pwa-scroll">
-        ${favorites.map(f => `
-          <div class="fav-chip" data-action="open-favorite" data-id="${escHtml(f.id)}">
-            <div class="fav-chip-chord">${escHtml(displayNote(f.rootName, useFlats))} ${escHtml(f.typeName)}</div>
-            <div class="fav-chip-scale">${escHtml(f.scaleName)}</div>
+        ${state.playlists.map(pl => `
+          <div class="playlist-card" data-action="open-playlist" data-id="${escHtml(pl.id)}">
+            <div class="playlist-card-name">${escHtml(pl.name)}</div>
+            <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
           </div>
         `).join('')}
       </div>
@@ -291,7 +300,11 @@ function viewChords() {
   });
 
   const highlightNotes = selectedChord ? selectedChord.notes : [];
-  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, rotated: state.ringRotated, useFlats: uf });
+  const chordPCs = selectedChord ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
+  const altHighlightNotes = selectedChord
+    ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !selectedChord.notes.includes(n))
+    : [];
+  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf });
 
   let relatedHtml = '';
   if (selectedChord) {
@@ -370,11 +383,11 @@ function viewChords() {
         </div>
         ${(() => {
           const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
-          const favIds = new Set(state.favorites.map(f => f.id));
           return filtered.length === 0
             ? '<div class="empty-state">No chords match these filters</div>'
             : filtered.map(c => {
               const favId = `${layoutId}-${c.id}`;
+              const inAny = isChordInAnyPlaylist(favId);
               return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
                 data-action="select-chord" data-id="${c.id}">
                 <div>
@@ -382,8 +395,8 @@ function viewChords() {
                   <div class="chord-item-type">${c.type.category}</div>
                 </div>
                 <div class="chord-item-right">
-                  <button class="fav-btn ${favIds.has(favId) ? 'active' : ''}"
-                    data-action="toggle-favorite" data-chord-id="${c.id}" title="Save to My Chords">♥</button>
+                  <button class="fav-btn ${inAny ? 'active' : ''}"
+                    data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">♥</button>
                   <span class="chord-count">${c.noteCount}</span>
                 </div>
               </div>`;
@@ -417,6 +430,86 @@ function viewChords() {
           `}
         </div>
       </div>
+    </div>
+    ${state.pickerChordFavId ? renderPlaylistPicker() : ''}
+  `;
+}
+
+// ── Playlist picker overlay ──────────────────────────────────────────────────
+function renderPlaylistPicker() {
+  const favId = state.pickerChordFavId;
+  return `
+    <div class="modal-overlay" data-action="close-playlist-picker">
+      <div class="modal picker-modal">
+        <div class="picker-title">Add to playlist</div>
+        ${state.playlists.map(pl => {
+          const inPl = pl.chords.some(c => c.id === favId);
+          return `<div class="picker-row ${inPl ? 'in-playlist' : ''}"
+            data-action="toggle-playlist-chord" data-playlist-id="${escHtml(pl.id)}">
+            <span class="picker-check">${inPl ? '✓' : ''}</span>
+            <span class="picker-name">${escHtml(pl.name)}</span>
+            <span class="picker-count">${pl.chords.length}</span>
+          </div>`;
+        }).join('')}
+        ${state.pickerNewPlaylist
+          ? `<div class="picker-new-row">
+               <input class="name-input picker-new-input" id="new-playlist-input" placeholder="Playlist name…">
+               <button class="btn btn-primary btn-sm" data-action="confirm-new-playlist">Create</button>
+             </div>`
+          : `<div class="picker-row picker-create" data-action="show-new-playlist-input">
+               <span class="picker-check">+</span>
+               <span class="picker-name">New playlist</span>
+             </div>`
+        }
+      </div>
+    </div>
+  `;
+}
+
+// ── View 4: Playlist ─────────────────────────────────────────────────────────
+function viewPlaylist() {
+  const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+  if (!pl) return viewSelector();
+  const uf = state.useFlats;
+
+  return `
+    <div class="app-header">
+      <div class="breadcrumb">
+        <a data-action="back-selector">← Scales</a>
+        <span>/</span>
+        <span>${escHtml(pl.name)}</span>
+      </div>
+    </div>
+
+    <div class="playlist-view">
+      <div class="playlist-header">
+        <input class="name-input" id="playlist-name-input" value="${escHtml(pl.name)}" placeholder="Playlist name">
+        ${pl.id !== 'favorites' ? `
+          <button class="btn btn-secondary btn-sm" data-action="delete-playlist"
+            style="color:var(--error,#e05);border-color:var(--error,#e05)">Delete</button>
+        ` : ''}
+      </div>
+
+      ${pl.chords.length === 0
+        ? `<div class="empty-state" style="margin-top:40px">No chords yet.<br>
+            Use ♥ in the chord explorer to add chords here.</div>`
+        : pl.chords.map((chord, idx) => `
+          <div class="playlist-item">
+            <div class="playlist-item-reorder">
+              <button class="btn-icon" data-action="move-chord-up" data-idx="${idx}"
+                ${idx === 0 ? 'disabled' : ''}>↑</button>
+              <button class="btn-icon" data-action="move-chord-down" data-idx="${idx}"
+                ${idx === pl.chords.length - 1 ? 'disabled' : ''}>↓</button>
+            </div>
+            <div class="playlist-item-info" data-action="open-playlist-chord" data-idx="${idx}">
+              <div class="playlist-item-name">${escHtml(displayNote(chord.rootName, uf))} ${escHtml(chord.typeName)}</div>
+              <div class="playlist-item-scale">${escHtml(chord.scaleName)}</div>
+              <div class="playlist-item-notes hint">${chord.notes.map(n => displayNote(n, uf)).join(' · ')}</div>
+            </div>
+            <button class="playlist-item-remove" data-action="remove-playlist-chord" data-idx="${idx}">×</button>
+          </div>
+        `).join('')
+      }
     </div>
   `;
 }
@@ -635,32 +728,141 @@ document.addEventListener('click', e => {
   }
 
   // ── Favorites ─────────────────────────────────────────────────────────────
-  if (action === 'toggle-favorite') {
+  // ── Playlist picker ───────────────────────────────────────────────────────
+  if (action === 'show-playlist-picker') {
+    e.stopPropagation();
     const chordId = el.dataset.chordId;
+    const favId = el.dataset.chordFavId;
     const chord = state.chords.find(c => c.id === chordId);
-    if (!chord || !state.layout) return;
-    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-    const favId = `${layoutId}-${chord.id}`;
-    const added = toggleFavorite({
-      id: favId,
-      layoutId,
-      layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
-      scaleName: state.layout.name,
-      chordId: chord.id,
-      rootName: chord.rootName,
-      typeName: chord.type.name,
-      category: chord.type.category,
-      notes: chord.notes,
-      noteCount: chord.noteCount,
-    });
-    state.favorites = getFavorites();
-    showToast(added ? '♥ Added to My Chords' : 'Removed from My Chords');
+    if (!chord) return;
+    state.pickerChordFavId = favId;
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
     render();
     return;
   }
 
-  if (action === 'open-favorite') {
-    const fav = state.favorites.find(f => f.id === el.dataset.id);
+  if (action === 'close-playlist-picker') {
+    if (e.target.closest('.modal')) return;
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  }
+
+  if (action === 'toggle-playlist-chord') {
+    const playlistId = el.dataset.playlistId;
+    const favId = state.pickerChordFavId;
+    const chord = state.pickerChordObj;
+    if (!chord || !favId) return;
+    const pl = state.playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+    if (pl.chords.some(c => c.id === favId)) {
+      removeChordFromPlaylist(playlistId, favId);
+    } else {
+      const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+      addChordToPlaylist(playlistId, {
+        id: favId, layoutId,
+        layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
+        scaleName: state.layout.name,
+        chordId: chord.id, rootName: chord.rootName,
+        typeName: chord.type.name, category: chord.type.category,
+        notes: chord.notes, noteCount: chord.noteCount,
+      });
+    }
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    render();
+    return;
+  }
+
+  if (action === 'show-new-playlist-input') {
+    state.pickerNewPlaylist = true;
+    render();
+    setTimeout(() => document.getElementById('new-playlist-input')?.focus(), 0);
+    return;
+  }
+
+  if (action === 'confirm-new-playlist') {
+    const input = document.getElementById('new-playlist-input');
+    const name = (input?.value || '').trim();
+    if (!name) return;
+    const newId = addPlaylist(name);
+    if (state.pickerChordObj && state.pickerChordFavId) {
+      const chord = state.pickerChordObj;
+      const favId = state.pickerChordFavId;
+      const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+      addChordToPlaylist(newId, {
+        id: favId, layoutId,
+        layoutData: state.layout.isCustom ? JSON.parse(JSON.stringify(state.layout)) : null,
+        scaleName: state.layout.name,
+        chordId: chord.id, rootName: chord.rootName,
+        typeName: chord.type.name, category: chord.type.category,
+        notes: chord.notes, noteCount: chord.noteCount,
+      });
+    }
+    state.playlists = getPlaylists();
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    showToast('Playlist created');
+    render();
+    return;
+  }
+
+  // ── Playlist view ─────────────────────────────────────────────────────────
+  if (action === 'open-playlist') {
+    state.activePlaylistId = el.dataset.id;
+    state.view = 'playlist';
+    render();
+    return;
+  }
+
+  if (action === 'delete-playlist') {
+    if (state.activePlaylistId === 'favorites') return;
+    deletePlaylist(state.activePlaylistId);
+    state.playlists = getPlaylists();
+    state.view = 'selector';
+    state.activePlaylistId = null;
+    render();
+    return;
+  }
+
+  if (action === 'move-chord-up') {
+    const idx = parseInt(el.dataset.idx, 10);
+    reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
+    state.playlists = getPlaylists();
+    render();
+    return;
+  }
+
+  if (action === 'move-chord-down') {
+    const idx = parseInt(el.dataset.idx, 10);
+    reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
+    state.playlists = getPlaylists();
+    render();
+    return;
+  }
+
+  if (action === 'remove-playlist-chord') {
+    const idx = parseInt(el.dataset.idx, 10);
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl) return;
+    const chord = pl.chords[idx];
+    if (!chord) return;
+    removeChordFromPlaylist(state.activePlaylistId, chord.id);
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    render();
+    return;
+  }
+
+  if (action === 'open-playlist-chord') {
+    const idx = parseInt(el.dataset.idx, 10);
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl) return;
+    const fav = pl.chords[idx];
     if (!fav) return;
     if (fav.layoutData) {
       state.layout = fav.layoutData;
@@ -890,6 +1092,22 @@ document.addEventListener('input', e => {
   }
   if (e.target.id === 'custom-name-input' && state.layout) {
     state.layout.name = e.target.value;
+  }
+  if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
+    renamePlaylist(state.activePlaylistId, e.target.value);
+    state.playlists = getPlaylists();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {
+    document.querySelector('[data-action="confirm-new-playlist"]')?.click();
+  }
+  if (e.key === 'Escape' && state.pickerChordFavId) {
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    render();
   }
 });
 

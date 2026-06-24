@@ -129,13 +129,14 @@ function renderBottomShell(layout, opts = {}) {
 }
 
 export function renderPan(layout, opts = {}) {
-  const { shellMode = 'both', highlightNotes = [], rotated = false, useFlats = false } = opts;
+  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false } = opts;
 
   // Bottom shell gets its own dedicated view.
   if (shellMode === 'bottom') return renderBottomShell(layout, opts);
 
   const cx = 250, cy = 240;
   const hlSet = new Set(highlightNotes);
+  const altSet = new Set(altHighlightNotes);
 
   const dimTop = shellMode === 'bottom';
   const dimBottom = shellMode === 'top';
@@ -144,6 +145,7 @@ export function renderPan(layout, opts = {}) {
     const classes = [];
     if (!note) classes.push('empty');
     else if (hlSet.has(note)) classes.push('highlight');
+    else if (altSet.has(note)) classes.push('alt-highlight');
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -268,14 +270,16 @@ export function renderPan(layout, opts = {}) {
 }
 
 // Update highlight using full note strings (with octave)
-export function updatePanHighlight(noteNames) {
+export function updatePanHighlight(noteNames, altNoteNames = []) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
   const nameSet = new Set(noteNames);
+  const altSet = new Set(altNoteNames);
   svg.querySelectorAll('.pan-note').forEach(el => {
     if (el.classList.contains('empty')) return;
     const note = el.dataset.note;
     el.classList.toggle('highlight', !!(note && nameSet.has(note)));
+    el.classList.toggle('alt-highlight', !!(note && !nameSet.has(note) && altSet.has(note)));
   });
 }
 
