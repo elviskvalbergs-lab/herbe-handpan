@@ -361,8 +361,11 @@ body {
 }
 .playlist-card-edit:hover { opacity: 1; color: var(--primary); }
 
-/* Playlist filter row in chord explorer */
-.playlist-filter-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+/* Filter dropdowns row in chord explorer */
+.chord-filter-dropdowns {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;
+}
+.chord-filter-dropdowns .select-input { flex: 1; min-width: 80px; }
 
 /* Playlist view */
 .playlist-view { padding: 0 0 40px; }

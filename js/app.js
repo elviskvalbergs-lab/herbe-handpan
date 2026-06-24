@@ -25,6 +25,7 @@ const state = {
   chords: [],                 // computed from layout
   chordFilter: { category: 'All', root: 'All', playlist: 'All' },
   useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
+  useSolfege: false,         // false = letters (C, D, E…); true = solfège (Do, Re, Mi…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
   playlists: getPlaylists(),
@@ -280,6 +281,7 @@ function renderNotePicker() {
 function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
   const uf = state.useFlats;
+  const us = state.useSolfege;
 
   // Root options: NOTE_NAMES[i] is at PC i — filter by which PCs have chords.
   const ROOT_ORDER = NOTE_NAMES;
@@ -294,6 +296,7 @@ function viewChords() {
 
   const filtered = chords.filter(c => {
     if (state.chordCountFilter === 'simple' && c.noteCount > 3) return false;
+    if (state.chordCountFilter === 'extended' && c.noteCount <= 3) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All') {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
@@ -314,19 +317,19 @@ function viewChords() {
   const altHighlightNotes = selectedChord
     ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !selectedChord.notes.includes(n))
     : [];
-  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf });
+  const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf, useSolfege: us });
 
   let relatedHtml = '';
   if (selectedChord) {
     const { sameType, sharedNotes } = getRelatedChords(selectedChord, chords);
     const sameTypeChips = sameType.map(c =>
       `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${displayNote(c.rootName, uf)} ${c.type.name}
+        ${displayNote(c.rootName, uf, us)} ${c.type.name}
       </span>`
     ).join('');
     const sharedChips = sharedNotes.slice(0, 10).map(c =>
       `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${displayNote(c.rootName, uf)} ${c.type.name}
+        ${displayNote(c.rootName, uf, us)} ${c.type.name}
       </span>`
     ).join('');
 
@@ -353,46 +356,43 @@ function viewChords() {
         <span>/</span>
         <span>Chords</span>
       </div>
-      <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0">
+      <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
           title="Rotate the ring so two lowest notes face you instead of one">
           ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
         </button>
-        <button class="btn btn-secondary btn-sm" data-action="copy-url">
-          Copy URL
-        </button>
+        <button class="btn ${uf ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-flats"
+          title="Switch between sharp (C#) and flat (Db) notation">♭ Flats</button>
+        <button class="btn ${us ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-solfege"
+          title="Switch between letter names (C, D) and solfège (Do, Re)">Do-Re-Mi</button>
+        <button class="btn btn-secondary btn-sm" data-action="copy-url">Copy URL</button>
       </div>
     </div>
 
     <div class="explorer-layout">
       <div class="chord-list">
         <div class="chord-list-header">
-          <div class="pills" style="margin-bottom:8px">
-            <button class="pill ${state.chordCountFilter === 'simple' ? 'active' : ''}"
-              data-action="filter-chord-count" data-val="simple">2–3 notes</button>
-            <button class="pill ${state.chordCountFilter === 'all' ? 'active' : ''}"
-              data-action="filter-chord-count" data-val="all">All</button>
-            <button class="pill ${uf ? 'active' : ''}"
-              data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
-              ♭ Flats
-            </button>
-          </div>
-          <div class="pills" style="margin-bottom:8px">
-            ${CHORD_CATEGORIES.map(cat => `
-              <button class="pill ${chordFilter.category === cat ? 'active' : ''}"
-                data-action="filter-category" data-cat="${cat}">${cat}</button>
-            `).join('')}
+          <div class="chord-filter-dropdowns">
+            <select class="select-input" data-action="filter-chord-count">
+              <option value="all" ${state.chordCountFilter === 'all' ? 'selected' : ''}>All lengths</option>
+              <option value="simple" ${state.chordCountFilter === 'simple' ? 'selected' : ''}>2–3 notes</option>
+              <option value="extended" ${state.chordCountFilter === 'extended' ? 'selected' : ''}>4+ notes</option>
+            </select>
+            <select class="select-input" data-action="filter-category">
+              <option value="All" ${chordFilter.category === 'All' ? 'selected' : ''}>All types</option>
+              ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `
+                <option value="${cat}" ${chordFilter.category === cat ? 'selected' : ''}>${cat}</option>
+              `).join('')}
+            </select>
+            <select class="select-input" data-action="select-playlist-filter">
+              <option value="All" ${chordFilter.playlist === 'All' ? 'selected' : ''}>All lists</option>
+              ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
+            </select>
+            ${chordFilter.playlist !== 'All' ? `<button class="btn btn-secondary btn-sm" data-action="open-playlist" data-id="${escHtml(chordFilter.playlist)}">Edit</button>` : ''}
           </div>
           <div class="pills" style="margin-bottom:4px">
             ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
-              data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf)}</button>`).join('')}
-          </div>
-          <div class="playlist-filter-row" style="margin-bottom:4px">
-            <select class="select-input" data-action="select-playlist-filter" style="flex:1;min-width:0">
-              <option value="All">All chords</option>
-              ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
-            </select>
-            ${chordFilter.playlist !== 'All' ? `<button class="btn btn-secondary btn-sm" data-action="open-playlist" data-id="${escHtml(chordFilter.playlist)}" style="flex-shrink:0">Edit</button>` : ''}
+              data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf, us)}</button>`).join('')}
           </div>
           <div style="margin-bottom:4px">
             <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
@@ -407,7 +407,7 @@ function viewChords() {
               return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
                 data-action="select-chord" data-id="${c.id}">
                 <div>
-                  <div class="chord-item-name">${displayNote(c.rootName, uf)} ${c.type.name}</div>
+                  <div class="chord-item-name">${displayNote(c.rootName, uf, us)} ${c.type.name}</div>
                   <div class="chord-item-type">${c.type.category}</div>
                 </div>
                 <div class="chord-item-right">
@@ -426,10 +426,10 @@ function viewChords() {
         </div>
         <div class="chord-panel">
           ${selectedChord ? `
-            <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf)} ${selectedChord.type.name}</div>
+            <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
             <div class="chord-panel-sub">
               ${selectedChord.type.category} · ${selectedChord.noteCount} notes:
-              ${selectedChord.notes.map(n => displayNote(n, uf)).join(', ')}
+              ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}
             </div>
             <div class="chord-actions">
               <button class="btn btn-primary" data-action="play-chord">▶ Play Chord</button>
@@ -487,6 +487,7 @@ function viewPlaylist() {
   const pl = state.playlists.find(p => p.id === state.activePlaylistId);
   if (!pl) return viewSelector();
   const uf = state.useFlats;
+  const us = state.useSolfege;
 
   return `
     <div class="app-header">
@@ -518,9 +519,9 @@ function viewPlaylist() {
                 ${idx === pl.chords.length - 1 ? 'disabled' : ''}>↓</button>
             </div>
             <div class="playlist-item-info" data-action="open-playlist-chord" data-idx="${idx}">
-              <div class="playlist-item-name">${escHtml(displayNote(chord.rootName, uf))} ${escHtml(chord.typeName)}</div>
+              <div class="playlist-item-name">${escHtml(displayNote(chord.rootName, uf, us))} ${escHtml(chord.typeName)}</div>
               <div class="playlist-item-scale">${escHtml(chord.scaleName)}</div>
-              <div class="playlist-item-notes hint">${chord.notes.map(n => displayNote(n, uf)).join(' · ')}</div>
+              <div class="playlist-item-notes hint">${chord.notes.map(n => displayNote(n, uf, us)).join(' · ')}</div>
             </div>
             <button class="playlist-item-remove" data-action="remove-playlist-chord" data-idx="${idx}">×</button>
           </div>
@@ -961,6 +962,12 @@ document.addEventListener('click', e => {
     return;
   }
 
+  if (action === 'toggle-solfege') {
+    state.useSolfege = !state.useSolfege;
+    render();
+    return;
+  }
+
   // ── Editor ────────────────────────────────────────────────────────────────
   if (action === 'shell-mode') {
     state.shellMode = el.dataset.mode;
@@ -1060,12 +1067,6 @@ document.addEventListener('click', e => {
   }
 
   // ── Chord explorer ─────────────────────────────────────────────────────────
-  if (action === 'filter-category') {
-    state.chordFilter.category = el.dataset.cat;
-    render();
-    return;
-  }
-
   if (action === 'filter-root') {
     state.chordFilter.root = el.dataset.root;
     render();
@@ -1109,12 +1110,6 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (action === 'filter-chord-count') {
-    state.chordCountFilter = el.dataset.val;
-    render();
-    return;
-  }
-
   if (action === 'copy-url') {
     const url = location.origin + location.pathname + stateToHash();
     navigator.clipboard.writeText(url).then(() => showToast('URL copied!'));
@@ -1127,10 +1122,10 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
-  if (el.dataset.action === 'select-playlist-filter') {
-    state.chordFilter.playlist = el.value;
-    render();
-  }
+  const { action } = el.dataset;
+  if (action === 'select-playlist-filter') { state.chordFilter.playlist = el.value; render(); }
+  if (action === 'filter-chord-count') { state.chordCountFilter = el.value; render(); }
+  if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
 });
 
 // ── Input delegation ──────────────────────────────────────────────────────────

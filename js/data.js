@@ -7,15 +7,19 @@ const NOTE_TO_SEMI = {
 // Normalize to preferred flat/sharp spelling
 const ENHARMONIC = { 'D#':'Eb','A#':'Bb','G#':'Ab','Db':'C#','Gb':'F#' };
 
-export const SHARP_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-export const FLAT_NAMES  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+export const SHARP_NAMES   = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+export const FLAT_NAMES    = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const SOLFEGE_SHARP = ['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'];
+const SOLFEGE_FLAT  = ['Do','Reb','Re','Mib','Mi','Fa','Solb','Sol','Lab','La','Sib','Si'];
 
-// Display a note using sharp or flat spelling. Accepts 'G#3' or 'G#'.
-export function displayNote(note, useFlats) {
+// Display a note. Accepts 'G#3' or 'G#'. useFlats picks flat/sharp spelling;
+// useSolfege switches to fixed-do solfège (Do/Re/Mi…) instead of letters.
+export function displayNote(note, useFlats, useSolfege = false) {
   const m = note.match(/^([A-G][#b]?)(\d*)$/);
   if (!m) return note;
   const pc = NOTE_TO_SEMI[m[1]];
   if (pc === undefined) return note;
+  if (useSolfege) return (useFlats ? SOLFEGE_FLAT : SOLFEGE_SHARP)[pc] + m[2];
   return (useFlats ? FLAT_NAMES : SHARP_NAMES)[pc] + m[2];
 }
 

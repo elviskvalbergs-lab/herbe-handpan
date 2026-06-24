@@ -47,7 +47,7 @@ function circlePositions(count, cx, cy, r, rotationOffset = 0) {
 }
 
 // All tone fields are circles. r controls size; lower notes get larger circles.
-function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false) {
+function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false, useSolfege = false) {
   const isEmpty = !note;
   const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
   const noteAttr = note ? ` data-note="${note}"` : '';
@@ -58,7 +58,7 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false)
       font-family="system-ui,sans-serif" font-size="${Math.round(r * 0.7)}" font-weight="600"
       fill="var(--note-rest-text)">+</text>`;
   } else {
-    const displayed = displayNote(note, useFlats);
+    const displayed = displayNote(note, useFlats, useSolfege);
     const name = displayed.replace(/\d+$/, '');
     const oct = (displayed.match(/\d+$/) ?? [''])[0];
     const nameFontSize = Math.max(8, Math.round((name.length > 1 ? 12 : 14) * r / 26));
@@ -88,7 +88,7 @@ function ringNoteRadius(sortedIndex, total) {
 }
 
 function renderBottomShell(layout, opts = {}) {
-  const { highlightNotes = [], useFlats = false } = opts;
+  const { highlightNotes = [], useFlats = false, useSolfege = false } = opts;
   const cx = 250, cy = 240;
   const hlSet = new Set(highlightNotes);
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
@@ -120,7 +120,7 @@ function renderBottomShell(layout, opts = {}) {
       const slot = layout.bottom.slots[i] ?? { note: null };
       const isHighlighted = !!(slot.note && hlSet.has(slot.note));
       const cls = ['gu', !slot.note ? 'empty' : '', isHighlighted ? 'highlight' : ''].filter(Boolean).join(' ');
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, cls, `gu-${i}`, 24, useFlats);
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, cls, `gu-${i}`, 24, useFlats, useSolfege);
     }
   }
 
@@ -129,7 +129,7 @@ function renderBottomShell(layout, opts = {}) {
 }
 
 export function renderPan(layout, opts = {}) {
-  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false } = opts;
+  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false } = opts;
 
   // Bottom shell gets its own dedicated view.
   if (shellMode === 'bottom') return renderBottomShell(layout, opts);
@@ -196,7 +196,7 @@ export function renderPan(layout, opts = {}) {
     dingNote && hlSet.has(dingNote) ? 'highlight' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
-  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 30, useFlats);
+  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 30, useFlats, useSolfege);
 
   if (hasInnerRing) {
     // 10-ring: outer ring gets 8 lower notes (n1-n8), inner ring gets n9 and n10.
@@ -208,7 +208,7 @@ export function renderPan(layout, opts = {}) {
       const sortedIdx = OUTER_8_ORDER[i]; // position in original slots array (0-7)
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
       svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
-        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats);
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
     }
     // Inner ring: slots 8+ (up to 5 for 13-ring instruments)
     const innerCount = Math.min(5, totalRingSlots - 8);
@@ -218,7 +218,7 @@ export function renderPan(layout, opts = {}) {
       const slot = layout.top.slots[sortedIdx] ?? { note: null };
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
       svg += noteSlotSvg(innerPos[i].x, innerPos[i].y, slot.note,
-        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats);
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
     }
   } else {
     // Standard: all ring slots on one ring.
@@ -242,7 +242,7 @@ export function renderPan(layout, opts = {}) {
       const r = sortedIndices
         ? ringNoteRadius(sortedIndices[i], totalRingSlots)
         : 22;
-      svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r, useFlats);
+      svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r, useFlats, useSolfege);
     }
   }
 
@@ -261,7 +261,7 @@ export function renderPan(layout, opts = {}) {
     const guPos = circlePositions(guCount, mCx, mCy, mNoteR, 0);
     for (let i = 0; i < guCount; i++) {
       const slot = layout.bottom.slots[i] ?? { note: null };
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, mNoteCircle, useFlats);
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, mNoteCircle, useFlats, useSolfege);
     }
   }
 
