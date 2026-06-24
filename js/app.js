@@ -23,7 +23,7 @@ const state = {
   scaleSearch: '',            // filter text for scale selector
   selectedChord: null,        // ChordResult or null
   chords: [],                 // computed from layout
-  chordFilter: { category: 'All', root: 'All' },
+  chordFilter: { category: 'All', root: 'All', playlist: 'All' },
   useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
@@ -79,9 +79,10 @@ function viewSelector() {
       <div class="pwa-section-title">My Playlists</div>
       <div class="pwa-scroll">
         ${state.playlists.map(pl => `
-          <div class="playlist-card" data-action="open-playlist" data-id="${escHtml(pl.id)}">
+          <div class="playlist-card" data-action="open-playlist-chords" data-id="${escHtml(pl.id)}">
             <div class="playlist-card-name">${escHtml(pl.name)}</div>
             <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
+            <div class="playlist-card-edit" data-action="open-playlist" data-id="${escHtml(pl.id)}" title="Edit playlist">✎</div>
           </div>
         `).join('')}
       </div>
@@ -286,12 +287,21 @@ function viewChords() {
   const roots = ['All', ...ROOT_ORDER.filter((_, i) => usedRootPCs.has(i))];
 
   // Apply filters — compare root by PC to handle G# ↔ Ab equivalence.
+  const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
+  const playlistChordIds = chordFilter.playlist !== 'All'
+    ? new Set((state.playlists.find(p => p.id === chordFilter.playlist)?.chords ?? []).map(c => c.id))
+    : null;
+
   const filtered = chords.filter(c => {
     if (state.chordCountFilter === 'simple' && c.noteCount > 3) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All') {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
       if (notePC(c.rootNote) !== filterPC) return false;
+    }
+    if (playlistChordIds !== null) {
+      const favId = `${layoutId}-${c.id}`;
+      if (!playlistChordIds.has(favId)) return false;
     }
     return true;
   }).sort((a, b) => {
@@ -377,12 +387,18 @@ function viewChords() {
             ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
               data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf)}</button>`).join('')}
           </div>
+          <div class="playlist-filter-row" style="margin-bottom:4px">
+            <select class="select-input" data-action="select-playlist-filter" style="flex:1;min-width:0">
+              <option value="All">All chords</option>
+              ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
+            </select>
+            ${chordFilter.playlist !== 'All' ? `<button class="btn btn-secondary btn-sm" data-action="open-playlist" data-id="${escHtml(chordFilter.playlist)}" style="flex-shrink:0">Edit</button>` : ''}
+          </div>
           <div style="margin-bottom:4px">
             <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
         ${(() => {
-          const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
           return filtered.length === 0
             ? '<div class="empty-state">No chords match these filters</div>'
             : filtered.map(c => {
@@ -812,6 +828,33 @@ document.addEventListener('click', e => {
   }
 
   // ── Playlist view ─────────────────────────────────────────────────────────
+  if (action === 'open-playlist-chords') {
+    const pl = state.playlists.find(p => p.id === el.dataset.id);
+    if (!pl) return;
+    if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
+    // Load the first chord's scale and set the playlist filter
+    const first = pl.chords[0];
+    if (first.layoutData) {
+      state.layout = first.layoutData;
+    } else {
+      const saved = state.savedLayouts.find(l => l.id === first.layoutId);
+      if (saved) { state.layout = saved.layout; }
+      else {
+        const scale = SCALES.find(s => s.id === first.layoutId);
+        if (!scale) { showToast('Scale not found'); return; }
+        state.layout = createLayoutFromScale(scale);
+      }
+    }
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = state.chords.find(c => c.id === first.chordId) || null;
+    state.shellMode = 'both';
+    state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
+    state.view = 'chords';
+    history.pushState(null, '', stateToHash());
+    render();
+    return;
+  }
+
   if (action === 'open-playlist') {
     state.activePlaylistId = el.dataset.id;
     state.view = 'playlist';
@@ -1080,6 +1123,16 @@ document.addEventListener('click', e => {
 });
 
 
+// ── Change delegation (selects) ───────────────────────────────────────────────
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  if (el.dataset.action === 'select-playlist-filter') {
+    state.chordFilter.playlist = el.value;
+    render();
+  }
+});
+
 // ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {
   if (e.target.id === 'scale-search-input') {
@@ -1116,7 +1169,7 @@ window.addEventListener('popstate', () => {
   Object.assign(state, {
     view: 'selector', layout: null, selectedChord: null,
     pendingSlot: null, chords: [], shellMode: 'both',
-    chordFilter: { category: 'All', root: 'All' },
+    chordFilter: { category: 'All', root: 'All', playlist: 'All' },
   });
   loadFromHash();
   render();
