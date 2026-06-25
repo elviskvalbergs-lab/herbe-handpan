@@ -235,10 +235,15 @@ body {
 
 .chord-panel {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px;
+  padding: 14px 16px;
 }
-.chord-panel-title { font-size: 20px; font-weight: 700; color: var(--heading); margin-bottom: 3px; letter-spacing: -0.02em; }
-.chord-panel-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+.chord-panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px;
+}
+.chord-panel-title { font-size: 18px; font-weight: 700; color: var(--heading); margin-bottom: 2px; letter-spacing: -0.02em; }
+.chord-panel-sub { font-size: 11px; color: var(--muted); }
+.chord-play-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.chord-panel-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .chord-actions { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
 
 .related-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
@@ -366,6 +371,8 @@ body {
   display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;
 }
 .chord-filter-dropdowns .select-input { flex: 1; min-width: 80px; }
+.count-pills { display: flex; gap: 3px; flex-shrink: 0; }
+.count-pill { padding: 4px 8px; font-size: 12px; }
 
 /* Playlist view */
 .playlist-view { padding: 0 0 40px; }

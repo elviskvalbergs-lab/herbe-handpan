@@ -33,7 +33,7 @@ const state = {
   pickerChordFavId: null,
   pickerChordObj: null,
   pickerNewPlaylist: false,
-  chordCountFilter: 'simple', // 'simple' (≤3 notes) | 'all'
+  chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
 };
 
@@ -295,8 +295,10 @@ function viewChords() {
     : null;
 
   const filtered = chords.filter(c => {
-    if (state.chordCountFilter === 'simple' && c.noteCount > 3) return false;
-    if (state.chordCountFilter === 'extended' && c.noteCount <= 3) return false;
+    if (state.chordCountSet.size > 0) {
+      const k = c.noteCount >= 5 ? '5+' : String(c.noteCount);
+      if (!state.chordCountSet.has(k)) return false;
+    }
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All') {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
@@ -373,11 +375,9 @@ function viewChords() {
       <div class="chord-list">
         <div class="chord-list-header">
           <div class="chord-filter-dropdowns">
-            <select class="select-input" data-action="filter-chord-count">
-              <option value="all" ${state.chordCountFilter === 'all' ? 'selected' : ''}>All lengths</option>
-              <option value="simple" ${state.chordCountFilter === 'simple' ? 'selected' : ''}>2–3 notes</option>
-              <option value="extended" ${state.chordCountFilter === 'extended' ? 'selected' : ''}>4+ notes</option>
-            </select>
+            <div class="count-pills">
+              ${['2','3','4','5+'].map(n => `<button class="pill count-pill ${state.chordCountSet.has(n) ? 'active' : ''}" data-action="toggle-note-count" data-count="${n}">${n}</button>`).join('')}
+            </div>
             <select class="select-input" data-action="filter-category">
               <option value="All" ${chordFilter.category === 'All' ? 'selected' : ''}>All types</option>
               ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `
@@ -387,8 +387,8 @@ function viewChords() {
             <select class="select-input" data-action="select-playlist-filter">
               <option value="All" ${chordFilter.playlist === 'All' ? 'selected' : ''}>All lists</option>
               ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
+              ${chordFilter.playlist !== 'All' ? `<option value="__edit__">✎ Edit playlist</option>` : ''}
             </select>
-            ${chordFilter.playlist !== 'All' ? `<button class="btn btn-secondary btn-sm" data-action="open-playlist" data-id="${escHtml(chordFilter.playlist)}">Edit</button>` : ''}
           </div>
           <div class="pills" style="margin-bottom:4px">
             ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
@@ -426,22 +426,21 @@ function viewChords() {
         </div>
         <div class="chord-panel">
           ${selectedChord ? `
-            <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
-            <div class="chord-panel-sub">
-              ${selectedChord.type.category} · ${selectedChord.noteCount} notes:
-              ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}
-            </div>
-            <div class="chord-actions">
-              <button class="btn btn-primary" data-action="play-chord">▶ Play Chord</button>
-              <button class="btn btn-secondary" data-action="play-scale">▶ Play Scale</button>
+            <div class="chord-panel-header">
+              <div>
+                <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
+                <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
+              </div>
+              <div class="chord-play-btns">
+                <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
+                <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
+              </div>
             </div>
             ${relatedHtml}
           ` : `
-            <div class="empty-state">
-              Select a chord from the list<br>to see and hear it on the pan
-            </div>
-            <div class="chord-actions" style="margin-top:16px">
-              <button class="btn btn-secondary" data-action="play-scale">▶ Play Scale</button>
+            <div class="chord-panel-empty">
+              <span class="hint">Select a chord to see it on the pan</span>
+              <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
             </div>
           `}
         </div>
@@ -622,7 +621,26 @@ function showToast(msg) {
   setTimeout(() => toast.classList.remove('show'), 2000);
 }
 
+// ── Preferences (persist across sessions) ────────────────────────────────────
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem('hp-prefs') || '{}');
+    if (typeof p.ringRotated === 'boolean') state.ringRotated = p.ringRotated;
+    if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
+    if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
+  } catch {}
+}
+
+function savePrefs() {
+  localStorage.setItem('hp-prefs', JSON.stringify({
+    ringRotated: state.ringRotated,
+    useFlats: state.useFlats,
+    useSolfege: state.useSolfege,
+  }));
+}
+
 // ── Bootstrap ────────────────────────────────────────────────────────────────
+loadPrefs();
 loadFromHash();
 render();
 
@@ -652,6 +670,7 @@ document.addEventListener('click', e => {
       }
     }
 
+    if (state.view !== 'editor') return;
     if (!isCustom) return;
 
     if (isEmpty) {
@@ -923,7 +942,7 @@ document.addEventListener('click', e => {
     state.chords = findAllChords(state.layout);
     state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
     state.shellMode = 'both';
-    state.chordFilter = { category: 'All', root: 'All' };
+    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
     history.pushState(null, '', stateToHash());
     render();
@@ -952,18 +971,21 @@ document.addEventListener('click', e => {
   // ── Pan rotation ──────────────────────────────────────────────────────────
   if (action === 'toggle-rotation') {
     state.ringRotated = !state.ringRotated;
+    savePrefs();
     render();
     return;
   }
 
   if (action === 'toggle-flats') {
     state.useFlats = !state.useFlats;
+    savePrefs();
     render();
     return;
   }
 
   if (action === 'toggle-solfege') {
     state.useSolfege = !state.useSolfege;
+    savePrefs();
     render();
     return;
   }
@@ -997,7 +1019,7 @@ document.addEventListener('click', e => {
   if (action === 'go-chords') {
     state.chords = findAllChords(state.layout);
     state.selectedChord = null;
-    state.chordFilter = { category: 'All', root: 'All' };
+    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
     history.pushState(null, '', stateToHash());
     render();
@@ -1067,6 +1089,14 @@ document.addEventListener('click', e => {
   }
 
   // ── Chord explorer ─────────────────────────────────────────────────────────
+  if (action === 'toggle-note-count') {
+    const count = el.dataset.count;
+    if (state.chordCountSet.has(count)) state.chordCountSet.delete(count);
+    else state.chordCountSet.add(count);
+    render();
+    return;
+  }
+
   if (action === 'filter-root') {
     state.chordFilter.root = el.dataset.root;
     render();
@@ -1123,8 +1153,15 @@ document.addEventListener('change', e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const { action } = el.dataset;
-  if (action === 'select-playlist-filter') { state.chordFilter.playlist = el.value; render(); }
-  if (action === 'filter-chord-count') { state.chordCountFilter = el.value; render(); }
+  if (action === 'select-playlist-filter') {
+    if (el.value === '__edit__') {
+      state.activePlaylistId = state.chordFilter.playlist;
+      state.view = 'playlist';
+    } else {
+      state.chordFilter.playlist = el.value;
+    }
+    render();
+  }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
 });
 
