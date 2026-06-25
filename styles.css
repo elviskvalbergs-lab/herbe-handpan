@@ -142,6 +142,7 @@ body {
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
 .pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
+.pan-col { display: flex; align-items: flex-start; justify-content: center; }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
@@ -186,33 +187,45 @@ body {
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
 .pan-note.playing text { fill: #0a1510 !important; font-weight: 700; }
 
-/* Chord explorer */
+/* Chord explorer — 3-column landscape layout */
 .explorer-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 24px;
+  grid-template-columns: 250px minmax(200px, 280px) 1fr;
+  gap: 12px;
   align-items: start;
 }
-@media (max-width: 720px) {
-  /* Stack chord view vertically; pan before chord list */
+
+/* Medium: 2-column — chord-list left, chord-panel+pan stacked right */
+@media (max-width: 900px) {
+  .explorer-layout {
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: auto auto;
+    gap: 14px;
+  }
+  .explorer-layout .chord-list  { grid-column: 1; grid-row: 1 / 3; }
+  .explorer-layout .chord-panel { grid-column: 2; grid-row: 1; }
+  .explorer-layout .pan-col     { grid-column: 2; grid-row: 2; }
+}
+
+/* Mobile: vertical stack — pan, chord-list, chord-panel */
+@media (max-width: 620px) {
   .explorer-layout {
     display: flex;
     flex-direction: column;
-    align-items: stretch; /* override grid's align-items: start */
+    align-items: stretch;
   }
-  .explorer-layout .chord-list {
-    order: 2;
-    max-height: 45dvh;
-  }
+  .explorer-layout .chord-list  { order: 2; max-height: 45dvh; }
+  .explorer-layout .pan-col     { order: 1; }
+  .explorer-layout .chord-panel { order: 3; }
   .pan-wrap svg { max-width: 100%; }
 }
 
 .chord-list {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: calc(100dvh - 140px); overflow-y: auto; min-height: 0;
+  max-height: calc(100dvh - 120px); overflow-y: auto; min-height: 0;
 }
 .chord-list-header {
-  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
   position: sticky; top: 0; background: var(--card); z-index: 1;
 }
 .chord-item {
@@ -368,11 +381,15 @@ body {
 
 /* Filter dropdowns row in chord explorer */
 .chord-filter-dropdowns {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;
 }
-.chord-filter-dropdowns .select-input { flex: 1; min-width: 80px; }
+.chord-filter-dropdowns .select-input { flex: 1; min-width: 0; font-size: 11px; padding: 4px 6px; }
 .count-pills { display: flex; gap: 3px; flex-shrink: 0; }
-.count-pill { padding: 4px 8px; font-size: 12px; }
+.count-pill { padding: 3px 6px; font-size: 11px; }
+/* Compact pills inside chord list header */
+.chord-list .pill { padding: 3px 7px; font-size: 11px; }
+.chord-list .pills { gap: 3px; margin-bottom: 3px; }
+.chord-list .hint { line-height: 1.6; }
 
 /* Playlist view */
 .playlist-view { padding: 0 0 40px; }

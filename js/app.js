@@ -420,29 +420,30 @@ function viewChords() {
         })()}
       </div>
 
-      <div>
-        <div class="pan-wrap" style="margin-bottom:16px">
-          ${panSvg}
-        </div>
-        <div class="chord-panel">
-          ${selectedChord ? `
-            <div class="chord-panel-header">
-              <div>
-                <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
-                <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-              </div>
-              <div class="chord-play-btns">
-                <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
-                <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
-              </div>
+      <div class="chord-panel">
+        ${selectedChord ? `
+          <div class="chord-panel-header">
+            <div>
+              <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
+              <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
             </div>
-            ${relatedHtml}
-          ` : `
-            <div class="chord-panel-empty">
-              <span class="hint">Select a chord to see it on the pan</span>
+            <div class="chord-play-btns">
+              <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
               <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
             </div>
-          `}
+          </div>
+          ${relatedHtml}
+        ` : `
+          <div class="chord-panel-empty">
+            <span class="hint">Select a chord to see it on the pan</span>
+            <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
+          </div>
+        `}
+      </div>
+
+      <div class="pan-col">
+        <div class="pan-wrap">
+          ${panSvg}
         </div>
       </div>
     </div>

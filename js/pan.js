@@ -82,7 +82,9 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
 // Radius for a ring note at sorted index i (0=lowest, n-1=highest).
 // Lower notes are physically larger on a real handpan.
 function ringNoteRadius(sortedIndex, total) {
-  const minR = 18, maxR = 26;
+  // 10+ ring instruments: keep smaller notes to avoid inner-ring overlap
+  const minR = total >= 10 ? 18 : 22;
+  const maxR = total >= 10 ? 26 : 30;
   const t = total <= 1 ? 0 : sortedIndex / (total - 1);
   return Math.round(maxR - (maxR - minR) * t);
 }
@@ -156,7 +158,7 @@ export function renderPan(layout, opts = {}) {
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
 
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-  const svgHeight = guCount > 0 ? 548 : 490;
+  const svgHeight = guCount > 0 ? 548 : 480;
 
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 ${svgHeight}" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -170,16 +172,16 @@ export function renderPan(layout, opts = {}) {
       <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
     <clipPath id="panClip">
-      <circle cx="${cx}" cy="${cy}" r="218"/>
+      <circle cx="${cx}" cy="${cy}" r="198"/>
     </clipPath>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="200" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="178" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Gu separator groove -->
-  <path d="M ${cx - 90},${cy + 175} A 195,195 0 0,1 ${cx + 90},${cy + 175}"
+  <path d="M ${cx - 90},${cy + 158} A 178,178 0 0,1 ${cx + 90},${cy + 158}"
     fill="none" stroke="#2a5040" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.9"/>
   <!-- Inner center dome -->
   <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
@@ -196,7 +198,7 @@ export function renderPan(layout, opts = {}) {
     dingNote && hlSet.has(dingNote) ? 'highlight' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
-  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 30, useFlats, useSolfege);
+  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
 
   if (hasInnerRing) {
     // 10-ring: outer ring gets 8 lower notes (n1-n8), inner ring gets n9 and n10.

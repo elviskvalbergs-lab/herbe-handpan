@@ -158,6 +158,7 @@ body {
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
 .pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
+.pan-col { display: flex; align-items: flex-start; justify-content: center; }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
@@ -202,33 +203,45 @@ body {
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
 .pan-note.playing text { fill: #0a1510 !important; font-weight: 700; }
 
-/* Chord explorer */
+/* Chord explorer — 3-column landscape layout */
 .explorer-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 24px;
+  grid-template-columns: 250px minmax(200px, 280px) 1fr;
+  gap: 12px;
   align-items: start;
 }
-@media (max-width: 720px) {
-  /* Stack chord view vertically; pan before chord list */
+
+/* Medium: 2-column — chord-list left, chord-panel+pan stacked right */
+@media (max-width: 900px) {
+  .explorer-layout {
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: auto auto;
+    gap: 14px;
+  }
+  .explorer-layout .chord-list  { grid-column: 1; grid-row: 1 / 3; }
+  .explorer-layout .chord-panel { grid-column: 2; grid-row: 1; }
+  .explorer-layout .pan-col     { grid-column: 2; grid-row: 2; }
+}
+
+/* Mobile: vertical stack — pan, chord-list, chord-panel */
+@media (max-width: 620px) {
   .explorer-layout {
     display: flex;
     flex-direction: column;
-    align-items: stretch; /* override grid's align-items: start */
+    align-items: stretch;
   }
-  .explorer-layout .chord-list {
-    order: 2;
-    max-height: 45dvh;
-  }
+  .explorer-layout .chord-list  { order: 2; max-height: 45dvh; }
+  .explorer-layout .pan-col     { order: 1; }
+  .explorer-layout .chord-panel { order: 3; }
   .pan-wrap svg { max-width: 100%; }
 }
 
 .chord-list {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: calc(100dvh - 140px); overflow-y: auto; min-height: 0;
+  max-height: calc(100dvh - 120px); overflow-y: auto; min-height: 0;
 }
 .chord-list-header {
-  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
   position: sticky; top: 0; background: var(--card); z-index: 1;
 }
 .chord-item {
@@ -384,11 +397,15 @@ body {
 
 /* Filter dropdowns row in chord explorer */
 .chord-filter-dropdowns {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap;
+  display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;
 }
-.chord-filter-dropdowns .select-input { flex: 1; min-width: 80px; }
+.chord-filter-dropdowns .select-input { flex: 1; min-width: 0; font-size: 11px; padding: 4px 6px; }
 .count-pills { display: flex; gap: 3px; flex-shrink: 0; }
-.count-pill { padding: 4px 8px; font-size: 12px; }
+.count-pill { padding: 3px 6px; font-size: 11px; }
+/* Compact pills inside chord list header */
+.chord-list .pill { padding: 3px 7px; font-size: 11px; }
+.chord-list .pills { gap: 3px; margin-bottom: 3px; }
+.chord-list .hint { line-height: 1.6; }
 
 /* Playlist view */
 .playlist-view { padding: 0 0 40px; }
@@ -1290,7 +1307,9 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
 // Radius for a ring note at sorted index i (0=lowest, n-1=highest).
 // Lower notes are physically larger on a real handpan.
 function ringNoteRadius(sortedIndex, total) {
-  const minR = 18, maxR = 26;
+  // 10+ ring instruments: keep smaller notes to avoid inner-ring overlap
+  const minR = total >= 10 ? 18 : 22;
+  const maxR = total >= 10 ? 26 : 30;
   const t = total <= 1 ? 0 : sortedIndex / (total - 1);
   return Math.round(maxR - (maxR - minR) * t);
 }
@@ -1364,7 +1383,7 @@ function renderPan(layout, opts = {}) {
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
 
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-  const svgHeight = guCount > 0 ? 548 : 490;
+  const svgHeight = guCount > 0 ? 548 : 480;
 
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 ${svgHeight}" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -1378,16 +1397,16 @@ function renderPan(layout, opts = {}) {
       <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
     <clipPath id="panClip">
-      <circle cx="${cx}" cy="${cy}" r="218"/>
+      <circle cx="${cx}" cy="${cy}" r="198"/>
     </clipPath>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="200" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="178" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Gu separator groove -->
-  <path d="M ${cx - 90},${cy + 175} A 195,195 0 0,1 ${cx + 90},${cy + 175}"
+  <path d="M ${cx - 90},${cy + 158} A 178,178 0 0,1 ${cx + 90},${cy + 158}"
     fill="none" stroke="#2a5040" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.9"/>
   <!-- Inner center dome -->
   <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
@@ -1404,7 +1423,7 @@ function renderPan(layout, opts = {}) {
     dingNote && hlSet.has(dingNote) ? 'highlight' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
-  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 30, useFlats, useSolfege);
+  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
 
   if (hasInnerRing) {
     // 10-ring: outer ring gets 8 lower notes (n1-n8), inner ring gets n9 and n10.
@@ -2044,29 +2063,30 @@ function viewChords() {
         })()}
       </div>
 
-      <div>
-        <div class="pan-wrap" style="margin-bottom:16px">
-          ${panSvg}
-        </div>
-        <div class="chord-panel">
-          ${selectedChord ? `
-            <div class="chord-panel-header">
-              <div>
-                <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
-                <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-              </div>
-              <div class="chord-play-btns">
-                <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
-                <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
-              </div>
+      <div class="chord-panel">
+        ${selectedChord ? `
+          <div class="chord-panel-header">
+            <div>
+              <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
+              <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
             </div>
-            ${relatedHtml}
-          ` : `
-            <div class="chord-panel-empty">
-              <span class="hint">Select a chord to see it on the pan</span>
+            <div class="chord-play-btns">
+              <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
               <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
             </div>
-          `}
+          </div>
+          ${relatedHtml}
+        ` : `
+          <div class="chord-panel-empty">
+            <span class="hint">Select a chord to see it on the pan</span>
+            <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
+          </div>
+        `}
+      </div>
+
+      <div class="pan-col">
+        <div class="pan-wrap">
+          ${panSvg}
         </div>
       </div>
     </div>
