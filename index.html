@@ -158,7 +158,10 @@ body {
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
 .pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
-.pan-col { display: flex; align-items: flex-start; justify-content: center; }
+.pan-col { display: flex; align-items: flex-start; justify-content: flex-start; }
+/* In the chord explorer, let the pan fill the full column width (capped by viewport height) */
+.pan-col .pan-wrap { width: 100%; }
+.pan-col .pan-wrap svg { max-width: min(100%, calc(100dvh - 80px)); }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
