@@ -309,10 +309,25 @@ function viewChords() {
       if (!playlistChordIds.has(favId)) return false;
     }
     return true;
-  }).sort((a, b) => {
-    const rA = notePC(a.rootNote), rB = notePC(b.rootNote);
-    return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
   });
+  // Preserve playlist order when a playlist filter is active
+  if (chordFilter.playlist !== 'All') {
+    const pl = state.playlists.find(p => p.id === chordFilter.playlist);
+    if (pl) {
+      const orderMap = new Map(pl.chords.map((c, i) => [c.id, i]));
+      filtered.sort((a, b) =>
+        (orderMap.get(`${layoutId}-${a.id}`) ?? Infinity) - (orderMap.get(`${layoutId}-${b.id}`) ?? Infinity)
+      );
+    }
+  } else {
+    filtered.sort((a, b) => {
+      const rA = notePC(a.rootNote), rB = notePC(b.rootNote);
+      return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
+    });
+  }
+
+  const selectedFavId = selectedChord ? `${layoutId}-${selectedChord.id}` : null;
+  const selectedInAny = selectedFavId ? isChordInAnyPlaylist(selectedFavId) : false;
 
   const highlightNotes = selectedChord ? selectedChord.notes : [];
   const chordPCs = selectedChord ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
@@ -428,6 +443,9 @@ function viewChords() {
               <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
             </div>
             <div class="chord-play-btns">
+              <button class="fav-btn panel-fav ${selectedInAny ? 'active' : ''}"
+                data-action="show-playlist-picker" data-chord-id="${selectedChord.id}"
+                data-chord-fav-id="${escHtml(selectedFavId)}" title="Add to playlist">♥</button>
               <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
               <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
             </div>

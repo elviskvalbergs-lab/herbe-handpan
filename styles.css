@@ -479,6 +479,7 @@ body {
 }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
+.panel-fav { font-size: 18px; padding: 2px 6px; opacity: 0.45; align-self: center; }
 
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
