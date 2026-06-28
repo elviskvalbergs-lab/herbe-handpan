@@ -49,6 +49,11 @@ export async function loadCloudData() {
 }
 
 export function scheduleSave() {
+  // Stamp local immediately so the timestamp reflects when data changed,
+  // not when the cloud write eventually fires.
+  const ts = new Date().toISOString();
+  localStorage.setItem('hp-updated-at', ts);
+
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     _saveTimer = null;
@@ -58,7 +63,7 @@ export function scheduleSave() {
       playlists: JSON.parse(localStorage.getItem('hp-playlists') || '[]'),
       layouts:   JSON.parse(localStorage.getItem('hp-layouts')   || '[]'),
       prefs:     JSON.parse(localStorage.getItem('hp-prefs')     || '{}'),
-      updated_at: new Date().toISOString(),
+      updated_at: localStorage.getItem('hp-updated-at'),
     }, { onConflict: 'user_id' }).then(({ error }) => {
       if (error) console.error('Sync error:', error);
     });

@@ -1708,6 +1708,11 @@ async function loadCloudData() {
 }
 
 function scheduleSave() {
+  // Stamp local immediately so the timestamp reflects when data changed,
+  // not when the cloud write eventually fires.
+  const ts = new Date().toISOString();
+  localStorage.setItem('hp-updated-at', ts);
+
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     _saveTimer = null;
@@ -1717,7 +1722,7 @@ function scheduleSave() {
       playlists: JSON.parse(localStorage.getItem('hp-playlists') || '[]'),
       layouts:   JSON.parse(localStorage.getItem('hp-layouts')   || '[]'),
       prefs:     JSON.parse(localStorage.getItem('hp-prefs')     || '{}'),
-      updated_at: new Date().toISOString(),
+      updated_at: localStorage.getItem('hp-updated-at'),
     }, { onConflict: 'user_id' }).then(({ error }) => {
       if (error) console.error('Sync error:', error);
     });
@@ -2402,35 +2407,35 @@ function savePrefs() {
 // ── Auth sync ─────────────────────────────────────────────────────────────────
 async function handleLogin(event, session) {
   if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
+  const cloud = await loadCloudData();
 
   const localPlaylists = JSON.parse(localStorage.getItem('hp-playlists') || '[]');
   const localLayouts   = JSON.parse(localStorage.getItem('hp-layouts')   || '[]');
-  const hasLocal = localPlaylists.length > 0 || localLayouts.length > 0;
+  const localTs  = localStorage.getItem('hp-updated-at') || '1970-01-01T00:00:00.000Z';
+  const cloudTs  = cloud?.updated_at                     || '1970-01-01T00:00:00.000Z';
 
-  if (hasLocal) {
-    // This device has data — it's authoritative. Push to cloud, never pull.
-    scheduleSave();
-    render();
-    return;
-  }
+  const localCount = localPlaylists.length + localLayouts.length;
+  const cloudCount = (cloud?.playlists?.length || 0) + (cloud?.layouts?.length || 0);
 
-  // Local is empty (new device / fresh install) — restore from cloud.
-  const cloud = await loadCloudData();
-  if (cloud) {
-    if (cloud.playlists?.length > 0) {
-      localStorage.setItem('hp-playlists', JSON.stringify(cloud.playlists));
-      state.playlists = cloud.playlists;
-      state.favorites = getFavorites();
-    }
-    if (cloud.layouts?.length > 0) {
-      localStorage.setItem('hp-layouts', JSON.stringify(cloud.layouts));
-      state.savedLayouts = getSavedLayouts();
-    }
+  // Cloud wins when it's newer — but never let an empty cloud wipe real local data
+  // (guards against a browser-with-empty-storage accidentally uploading zeros).
+  const cloudWins = cloudTs > localTs && (cloudCount > 0 || localCount === 0);
+
+  if (cloudWins) {
+    localStorage.setItem('hp-playlists', JSON.stringify(cloud.playlists || []));
+    localStorage.setItem('hp-layouts',   JSON.stringify(cloud.layouts   || []));
+    localStorage.setItem('hp-updated-at', cloudTs);
+    state.playlists    = cloud.playlists || [];
+    state.favorites    = getFavorites();
+    state.savedLayouts = getSavedLayouts();
     if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
       localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
       loadPrefs();
     }
+  } else {
+    scheduleSave(); // local is newer (or cloud is empty) → push up
   }
+
   render();
 }
 
