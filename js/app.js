@@ -689,6 +689,19 @@ function savePrefs() {
 // ── Auth sync ─────────────────────────────────────────────────────────────────
 async function handleLogin(event, session) {
   if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
+
+  const localPlaylists = JSON.parse(localStorage.getItem('hp-playlists') || '[]');
+  const localLayouts   = JSON.parse(localStorage.getItem('hp-layouts')   || '[]');
+  const hasLocal = localPlaylists.length > 0 || localLayouts.length > 0;
+
+  if (hasLocal) {
+    // This device has data — it's authoritative. Push to cloud, never pull.
+    scheduleSave();
+    render();
+    return;
+  }
+
+  // Local is empty (new device / fresh install) — restore from cloud.
   const cloud = await loadCloudData();
   if (cloud) {
     if (cloud.playlists?.length > 0) {
@@ -704,8 +717,6 @@ async function handleLogin(event, session) {
       localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
       loadPrefs();
     }
-  } else {
-    scheduleSave(); // first login: upload local data to cloud
   }
   render();
 }
