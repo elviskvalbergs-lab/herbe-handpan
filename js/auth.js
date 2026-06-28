@@ -42,7 +42,7 @@ export async function loadCloudData() {
   if (!_sb || !_session) return null;
   const { data, error } = await _sb
     .from('user_data')
-    .select('playlists,layouts,prefs')
+    .select('playlists,layouts,prefs,updated_at')
     .single();
   if (error) return null; // PGRST116 = no row yet; others = real error
   return data;
