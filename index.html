@@ -497,9 +497,30 @@ body {
 .fav-btn.active { color: var(--primary); opacity: 1; }
 .panel-fav { font-size: 18px; padding: 2px 6px; opacity: 0.45; align-self: center; }
 
+/* Auth bar */
+.auth-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.auth-email-input {
+  flex: 1; min-width: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit; font-size: 13px;
+  outline: none;
+}
+.auth-email-input:focus { border-color: var(--primary); }
+.auth-email-input::placeholder { color: var(--muted); }
+.auth-bar .hint { flex: 1; }
+
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
-  .scale-search, .name-input, .select-input {
+  .scale-search, .name-input, .select-input, .auth-email-input {
     font-size: 16px !important;
   }
 }
@@ -508,6 +529,7 @@ body {
 </head>
 <body>
   <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
 // ── js/data.js ──
 // Note name → semitone offset (0–11)
@@ -1343,54 +1365,13 @@ function ringNoteRadius(sortedIndex, total) {
   return Math.round(maxR - (maxR - minR) * t);
 }
 
-function renderBottomShell(layout, opts = {}) {
-  const { highlightNotes = [], useFlats = false, useSolfege = false } = opts;
-  const cx = 250, cy = 240;
-  const hlSet = new Set(highlightNotes);
-  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#1a3828"/>
-      <stop offset="60%" stop-color="#0d2018"/>
-      <stop offset="100%" stop-color="#060f0c"/>
-    </radialGradient>
-  </defs>
-  <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
-  <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
-  <!-- Gu ring guide -->
-  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  <!-- Inner groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="80" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="2 5" opacity="0.6"/>
-  <!-- Center hole -->
-  <circle cx="${cx}" cy="${cy}" r="50" fill="#030a06" stroke="#1c3828" stroke-width="2"/>
-  <circle cx="${cx}" cy="${cy}" r="47" fill="none" stroke="#0a1a12" stroke-width="2" opacity="0.7"/>
-`;
-
-  if (guCount > 0) {
-    const guPos = circlePositions(guCount, cx, cy, 145, 0);
-    for (let i = 0; i < guCount; i++) {
-      const slot = layout.bottom.slots[i] ?? { note: null };
-      const isHighlighted = !!(slot.note && hlSet.has(slot.note));
-      const cls = ['gu', !slot.note ? 'empty' : '', isHighlighted ? 'highlight' : ''].filter(Boolean).join(' ');
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, cls, `gu-${i}`, 24, useFlats, useSolfege);
-    }
-  }
-
-  svg += '</svg>';
-  return svg;
-}
+// Bottom notes now rendered as outer ring in unified renderPan — this function is kept
+// only for callers that may reference it directly (shellMode='bottom' handled inline).
 
 function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false } = opts;
 
-  // Bottom shell gets its own dedicated view.
-  if (shellMode === 'bottom') return renderBottomShell(layout, opts);
-
-  const cx = 250, cy = 240;
+  const cx = 250, cy = 250;
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
 
@@ -1407,14 +1388,11 @@ function renderPan(layout, opts = {}) {
     return classes.join(' ');
   }
 
-  // 10-13 ring scales split into outer (n1-n8) + inner (n9+) rings.
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
-
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-  const svgHeight = guCount > 0 ? 548 : 480;
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 ${svgHeight}" width="100%" xmlns="http://www.w3.org/2000/svg">
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
@@ -1425,24 +1403,17 @@ function renderPan(layout, opts = {}) {
       <stop offset="0%" stop-color="#183028"/>
       <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
-    <clipPath id="panClip">
-      <circle cx="${cx}" cy="${cy}" r="198"/>
-    </clipPath>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="200" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="178" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
-  <!-- Gu separator groove -->
-  <path d="M ${cx - 90},${cy + 158} A 178,178 0 0,1 ${cx + 90},${cy + 158}"
-    fill="none" stroke="#2a5040" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.9"/>
+  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
-  <!-- Outer tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  ${hasInnerRing ? `<!-- Inner tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
+  <!-- Tone field guide ring -->
+  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
+  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
@@ -1455,18 +1426,16 @@ function renderPan(layout, opts = {}) {
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
 
   if (hasInnerRing) {
-    // 10-ring: outer ring gets 8 lower notes (n1-n8), inner ring gets n9 and n10.
     const outerSlots = OUTER_8_ORDER.map(i => layout.top.slots[i] ?? { note: null });
     const rotationRad = rotated ? Math.PI * (8 - 9) / 8 : 0;
-    const outerPos = circlePositions(8, cx, cy, 145, rotationRad);
+    const outerPos = circlePositions(8, cx, cy, 142, rotationRad);
     for (let i = 0; i < 8; i++) {
       const slot = outerSlots[i];
-      const sortedIdx = OUTER_8_ORDER[i]; // position in original slots array (0-7)
+      const sortedIdx = OUTER_8_ORDER[i];
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
       svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
         `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
     }
-    // Inner ring: slots 8+ (up to 5 for 13-ring instruments)
     const innerCount = Math.min(5, totalRingSlots - 8);
     const innerPos = innerRingPositions(cx, cy, innerCount);
     for (let i = 0; i < innerCount; i++) {
@@ -1477,10 +1446,9 @@ function renderPan(layout, opts = {}) {
         `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
     }
   } else {
-    // Standard: all ring slots on one ring.
     const ringCount = Math.max(layout.top.capacity, totalRingSlots);
     const rotationRad = rotated ? Math.PI * (ringCount - 9) / ringCount : 0;
-    const ringPos = circlePositions(ringCount, cx, cy, 145, rotationRad);
+    const ringPos = circlePositions(ringCount, cx, cy, 142, rotationRad);
 
     let ringSlots = layout.top.slots;
     let sortedIndices = null;
@@ -1495,29 +1463,18 @@ function renderPan(layout, opts = {}) {
     for (let i = 0; i < ringCount; i++) {
       const slot = ringSlots[i] ?? { note: null };
       const pos = ringPos[i];
-      const r = sortedIndices
-        ? ringNoteRadius(sortedIndices[i], totalRingSlots)
-        : 22;
+      const r = sortedIndices ? ringNoteRadius(sortedIndices[i], totalRingSlots) : 22;
       svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r, useFlats, useSolfege);
     }
   }
 
-  // Gu (bottom shell) — small circular mini-pan overlapping bottom-right of main pan
+  // Bottom shell — outer orbit circles around the pan body
   if (guCount > 0) {
-    const mCx = 390, mCy = 465;
-    const mOuter = 52, mNoteR = 34, mNoteCircle = 16;
-
-    svg += `
-  <circle cx="${mCx}" cy="${mCy}" r="${mOuter}" fill="url(#panGrad)" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="${mCx}" cy="${mCy}" r="${mOuter - 14}" fill="none" stroke="#1c3828" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.5"/>
-  <text x="${mCx}" y="${mCy + mOuter + 11}" text-anchor="middle" font-family="system-ui,sans-serif"
-    font-size="8" font-weight="600" letter-spacing="0.08em"
-    fill="var(--note-empty-border)" opacity="0.5">BOTTOM SHELL</text>`;
-
-    const guPos = circlePositions(guCount, mCx, mCy, mNoteR, 0);
+    const guPos = circlePositions(guCount, cx, cy, 228, 0);
     for (let i = 0; i < guCount; i++) {
       const slot = layout.bottom.slots[i] ?? { note: null };
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, mNoteCircle, useFlats, useSolfege);
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note,
+        `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 16, useFlats, useSolfege);
     }
   }
 
@@ -1684,6 +1641,72 @@ function toggleFavorite(fav) {
 function isFavorite(id) { return isChordInPlaylist('favorites', id); }
 
 
+// ── js/auth.js ──
+// ── Supabase auth + cloud sync ────────────────────────────────────────────────
+const _SUPA_URL = 'https://gvcfrnbnenqfhofvzgoz.supabase.co';
+const _SUPA_KEY = 'sb_publishable_WGLxN9-CFdCrlEPiqNn7Dg_T1wKKluA';
+
+let _sb = null;
+let _session = null;
+let _saveTimer = null;
+
+function initSupabase(onAuthChange) {
+  if (!window.supabase) return;
+  _sb = window.supabase.createClient(_SUPA_URL, _SUPA_KEY);
+  _sb.auth.onAuthStateChange((event, session) => {
+    _session = session;
+    onAuthChange(event, session);
+  });
+  _sb.auth.getSession().then(({ data: { session } }) => {
+    if (session) { _session = session; onAuthChange('INITIAL_SESSION', session); }
+  });
+}
+
+function isLoggedIn() { return !!_session; }
+function getUserEmail() { return _session?.user?.email ?? null; }
+
+async function sendMagicLink(email) {
+  if (!_sb) return 'No connection';
+  const { error } = await _sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.href.split('#')[0] },
+  });
+  return error?.message ?? null;
+}
+
+async function signOut() {
+  if (_sb) await _sb.auth.signOut();
+  _session = null;
+}
+
+async function loadCloudData() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb
+    .from('user_data')
+    .select('playlists,layouts,prefs')
+    .single();
+  if (error) return null; // PGRST116 = no row yet; others = real error
+  return data;
+}
+
+function scheduleSave() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    if (!_sb || !_session) return;
+    _sb.from('user_data').upsert({
+      user_id: _session.user.id,
+      playlists: JSON.parse(localStorage.getItem('hp-playlists') || '[]'),
+      layouts:   JSON.parse(localStorage.getItem('hp-layouts')   || '[]'),
+      prefs:     JSON.parse(localStorage.getItem('hp-prefs')     || '{}'),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' }).then(({ error }) => {
+      if (error) console.error('Sync error:', error);
+    });
+  }, 1500);
+}
+
+
 // ── js/app.js ──
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -1707,6 +1730,8 @@ const state = {
   pickerNewPlaylist: false,
   chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
+  authEmail: '',
+  authLinkSent: false,
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -1731,6 +1756,21 @@ function viewSelector() {
   });
 
   const { savedLayouts, favorites, useFlats } = state;
+
+  const authBar = isLoggedIn()
+    ? `<div class="auth-bar">
+         <span class="hint">${escHtml(getUserEmail())}</span>
+         <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
+       </div>`
+    : state.authLinkSent
+    ? `<div class="auth-bar">
+         <span class="hint" style="color:var(--primary)">✓ Check your email for the magic link</span>
+       </div>`
+    : `<div class="auth-bar">
+         <input class="auth-email-input" id="auth-email-input" type="email"
+           placeholder="Email to sync playlists across devices" value="${escHtml(state.authEmail)}">
+         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">Sync ↑</button>
+       </div>`;
 
   const savedSection = savedLayouts.length === 0 ? '' : `
     <div class="pwa-section">
@@ -1783,6 +1823,7 @@ function viewSelector() {
         </button>
       </div>
     </div>
+    ${authBar}
     ${savedSection}${favsSection}
     <div class="scale-grid">
       ${filtered.length === 0
@@ -2328,6 +2369,31 @@ function savePrefs() {
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
   }));
+  scheduleSave();
+}
+
+// ── Auth sync ─────────────────────────────────────────────────────────────────
+async function handleLogin(event, session) {
+  if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
+  const cloud = await loadCloudData();
+  if (cloud) {
+    if (cloud.playlists?.length > 0) {
+      localStorage.setItem('hp-playlists', JSON.stringify(cloud.playlists));
+      state.playlists = cloud.playlists;
+      state.favorites = getFavorites();
+    }
+    if (cloud.layouts?.length > 0) {
+      localStorage.setItem('hp-layouts', JSON.stringify(cloud.layouts));
+      state.savedLayouts = getSavedLayouts();
+    }
+    if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
+      localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
+      loadPrefs();
+    }
+  } else {
+    scheduleSave(); // first login: upload local data to cloud
+  }
+  render();
 }
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
@@ -2340,6 +2406,8 @@ render();
 // a user-gesture-initiated ctx.resume(); touchstart is the historically reliable
 // trigger on older iOS while pointerdown covers desktop and modern iOS.
 // initAudio() is idempotent so firing both for the same touch is harmless.
+initSupabase(handleLogin);
+
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('touchstart', () => initAudio(), { once: true, passive: true });
 
@@ -2392,6 +2460,24 @@ document.addEventListener('click', e => {
   if (!el) return;
   const action = el.dataset.action;
 
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  if (action === 'auth-send-link') {
+    const email = (document.getElementById('auth-email-input')?.value || '').trim();
+    if (!email) return;
+    state.authEmail = email;
+    sendMagicLink(email).then(err => {
+      if (err) { showToast(err); return; }
+      state.authLinkSent = true;
+      render();
+    });
+    return;
+  }
+
+  if (action === 'auth-signout') {
+    signOut().then(() => { state.authLinkSent = false; render(); });
+    return;
+  }
+
   // ── Selector ──────────────────────────────────────────────────────────────
   if (action === 'filter-notes') {
     state.noteCountFilter = el.dataset.val;
@@ -2429,6 +2515,7 @@ document.addEventListener('click', e => {
       savedAt: Date.now(),
     });
     state.savedLayouts = getSavedLayouts();
+    scheduleSave();
     showToast('Saved to My Layouts');
     render();
     return;
@@ -2450,6 +2537,7 @@ document.addEventListener('click', e => {
   if (action === 'delete-saved') {
     deleteLayout(el.dataset.id);
     state.savedLayouts = getSavedLayouts();
+    scheduleSave();
     render();
     return;
   }
@@ -2500,6 +2588,7 @@ document.addEventListener('click', e => {
     }
     state.playlists = getPlaylists();
     state.favorites = getFavorites();
+    scheduleSave();
     render();
     return;
   }
@@ -2533,6 +2622,7 @@ document.addEventListener('click', e => {
     state.pickerChordFavId = null;
     state.pickerChordObj = null;
     state.pickerNewPlaylist = false;
+    scheduleSave();
     showToast('Playlist created');
     render();
     return;
@@ -2579,6 +2669,7 @@ document.addEventListener('click', e => {
     state.playlists = getPlaylists();
     state.view = 'selector';
     state.activePlaylistId = null;
+    scheduleSave();
     render();
     return;
   }
@@ -2587,6 +2678,7 @@ document.addEventListener('click', e => {
     const idx = parseInt(el.dataset.idx, 10);
     reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
     state.playlists = getPlaylists();
+    scheduleSave();
     render();
     return;
   }
@@ -2595,6 +2687,7 @@ document.addEventListener('click', e => {
     const idx = parseInt(el.dataset.idx, 10);
     reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
     state.playlists = getPlaylists();
+    scheduleSave();
     render();
     return;
   }
@@ -2608,6 +2701,7 @@ document.addEventListener('click', e => {
     removeChordFromPlaylist(state.activePlaylistId, chord.id);
     state.playlists = getPlaylists();
     state.favorites = getFavorites();
+    scheduleSave();
     render();
     return;
   }
@@ -2872,6 +2966,10 @@ document.addEventListener('input', e => {
   if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
     renamePlaylist(state.activePlaylistId, e.target.value);
     state.playlists = getPlaylists();
+    scheduleSave();
+  }
+  if (e.target.id === 'auth-email-input') {
+    state.authEmail = e.target.value;
   }
 });
 

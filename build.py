@@ -18,7 +18,7 @@ def strip_modules(js):
 css = read('styles.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/chords.js', 'js/audio.js', 'js/pan.js', 'js/storage.js', 'js/app.js']
+js_files = ['js/data.js', 'js/chords.js', 'js/audio.js', 'js/pan.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -48,6 +48,7 @@ html = f'''<!DOCTYPE html>
 </head>
 <body>
   <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
 {js_bundle}
   </script>

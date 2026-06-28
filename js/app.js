@@ -35,6 +35,8 @@ const state = {
   pickerNewPlaylist: false,
   chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
+  authEmail: '',
+  authLinkSent: false,
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -59,6 +61,21 @@ function viewSelector() {
   });
 
   const { savedLayouts, favorites, useFlats } = state;
+
+  const authBar = isLoggedIn()
+    ? `<div class="auth-bar">
+         <span class="hint">${escHtml(getUserEmail())}</span>
+         <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
+       </div>`
+    : state.authLinkSent
+    ? `<div class="auth-bar">
+         <span class="hint" style="color:var(--primary)">✓ Check your email for the magic link</span>
+       </div>`
+    : `<div class="auth-bar">
+         <input class="auth-email-input" id="auth-email-input" type="email"
+           placeholder="Email to sync playlists across devices" value="${escHtml(state.authEmail)}">
+         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">Sync ↑</button>
+       </div>`;
 
   const savedSection = savedLayouts.length === 0 ? '' : `
     <div class="pwa-section">
@@ -111,6 +128,7 @@ function viewSelector() {
         </button>
       </div>
     </div>
+    ${authBar}
     ${savedSection}${favsSection}
     <div class="scale-grid">
       ${filtered.length === 0
@@ -656,6 +674,31 @@ function savePrefs() {
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
   }));
+  scheduleSave();
+}
+
+// ── Auth sync ─────────────────────────────────────────────────────────────────
+async function handleLogin(event, session) {
+  if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
+  const cloud = await loadCloudData();
+  if (cloud) {
+    if (cloud.playlists?.length > 0) {
+      localStorage.setItem('hp-playlists', JSON.stringify(cloud.playlists));
+      state.playlists = cloud.playlists;
+      state.favorites = getFavorites();
+    }
+    if (cloud.layouts?.length > 0) {
+      localStorage.setItem('hp-layouts', JSON.stringify(cloud.layouts));
+      state.savedLayouts = getSavedLayouts();
+    }
+    if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
+      localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
+      loadPrefs();
+    }
+  } else {
+    scheduleSave(); // first login: upload local data to cloud
+  }
+  render();
 }
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
@@ -668,6 +711,8 @@ render();
 // a user-gesture-initiated ctx.resume(); touchstart is the historically reliable
 // trigger on older iOS while pointerdown covers desktop and modern iOS.
 // initAudio() is idempotent so firing both for the same touch is harmless.
+initSupabase(handleLogin);
+
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('touchstart', () => initAudio(), { once: true, passive: true });
 
@@ -720,6 +765,24 @@ document.addEventListener('click', e => {
   if (!el) return;
   const action = el.dataset.action;
 
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  if (action === 'auth-send-link') {
+    const email = (document.getElementById('auth-email-input')?.value || '').trim();
+    if (!email) return;
+    state.authEmail = email;
+    sendMagicLink(email).then(err => {
+      if (err) { showToast(err); return; }
+      state.authLinkSent = true;
+      render();
+    });
+    return;
+  }
+
+  if (action === 'auth-signout') {
+    signOut().then(() => { state.authLinkSent = false; render(); });
+    return;
+  }
+
   // ── Selector ──────────────────────────────────────────────────────────────
   if (action === 'filter-notes') {
     state.noteCountFilter = el.dataset.val;
@@ -757,6 +820,7 @@ document.addEventListener('click', e => {
       savedAt: Date.now(),
     });
     state.savedLayouts = getSavedLayouts();
+    scheduleSave();
     showToast('Saved to My Layouts');
     render();
     return;
@@ -778,6 +842,7 @@ document.addEventListener('click', e => {
   if (action === 'delete-saved') {
     deleteLayout(el.dataset.id);
     state.savedLayouts = getSavedLayouts();
+    scheduleSave();
     render();
     return;
   }
@@ -828,6 +893,7 @@ document.addEventListener('click', e => {
     }
     state.playlists = getPlaylists();
     state.favorites = getFavorites();
+    scheduleSave();
     render();
     return;
   }
@@ -861,6 +927,7 @@ document.addEventListener('click', e => {
     state.pickerChordFavId = null;
     state.pickerChordObj = null;
     state.pickerNewPlaylist = false;
+    scheduleSave();
     showToast('Playlist created');
     render();
     return;
@@ -907,6 +974,7 @@ document.addEventListener('click', e => {
     state.playlists = getPlaylists();
     state.view = 'selector';
     state.activePlaylistId = null;
+    scheduleSave();
     render();
     return;
   }
@@ -915,6 +983,7 @@ document.addEventListener('click', e => {
     const idx = parseInt(el.dataset.idx, 10);
     reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
     state.playlists = getPlaylists();
+    scheduleSave();
     render();
     return;
   }
@@ -923,6 +992,7 @@ document.addEventListener('click', e => {
     const idx = parseInt(el.dataset.idx, 10);
     reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
     state.playlists = getPlaylists();
+    scheduleSave();
     render();
     return;
   }
@@ -936,6 +1006,7 @@ document.addEventListener('click', e => {
     removeChordFromPlaylist(state.activePlaylistId, chord.id);
     state.playlists = getPlaylists();
     state.favorites = getFavorites();
+    scheduleSave();
     render();
     return;
   }
@@ -1200,6 +1271,10 @@ document.addEventListener('input', e => {
   if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
     renamePlaylist(state.activePlaylistId, e.target.value);
     state.playlists = getPlaylists();
+    scheduleSave();
+  }
+  if (e.target.id === 'auth-email-input') {
+    state.authEmail = e.target.value;
   }
 });
 

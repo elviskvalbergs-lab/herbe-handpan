@@ -481,9 +481,30 @@ body {
 .fav-btn.active { color: var(--primary); opacity: 1; }
 .panel-fav { font-size: 18px; padding: 2px 6px; opacity: 0.45; align-self: center; }
 
+/* Auth bar */
+.auth-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.auth-email-input {
+  flex: 1; min-width: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit; font-size: 13px;
+  outline: none;
+}
+.auth-email-input:focus { border-color: var(--primary); }
+.auth-email-input::placeholder { color: var(--muted); }
+.auth-bar .hint { flex: 1; }
+
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
-  .scale-search, .name-input, .select-input {
+  .scale-search, .name-input, .select-input, .auth-email-input {
     font-size: 16px !important;
   }
 }

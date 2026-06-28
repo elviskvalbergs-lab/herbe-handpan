@@ -89,54 +89,13 @@ function ringNoteRadius(sortedIndex, total) {
   return Math.round(maxR - (maxR - minR) * t);
 }
 
-function renderBottomShell(layout, opts = {}) {
-  const { highlightNotes = [], useFlats = false, useSolfege = false } = opts;
-  const cx = 250, cy = 240;
-  const hlSet = new Set(highlightNotes);
-  const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 490" width="100%" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#1a3828"/>
-      <stop offset="60%" stop-color="#0d2018"/>
-      <stop offset="100%" stop-color="#060f0c"/>
-    </radialGradient>
-  </defs>
-  <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="220" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
-  <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="195" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
-  <!-- Gu ring guide -->
-  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  <!-- Inner groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="80" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="2 5" opacity="0.6"/>
-  <!-- Center hole -->
-  <circle cx="${cx}" cy="${cy}" r="50" fill="#030a06" stroke="#1c3828" stroke-width="2"/>
-  <circle cx="${cx}" cy="${cy}" r="47" fill="none" stroke="#0a1a12" stroke-width="2" opacity="0.7"/>
-`;
-
-  if (guCount > 0) {
-    const guPos = circlePositions(guCount, cx, cy, 145, 0);
-    for (let i = 0; i < guCount; i++) {
-      const slot = layout.bottom.slots[i] ?? { note: null };
-      const isHighlighted = !!(slot.note && hlSet.has(slot.note));
-      const cls = ['gu', !slot.note ? 'empty' : '', isHighlighted ? 'highlight' : ''].filter(Boolean).join(' ');
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, cls, `gu-${i}`, 24, useFlats, useSolfege);
-    }
-  }
-
-  svg += '</svg>';
-  return svg;
-}
+// Bottom notes now rendered as outer ring in unified renderPan — this function is kept
+// only for callers that may reference it directly (shellMode='bottom' handled inline).
 
 export function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false } = opts;
 
-  // Bottom shell gets its own dedicated view.
-  if (shellMode === 'bottom') return renderBottomShell(layout, opts);
-
-  const cx = 250, cy = 240;
+  const cx = 250, cy = 250;
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
 
@@ -153,14 +112,11 @@ export function renderPan(layout, opts = {}) {
     return classes.join(' ');
   }
 
-  // 10-13 ring scales split into outer (n1-n8) + inner (n9+) rings.
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
-
   const guCount = Math.max(layout.bottom.capacity, layout.bottom.slots.length);
-  const svgHeight = guCount > 0 ? 548 : 480;
 
-  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 ${svgHeight}" width="100%" xmlns="http://www.w3.org/2000/svg">
+  let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
       <stop offset="0%" stop-color="#1a3828"/>
@@ -171,24 +127,17 @@ export function renderPan(layout, opts = {}) {
       <stop offset="0%" stop-color="#183028"/>
       <stop offset="100%" stop-color="#0d1e18"/>
     </radialGradient>
-    <clipPath id="panClip">
-      <circle cx="${cx}" cy="${cy}" r="198"/>
-    </clipPath>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="200" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="178" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
-  <!-- Gu separator groove -->
-  <path d="M ${cx - 90},${cy + 158} A 178,178 0 0,1 ${cx + 90},${cy + 158}"
-    fill="none" stroke="#2a5040" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.9"/>
+  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="68" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
-  <!-- Outer tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="145" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  ${hasInnerRing ? `<!-- Inner tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
+  <!-- Tone field guide ring -->
+  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
+  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
@@ -201,18 +150,16 @@ export function renderPan(layout, opts = {}) {
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
 
   if (hasInnerRing) {
-    // 10-ring: outer ring gets 8 lower notes (n1-n8), inner ring gets n9 and n10.
     const outerSlots = OUTER_8_ORDER.map(i => layout.top.slots[i] ?? { note: null });
     const rotationRad = rotated ? Math.PI * (8 - 9) / 8 : 0;
-    const outerPos = circlePositions(8, cx, cy, 145, rotationRad);
+    const outerPos = circlePositions(8, cx, cy, 142, rotationRad);
     for (let i = 0; i < 8; i++) {
       const slot = outerSlots[i];
-      const sortedIdx = OUTER_8_ORDER[i]; // position in original slots array (0-7)
+      const sortedIdx = OUTER_8_ORDER[i];
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
       svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
         `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
     }
-    // Inner ring: slots 8+ (up to 5 for 13-ring instruments)
     const innerCount = Math.min(5, totalRingSlots - 8);
     const innerPos = innerRingPositions(cx, cy, innerCount);
     for (let i = 0; i < innerCount; i++) {
@@ -223,10 +170,9 @@ export function renderPan(layout, opts = {}) {
         `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
     }
   } else {
-    // Standard: all ring slots on one ring.
     const ringCount = Math.max(layout.top.capacity, totalRingSlots);
     const rotationRad = rotated ? Math.PI * (ringCount - 9) / ringCount : 0;
-    const ringPos = circlePositions(ringCount, cx, cy, 145, rotationRad);
+    const ringPos = circlePositions(ringCount, cx, cy, 142, rotationRad);
 
     let ringSlots = layout.top.slots;
     let sortedIndices = null;
@@ -241,29 +187,18 @@ export function renderPan(layout, opts = {}) {
     for (let i = 0; i < ringCount; i++) {
       const slot = ringSlots[i] ?? { note: null };
       const pos = ringPos[i];
-      const r = sortedIndices
-        ? ringNoteRadius(sortedIndices[i], totalRingSlots)
-        : 22;
+      const r = sortedIndices ? ringNoteRadius(sortedIndices[i], totalRingSlots) : 22;
       svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r, useFlats, useSolfege);
     }
   }
 
-  // Gu (bottom shell) — small circular mini-pan overlapping bottom-right of main pan
+  // Bottom shell — outer orbit circles around the pan body
   if (guCount > 0) {
-    const mCx = 390, mCy = 465;
-    const mOuter = 52, mNoteR = 34, mNoteCircle = 16;
-
-    svg += `
-  <circle cx="${mCx}" cy="${mCy}" r="${mOuter}" fill="url(#panGrad)" stroke="#2a5040" stroke-width="1.5"/>
-  <circle cx="${mCx}" cy="${mCy}" r="${mOuter - 14}" fill="none" stroke="#1c3828" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.5"/>
-  <text x="${mCx}" y="${mCy + mOuter + 11}" text-anchor="middle" font-family="system-ui,sans-serif"
-    font-size="8" font-weight="600" letter-spacing="0.08em"
-    fill="var(--note-empty-border)" opacity="0.5">BOTTOM SHELL</text>`;
-
-    const guPos = circlePositions(guCount, mCx, mCy, mNoteR, 0);
+    const guPos = circlePositions(guCount, cx, cy, 228, 0);
     for (let i = 0; i < guCount; i++) {
       const slot = layout.bottom.slots[i] ?? { note: null };
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note, `gu ${noteClass(slot.note, false)}`, `gu-${i}`, mNoteCircle, useFlats, useSolfege);
+      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note,
+        `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 16, useFlats, useSolfege);
     }
   }
 
