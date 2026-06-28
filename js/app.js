@@ -37,6 +37,7 @@ const state = {
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
   authEmail: '',
   authLinkSent: false,
+  authCode: '',
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -64,12 +65,20 @@ function viewSelector() {
 
   const authBar = isLoggedIn()
     ? `<div class="auth-bar">
-         <span class="hint">${escHtml(getUserEmail())}</span>
+         <span class="hint auth-user">${escHtml(getUserEmail())}</span>
          <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
        </div>`
     : state.authLinkSent
-    ? `<div class="auth-bar">
-         <span class="hint" style="color:var(--primary)">✓ Check your email for the magic link</span>
+    ? `<div class="auth-bar auth-bar--code">
+         <span class="hint" style="color:var(--primary);font-size:12px">Code sent to ${escHtml(state.authEmail)}</span>
+         <div class="auth-code-row">
+           <input class="auth-code-input" id="auth-code-input" type="text"
+             inputmode="numeric" pattern="[0-9]*" maxlength="6"
+             placeholder="6-digit code" value="${escHtml(state.authCode)}"
+             autocomplete="one-time-code">
+           <button class="btn btn-primary btn-sm" data-action="auth-verify">Verify</button>
+           <button class="btn btn-secondary btn-sm" data-action="auth-cancel">✕</button>
+         </div>
        </div>`
     : `<div class="auth-bar">
          <input class="auth-email-input" id="auth-email-input" type="email"
@@ -770,11 +779,31 @@ document.addEventListener('click', e => {
     const email = (document.getElementById('auth-email-input')?.value || '').trim();
     if (!email) return;
     state.authEmail = email;
-    sendMagicLink(email).then(err => {
+    sendOtp(email).then(err => {
       if (err) { showToast(err); return; }
       state.authLinkSent = true;
+      state.authCode = '';
       render();
+      setTimeout(() => document.getElementById('auth-code-input')?.focus(), 0);
     });
+    return;
+  }
+
+  if (action === 'auth-verify') {
+    const code = (document.getElementById('auth-code-input')?.value || state.authCode).trim();
+    if (code.length < 6) { showToast('Enter the 6-digit code from the email'); return; }
+    verifyOtp(state.authEmail, code).then(err => {
+      if (err) { showToast('Invalid code — ' + err); return; }
+      state.authLinkSent = false;
+      state.authCode = '';
+    });
+    return;
+  }
+
+  if (action === 'auth-cancel') {
+    state.authLinkSent = false;
+    state.authCode = '';
+    render();
     return;
   }
 
@@ -1275,6 +1304,13 @@ document.addEventListener('input', e => {
   }
   if (e.target.id === 'auth-email-input') {
     state.authEmail = e.target.value;
+  }
+  if (e.target.id === 'auth-code-input') {
+    state.authCode = e.target.value.replace(/\D/g, '').slice(0, 6);
+    e.target.value = state.authCode;
+    if (state.authCode.length === 6) {
+      document.querySelector('[data-action="auth-verify"]')?.click();
+    }
   }
 });
 

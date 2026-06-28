@@ -21,12 +21,15 @@ export function initSupabase(onAuthChange) {
 export function isLoggedIn() { return !!_session; }
 export function getUserEmail() { return _session?.user?.email ?? null; }
 
-export async function sendMagicLink(email) {
+export async function sendOtp(email) {
   if (!_sb) return 'No connection';
-  const { error } = await _sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: window.location.href.split('#')[0] },
-  });
+  const { error } = await _sb.auth.signInWithOtp({ email });
+  return error?.message ?? null;
+}
+
+export async function verifyOtp(email, token) {
+  if (!_sb) return 'No connection';
+  const { error } = await _sb.auth.verifyOtp({ email, token: token.trim(), type: 'email' });
   return error?.message ?? null;
 }
 

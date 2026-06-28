@@ -501,6 +501,21 @@ body {
 .auth-email-input:focus { border-color: var(--primary); }
 .auth-email-input::placeholder { color: var(--muted); }
 .auth-bar .hint { flex: 1; }
+.auth-bar--code { flex-direction: column; align-items: stretch; gap: 6px; }
+.auth-code-row { display: flex; gap: 8px; align-items: center; }
+.auth-code-input {
+  width: 110px; flex-shrink: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit; font-size: 18px; font-weight: 600;
+  letter-spacing: 0.15em; text-align: center;
+  outline: none;
+}
+.auth-code-input:focus { border-color: var(--primary); }
+.auth-code-input::placeholder { font-size: 12px; font-weight: 400; letter-spacing: 0; }
 
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
