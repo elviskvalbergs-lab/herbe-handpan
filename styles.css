@@ -504,7 +504,7 @@ body {
 .auth-bar--code { flex-direction: column; align-items: stretch; gap: 6px; }
 .auth-code-row { display: flex; gap: 8px; align-items: center; }
 .auth-code-input {
-  width: 110px; flex-shrink: 0;
+  width: 140px; flex-shrink: 0;
   padding: 6px 10px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
