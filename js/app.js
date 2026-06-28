@@ -689,42 +689,77 @@ function savePrefs() {
 
 // ── Auth sync ─────────────────────────────────────────────────────────────────
 
-// Apply cloud data if it's newer than local. Returns true if data was updated.
-function applyCloudData(cloud) {
-  if (!cloud) return false;
-  const localTs    = localStorage.getItem('hp-updated-at') || '1970-01-01T00:00:00.000Z';
-  const cloudTs    = cloud.updated_at                      || '1970-01-01T00:00:00.000Z';
-  const localCount = JSON.parse(localStorage.getItem('hp-playlists') || '[]').length
-                   + JSON.parse(localStorage.getItem('hp-layouts')   || '[]').length;
-  const cloudCount = (cloud.playlists?.length || 0) + (cloud.layouts?.length || 0);
-
-  // Cloud wins when newer — safety: never let an empty cloud overwrite real local data.
-  if (!(cloudTs > localTs && (cloudCount > 0 || localCount === 0))) return false;
-
-  localStorage.setItem('hp-playlists', JSON.stringify(cloud.playlists || []));
-  localStorage.setItem('hp-layouts',   JSON.stringify(cloud.layouts   || []));
-  localStorage.setItem('hp-updated-at', cloudTs);
-  state.playlists    = cloud.playlists || [];
-  state.favorites    = getFavorites();
-  state.savedLayouts = getSavedLayouts();
-  if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
-    localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
-    loadPrefs();
+// Merge two arrays of objects by id, keeping the newest version of each item.
+// Items with deletedAt propagate deletes to the other device.
+function mergeById(local, cloud) {
+  const byId = new Map();
+  for (const item of [...(local || []), ...(cloud || [])]) {
+    const existing = byId.get(item.id);
+    if (!existing || (item.updatedAt || '') > (existing.updatedAt || '')) {
+      byId.set(item.id, item);
+    }
   }
-  return true;
+  return [...byId.values()];
 }
 
-// Check cloud for newer data — called on login, visibility restore, and poll.
+// Returns true if two arrays have the same ids and updatedAt timestamps (order-independent).
+function sameByTimestamp(a, b) {
+  if (a.length !== b.length) return false;
+  const bMap = new Map(b.map(x => [x.id, x.updatedAt || '']));
+  return a.every(x => bMap.get(x.id) === (x.updatedAt || ''));
+}
+
+// Merge cloud data into local — per-item union, newest version of each wins.
+// Returns true if anything changed locally (triggers re-render).
+// Also uploads the merged result so the other device eventually sees our items.
+function mergeCloudData(cloud) {
+  if (!cloud) return false;
+
+  const localPlaylists = JSON.parse(localStorage.getItem('hp-playlists') || '[]');
+  const localLayouts   = JSON.parse(localStorage.getItem('hp-layouts')   || '[]');
+
+  const mergedPlaylists = mergeById(localPlaylists, cloud.playlists);
+  const mergedLayouts   = mergeById(localLayouts,   cloud.layouts);
+
+  const playlistsSame = sameByTimestamp(mergedPlaylists, localPlaylists);
+  const layoutsSame   = sameByTimestamp(mergedLayouts,   localLayouts);
+
+  if (!playlistsSame) {
+    localStorage.setItem('hp-playlists', JSON.stringify(mergedPlaylists));
+    state.playlists    = mergedPlaylists.filter(p => !p.deletedAt);
+    state.favorites    = getFavorites();
+  }
+  if (!layoutsSame) {
+    localStorage.setItem('hp-layouts', JSON.stringify(mergedLayouts));
+    state.savedLayouts = getSavedLayouts();
+  }
+
+  if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
+    const localTs = localStorage.getItem('hp-updated-at') || '1970';
+    if ((cloud.updated_at || '') > localTs) {
+      localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
+      loadPrefs();
+    }
+  }
+
+  if (!playlistsSame || !layoutsSame) {
+    // Push merged result back so other device sees our items too.
+    scheduleSave();
+    return true;
+  }
+  return false;
+}
+
+// Check cloud for changes — called on login, visibility restore, and poll.
 async function checkForUpdates() {
   if (!isLoggedIn()) return;
   const cloud = await loadCloudData();
-  if (applyCloudData(cloud)) render();
+  if (mergeCloudData(cloud)) render();
 }
 
 let _syncPoll = null;
 function startSyncPoll() {
   if (_syncPoll) return;
-  // Poll every 30s while app is visible — keeps two open tabs/devices in sync.
   _syncPoll = setInterval(() => {
     if (document.visibilityState === 'visible') checkForUpdates();
   }, 30000);
@@ -736,7 +771,8 @@ function stopSyncPoll() {
 async function handleLogin(event, session) {
   if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
   const cloud = await loadCloudData();
-  if (!applyCloudData(cloud)) scheduleSave(); // local is newer or cloud empty → push up
+  mergeCloudData(cloud);
+  scheduleSave(); // always push local on login — ensures cloud has our data
   startSyncPoll();
   render();
 }

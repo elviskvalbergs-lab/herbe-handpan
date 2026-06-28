@@ -1554,83 +1554,109 @@ function safeParse(key) {
   catch { return []; }
 }
 
+function now() { return new Date().toISOString(); }
+
 // ── Saved layouts ────────────────────────────────────────────────────────────
 
-function getSavedLayouts() { return safeParse(LAYOUTS_KEY); }
+// Raw: includes soft-deleted entries (needed for cloud sync)
+function getAllLayoutsRaw() { return safeParse(LAYOUTS_KEY); }
+
+function getSavedLayouts() {
+  return getAllLayoutsRaw().filter(l => !l.deletedAt);
+}
 
 function saveLayout(entry) {
-  const all = getSavedLayouts();
+  const all = getAllLayoutsRaw();
   const idx = all.findIndex(l => l.id === entry.id);
-  if (idx >= 0) all[idx] = entry;
-  else all.unshift(entry);
+  const stamped = { ...entry, updatedAt: now() };
+  if (idx >= 0) all[idx] = stamped;
+  else all.unshift(stamped);
   localStorage.setItem(LAYOUTS_KEY, JSON.stringify(all));
 }
 
 function deleteLayout(id) {
-  localStorage.setItem(LAYOUTS_KEY, JSON.stringify(getSavedLayouts().filter(l => l.id !== id)));
+  const all = getAllLayoutsRaw();
+  const layout = all.find(l => l.id === id);
+  if (layout) {
+    const ts = now();
+    layout.deletedAt = ts;
+    layout.updatedAt = ts;
+    localStorage.setItem(LAYOUTS_KEY, JSON.stringify(all));
+  }
 }
 
 // ── Playlists ────────────────────────────────────────────────────────────────
 
-function setPlaylists(playlists) {
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
-}
-
-function getPlaylists() {
+// Raw: includes soft-deleted entries (needed for cloud sync)
+function getAllPlaylistsRaw() {
   const raw = localStorage.getItem(PLAYLISTS_KEY);
   if (raw !== null) {
     try { return JSON.parse(raw); } catch { /* fall through */ }
   }
   // First run: create default Favorites playlist, migrate old favorites if any
   const old = safeParse(FAVS_KEY);
-  const playlists = [{ id: 'favorites', name: 'Favorites', chords: old }];
-  setPlaylists(playlists);
+  const playlists = [{ id: 'favorites', name: 'Favorites', chords: old, updatedAt: now() }];
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return playlists;
 }
 
+function getPlaylists() {
+  return getAllPlaylistsRaw().filter(p => !p.deletedAt);
+}
+
 function addPlaylist(name) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const id = 'pl-' + Date.now();
-  playlists.push({ id, name, chords: [] });
-  setPlaylists(playlists);
+  playlists.push({ id, name, chords: [], updatedAt: now() });
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return id;
 }
 
 function renamePlaylist(id, name) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === id);
-  if (pl) { pl.name = name; setPlaylists(playlists); }
+  if (pl) { pl.name = name; pl.updatedAt = now(); localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists)); }
 }
 
 function deletePlaylist(id) {
   if (id === 'favorites') return;
-  setPlaylists(getPlaylists().filter(p => p.id !== id));
+  const playlists = getAllPlaylistsRaw();
+  const pl = playlists.find(p => p.id === id);
+  if (pl) {
+    const ts = now();
+    pl.deletedAt = ts;
+    pl.updatedAt = ts;
+    localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  }
 }
 
 function addChordToPlaylist(playlistId, chord) {
-  const playlists = getPlaylists();
-  const pl = playlists.find(p => p.id === playlistId);
+  const playlists = getAllPlaylistsRaw();
+  const pl = playlists.find(p => p.id === playlistId && !p.deletedAt);
   if (!pl || pl.chords.some(c => c.id === chord.id)) return false;
   pl.chords.unshift(chord);
-  setPlaylists(playlists);
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
 function removeChordFromPlaylist(playlistId, chordFavId) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === playlistId);
   if (!pl) return;
   pl.chords = pl.chords.filter(c => c.id !== chordFavId);
-  setPlaylists(playlists);
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === playlistId);
   if (!pl || fromIdx === toIdx || toIdx < 0 || toIdx >= pl.chords.length) return;
   const [item] = pl.chords.splice(fromIdx, 1);
   pl.chords.splice(toIdx, 0, item);
-  setPlaylists(playlists);
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 function isChordInPlaylist(playlistId, chordFavId) {
@@ -2407,42 +2433,77 @@ function savePrefs() {
 
 // ── Auth sync ─────────────────────────────────────────────────────────────────
 
-// Apply cloud data if it's newer than local. Returns true if data was updated.
-function applyCloudData(cloud) {
-  if (!cloud) return false;
-  const localTs    = localStorage.getItem('hp-updated-at') || '1970-01-01T00:00:00.000Z';
-  const cloudTs    = cloud.updated_at                      || '1970-01-01T00:00:00.000Z';
-  const localCount = JSON.parse(localStorage.getItem('hp-playlists') || '[]').length
-                   + JSON.parse(localStorage.getItem('hp-layouts')   || '[]').length;
-  const cloudCount = (cloud.playlists?.length || 0) + (cloud.layouts?.length || 0);
-
-  // Cloud wins when newer — safety: never let an empty cloud overwrite real local data.
-  if (!(cloudTs > localTs && (cloudCount > 0 || localCount === 0))) return false;
-
-  localStorage.setItem('hp-playlists', JSON.stringify(cloud.playlists || []));
-  localStorage.setItem('hp-layouts',   JSON.stringify(cloud.layouts   || []));
-  localStorage.setItem('hp-updated-at', cloudTs);
-  state.playlists    = cloud.playlists || [];
-  state.favorites    = getFavorites();
-  state.savedLayouts = getSavedLayouts();
-  if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
-    localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
-    loadPrefs();
+// Merge two arrays of objects by id, keeping the newest version of each item.
+// Items with deletedAt propagate deletes to the other device.
+function mergeById(local, cloud) {
+  const byId = new Map();
+  for (const item of [...(local || []), ...(cloud || [])]) {
+    const existing = byId.get(item.id);
+    if (!existing || (item.updatedAt || '') > (existing.updatedAt || '')) {
+      byId.set(item.id, item);
+    }
   }
-  return true;
+  return [...byId.values()];
 }
 
-// Check cloud for newer data — called on login, visibility restore, and poll.
+// Returns true if two arrays have the same ids and updatedAt timestamps (order-independent).
+function sameByTimestamp(a, b) {
+  if (a.length !== b.length) return false;
+  const bMap = new Map(b.map(x => [x.id, x.updatedAt || '']));
+  return a.every(x => bMap.get(x.id) === (x.updatedAt || ''));
+}
+
+// Merge cloud data into local — per-item union, newest version of each wins.
+// Returns true if anything changed locally (triggers re-render).
+// Also uploads the merged result so the other device eventually sees our items.
+function mergeCloudData(cloud) {
+  if (!cloud) return false;
+
+  const localPlaylists = JSON.parse(localStorage.getItem('hp-playlists') || '[]');
+  const localLayouts   = JSON.parse(localStorage.getItem('hp-layouts')   || '[]');
+
+  const mergedPlaylists = mergeById(localPlaylists, cloud.playlists);
+  const mergedLayouts   = mergeById(localLayouts,   cloud.layouts);
+
+  const playlistsSame = sameByTimestamp(mergedPlaylists, localPlaylists);
+  const layoutsSame   = sameByTimestamp(mergedLayouts,   localLayouts);
+
+  if (!playlistsSame) {
+    localStorage.setItem('hp-playlists', JSON.stringify(mergedPlaylists));
+    state.playlists    = mergedPlaylists.filter(p => !p.deletedAt);
+    state.favorites    = getFavorites();
+  }
+  if (!layoutsSame) {
+    localStorage.setItem('hp-layouts', JSON.stringify(mergedLayouts));
+    state.savedLayouts = getSavedLayouts();
+  }
+
+  if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
+    const localTs = localStorage.getItem('hp-updated-at') || '1970';
+    if ((cloud.updated_at || '') > localTs) {
+      localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
+      loadPrefs();
+    }
+  }
+
+  if (!playlistsSame || !layoutsSame) {
+    // Push merged result back so other device sees our items too.
+    scheduleSave();
+    return true;
+  }
+  return false;
+}
+
+// Check cloud for changes — called on login, visibility restore, and poll.
 async function checkForUpdates() {
   if (!isLoggedIn()) return;
   const cloud = await loadCloudData();
-  if (applyCloudData(cloud)) render();
+  if (mergeCloudData(cloud)) render();
 }
 
 let _syncPoll = null;
 function startSyncPoll() {
   if (_syncPoll) return;
-  // Poll every 30s while app is visible — keeps two open tabs/devices in sync.
   _syncPoll = setInterval(() => {
     if (document.visibilityState === 'visible') checkForUpdates();
   }, 30000);
@@ -2454,7 +2515,8 @@ function stopSyncPoll() {
 async function handleLogin(event, session) {
   if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
   const cloud = await loadCloudData();
-  if (!applyCloudData(cloud)) scheduleSave(); // local is newer or cloud empty → push up
+  mergeCloudData(cloud);
+  scheduleSave(); // always push local on login — ensures cloud has our data
   startSyncPoll();
   render();
 }

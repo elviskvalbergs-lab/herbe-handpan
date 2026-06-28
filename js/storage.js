@@ -7,83 +7,109 @@ function safeParse(key) {
   catch { return []; }
 }
 
+function now() { return new Date().toISOString(); }
+
 // ── Saved layouts ────────────────────────────────────────────────────────────
 
-export function getSavedLayouts() { return safeParse(LAYOUTS_KEY); }
+// Raw: includes soft-deleted entries (needed for cloud sync)
+function getAllLayoutsRaw() { return safeParse(LAYOUTS_KEY); }
+
+export function getSavedLayouts() {
+  return getAllLayoutsRaw().filter(l => !l.deletedAt);
+}
 
 export function saveLayout(entry) {
-  const all = getSavedLayouts();
+  const all = getAllLayoutsRaw();
   const idx = all.findIndex(l => l.id === entry.id);
-  if (idx >= 0) all[idx] = entry;
-  else all.unshift(entry);
+  const stamped = { ...entry, updatedAt: now() };
+  if (idx >= 0) all[idx] = stamped;
+  else all.unshift(stamped);
   localStorage.setItem(LAYOUTS_KEY, JSON.stringify(all));
 }
 
 export function deleteLayout(id) {
-  localStorage.setItem(LAYOUTS_KEY, JSON.stringify(getSavedLayouts().filter(l => l.id !== id)));
+  const all = getAllLayoutsRaw();
+  const layout = all.find(l => l.id === id);
+  if (layout) {
+    const ts = now();
+    layout.deletedAt = ts;
+    layout.updatedAt = ts;
+    localStorage.setItem(LAYOUTS_KEY, JSON.stringify(all));
+  }
 }
 
 // ── Playlists ────────────────────────────────────────────────────────────────
 
-function setPlaylists(playlists) {
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
-}
-
-export function getPlaylists() {
+// Raw: includes soft-deleted entries (needed for cloud sync)
+function getAllPlaylistsRaw() {
   const raw = localStorage.getItem(PLAYLISTS_KEY);
   if (raw !== null) {
     try { return JSON.parse(raw); } catch { /* fall through */ }
   }
   // First run: create default Favorites playlist, migrate old favorites if any
   const old = safeParse(FAVS_KEY);
-  const playlists = [{ id: 'favorites', name: 'Favorites', chords: old }];
-  setPlaylists(playlists);
+  const playlists = [{ id: 'favorites', name: 'Favorites', chords: old, updatedAt: now() }];
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return playlists;
 }
 
+export function getPlaylists() {
+  return getAllPlaylistsRaw().filter(p => !p.deletedAt);
+}
+
 export function addPlaylist(name) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const id = 'pl-' + Date.now();
-  playlists.push({ id, name, chords: [] });
-  setPlaylists(playlists);
+  playlists.push({ id, name, chords: [], updatedAt: now() });
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return id;
 }
 
 export function renamePlaylist(id, name) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === id);
-  if (pl) { pl.name = name; setPlaylists(playlists); }
+  if (pl) { pl.name = name; pl.updatedAt = now(); localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists)); }
 }
 
 export function deletePlaylist(id) {
   if (id === 'favorites') return;
-  setPlaylists(getPlaylists().filter(p => p.id !== id));
+  const playlists = getAllPlaylistsRaw();
+  const pl = playlists.find(p => p.id === id);
+  if (pl) {
+    const ts = now();
+    pl.deletedAt = ts;
+    pl.updatedAt = ts;
+    localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  }
 }
 
 export function addChordToPlaylist(playlistId, chord) {
-  const playlists = getPlaylists();
-  const pl = playlists.find(p => p.id === playlistId);
+  const playlists = getAllPlaylistsRaw();
+  const pl = playlists.find(p => p.id === playlistId && !p.deletedAt);
   if (!pl || pl.chords.some(c => c.id === chord.id)) return false;
   pl.chords.unshift(chord);
-  setPlaylists(playlists);
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
 export function removeChordFromPlaylist(playlistId, chordFavId) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === playlistId);
   if (!pl) return;
   pl.chords = pl.chords.filter(c => c.id !== chordFavId);
-  setPlaylists(playlists);
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 export function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
-  const playlists = getPlaylists();
+  const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === playlistId);
   if (!pl || fromIdx === toIdx || toIdx < 0 || toIdx >= pl.chords.length) return;
   const [item] = pl.chords.splice(fromIdx, 1);
   pl.chords.splice(toIdx, 0, item);
-  setPlaylists(playlists);
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 export function isChordInPlaylist(playlistId, chordFavId) {
