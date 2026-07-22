@@ -34,6 +34,11 @@
   --note-playing-bg: #e8703a;
   --note-empty-border: #224838;
   --radius: 4px;
+  /* Per-scale-degree chord colors — root reuses the accent color, 3 more spread around the wheel */
+  --chord-c0: #CD4C38; --chord-c0-stroke: #e8906e; --chord-c0-text: #fff;
+  --chord-c1: #D9A62E; --chord-c1-stroke: #f0c866; --chord-c1-text: #241c05;
+  --chord-c2: #3FA7A6; --chord-c2-stroke: #7fd6d4; --chord-c2-text: #04211f;
+  --chord-c3: #9B6FD4; --chord-c3-stroke: #c6a3f0; --chord-c3-text: #1c0d2e;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -178,22 +183,30 @@ body {
 }
 .pan-note.empty text { fill: var(--note-empty-border) !important; font-size: 18px !important; }
 
-/* Highlighted (in chord) */
-.pan-note.highlight rect, .pan-note.highlight circle {
-  fill: var(--note-active-bg) !important;
-  stroke: #e8906e !important;
-  stroke-width: 2;
-}
-.pan-note.highlight text { fill: var(--note-active-text) !important; font-weight: 700; }
+/* Highlighted (in chord) — colored per scale degree (root, 3rd, 5th…) so the
+   same pitch class reads as the same color everywhere it appears on the pan. */
+.pan-note.highlight rect, .pan-note.highlight circle { stroke-width: 2; }
+.pan-note.highlight text { font-weight: 700; }
+.pan-note.highlight-0 rect, .pan-note.highlight-0 circle { fill: var(--chord-c0) !important; stroke: var(--chord-c0-stroke) !important; }
+.pan-note.highlight-0 text { fill: var(--chord-c0-text) !important; }
+.pan-note.highlight-1 rect, .pan-note.highlight-1 circle { fill: var(--chord-c1) !important; stroke: var(--chord-c1-stroke) !important; }
+.pan-note.highlight-1 text { fill: var(--chord-c1-text) !important; }
+.pan-note.highlight-2 rect, .pan-note.highlight-2 circle { fill: var(--chord-c2) !important; stroke: var(--chord-c2-stroke) !important; }
+.pan-note.highlight-2 text { fill: var(--chord-c2-text) !important; }
+.pan-note.highlight-3 rect, .pan-note.highlight-3 circle { fill: var(--chord-c3) !important; stroke: var(--chord-c3-stroke) !important; }
+.pan-note.highlight-3 text { fill: var(--chord-c3-text) !important; }
 
-/* Alt-highlight (same pitch class as a chord note, but not in the chord itself) */
-.pan-note.alt-highlight circle {
-  fill: rgba(232, 144, 110, 0.1) !important;
-  stroke: rgba(232, 144, 110, 0.35) !important;
-  stroke-width: 1.5;
-  stroke-dasharray: 3 3;
-}
-.pan-note.alt-highlight text { fill: rgba(232, 190, 160, 0.65) !important; }
+/* Alt-highlight — same pitch class as a chord note, alternate position on the
+   pan. Same hue as its degree's highlight color, dimmed and dashed. */
+.pan-note.alt-highlight circle { stroke-width: 1.5; stroke-dasharray: 3 3; }
+.pan-note.alt-highlight-0 circle { fill: rgba(205,76,56,0.12) !important; stroke: rgba(205,76,56,0.5) !important; }
+.pan-note.alt-highlight-0 text { fill: rgba(232,190,160,0.75) !important; }
+.pan-note.alt-highlight-1 circle { fill: rgba(217,166,46,0.12) !important; stroke: rgba(217,166,46,0.5) !important; }
+.pan-note.alt-highlight-1 text { fill: rgba(240,216,150,0.75) !important; }
+.pan-note.alt-highlight-2 circle { fill: rgba(63,167,166,0.12) !important; stroke: rgba(63,167,166,0.5) !important; }
+.pan-note.alt-highlight-2 text { fill: rgba(170,224,222,0.75) !important; }
+.pan-note.alt-highlight-3 circle { fill: rgba(155,111,212,0.12) !important; stroke: rgba(155,111,212,0.5) !important; }
+.pan-note.alt-highlight-3 text { fill: rgba(214,190,240,0.75) !important; }
 
 /* Playing animation */
 @keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
@@ -428,6 +441,9 @@ body {
   display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;
 }
 .chord-filter-dropdowns .select-input { flex: 1; min-width: 0; font-size: 11px; padding: 4px 6px; }
+.autoplay-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.autoplay-bar .select-sm { flex: 0 0 auto; width: 56px; padding: 4px 6px; font-size: 11px; }
+.autoplay-bar .hint { flex: 1; text-align: right; }
 .count-pills { display: flex; gap: 3px; flex-shrink: 0; }
 .count-pill { padding: 3px 6px; font-size: 11px; }
 /* Compact pills inside chord list header */
@@ -1390,14 +1406,22 @@ function renderPan(layout, opts = {}) {
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
 
+  // Assign each unique pitch class in the chord its own color (0-3, root first),
+  // cycling for chords with more than 4 distinct pitch classes.
+  const pcColorIndex = new Map();
+  highlightNotes.forEach(n => {
+    const pc = notePC(n);
+    if (!pcColorIndex.has(pc)) pcColorIndex.set(pc, pcColorIndex.size % 4);
+  });
+
   const dimTop = shellMode === 'bottom';
   const dimBottom = shellMode === 'top';
 
   function noteClass(note, isTopShell) {
     const classes = [];
     if (!note) classes.push('empty');
-    else if (hlSet.has(note)) classes.push('highlight');
-    else if (altSet.has(note)) classes.push('alt-highlight');
+    else if (hlSet.has(note)) classes.push(`highlight highlight-${pcColorIndex.get(notePC(note))}`);
+    else if (altSet.has(note)) classes.push(`alt-highlight alt-highlight-${pcColorIndex.get(notePC(note))}`);
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -1433,9 +1457,10 @@ function renderPan(layout, opts = {}) {
 
   // Ding (center)
   const dingNote = layout.top.ding;
+  const dingHighlighted = dingNote && hlSet.has(dingNote);
   const dingClass = [
     !dingNote ? 'empty' : '',
-    dingNote && hlSet.has(dingNote) ? 'highlight' : '',
+    dingHighlighted ? `highlight highlight-${pcColorIndex.get(notePC(dingNote))}` : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
@@ -1782,6 +1807,9 @@ const state = {
   authEmail: '',
   authLinkSent: false,
   authCode: '',
+  autoplayOn: false,
+  autoplayPlaylistId: null,
+  autoplaySeconds: 4,
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -2101,6 +2129,9 @@ function viewChords() {
   const selectedFavId = selectedChord ? `${layoutId}-${selectedChord.id}` : null;
   const selectedInAny = selectedFavId ? isChordInAnyPlaylist(selectedFavId) : false;
 
+  const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
+  const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
+
   const highlightNotes = selectedChord ? selectedChord.notes : [];
   const chordPCs = selectedChord ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
   const altHighlightNotes = selectedChord
@@ -2177,6 +2208,17 @@ function viewChords() {
               ${chordFilter.playlist !== 'All' ? `<option value="__edit__">✎ Edit playlist</option>` : ''}
             </select>
           </div>
+          ${autoplayPl ? `
+            <div class="autoplay-bar">
+              <button class="btn btn-sm ${state.autoplayOn ? 'btn-primary' : 'btn-secondary'}" data-action="toggle-autoplay">
+                ${state.autoplayOn ? '⏸ Pause' : '▶ Auto-play'}
+              </button>
+              <select class="select-input select-sm" data-action="set-autoplay-seconds" title="Seconds per chord">
+                ${[3, 4, 5, 6, 8, 10].map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s}s</option>`).join('')}
+              </select>
+              ${autoplayPos >= 0 ? `<span class="hint">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
+            </div>
+          ` : ''}
           <div class="pills" style="margin-bottom:4px">
             ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
               data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf, us)}</button>`).join('')}
@@ -2321,6 +2363,79 @@ function viewPlaylist() {
   `;
 }
 
+// ── Playlist chord navigation (shared by manual open + autoplay) ────────────
+function loadPlaylistChordAt(pl, idx) {
+  const fav = pl.chords[idx];
+  if (!fav) return false;
+  if (fav.layoutData) {
+    state.layout = fav.layoutData;
+  } else {
+    const saved = state.savedLayouts.find(l => l.id === fav.layoutId);
+    if (saved) {
+      state.layout = saved.layout;
+    } else {
+      const scale = SCALES.find(s => s.id === fav.layoutId);
+      if (!scale) return false;
+      state.layout = createLayoutFromScale(scale);
+    }
+  }
+  state.chords = findAllChords(state.layout);
+  state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
+  state.shellMode = 'both';
+  return true;
+}
+
+let _autoplayTimer = null;
+
+function stopAutoplay() {
+  if (_autoplayTimer) { clearInterval(_autoplayTimer); _autoplayTimer = null; }
+  state.autoplayOn = false;
+  state.autoplayPlaylistId = null;
+}
+
+function playSelectedChordSound() {
+  if (!state.selectedChord) return;
+  initAudio();
+  playChord(state.selectedChord.notes,
+    note => updatePanPlaying([note]),
+    notes => updatePanPlaying(notes)
+  );
+}
+
+// Advance to the next chord in the autoplaying playlist, wrapping around.
+// Bails out (and stops the timer) if autoplay was turned off or the playlist vanished.
+function advanceAutoplay() {
+  const pl = state.playlists.find(p => p.id === state.autoplayPlaylistId);
+  if (!state.autoplayOn || state.view !== 'chords' || !pl || pl.chords.length === 0) {
+    stopAutoplay();
+    render();
+    return;
+  }
+  const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+  const curFavId = state.selectedChord ? `${layoutId}-${state.selectedChord.id}` : null;
+  const curIdx = pl.chords.findIndex(c => c.id === curFavId);
+  const nextIdx = (curIdx + 1) % pl.chords.length;
+  if (!loadPlaylistChordAt(pl, nextIdx)) { stopAutoplay(); render(); return; }
+  history.replaceState(null, '', stateToHash());
+  render();
+  playSelectedChordSound();
+}
+
+function startAutoplay(pl) {
+  if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
+  stopAutoplay();
+  state.autoplayOn = true;
+  state.autoplayPlaylistId = pl.id;
+  const layoutId = state.layout?.isCustom ? (state.layout.savedId || state.layout.id) : state.layout?.id;
+  const curFavId = state.selectedChord && state.layout ? `${layoutId}-${state.selectedChord.id}` : null;
+  const startIdx = Math.max(0, pl.chords.findIndex(c => c.id === curFavId));
+  if (!loadPlaylistChordAt(pl, startIdx)) { stopAutoplay(); return; }
+  history.replaceState(null, '', stateToHash());
+  render();
+  playSelectedChordSound();
+  _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
+}
+
 // ── URL serialization ────────────────────────────────────────────────────────
 function stateToHash() {
   if (!state.layout) return '';
@@ -2419,6 +2534,7 @@ function loadPrefs() {
     if (typeof p.ringRotated === 'boolean') state.ringRotated = p.ringRotated;
     if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
     if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
+    if (typeof p.autoplaySeconds === 'number') state.autoplaySeconds = p.autoplaySeconds;
   } catch {}
 }
 
@@ -2427,6 +2543,7 @@ function savePrefs() {
     ringRotated: state.ringRotated,
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
+    autoplaySeconds: state.autoplaySeconds,
   }));
   scheduleSave();
 }
@@ -2789,22 +2906,7 @@ document.addEventListener('click', e => {
     const pl = state.playlists.find(p => p.id === el.dataset.id);
     if (!pl) return;
     if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
-    // Load the first chord's scale and set the playlist filter
-    const first = pl.chords[0];
-    if (first.layoutData) {
-      state.layout = first.layoutData;
-    } else {
-      const saved = state.savedLayouts.find(l => l.id === first.layoutId);
-      if (saved) { state.layout = saved.layout; }
-      else {
-        const scale = SCALES.find(s => s.id === first.layoutId);
-        if (!scale) { showToast('Scale not found'); return; }
-        state.layout = createLayoutFromScale(scale);
-      }
-    }
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = state.chords.find(c => c.id === first.chordId) || null;
-    state.shellMode = 'both';
+    if (!loadPlaylistChordAt(pl, 0)) { showToast('Scale not found'); return; }
     state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
     state.view = 'chords';
     history.pushState(null, '', stateToHash());
@@ -2813,6 +2915,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'open-playlist') {
+    stopAutoplay();
     state.activePlaylistId = el.dataset.id;
     state.view = 'playlist';
     render();
@@ -2866,23 +2969,7 @@ document.addEventListener('click', e => {
     const idx = parseInt(el.dataset.idx, 10);
     const pl = state.playlists.find(p => p.id === state.activePlaylistId);
     if (!pl) return;
-    const fav = pl.chords[idx];
-    if (!fav) return;
-    if (fav.layoutData) {
-      state.layout = fav.layoutData;
-    } else {
-      const saved = state.savedLayouts.find(l => l.id === fav.layoutId);
-      if (saved) {
-        state.layout = saved.layout;
-      } else {
-        const scale = SCALES.find(s => s.id === fav.layoutId);
-        if (!scale) { showToast('Scale not found'); return; }
-        state.layout = createLayoutFromScale(scale);
-      }
-    }
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
-    state.shellMode = 'both';
+    if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
     state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
     history.pushState(null, '', stateToHash());
@@ -2892,6 +2979,7 @@ document.addEventListener('click', e => {
 
   // ── Navigation ────────────────────────────────────────────────────────────
   if (action === 'back-selector') {
+    stopAutoplay();
     state.view = 'selector';
     state.layout = null;
     state.selectedChord = null;
@@ -2902,6 +2990,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'back-editor') {
+    stopAutoplay();
     state.view = 'editor';
     state.selectedChord = null;
     history.replaceState(null, '', stateToHash());
@@ -3047,6 +3136,7 @@ document.addEventListener('click', e => {
   if (action === 'select-chord') {
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
+    stopAutoplay();
     state.selectedChord = chord;
     history.replaceState(null, '', stateToHash());
     // Preserve chord list scroll position across render
@@ -3061,6 +3151,14 @@ document.addEventListener('click', e => {
       note => updatePanPlaying([note]),
       notes => updatePanPlaying(notes)
     );
+    return;
+  }
+
+  if (action === 'toggle-autoplay') {
+    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
+    if (!pl) return;
+    if (state.autoplayOn) { stopAutoplay(); render(); }
+    else startAutoplay(pl);
     return;
   }
 
@@ -3096,14 +3194,24 @@ document.addEventListener('change', e => {
   const { action } = el.dataset;
   if (action === 'select-playlist-filter') {
     if (el.value === '__edit__') {
+      stopAutoplay();
       state.activePlaylistId = state.chordFilter.playlist;
       state.view = 'playlist';
     } else {
+      if (state.autoplayOn && el.value !== state.autoplayPlaylistId) stopAutoplay();
       state.chordFilter.playlist = el.value;
     }
     render();
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
+  if (action === 'set-autoplay-seconds') {
+    state.autoplaySeconds = parseInt(el.value, 10);
+    savePrefs();
+    if (state.autoplayOn && _autoplayTimer) {
+      clearInterval(_autoplayTimer);
+      _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
+    }
+  }
 });
 
 // ── Input delegation ──────────────────────────────────────────────────────────

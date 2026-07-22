@@ -38,6 +38,9 @@ const state = {
   authEmail: '',
   authLinkSent: false,
   authCode: '',
+  autoplayOn: false,
+  autoplayPlaylistId: null,
+  autoplaySeconds: 4,
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -357,6 +360,9 @@ function viewChords() {
   const selectedFavId = selectedChord ? `${layoutId}-${selectedChord.id}` : null;
   const selectedInAny = selectedFavId ? isChordInAnyPlaylist(selectedFavId) : false;
 
+  const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
+  const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
+
   const highlightNotes = selectedChord ? selectedChord.notes : [];
   const chordPCs = selectedChord ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
   const altHighlightNotes = selectedChord
@@ -433,6 +439,17 @@ function viewChords() {
               ${chordFilter.playlist !== 'All' ? `<option value="__edit__">✎ Edit playlist</option>` : ''}
             </select>
           </div>
+          ${autoplayPl ? `
+            <div class="autoplay-bar">
+              <button class="btn btn-sm ${state.autoplayOn ? 'btn-primary' : 'btn-secondary'}" data-action="toggle-autoplay">
+                ${state.autoplayOn ? '⏸ Pause' : '▶ Auto-play'}
+              </button>
+              <select class="select-input select-sm" data-action="set-autoplay-seconds" title="Seconds per chord">
+                ${[3, 4, 5, 6, 8, 10].map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s}s</option>`).join('')}
+              </select>
+              ${autoplayPos >= 0 ? `<span class="hint">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
+            </div>
+          ` : ''}
           <div class="pills" style="margin-bottom:4px">
             ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
               data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf, us)}</button>`).join('')}
@@ -577,6 +594,79 @@ function viewPlaylist() {
   `;
 }
 
+// ── Playlist chord navigation (shared by manual open + autoplay) ────────────
+function loadPlaylistChordAt(pl, idx) {
+  const fav = pl.chords[idx];
+  if (!fav) return false;
+  if (fav.layoutData) {
+    state.layout = fav.layoutData;
+  } else {
+    const saved = state.savedLayouts.find(l => l.id === fav.layoutId);
+    if (saved) {
+      state.layout = saved.layout;
+    } else {
+      const scale = SCALES.find(s => s.id === fav.layoutId);
+      if (!scale) return false;
+      state.layout = createLayoutFromScale(scale);
+    }
+  }
+  state.chords = findAllChords(state.layout);
+  state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
+  state.shellMode = 'both';
+  return true;
+}
+
+let _autoplayTimer = null;
+
+function stopAutoplay() {
+  if (_autoplayTimer) { clearInterval(_autoplayTimer); _autoplayTimer = null; }
+  state.autoplayOn = false;
+  state.autoplayPlaylistId = null;
+}
+
+function playSelectedChordSound() {
+  if (!state.selectedChord) return;
+  initAudio();
+  playChord(state.selectedChord.notes,
+    note => updatePanPlaying([note]),
+    notes => updatePanPlaying(notes)
+  );
+}
+
+// Advance to the next chord in the autoplaying playlist, wrapping around.
+// Bails out (and stops the timer) if autoplay was turned off or the playlist vanished.
+function advanceAutoplay() {
+  const pl = state.playlists.find(p => p.id === state.autoplayPlaylistId);
+  if (!state.autoplayOn || state.view !== 'chords' || !pl || pl.chords.length === 0) {
+    stopAutoplay();
+    render();
+    return;
+  }
+  const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+  const curFavId = state.selectedChord ? `${layoutId}-${state.selectedChord.id}` : null;
+  const curIdx = pl.chords.findIndex(c => c.id === curFavId);
+  const nextIdx = (curIdx + 1) % pl.chords.length;
+  if (!loadPlaylistChordAt(pl, nextIdx)) { stopAutoplay(); render(); return; }
+  history.replaceState(null, '', stateToHash());
+  render();
+  playSelectedChordSound();
+}
+
+function startAutoplay(pl) {
+  if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
+  stopAutoplay();
+  state.autoplayOn = true;
+  state.autoplayPlaylistId = pl.id;
+  const layoutId = state.layout?.isCustom ? (state.layout.savedId || state.layout.id) : state.layout?.id;
+  const curFavId = state.selectedChord && state.layout ? `${layoutId}-${state.selectedChord.id}` : null;
+  const startIdx = Math.max(0, pl.chords.findIndex(c => c.id === curFavId));
+  if (!loadPlaylistChordAt(pl, startIdx)) { stopAutoplay(); return; }
+  history.replaceState(null, '', stateToHash());
+  render();
+  playSelectedChordSound();
+  _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
+}
+
 // ── URL serialization ────────────────────────────────────────────────────────
 function stateToHash() {
   if (!state.layout) return '';
@@ -675,6 +765,7 @@ function loadPrefs() {
     if (typeof p.ringRotated === 'boolean') state.ringRotated = p.ringRotated;
     if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
     if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
+    if (typeof p.autoplaySeconds === 'number') state.autoplaySeconds = p.autoplaySeconds;
   } catch {}
 }
 
@@ -683,6 +774,7 @@ function savePrefs() {
     ringRotated: state.ringRotated,
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
+    autoplaySeconds: state.autoplaySeconds,
   }));
   scheduleSave();
 }
@@ -1045,22 +1137,7 @@ document.addEventListener('click', e => {
     const pl = state.playlists.find(p => p.id === el.dataset.id);
     if (!pl) return;
     if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
-    // Load the first chord's scale and set the playlist filter
-    const first = pl.chords[0];
-    if (first.layoutData) {
-      state.layout = first.layoutData;
-    } else {
-      const saved = state.savedLayouts.find(l => l.id === first.layoutId);
-      if (saved) { state.layout = saved.layout; }
-      else {
-        const scale = SCALES.find(s => s.id === first.layoutId);
-        if (!scale) { showToast('Scale not found'); return; }
-        state.layout = createLayoutFromScale(scale);
-      }
-    }
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = state.chords.find(c => c.id === first.chordId) || null;
-    state.shellMode = 'both';
+    if (!loadPlaylistChordAt(pl, 0)) { showToast('Scale not found'); return; }
     state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
     state.view = 'chords';
     history.pushState(null, '', stateToHash());
@@ -1069,6 +1146,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'open-playlist') {
+    stopAutoplay();
     state.activePlaylistId = el.dataset.id;
     state.view = 'playlist';
     render();
@@ -1122,23 +1200,7 @@ document.addEventListener('click', e => {
     const idx = parseInt(el.dataset.idx, 10);
     const pl = state.playlists.find(p => p.id === state.activePlaylistId);
     if (!pl) return;
-    const fav = pl.chords[idx];
-    if (!fav) return;
-    if (fav.layoutData) {
-      state.layout = fav.layoutData;
-    } else {
-      const saved = state.savedLayouts.find(l => l.id === fav.layoutId);
-      if (saved) {
-        state.layout = saved.layout;
-      } else {
-        const scale = SCALES.find(s => s.id === fav.layoutId);
-        if (!scale) { showToast('Scale not found'); return; }
-        state.layout = createLayoutFromScale(scale);
-      }
-    }
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
-    state.shellMode = 'both';
+    if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
     state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
     history.pushState(null, '', stateToHash());
@@ -1148,6 +1210,7 @@ document.addEventListener('click', e => {
 
   // ── Navigation ────────────────────────────────────────────────────────────
   if (action === 'back-selector') {
+    stopAutoplay();
     state.view = 'selector';
     state.layout = null;
     state.selectedChord = null;
@@ -1158,6 +1221,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'back-editor') {
+    stopAutoplay();
     state.view = 'editor';
     state.selectedChord = null;
     history.replaceState(null, '', stateToHash());
@@ -1303,6 +1367,7 @@ document.addEventListener('click', e => {
   if (action === 'select-chord') {
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
+    stopAutoplay();
     state.selectedChord = chord;
     history.replaceState(null, '', stateToHash());
     // Preserve chord list scroll position across render
@@ -1317,6 +1382,14 @@ document.addEventListener('click', e => {
       note => updatePanPlaying([note]),
       notes => updatePanPlaying(notes)
     );
+    return;
+  }
+
+  if (action === 'toggle-autoplay') {
+    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
+    if (!pl) return;
+    if (state.autoplayOn) { stopAutoplay(); render(); }
+    else startAutoplay(pl);
     return;
   }
 
@@ -1352,14 +1425,24 @@ document.addEventListener('change', e => {
   const { action } = el.dataset;
   if (action === 'select-playlist-filter') {
     if (el.value === '__edit__') {
+      stopAutoplay();
       state.activePlaylistId = state.chordFilter.playlist;
       state.view = 'playlist';
     } else {
+      if (state.autoplayOn && el.value !== state.autoplayPlaylistId) stopAutoplay();
       state.chordFilter.playlist = el.value;
     }
     render();
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
+  if (action === 'set-autoplay-seconds') {
+    state.autoplaySeconds = parseInt(el.value, 10);
+    savePrefs();
+    if (state.autoplayOn && _autoplayTimer) {
+      clearInterval(_autoplayTimer);
+      _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
+    }
+  }
 });
 
 // ── Input delegation ──────────────────────────────────────────────────────────

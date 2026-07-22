@@ -1,4 +1,4 @@
-import { displayNote, noteToMidi } from './data.js';
+import { displayNote, noteToMidi, notePC } from './data.js';
 
 export const PAN_SVG_ID = 'handpan-svg';
 
@@ -99,14 +99,22 @@ export function renderPan(layout, opts = {}) {
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
 
+  // Assign each unique pitch class in the chord its own color (0-3, root first),
+  // cycling for chords with more than 4 distinct pitch classes.
+  const pcColorIndex = new Map();
+  highlightNotes.forEach(n => {
+    const pc = notePC(n);
+    if (!pcColorIndex.has(pc)) pcColorIndex.set(pc, pcColorIndex.size % 4);
+  });
+
   const dimTop = shellMode === 'bottom';
   const dimBottom = shellMode === 'top';
 
   function noteClass(note, isTopShell) {
     const classes = [];
     if (!note) classes.push('empty');
-    else if (hlSet.has(note)) classes.push('highlight');
-    else if (altSet.has(note)) classes.push('alt-highlight');
+    else if (hlSet.has(note)) classes.push(`highlight highlight-${pcColorIndex.get(notePC(note))}`);
+    else if (altSet.has(note)) classes.push(`alt-highlight alt-highlight-${pcColorIndex.get(notePC(note))}`);
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -142,9 +150,10 @@ export function renderPan(layout, opts = {}) {
 
   // Ding (center)
   const dingNote = layout.top.ding;
+  const dingHighlighted = dingNote && hlSet.has(dingNote);
   const dingClass = [
     !dingNote ? 'empty' : '',
-    dingNote && hlSet.has(dingNote) ? 'highlight' : '',
+    dingHighlighted ? `highlight highlight-${pcColorIndex.get(notePC(dingNote))}` : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
   svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
