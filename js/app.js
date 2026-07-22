@@ -9,7 +9,7 @@ import {
   addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
   isChordInAnyPlaylist,
 } from './storage.js';
-import { findAllChords, getRelatedChords } from './chords.js';
+import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
 
@@ -41,6 +41,8 @@ const state = {
   autoplayOn: false,
   autoplayPlaylistId: null,
   autoplaySeconds: 4,
+  discoverMode: false,
+  discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -357,15 +359,17 @@ function viewChords() {
     });
   }
 
-  const selectedFavId = selectedChord ? `${layoutId}-${selectedChord.id}` : null;
+  const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedFavId ? isChordInAnyPlaylist(selectedFavId) : false;
 
   const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
   const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
 
-  const highlightNotes = selectedChord ? selectedChord.notes : [];
-  const chordPCs = selectedChord ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
-  const altHighlightNotes = selectedChord
+  const discoverMatches = state.discoverMode ? identifyChord(state.discoverNotes) : [];
+
+  const highlightNotes = state.discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : []);
+  const chordPCs = (!state.discoverMode && selectedChord) ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
+  const altHighlightNotes = (!state.discoverMode && selectedChord)
     ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !selectedChord.notes.includes(n))
     : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf, useSolfege: us });
@@ -416,11 +420,65 @@ function viewChords() {
           title="Switch between sharp (C#) and flat (Db) notation">♭ Flats</button>
         <button class="btn ${us ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-solfege"
           title="Switch between letter names (C, D) and solfège (Do, Re)">Do-Re-Mi</button>
+        <button class="btn ${state.discoverMode ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-discover-mode"
+          title="Click note fields on the pan to identify what chord they form">🔍 Discover</button>
         <button class="btn btn-secondary btn-sm" data-action="copy-url">Copy URL</button>
       </div>
     </div>
 
     <div class="explorer-layout">
+      ${state.discoverMode ? `
+      <div class="chord-list">
+        <div class="discover-panel">
+          <div class="discover-hint">Click note fields on the pan to build a chord — click again to remove one.</div>
+          ${state.discoverNotes.length > 0 ? `
+            <div class="pills discover-selected">
+              ${state.discoverNotes.map(n => `<span class="pill active">${displayNote(n, uf, us)}</span>`).join('')}
+            </div>
+            <button class="btn btn-secondary btn-sm" data-action="discover-clear">Clear</button>
+          ` : ''}
+        </div>
+      </div>
+
+      <div class="chord-panel">
+        ${(() => {
+          if (state.discoverNotes.length < 2) {
+            return `<div class="chord-panel-empty"><span class="hint">Select 2 or more note fields to identify a chord</span></div>`;
+          }
+          if (discoverMatches.length === 0) {
+            return `
+              <div class="chord-panel-header">
+                <div>
+                  <div class="chord-panel-title">Custom combination</div>
+                  <div class="chord-panel-sub">Not a recognized chord type · ${state.discoverNotes.length} notes: ${state.discoverNotes.map(n => displayNote(n, uf, us)).join(', ')}</div>
+                </div>
+                <div class="chord-play-btns">
+                  <button class="fav-btn panel-fav" data-action="discover-bookmark-custom" title="Bookmark this combination">♥</button>
+                  <button class="btn btn-primary btn-sm" data-action="discover-play-custom">▶ Chord</button>
+                </div>
+              </div>
+            `;
+          }
+          return discoverMatches.map((m, idx) => {
+            const favId = favIdForChord(layoutId, m, chords);
+            const inAny = isChordInAnyPlaylist(favId);
+            return `
+              <div class="chord-panel-header">
+                <div>
+                  <div class="chord-panel-title">${displayNote(m.rootName, uf, us)} ${m.type.name}</div>
+                  <div class="chord-panel-sub">${m.type.category} · ${m.noteCount} notes: ${m.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
+                </div>
+                <div class="chord-play-btns">
+                  <button class="fav-btn panel-fav ${inAny ? 'active' : ''}"
+                    data-action="discover-bookmark" data-match-idx="${idx}" title="Bookmark this voicing">♥</button>
+                  <button class="btn btn-primary btn-sm" data-action="discover-play" data-match-idx="${idx}">▶ Chord</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        })()}
+      </div>
+      ` : `
       <div class="chord-list">
         <div class="chord-list-header">
           <div class="chord-filter-dropdowns">
@@ -503,6 +561,7 @@ function viewChords() {
           </div>
         `}
       </div>
+      `}
 
       <div class="pan-col">
         <div class="pan-wrap">
@@ -611,9 +670,43 @@ function loadPlaylistChordAt(pl, idx) {
     }
   }
   state.chords = findAllChords(state.layout);
-  state.selectedChord = state.chords.find(c => c.id === fav.chordId) || null;
+  const canonical = state.chords.find(c => c.id === fav.chordId) || null;
+  if (canonical) {
+    // Preserve the exact voicing saved with this playlist entry — it may differ
+    // from the canonical (default) notes if the user swapped to an alt position.
+    state.selectedChord = Array.isArray(fav.notes) ? { ...canonical, notes: fav.notes } : canonical;
+  } else {
+    // No canonical chord type (e.g. a Discover-mode "Custom" combination) —
+    // rebuild a displayable chord object directly from what was saved.
+    state.selectedChord = {
+      id: fav.chordId, rootName: fav.rootName,
+      type: { name: fav.typeName, category: fav.category },
+      notes: fav.notes, noteCount: fav.noteCount,
+    };
+  }
   state.shellMode = 'both';
   return true;
+}
+
+// Playlist-entry id for a chord. The canonical (default) voicing keeps the
+// plain `${layoutId}-${chordId}` form used before per-voicing bookmarks existed,
+// so existing playlists never need migrating. Only a chord swapped to a
+// non-default voicing gets a notes-suffixed id, which can't collide with any
+// id saved before this feature existed.
+function favIdForChord(layoutId, chord, canonicalChords) {
+  const canonical = canonicalChords.find(c => c.id === chord.id);
+  const isCustomVoicing = !canonical || canonical.notes.join(',') !== chord.notes.join(',');
+  return isCustomVoicing
+    ? `${layoutId}-${chord.id}-${chord.notes.join(',')}`
+    : `${layoutId}-${chord.id}`;
+}
+
+// Swap one note of a chord for an alternate same-pitch-class position elsewhere
+// on the pan. Returns a new chord object — never mutates state.chords entries.
+function swapChordNoteVoicing(chord, targetNote) {
+  const targetPC = notePC(targetNote);
+  const newNotes = chord.notes.map(n => notePC(n) === targetPC ? targetNote : n);
+  return { ...chord, notes: newNotes };
 }
 
 let _autoplayTimer = null;
@@ -643,7 +736,7 @@ function advanceAutoplay() {
     return;
   }
   const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-  const curFavId = state.selectedChord ? `${layoutId}-${state.selectedChord.id}` : null;
+  const curFavId = state.selectedChord ? favIdForChord(layoutId, state.selectedChord, state.chords) : null;
   const curIdx = pl.chords.findIndex(c => c.id === curFavId);
   const nextIdx = (curIdx + 1) % pl.chords.length;
   if (!loadPlaylistChordAt(pl, nextIdx)) { stopAutoplay(); render(); return; }
@@ -658,7 +751,7 @@ function startAutoplay(pl) {
   state.autoplayOn = true;
   state.autoplayPlaylistId = pl.id;
   const layoutId = state.layout?.isCustom ? (state.layout.savedId || state.layout.id) : state.layout?.id;
-  const curFavId = state.selectedChord && state.layout ? `${layoutId}-${state.selectedChord.id}` : null;
+  const curFavId = state.selectedChord && state.layout ? favIdForChord(layoutId, state.selectedChord, state.chords) : null;
   const startIdx = Math.max(0, pl.chords.findIndex(c => c.id === curFavId));
   if (!loadPlaylistChordAt(pl, startIdx)) { stopAutoplay(); return; }
   history.replaceState(null, '', stateToHash());
@@ -1052,7 +1145,11 @@ document.addEventListener('click', e => {
     e.stopPropagation();
     const chordId = el.dataset.chordId;
     const favId = el.dataset.chordFavId;
-    const chord = state.chords.find(c => c.id === chordId);
+    // Panel heart (matches the selected chord) preserves any voicing swap;
+    // row hearts always use the canonical chord for that row.
+    const chord = (state.selectedChord && state.selectedChord.id === chordId)
+      ? state.selectedChord
+      : state.chords.find(c => c.id === chordId);
     if (!chord) return;
     state.pickerChordFavId = favId;
     state.pickerChordObj = chord;
@@ -1410,6 +1507,67 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // ── Discover mode ────────────────────────────────────────────────────────
+  if (action === 'toggle-discover-mode') {
+    stopAutoplay();
+    state.discoverMode = !state.discoverMode;
+    state.discoverNotes = [];
+    state.selectedChord = null;
+    render();
+    return;
+  }
+
+  if (action === 'discover-clear') {
+    state.discoverNotes = [];
+    render();
+    return;
+  }
+
+  if (action === 'discover-bookmark') {
+    const idx = parseInt(el.dataset.matchIdx, 10);
+    const chord = identifyChord(state.discoverNotes)[idx];
+    if (!chord) return;
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  }
+
+  if (action === 'discover-bookmark-custom') {
+    if (state.discoverNotes.length < 2) return;
+    const notes = [...state.discoverNotes];
+    // A shared, note-less id — the favId suffix (added below since no
+    // canonical "custom" chord type exists) is what disambiguates combos.
+    const chord = {
+      id: 'custom', rootName: getNoteName(notes[0]),
+      type: { name: 'Custom', category: 'Custom' }, notes, noteCount: notes.length,
+    };
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  }
+
+  if (action === 'discover-play') {
+    const idx = parseInt(el.dataset.matchIdx, 10);
+    const chord = identifyChord(state.discoverNotes)[idx];
+    if (!chord) return;
+    initAudio();
+    playChord(chord.notes, note => updatePanPlaying([note]), notes => updatePanPlaying(notes));
+    return;
+  }
+
+  if (action === 'discover-play-custom') {
+    if (state.discoverNotes.length < 2) return;
+    initAudio();
+    playChord(state.discoverNotes, note => updatePanPlaying([note]), notes => updatePanPlaying(notes));
+    return;
+  }
+
   if (action === 'copy-url') {
     const url = location.origin + location.pathname + stateToHash();
     navigator.clipboard.writeText(url).then(() => showToast('URL copied!'));
@@ -1417,6 +1575,34 @@ document.addEventListener('click', e => {
   }
 });
 
+// ── Pan note clicks (Discover mode note-picking + voicing swap) ────────────────
+// Pan circles are plain SVG, not [data-action] elements, so they get their own
+// delegation rather than going through the action router above.
+document.addEventListener('click', e => {
+  const noteEl = e.target.closest('.pan-note');
+  if (!noteEl || state.view !== 'chords') return;
+  const note = noteEl.dataset.note;
+  if (!note) return; // empty slot
+
+  if (state.discoverMode) {
+    const idx = state.discoverNotes.indexOf(note);
+    if (idx >= 0) state.discoverNotes.splice(idx, 1);
+    else state.discoverNotes.push(note);
+    render();
+    initAudio();
+    playNote(note);
+    return;
+  }
+
+  if (noteEl.classList.contains('alt-highlight') && state.selectedChord) {
+    stopAutoplay();
+    state.selectedChord = swapChordNoteVoicing(state.selectedChord, note);
+    history.replaceState(null, '', stateToHash());
+    render();
+    initAudio();
+    playNote(note);
+  }
+});
 
 // ── Change delegation (selects) ───────────────────────────────────────────────
 document.addEventListener('change', e => {

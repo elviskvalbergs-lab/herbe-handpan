@@ -59,6 +59,37 @@ export function findAllChords(layout) {
   return results;
 }
 
+// Identify which known chord type(s) an arbitrary set of notes forms (Discover mode).
+// Tries each selected note as a candidate root and checks the resulting interval
+// set against every CHORD_TYPES entry. Returns [] if fewer than 2 distinct
+// pitch classes are given, or nothing matches.
+export function identifyChord(selectedNotes) {
+  const byPC = new Map();
+  selectedNotes.forEach(n => byPC.set(notePC(n), n)); // last-clicked note wins per pitch class
+  const uniqueNotes = [...byPC.values()];
+  if (uniqueNotes.length < 2) return [];
+  const pcs = uniqueNotes.map(notePC);
+
+  const matches = [];
+  for (const rootNote of uniqueNotes) {
+    const rootPC = notePC(rootNote);
+    const intervals = pcs.map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
+    for (const type of CHORD_TYPES) {
+      if (type.id === 'oct') continue;
+      const typeIntervals = [...type.intervals].sort((a, b) => a - b);
+      if (typeIntervals.length !== intervals.length) continue;
+      if (!typeIntervals.every((iv, i) => iv === intervals[i])) continue;
+      const notes = type.intervals.map(iv => uniqueNotes.find(n => notePC(n) === (rootPC + iv) % 12));
+      matches.push({
+        id: `${getNoteName(rootNote)}-${type.id}`,
+        rootNote, rootName: getNoteName(rootNote),
+        type, notes, noteCount: notes.length,
+      });
+    }
+  }
+  return matches;
+}
+
 // Returns related chords: same type / other roots, and chords sharing 2+ notes
 export function getRelatedChords(chord, allChords) {
   const sameType = allChords.filter(c =>
