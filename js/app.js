@@ -7,7 +7,7 @@ import {
   getFavorites, isFavorite,
   getPlaylists, addPlaylist, renamePlaylist, deletePlaylist,
   addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
-  isChordInAnyPlaylist,
+  isChordInAnyPlaylist, updatePlaylistChordVoicing,
 } from './storage.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
@@ -43,6 +43,8 @@ const state = {
   autoplaySeconds: 4,
   discoverMode: false,
   discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
+  sourcePlaylistId: null,  // playlist the current chord was opened from, if any
+  sourceEntryId: null,     // that entry's id at load time — lets "update" find it after a swap
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -362,6 +364,13 @@ function viewChords() {
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedFavId ? isChordInAnyPlaylist(selectedFavId) : false;
 
+  // Show a "save voicing" button only when the selected chord came from a
+  // playlist entry (same abstract chord) and its notes have since diverged.
+  const sourcePl = state.sourcePlaylistId ? state.playlists.find(p => p.id === state.sourcePlaylistId) : null;
+  const sourceEntry = sourcePl ? sourcePl.chords.find(c => c.id === state.sourceEntryId) : null;
+  const canUpdateEntry = !!(selectedChord && sourceEntry && sourceEntry.chordId === selectedChord.id
+    && sourceEntry.notes.join(',') !== selectedChord.notes.join(','));
+
   const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
   const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
 
@@ -552,6 +561,9 @@ function viewChords() {
               <button class="fav-btn panel-fav ${selectedInAny ? 'active' : ''}"
                 data-action="show-playlist-picker" data-chord-id="${selectedChord.id}"
                 data-chord-fav-id="${escHtml(selectedFavId)}" title="Add to playlist">♥</button>
+              ${canUpdateEntry ? `
+                <button class="btn-icon" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">💾</button>
+              ` : ''}
               <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
               <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
             </div>
@@ -688,6 +700,10 @@ function loadPlaylistChordAt(pl, idx) {
     };
   }
   state.shellMode = 'both';
+  // Remember where this chord came from so a later voicing swap can be
+  // saved back into this exact entry instead of only adding a new one.
+  state.sourcePlaylistId = pl.id;
+  state.sourceEntryId = fav.id;
   return true;
 }
 
@@ -1161,6 +1177,23 @@ document.addEventListener('click', e => {
     return;
   }
 
+  if (action === 'update-playlist-entry') {
+    if (!state.selectedChord || !state.sourcePlaylistId || !state.sourceEntryId) return;
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    const newId = favIdForChord(layoutId, state.selectedChord, state.chords);
+    const ok = updatePlaylistChordVoicing(state.sourcePlaylistId, state.sourceEntryId, {
+      id: newId, notes: state.selectedChord.notes, noteCount: state.selectedChord.notes.length,
+    });
+    if (!ok) { showToast('That playlist entry no longer exists'); return; }
+    state.sourceEntryId = newId;
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    scheduleSave();
+    showToast('Saved to playlist');
+    render();
+    return;
+  }
+
   if (action === 'close-playlist-picker') {
     if (e.target.closest('.modal')) return;
     state.pickerChordFavId = null;
@@ -1315,6 +1348,8 @@ document.addEventListener('click', e => {
     state.layout = null;
     state.selectedChord = null;
     state.pendingSlot = null;
+    state.sourcePlaylistId = null;
+    state.sourceEntryId = null;
     history.pushState(null, '', location.pathname);
     render();
     return;
@@ -1324,6 +1359,8 @@ document.addEventListener('click', e => {
     stopAutoplay();
     state.view = 'editor';
     state.selectedChord = null;
+    state.sourcePlaylistId = null;
+    state.sourceEntryId = null;
     history.replaceState(null, '', stateToHash());
     render();
     return;
@@ -1469,6 +1506,8 @@ document.addEventListener('click', e => {
     if (!chord) return;
     stopAutoplay();
     state.selectedChord = chord;
+    state.sourcePlaylistId = null;
+    state.sourceEntryId = null;
     history.replaceState(null, '', stateToHash());
     // Preserve chord list scroll position across render
     const chordList = document.querySelector('.chord-list');
@@ -1516,6 +1555,8 @@ document.addEventListener('click', e => {
     state.discoverMode = !state.discoverMode;
     state.discoverNotes = [];
     state.selectedChord = null;
+    state.sourcePlaylistId = null;
+    state.sourceEntryId = null;
     render();
     return;
   }

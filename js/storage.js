@@ -93,6 +93,21 @@ export function addChordToPlaylist(playlistId, chord) {
   return true;
 }
 
+// Overwrites an existing entry's voicing in place (same array position),
+// rather than adding a new one. Used when a chord opened from a playlist
+// gets its notes swapped and the user wants to save that change back.
+export function updatePlaylistChordVoicing(playlistId, oldFavId, updates) {
+  const playlists = getAllPlaylistsRaw();
+  const pl = playlists.find(p => p.id === playlistId);
+  if (!pl) return false;
+  const idx = pl.chords.findIndex(c => c.id === oldFavId);
+  if (idx < 0) return false;
+  pl.chords[idx] = { ...pl.chords[idx], ...updates };
+  pl.updatedAt = now();
+  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  return true;
+}
+
 export function removeChordFromPlaylist(playlistId, chordFavId) {
   const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === playlistId);
