@@ -367,10 +367,13 @@ function viewChords() {
 
   const discoverMatches = state.discoverMode ? identifyChord(state.discoverNotes) : [];
 
-  const highlightNotes = state.discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : []);
-  const chordPCs = (!state.discoverMode && selectedChord) ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
-  const altHighlightNotes = (!state.discoverMode && selectedChord)
-    ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !selectedChord.notes.includes(n))
+  // Discover mode's clicked notes get the same treatment as a selected chord's
+  // notes: exact matches highlighted, other same-pitch-class positions dimmed.
+  const activeNotes = state.discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : null);
+  const highlightNotes = activeNotes || [];
+  const chordPCs = activeNotes ? new Set(activeNotes.map(n => notePC(n))) : new Set();
+  const altHighlightNotes = activeNotes
+    ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !activeNotes.includes(n))
     : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf, useSolfege: us });
 

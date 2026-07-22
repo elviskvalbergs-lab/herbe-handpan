@@ -31,7 +31,6 @@
   --note-rest-text: #5a9878;
   --note-active-bg: #CD4C38;
   --note-active-text: #fff;
-  --note-playing-bg: #e8703a;
   --note-empty-border: #224838;
   --radius: 4px;
   /* Per-scale-degree chord colors — root reuses the accent color, 3 more spread around the wheel */
@@ -208,16 +207,15 @@ body {
 .pan-note.alt-highlight-3 circle { fill: rgba(155,111,212,0.12) !important; stroke: rgba(155,111,212,0.5) !important; }
 .pan-note.alt-highlight-3 text { fill: rgba(214,190,240,0.75) !important; }
 
-/* Playing animation */
+/* Playing animation — ring + pulse only, keeps whatever fill/text color the
+   note already has (default or per-degree highlight color) unchanged. */
 @keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
 .pan-note.playing rect, .pan-note.playing circle {
-  fill: var(--note-playing-bg) !important;
   stroke: #fff !important;
-  stroke-width: 2;
-  filter: drop-shadow(0 0 8px rgba(232,112,58,0.6));
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,0.55));
 }
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
-.pan-note.playing text { fill: #0a1510 !important; font-weight: 700; }
 
 /* Chord explorer — 3-column landscape layout */
 .explorer-layout {
@@ -2170,10 +2168,13 @@ function viewChords() {
 
   const discoverMatches = state.discoverMode ? identifyChord(state.discoverNotes) : [];
 
-  const highlightNotes = state.discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : []);
-  const chordPCs = (!state.discoverMode && selectedChord) ? new Set(selectedChord.notes.map(n => notePC(n))) : new Set();
-  const altHighlightNotes = (!state.discoverMode && selectedChord)
-    ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !selectedChord.notes.includes(n))
+  // Discover mode's clicked notes get the same treatment as a selected chord's
+  // notes: exact matches highlighted, other same-pitch-class positions dimmed.
+  const activeNotes = state.discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : null);
+  const highlightNotes = activeNotes || [];
+  const chordPCs = activeNotes ? new Set(activeNotes.map(n => notePC(n))) : new Set();
+  const altHighlightNotes = activeNotes
+    ? getAllNotes(layout).filter(n => chordPCs.has(notePC(n)) && !activeNotes.includes(n))
     : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf, useSolfege: us });
 
