@@ -3366,9 +3366,22 @@ document.addEventListener('click', e => {
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
     stopAutoplay();
-    state.selectedChord = chord;
-    state.sourcePlaylistId = null;
-    state.sourceEntryId = null;
+
+    // If the chord list is filtered to a playlist, clicking a row is the
+    // same as opening that entry — show its saved voicing (it may differ
+    // from canonical) and track it so a swap can be saved back.
+    const pl = state.chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === state.chordFilter.playlist) : null;
+    const entry = pl ? pl.chords.find(c => c.chordId === chord.id) : null;
+    if (pl && entry) {
+      state.selectedChord = Array.isArray(entry.notes) ? { ...chord, notes: entry.notes } : chord;
+      state.sourcePlaylistId = pl.id;
+      state.sourceEntryId = entry.id;
+    } else {
+      state.selectedChord = chord;
+      state.sourcePlaylistId = null;
+      state.sourceEntryId = null;
+    }
+
     history.replaceState(null, '', stateToHash());
     // Preserve chord list scroll position across render
     const chordList = document.querySelector('.chord-list');
@@ -3378,7 +3391,7 @@ document.addEventListener('click', e => {
     if (newChordList) newChordList.scrollTop = savedScroll;
     // Arpeggiate then play together; show playing animation at the "together" moment
     initAudio();
-    playChord(chord.notes,
+    playChord(state.selectedChord.notes,
       note => updatePanPlaying([note]),
       notes => updatePanPlaying(notes)
     );
