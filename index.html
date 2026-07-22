@@ -59,8 +59,12 @@ body {
 .breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
 .breadcrumb a:hover { color: var(--primary-hover); text-decoration: underline; }
 
+/* Icons — inline SVGs, herbe icon style (see herbe-calendar/menuIcons.tsx) */
+.ico { width: 14px; height: 14px; flex-shrink: 0; fill: none; }
+
 /* Buttons */
 .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   padding: 8px 16px; border-radius: var(--radius); border: none;
   font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.12s;
 }
@@ -73,15 +77,18 @@ body {
 .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
   padding: 4px 10px; background: var(--card); border: 1px solid var(--border);
   border-radius: var(--radius); cursor: pointer; color: var(--text);
   font-family: inherit; font-size: 16px; line-height: 1.4;
 }
 .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+.btn-icon .ico, .icon-btn .ico { width: 15px; height: 15px; }
 
 /* Filter chips — square-first (herbe design system) */
 .pills { display: flex; flex-wrap: wrap; gap: 5px; }
 .pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border);
   background: var(--card); color: var(--muted); font-family: inherit; font-size: 12px;
   font-weight: 500; cursor: pointer; transition: all 0.12s;
@@ -414,11 +421,13 @@ body {
 }
 .saved-card-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
 .saved-del {
+  display: inline-flex; align-items: center; justify-content: center;
   position: absolute; top: 5px; right: 5px;
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 2px;
+  line-height: 1; padding: 2px 4px; border-radius: 2px;
   transition: color 0.1s;
 }
+.saved-del .ico { width: 12px; height: 12px; }
 .saved-del:hover { color: var(--primary); }
 
 /* Playlist cards on home screen */
@@ -431,10 +440,12 @@ body {
 .playlist-card-name { font-size: 12px; font-weight: 600; color: var(--heading); white-space: nowrap; padding-right: 18px; }
 .playlist-card-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
 .playlist-card-edit {
+  display: inline-flex; align-items: center; justify-content: center;
   position: absolute; top: 6px; right: 7px;
-  font-size: 11px; color: var(--muted); cursor: pointer; opacity: 0.5;
+  color: var(--muted); cursor: pointer; opacity: 0.5;
   transition: opacity 0.1s; padding: 2px;
 }
+.playlist-card-edit .ico { width: 12px; height: 12px; }
 .playlist-card-edit:hover { opacity: 1; color: var(--primary); }
 
 /* Filter dropdowns row in chord explorer */
@@ -465,7 +476,8 @@ body {
   padding: 10px 0; border-bottom: 1px solid var(--border);
 }
 .playlist-item-reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-.playlist-item-reorder .btn-icon { font-size: 11px; padding: 2px 5px; }
+.playlist-item-reorder .btn-icon { padding: 2px 5px; }
+.playlist-item-reorder .ico { width: 12px; height: 12px; }
 .playlist-item-info {
   flex: 1; cursor: pointer; min-width: 0;
 }
@@ -474,10 +486,12 @@ body {
 .playlist-item-scale { font-size: 11px; color: var(--muted); margin-top: 1px; }
 .playlist-item-notes { font-size: 11px; margin-top: 2px; }
 .playlist-item-remove {
+  display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 16px; padding: 4px 6px; line-height: 1; flex-shrink: 0;
+  padding: 4px 6px; line-height: 1; flex-shrink: 0;
   transition: color 0.1s;
 }
+.playlist-item-remove .ico { width: 14px; height: 14px; }
 .playlist-item-remove:hover { color: var(--primary); }
 
 /* Playlist picker popup */
@@ -492,7 +506,8 @@ body {
 }
 .picker-row:hover { background: rgba(255,255,255,0.04); }
 .picker-row.in-playlist { background: rgba(232,144,110,0.07); }
-.picker-check { width: 16px; text-align: center; font-size: 13px; color: var(--primary); flex-shrink: 0; }
+.picker-check { display: inline-flex; align-items: center; justify-content: center; width: 16px; color: var(--primary); flex-shrink: 0; }
+.picker-check .ico { width: 14px; height: 14px; }
 .picker-name { flex: 1; font-size: 13px; color: var(--heading); }
 .picker-count { font-size: 11px; color: var(--muted); flex-shrink: 0; }
 .picker-create { border-top: 1px solid var(--border); margin-top: 2px; }
@@ -506,13 +521,17 @@ body {
 /* Heart button in chord list */
 .chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 .fav-btn {
+  display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
-  color: var(--muted); font-size: 13px; padding: 3px; line-height: 1;
+  color: var(--muted); padding: 3px; line-height: 1;
   transition: color 0.12s; flex-shrink: 0; opacity: 0.5;
 }
+.fav-btn .ico { width: 15px; height: 15px; }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
-.panel-fav { font-size: 18px; padding: 2px 6px; opacity: 0.45; align-self: center; }
+.fav-btn.active .ico { fill: currentColor; }
+.panel-fav { padding: 2px 6px; opacity: 0.45; align-self: center; }
+.panel-fav .ico { width: 18px; height: 18px; }
 
 /* Auth bar */
 .auth-bar {
@@ -1060,6 +1079,32 @@ function getAllNotes(layout) {
   layout.top.slots.forEach(s => { if (s.note) notes.push(s.note); });
   layout.bottom.slots.forEach(s => { if (s.note) notes.push(s.note); });
   return notes;
+}
+
+
+// ── js/icons.js ──
+// Inline SVG icons — 24x24, stroke-based, matches the herbe product suite's
+// icon style (see herbe-calendar/components/menuIcons.tsx).
+const ICON_PATHS = {
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  pencil: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  'chevron-up': '<path d="m18 15-6-6-6 6"/>',
+  'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+  save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V3.4"/>',
+  plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+};
+
+function icon(name, extraClass = '') {
+  const inner = ICON_PATHS[name];
+  if (!inner) return '';
+  return `<svg class="ico ${extraClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
 }
 
 
@@ -1889,7 +1934,7 @@ function viewSelector() {
   const authBar = isLoggedIn()
     ? `<div class="auth-bar">
          <span class="hint auth-user">${escHtml(getUserEmail())}</span>
-         <button class="btn btn-secondary btn-sm" data-action="auth-sync" title="Sync now">↻</button>
+         <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-sync" title="Sync now">${icon('refresh')}</button>
          <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
        </div>`
     : state.authLinkSent
@@ -1901,13 +1946,13 @@ function viewSelector() {
              placeholder="Code from email" value="${escHtml(state.authCode)}"
              autocomplete="one-time-code">
            <button class="btn btn-primary btn-sm" data-action="auth-verify">Verify</button>
-           <button class="btn btn-secondary btn-sm" data-action="auth-cancel">✕</button>
+           <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-cancel">${icon('x')}</button>
          </div>
        </div>`
     : `<div class="auth-bar">
          <input class="auth-email-input" id="auth-email-input" type="email"
            placeholder="Email to sync playlists across devices" value="${escHtml(state.authEmail)}">
-         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">Sync ↑</button>
+         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">${icon('refresh')} Sync</button>
        </div>`;
 
   const savedSection = savedLayouts.length === 0 ? '' : `
@@ -1918,7 +1963,7 @@ function viewSelector() {
           <div class="saved-card" data-action="load-saved" data-id="${escHtml(l.id)}">
             <div class="saved-card-name">${escHtml(l.name)}</div>
             <div class="saved-card-meta">${l.noteCount} notes</div>
-            <button class="saved-del" data-action="delete-saved" data-id="${escHtml(l.id)}" title="Remove">×</button>
+            <button class="saved-del" data-action="delete-saved" data-id="${escHtml(l.id)}" title="Remove">${icon('x')}</button>
           </div>
         `).join('')}
       </div>
@@ -1933,7 +1978,7 @@ function viewSelector() {
           <div class="playlist-card" data-action="open-playlist-chords" data-id="${escHtml(pl.id)}">
             <div class="playlist-card-name">${escHtml(pl.name)}</div>
             <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
-            <div class="playlist-card-edit" data-action="open-playlist" data-id="${escHtml(pl.id)}" title="Edit playlist">✎</div>
+            <div class="playlist-card-edit" data-action="open-playlist" data-id="${escHtml(pl.id)}" title="Edit playlist">${icon('pencil')}</div>
           </div>
         `).join('')}
       </div>
@@ -2020,7 +2065,7 @@ function viewEditor() {
           <button class="pill ${state.ringRotated ? 'active' : ''}"
             data-action="toggle-rotation"
             title="Rotate the ring so two lowest notes face you instead of one">
-            ⟳ Rotate
+            ${icon('rotate')} Rotate
           </button>
           <button class="pill ${state.useFlats ? 'active' : ''}"
             data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
@@ -2048,7 +2093,7 @@ function viewEditor() {
             const savedId = isCustom ? layout.savedId : layout.id;
             const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
             return `<button class="btn btn-secondary btn-sm" data-action="save-layout" style="flex:1">
-              ${isSaved ? '✓ Saved' : '⬇ Save'}
+              ${isSaved ? icon('check') + ' Saved' : icon('save') + ' Save'}
             </button>`;
           })()}
         </div>
@@ -2242,14 +2287,14 @@ function viewChords() {
       <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
           title="Rotate the ring so two lowest notes face you instead of one">
-          ${state.ringRotated ? '⟳ Standard' : '⟳ Rotate'}
+          ${icon('rotate')} ${state.ringRotated ? 'Standard' : 'Rotate'}
         </button>
         <button class="btn ${uf ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-flats"
           title="Switch between sharp (C#) and flat (Db) notation">♭ Flats</button>
         <button class="btn ${us ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-solfege"
           title="Switch between letter names (C, D) and solfège (Do, Re)">Do-Re-Mi</button>
         <button class="btn ${state.discoverMode ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-discover-mode"
-          title="Click note fields on the pan to identify what chord they form">🔍 Discover</button>
+          title="Click note fields on the pan to identify what chord they form">${icon('search')} Discover</button>
         <button class="btn btn-secondary btn-sm" data-action="copy-url">Copy URL</button>
       </div>
     </div>
@@ -2281,8 +2326,8 @@ function viewChords() {
                   <div class="chord-panel-sub">Not a recognized chord type · ${state.discoverNotes.length} notes: ${state.discoverNotes.map(n => displayNote(n, uf, us)).join(', ')}</div>
                 </div>
                 <div class="chord-play-btns">
-                  <button class="fav-btn panel-fav" data-action="discover-bookmark-custom" title="Bookmark this combination">♥</button>
-                  <button class="btn btn-primary btn-sm" data-action="discover-play-custom">▶ Chord</button>
+                  <button class="fav-btn panel-fav" data-action="discover-bookmark-custom" title="Bookmark this combination">${icon('heart')}</button>
+                  <button class="btn btn-primary btn-sm" data-action="discover-play-custom">${icon('play')} Chord</button>
                 </div>
               </div>
             `;
@@ -2298,8 +2343,8 @@ function viewChords() {
                 </div>
                 <div class="chord-play-btns">
                   <button class="fav-btn panel-fav ${inAny ? 'active' : ''}"
-                    data-action="discover-bookmark" data-match-idx="${idx}" title="Bookmark this voicing">♥</button>
-                  <button class="btn btn-primary btn-sm" data-action="discover-play" data-match-idx="${idx}">▶ Chord</button>
+                    data-action="discover-bookmark" data-match-idx="${idx}" title="Bookmark this voicing">${icon('heart')}</button>
+                  <button class="btn btn-primary btn-sm" data-action="discover-play" data-match-idx="${idx}">${icon('play')} Chord</button>
                 </div>
               </div>
             `;
@@ -2322,13 +2367,13 @@ function viewChords() {
             <select class="select-input" data-action="select-playlist-filter">
               <option value="All" ${chordFilter.playlist === 'All' ? 'selected' : ''}>All lists</option>
               ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
-              ${chordFilter.playlist !== 'All' ? `<option value="__edit__">✎ Edit playlist</option>` : ''}
+              ${chordFilter.playlist !== 'All' ? `<option value="__edit__">Edit playlist</option>` : ''}
             </select>
           </div>
           ${autoplayPl ? `
             <div class="autoplay-bar">
               <button class="btn btn-sm ${state.autoplayOn ? 'btn-primary' : 'btn-secondary'}" data-action="toggle-autoplay">
-                ${state.autoplayOn ? '⏸ Pause' : '▶ Auto-play'}
+                ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
               </button>
               <select class="select-input select-sm" data-action="set-autoplay-seconds" title="Seconds per chord">
                 ${[3, 4, 5, 6, 8, 10].map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s}s</option>`).join('')}
@@ -2358,7 +2403,7 @@ function viewChords() {
                 </div>
                 <div class="chord-item-right">
                   <button class="fav-btn ${inAny ? 'active' : ''}"
-                    data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">♥</button>
+                    data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">${icon('heart')}</button>
                   <span class="chord-count">${c.noteCount}</span>
                 </div>
               </div>`;
@@ -2376,19 +2421,19 @@ function viewChords() {
             <div class="chord-play-btns">
               <button class="fav-btn panel-fav ${selectedInAny ? 'active' : ''}"
                 data-action="show-playlist-picker" data-chord-id="${selectedChord.id}"
-                data-chord-fav-id="${escHtml(selectedFavId)}" title="Add to playlist">♥</button>
+                data-chord-fav-id="${escHtml(selectedFavId)}" title="Add to playlist">${icon('heart')}</button>
               ${canUpdateEntry ? `
-                <button class="btn-icon" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">💾</button>
+                <button class="btn-icon" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">${icon('save')}</button>
               ` : ''}
-              <button class="btn btn-primary btn-sm" data-action="play-chord">▶ Chord</button>
-              <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
+              <button class="btn btn-primary btn-sm" data-action="play-chord">${icon('play')} Chord</button>
+              <button class="btn btn-secondary btn-sm" data-action="play-scale">${icon('play')} Scale</button>
             </div>
           </div>
           ${relatedHtml}
         ` : `
           <div class="chord-panel-empty">
             <span class="hint">Select a chord to see it on the pan</span>
-            <button class="btn btn-secondary btn-sm" data-action="play-scale">▶ Scale</button>
+            <button class="btn btn-secondary btn-sm" data-action="play-scale">${icon('play')} Scale</button>
           </div>
         `}
       </div>
@@ -2415,7 +2460,7 @@ function renderPlaylistPicker() {
           const inPl = pl.chords.some(c => c.id === favId);
           return `<div class="picker-row ${inPl ? 'in-playlist' : ''}"
             data-action="toggle-playlist-chord" data-playlist-id="${escHtml(pl.id)}">
-            <span class="picker-check">${inPl ? '✓' : ''}</span>
+            <span class="picker-check">${inPl ? icon('check') : ''}</span>
             <span class="picker-name">${escHtml(pl.name)}</span>
             <span class="picker-count">${pl.chords.length}</span>
           </div>`;
@@ -2426,7 +2471,7 @@ function renderPlaylistPicker() {
                <button class="btn btn-primary btn-sm" data-action="confirm-new-playlist">Create</button>
              </div>`
           : `<div class="picker-row picker-create" data-action="show-new-playlist-input">
-               <span class="picker-check">+</span>
+               <span class="picker-check">${icon('plus')}</span>
                <span class="picker-name">New playlist</span>
              </div>`
         }
@@ -2462,21 +2507,21 @@ function viewPlaylist() {
 
       ${pl.chords.length === 0
         ? `<div class="empty-state" style="margin-top:40px">No chords yet.<br>
-            Use ♥ in the chord explorer to add chords here.</div>`
+            Use the heart icon in the chord explorer to add chords here.</div>`
         : pl.chords.map((chord, idx) => `
           <div class="playlist-item">
             <div class="playlist-item-reorder">
               <button class="btn-icon" data-action="move-chord-up" data-idx="${idx}"
-                ${idx === 0 ? 'disabled' : ''}>↑</button>
+                ${idx === 0 ? 'disabled' : ''}>${icon('chevron-up')}</button>
               <button class="btn-icon" data-action="move-chord-down" data-idx="${idx}"
-                ${idx === pl.chords.length - 1 ? 'disabled' : ''}>↓</button>
+                ${idx === pl.chords.length - 1 ? 'disabled' : ''}>${icon('chevron-down')}</button>
             </div>
             <div class="playlist-item-info" data-action="open-playlist-chord" data-idx="${idx}">
               <div class="playlist-item-name">${escHtml(displayNote(chord.rootName, uf, us))} ${escHtml(chord.typeName)}</div>
               <div class="playlist-item-scale">${escHtml(chord.scaleName)}</div>
               <div class="playlist-item-notes hint">${chord.notes.map(n => displayNote(n, uf, us)).join(' · ')}</div>
             </div>
-            <button class="playlist-item-remove" data-action="remove-playlist-chord" data-idx="${idx}">×</button>
+            <button class="playlist-item-remove" data-action="remove-playlist-chord" data-idx="${idx}">${icon('x')}</button>
           </div>
         `).join('')
       }

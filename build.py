@@ -18,7 +18,7 @@ def strip_modules(js):
 css = read('styles.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/chords.js', 'js/audio.js', 'js/pan.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
+js_files = ['js/data.js', 'js/icons.js', 'js/chords.js', 'js/audio.js', 'js/pan.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)

@@ -43,8 +43,12 @@ body {
 .breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
 .breadcrumb a:hover { color: var(--primary-hover); text-decoration: underline; }
 
+/* Icons — inline SVGs, herbe icon style (see herbe-calendar/menuIcons.tsx) */
+.ico { width: 14px; height: 14px; flex-shrink: 0; fill: none; }
+
 /* Buttons */
 .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
   padding: 8px 16px; border-radius: var(--radius); border: none;
   font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.12s;
 }
@@ -57,15 +61,18 @@ body {
 .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
   padding: 4px 10px; background: var(--card); border: 1px solid var(--border);
   border-radius: var(--radius); cursor: pointer; color: var(--text);
   font-family: inherit; font-size: 16px; line-height: 1.4;
 }
 .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
+.btn-icon .ico, .icon-btn .ico { width: 15px; height: 15px; }
 
 /* Filter chips — square-first (herbe design system) */
 .pills { display: flex; flex-wrap: wrap; gap: 5px; }
 .pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
   padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border);
   background: var(--card); color: var(--muted); font-family: inherit; font-size: 12px;
   font-weight: 500; cursor: pointer; transition: all 0.12s;
@@ -398,11 +405,13 @@ body {
 }
 .saved-card-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
 .saved-del {
+  display: inline-flex; align-items: center; justify-content: center;
   position: absolute; top: 5px; right: 5px;
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 13px; line-height: 1; padding: 2px 4px; border-radius: 2px;
+  line-height: 1; padding: 2px 4px; border-radius: 2px;
   transition: color 0.1s;
 }
+.saved-del .ico { width: 12px; height: 12px; }
 .saved-del:hover { color: var(--primary); }
 
 /* Playlist cards on home screen */
@@ -415,10 +424,12 @@ body {
 .playlist-card-name { font-size: 12px; font-weight: 600; color: var(--heading); white-space: nowrap; padding-right: 18px; }
 .playlist-card-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
 .playlist-card-edit {
+  display: inline-flex; align-items: center; justify-content: center;
   position: absolute; top: 6px; right: 7px;
-  font-size: 11px; color: var(--muted); cursor: pointer; opacity: 0.5;
+  color: var(--muted); cursor: pointer; opacity: 0.5;
   transition: opacity 0.1s; padding: 2px;
 }
+.playlist-card-edit .ico { width: 12px; height: 12px; }
 .playlist-card-edit:hover { opacity: 1; color: var(--primary); }
 
 /* Filter dropdowns row in chord explorer */
@@ -449,7 +460,8 @@ body {
   padding: 10px 0; border-bottom: 1px solid var(--border);
 }
 .playlist-item-reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-.playlist-item-reorder .btn-icon { font-size: 11px; padding: 2px 5px; }
+.playlist-item-reorder .btn-icon { padding: 2px 5px; }
+.playlist-item-reorder .ico { width: 12px; height: 12px; }
 .playlist-item-info {
   flex: 1; cursor: pointer; min-width: 0;
 }
@@ -458,10 +470,12 @@ body {
 .playlist-item-scale { font-size: 11px; color: var(--muted); margin-top: 1px; }
 .playlist-item-notes { font-size: 11px; margin-top: 2px; }
 .playlist-item-remove {
+  display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; color: var(--muted); cursor: pointer;
-  font-size: 16px; padding: 4px 6px; line-height: 1; flex-shrink: 0;
+  padding: 4px 6px; line-height: 1; flex-shrink: 0;
   transition: color 0.1s;
 }
+.playlist-item-remove .ico { width: 14px; height: 14px; }
 .playlist-item-remove:hover { color: var(--primary); }
 
 /* Playlist picker popup */
@@ -476,7 +490,8 @@ body {
 }
 .picker-row:hover { background: rgba(255,255,255,0.04); }
 .picker-row.in-playlist { background: rgba(232,144,110,0.07); }
-.picker-check { width: 16px; text-align: center; font-size: 13px; color: var(--primary); flex-shrink: 0; }
+.picker-check { display: inline-flex; align-items: center; justify-content: center; width: 16px; color: var(--primary); flex-shrink: 0; }
+.picker-check .ico { width: 14px; height: 14px; }
 .picker-name { flex: 1; font-size: 13px; color: var(--heading); }
 .picker-count { font-size: 11px; color: var(--muted); flex-shrink: 0; }
 .picker-create { border-top: 1px solid var(--border); margin-top: 2px; }
@@ -490,13 +505,17 @@ body {
 /* Heart button in chord list */
 .chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
 .fav-btn {
+  display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
-  color: var(--muted); font-size: 13px; padding: 3px; line-height: 1;
+  color: var(--muted); padding: 3px; line-height: 1;
   transition: color 0.12s; flex-shrink: 0; opacity: 0.5;
 }
+.fav-btn .ico { width: 15px; height: 15px; }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
-.panel-fav { font-size: 18px; padding: 2px 6px; opacity: 0.45; align-self: center; }
+.fav-btn.active .ico { fill: currentColor; }
+.panel-fav { padding: 2px 6px; opacity: 0.45; align-self: center; }
+.panel-fav .ico { width: 18px; height: 18px; }
 
 /* Auth bar */
 .auth-bar {
