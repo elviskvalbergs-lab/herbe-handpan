@@ -504,6 +504,8 @@ body {
 
 /* Heart button in chord list */
 .chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.row-save { padding: 3px 6px; }
+.row-save .ico { width: 13px; height: 13px; }
 .fav-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;

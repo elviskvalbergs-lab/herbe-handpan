@@ -136,6 +136,15 @@ export function isChordInAnyPlaylist(chordFavId) {
   return getPlaylists().some(p => p.chords.some(c => c.id === chordFavId));
 }
 
+// Whether ANY voicing of this chord (same layout+chordId, any notes) is
+// bookmarked anywhere. Used for the heart glance-indicator, which should stay
+// filled regardless of which specific voicing is currently being viewed —
+// unlike the exact-id match above, which the playlist picker needs to decide
+// whether to add or remove THIS specific voicing.
+export function isChordBookmarkedAnyVoicing(layoutId, chordId) {
+  return getPlaylists().some(p => p.chords.some(c => c.layoutId === layoutId && c.chordId === chordId));
+}
+
 // Legacy compat — keep old callers working
 export function getFavorites() {
   return getPlaylists().find(p => p.id === 'favorites')?.chords ?? [];

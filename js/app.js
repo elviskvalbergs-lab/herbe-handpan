@@ -7,7 +7,7 @@ import {
   getFavorites, isFavorite,
   getPlaylists, addPlaylist, renamePlaylist, deletePlaylist,
   addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
-  isChordInAnyPlaylist, updatePlaylistChordVoicing,
+  isChordBookmarkedAnyVoicing, updatePlaylistChordVoicing,
 } from './storage.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
@@ -326,8 +326,11 @@ function viewChords() {
 
   // Apply filters — compare root by PC to handle G# ↔ Ab equivalence.
   const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
-  const playlistChordIds = chordFilter.playlist !== 'All'
-    ? new Set((state.playlists.find(p => p.id === chordFilter.playlist)?.chords ?? []).map(c => c.id))
+  // Match by abstract chord identity (layoutId+chordId), not the entry's exact
+  // stored id — that id gets a notes suffix once a voicing is saved, which
+  // would otherwise make the chord silently drop out of this filtered list.
+  const playlistChordKeys = chordFilter.playlist !== 'All'
+    ? new Set((state.playlists.find(p => p.id === chordFilter.playlist)?.chords ?? []).map(c => `${c.layoutId}-${c.chordId}`))
     : null;
 
   const filtered = chords.filter(c => {
@@ -340,9 +343,8 @@ function viewChords() {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
       if (notePC(c.rootNote) !== filterPC) return false;
     }
-    if (playlistChordIds !== null) {
-      const favId = `${layoutId}-${c.id}`;
-      if (!playlistChordIds.has(favId)) return false;
+    if (playlistChordKeys !== null) {
+      if (!playlistChordKeys.has(`${layoutId}-${c.id}`)) return false;
     }
     return true;
   });
@@ -350,7 +352,7 @@ function viewChords() {
   if (chordFilter.playlist !== 'All') {
     const pl = state.playlists.find(p => p.id === chordFilter.playlist);
     if (pl) {
-      const orderMap = new Map(pl.chords.map((c, i) => [c.id, i]));
+      const orderMap = new Map(pl.chords.map((c, i) => [`${c.layoutId}-${c.chordId}`, i]));
       filtered.sort((a, b) =>
         (orderMap.get(`${layoutId}-${a.id}`) ?? Infinity) - (orderMap.get(`${layoutId}-${b.id}`) ?? Infinity)
       );
@@ -363,7 +365,7 @@ function viewChords() {
   }
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
-  const selectedInAny = selectedFavId ? isChordInAnyPlaylist(selectedFavId) : false;
+  const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
 
   // Show a "save voicing" button only when the selected chord came from a
   // playlist entry (same abstract chord) and its notes have since diverged.
@@ -474,7 +476,7 @@ function viewChords() {
           }
           return discoverMatches.map((m, idx) => {
             const favId = favIdForChord(layoutId, m, chords);
-            const inAny = isChordInAnyPlaylist(favId);
+            const inAny = isChordBookmarkedAnyVoicing(layoutId, m.id);
             return `
               <div class="chord-panel-header">
                 <div>
@@ -534,7 +536,7 @@ function viewChords() {
             ? '<div class="empty-state">No chords match these filters</div>'
             : filtered.map(c => {
               const favId = `${layoutId}-${c.id}`;
-              const inAny = isChordInAnyPlaylist(favId);
+              const inAny = isChordBookmarkedAnyVoicing(layoutId, c.id);
               return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
                 data-action="select-chord" data-id="${c.id}">
                 <div>
@@ -544,6 +546,9 @@ function viewChords() {
                 <div class="chord-item-right">
                   <button class="fav-btn ${inAny ? 'active' : ''}"
                     data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">${icon('heart')}</button>
+                  ${canUpdateEntry && selectedChord?.id === c.id ? `
+                    <button class="btn-icon row-save" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">${icon('save')}</button>
+                  ` : ''}
                   <span class="chord-count">${c.noteCount}</span>
                 </div>
               </div>`;
