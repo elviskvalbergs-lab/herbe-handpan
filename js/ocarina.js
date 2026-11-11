@@ -440,22 +440,5 @@ export function calibratedChart(f0, ratios, { a4 = OC_DEFAULT_A4, toleranceCents
 }
 
 // ── Traditional charts ───────────────────────────────────────────────────────
-
-// TODO(phase 1, needs a source): 12-hole Italian system fingering chart.
-// Must come from a published maker or manufacturer chart, with the source URL
-// recorded here, per docs/ocarina-mode.md and CLAUDE.md. Do not fill in from
-// memory. A Nov 2026 search found no maker chart in a checkable text form;
-// candidate to review: https://pureocarinas.com/ocarina-fingering-system
-// (alto C list, not a full 12-hole chart). Makers differ mainly in hole
-// sizes, which decide the cross-fingerings and half-holes, so an ocarina of
-// unknown make is charted by calibration instead (calibratedChart above).
-// Intended shape (fingerings relative to the lowest note, so one
-// chart serves every key; concert pitch = lowest note of the key + offset):
-//
-//   {
-//     type: '12-hole', system: 'italian', source: '<url>',
-//     holes: [{ id: 'L1', finger: 'L1', side: 'top' }, ..., { id: 'LT', ... }],
-//     keys: { 'alto-C': { lowestMidi: <from source> }, ... },
-//     fingerings: [{ offset: 0, states: ['c', ...] }, ...],
-//   }
-export const OC_TRADITIONAL_CHARTS = {};
+// Moved to js/charts.js (sourced charts only). Ocarinas of unknown make are
+// charted by calibration (calibratedChart above, js/builder.js).

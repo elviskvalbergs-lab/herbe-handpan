@@ -90,16 +90,16 @@ export function describeFingering(inst, midi, noteLabel = midiToNoteName(midi)) 
 }
 
 // Hole sizes relative to the largest hole of the chamber (1 = largest).
-// Uses measured sizes when the builder has stored them, otherwise the
-// proportions from the target notes, otherwise all the same.
-export function relativeSizes(chamber, a4 = 440) {
+// Uses calibrated or measured sizes when stored, otherwise (if fromNotes)
+// the proportions from the target notes, otherwise all the same.
+export function relativeSizes(chamber, a4 = 440, { fromNotes = true } = {}) {
   if (chamber.holes.length && chamber.holes.every(h => h.rel > 0)) return chamber.holes.map(h => h.rel);
   const mm = chamber.holes.map(h => h.sizeMm);
   if (mm.every(x => x > 0)) {
     const max = Math.max(...mm);
     return mm.map(x => x / max);
   }
-  if (chamber.notes?.length === chamber.holes.length + 1) {
+  if (fromNotes && chamber.notes?.length === chamber.holes.length + 1) {
     const [closed, ...rest] = chamber.notes;
     return relativeHoleSizes(midiToHz(closed, a4), rest.map(m => midiToHz(m, a4)));
   }
@@ -180,6 +180,20 @@ const FG_PENDANT = {
   },
 };
 const FG_THUMB_X = { LT: 100, RT: 200 };
+// Flutes: a tube seen from above, mouthpiece on the left, holes evenly
+// along it with the first-opened (lowest) hole nearest the foot.
+const FG_TUBE = { bodyH: 70, pos: {} };
+
+function fgTubePositions(holes, y0) {
+  const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
+  const xs = {};
+  top.forEach((x, k) => {
+    // Opening order runs foot → mouthpiece: first hole at the right.
+    const t = top.length === 1 ? 0.5 : k / (top.length - 1);
+    xs[x.i] = [258 - t * 150 - (k >= Math.ceil(top.length / 2) ? 14 : 0), y0 + 40];
+  });
+  return xs;
+}
 const FG_STRIP_H = 34;
 
 function fgIsPendant(inst) {
@@ -219,7 +233,8 @@ export function renderFingering(inst, midi, opts = {}) {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
     useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null,
   } = opts;
-  const geo = fgIsPendant(inst) ? FG_PENDANT : FG_TRANSVERSE;
+  const tube = inst.family === 'flute';
+  const geo = tube ? FG_TUBE : fgIsPendant(inst) ? FG_PENDANT : FG_TRANSVERSE;
   const chambers = inst.chambers ?? [];
   const main = fingeringFor(inst, midi);
   const second = blowBoth != null ? fingeringFor(inst, blowBoth) : null;
@@ -241,16 +256,22 @@ export function renderFingering(inst, midi, opts = {}) {
     const blown = main?.chamberIndex === ci || second?.chamberIndex === ci;
     const f = main?.chamberIndex === ci ? main : second?.chamberIndex === ci ? second : null;
     const states = f ? f.states : ch.holes.map(() => 'c');
-    const rel = relativeSizes(ch, a4);
+    // Proportions from target notes only make sense for scale-built vessel
+    // ocarinas; charts (and flutes, where position sets pitch) draw equal holes.
+    const rel = relativeSizes(ch, a4, { fromNotes: inst.kind === 'scale' });
     const g = [];
     // Body
-    if (geo === FG_PENDANT) {
+    const tubeXY = tube ? fgTubePositions(ch.holes, y0) : null;
+    if (tube) {
+      g.push(`<rect class="fg-body" x="38" y="${y0 + 22}" width="${FG_W - 52}" height="36" rx="18"/>`);
+    } else if (geo === FG_PENDANT) {
       g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
     } else {
       g.push(`<rect class="fg-body" x="14" y="${y0 + 12}" width="${FG_W - 28}" height="${geo.bodyH - 12}" rx="${(geo.bodyH - 12) / 2}"/>`);
     }
     // Mouthpiece, marked when this chamber is blown
-    g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
+    if (tube) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
+    else g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
     if (blown && chambers.length > 1) {
       g.push(`<text class="fg-blow-label" x="${FG_W / 2 + 22}" y="${y0 + 9}">${second ? 'blow both' : 'blow'}</text>`);
     }
@@ -269,6 +290,8 @@ export function renderFingering(inst, midi, opts = {}) {
       if (h.side === 'bottom') {
         x = FG_THUMB_X[h.finger] ?? FG_W / 2;
         y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2;
+      } else if (tube) {
+        [x, y] = tubeXY[i];
       } else {
         [x, y] = geo.pos[h.finger] ?? [FG_W / 2, y0 + geo.bodyH / 2];
         y += y0;
@@ -276,7 +299,7 @@ export function renderFingering(inst, midi, opts = {}) {
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
       const count = ch.holes.filter(x => x.finger === h.finger).length;
       if (split) y += (k - (count - 1) / 2) * (16 / Math.max(1, count - 1));
-      const r = Math.max(4, (split ? 18 / count : 13) * rel[i]);
+      const r = Math.max(4, (split ? 18 / count : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.55 : 1));
       const changed = moves && (moves.lift.includes(h.finger) || moves.cover.includes(h.finger)) && f;
       const cls = `${changed ? 'fg-changed' : ''}`;
       g.push(fgHoleShape(x, y, r, states[i], cls));

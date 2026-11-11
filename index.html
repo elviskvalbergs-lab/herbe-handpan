@@ -1778,25 +1778,8 @@ function calibratedChart(f0, ratios, { a4 = OC_DEFAULT_A4, toleranceCents = 20, 
 }
 
 // ── Traditional charts ───────────────────────────────────────────────────────
-
-// TODO(phase 1, needs a source): 12-hole Italian system fingering chart.
-// Must come from a published maker or manufacturer chart, with the source URL
-// recorded here, per docs/ocarina-mode.md and CLAUDE.md. Do not fill in from
-// memory. A Nov 2026 search found no maker chart in a checkable text form;
-// candidate to review: https://pureocarinas.com/ocarina-fingering-system
-// (alto C list, not a full 12-hole chart). Makers differ mainly in hole
-// sizes, which decide the cross-fingerings and half-holes, so an ocarina of
-// unknown make is charted by calibration instead (calibratedChart above).
-// Intended shape (fingerings relative to the lowest note, so one
-// chart serves every key; concert pitch = lowest note of the key + offset):
-//
-//   {
-//     type: '12-hole', system: 'italian', source: '<url>',
-//     holes: [{ id: 'L1', finger: 'L1', side: 'top' }, ..., { id: 'LT', ... }],
-//     keys: { 'alto-C': { lowestMidi: <from source> }, ... },
-//     fingerings: [{ offset: 0, states: ['c', ...] }, ...],
-//   }
-const OC_TRADITIONAL_CHARTS = {};
+// Moved to js/charts.js (sourced charts only). Ocarinas of unknown make are
+// charted by calibration (calibratedChart above, js/builder.js).
 
 
 // ── js/tuner.js ──
@@ -1905,6 +1888,65 @@ async function startTuner(onReading, { a4 = 440 } = {}) {
 }
 
 
+// ── js/charts.js ──
+// Traditional fingering charts: bought ocarinas and flutes whose fingerings
+// are fixed by the instrument type. See docs/ocarina-mode.md, "Ocarinas and
+// flutes", and CLAUDE.md: every chart comes from a published source, noted
+// with its URL; nothing is filled in from memory.
+//
+// A chart is written once, relative to its lowest note, and serves every key
+// of that type: concert pitch = the key's lowest note + offset.
+//
+//   {
+//     id, family: 'ocarina' | 'flute', name, source: [urls], notes: '…',
+//     holes: [{ id, finger, side: 'top' | 'bottom', sub? }],   // opening order
+//     keys: [{ id, name, lowest: 'D4' }],                       // lowest sounding note per key
+//     fingerings: [{ offset, states: ['c'|'o'|'h', …], alt?: true, overblow?: true }],
+//   }
+//
+// Pure data and functions; unit tested in Node.
+
+const TRADITIONAL_CHARTS = [];
+
+function getChart(id) {
+  return TRADITIONAL_CHARTS.find(c => c.id === id) ?? null;
+}
+
+function chartsForFamily(family) {
+  return TRADITIONAL_CHARTS.filter(c => c.family === family);
+}
+
+// An instrument of a traditional type in a key. Each note keeps its main
+// fingering (the first listed for its offset); alternates are kept in
+// `alternates` for display.
+function instrumentFromChart(chartId, keyId, { name, now = new Date().toISOString() } = {}) {
+  const chart = getChart(chartId);
+  if (!chart) throw new RangeError(`Unknown chart: ${chartId}`);
+  const key = chart.keys.find(k => k.id === keyId) ?? chart.keys[0];
+  const base = noteToMidi(key.lowest);
+  const fingerings = {};
+  const alternates = {};
+  for (const f of chart.fingerings) {
+    const midi = base + f.offset;
+    if (!fingerings[midi] && !f.alt) fingerings[midi] = f.states;
+    else (alternates[midi] ??= []).push(f.states);
+  }
+  const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
+  return {
+    id: (chart.family === 'flute' ? 'fl-' : 'oc-') + Math.random().toString(36).slice(2, 10),
+    family: chart.family,
+    kind: 'traditional',
+    type: chart.id,
+    key: key.id,
+    name: name || `${chart.name}, ${key.name}`,
+    chambers: [{ notes, holes: chart.holes.map(h => ({ ...h, x: null, y: null, sizeMm: null })), fingerings, alternates }],
+    createdAt: now,
+    updatedAt: now,
+    lastPlayedAt: now,
+  };
+}
+
+
 // ── js/instruments.js ──
 // My instruments: the saved instruments a user plays (handpans, ocarinas,
 // later flutes). See docs/ocarina-mode.md, "Instruments first".
@@ -1924,7 +1966,7 @@ const ONBOARDED_KEY = 'hp-onboarded';
 const INSTRUMENT_FAMILIES = [
   { id: 'handpan', name: 'Handpan' },
   { id: 'ocarina', name: 'Ocarina' },
-  { id: 'flute', name: 'Flute', unavailable: 'Flute fingering charts come in a later update' },
+  { id: 'flute', name: 'Flute' }, // offered when js/charts.js has a sourced flute chart
 ];
 
 const BUILD_STAGES = [
@@ -2041,6 +2083,10 @@ function createCustomOcarina({ name, holeCount }, now = nowIso()) {
 // One line under the instrument's name on its card.
 function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
+  if (inst.kind === 'traditional') {
+    const n = Object.keys(inst.chambers?.[0]?.fingerings ?? {}).length;
+    return `Key of ${inst.key} · ${n} notes`;
+  }
   if (inst.kind === 'custom') {
     return inst.calibration ? `${inst.holeCount} holes` : `${inst.holeCount} holes · not set up yet`;
   }
@@ -2890,16 +2936,16 @@ function describeFingering(inst, midi, noteLabel = midiToNoteName(midi)) {
 }
 
 // Hole sizes relative to the largest hole of the chamber (1 = largest).
-// Uses measured sizes when the builder has stored them, otherwise the
-// proportions from the target notes, otherwise all the same.
-function relativeSizes(chamber, a4 = 440) {
+// Uses calibrated or measured sizes when stored, otherwise (if fromNotes)
+// the proportions from the target notes, otherwise all the same.
+function relativeSizes(chamber, a4 = 440, { fromNotes = true } = {}) {
   if (chamber.holes.length && chamber.holes.every(h => h.rel > 0)) return chamber.holes.map(h => h.rel);
   const mm = chamber.holes.map(h => h.sizeMm);
   if (mm.every(x => x > 0)) {
     const max = Math.max(...mm);
     return mm.map(x => x / max);
   }
-  if (chamber.notes?.length === chamber.holes.length + 1) {
+  if (fromNotes && chamber.notes?.length === chamber.holes.length + 1) {
     const [closed, ...rest] = chamber.notes;
     return relativeHoleSizes(midiToHz(closed, a4), rest.map(m => midiToHz(m, a4)));
   }
@@ -2980,6 +3026,20 @@ const FG_PENDANT = {
   },
 };
 const FG_THUMB_X = { LT: 100, RT: 200 };
+// Flutes: a tube seen from above, mouthpiece on the left, holes evenly
+// along it with the first-opened (lowest) hole nearest the foot.
+const FG_TUBE = { bodyH: 70, pos: {} };
+
+function fgTubePositions(holes, y0) {
+  const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
+  const xs = {};
+  top.forEach((x, k) => {
+    // Opening order runs foot → mouthpiece: first hole at the right.
+    const t = top.length === 1 ? 0.5 : k / (top.length - 1);
+    xs[x.i] = [258 - t * 150 - (k >= Math.ceil(top.length / 2) ? 14 : 0), y0 + 40];
+  });
+  return xs;
+}
 const FG_STRIP_H = 34;
 
 function fgIsPendant(inst) {
@@ -3019,7 +3079,8 @@ function renderFingering(inst, midi, opts = {}) {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
     useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null,
   } = opts;
-  const geo = fgIsPendant(inst) ? FG_PENDANT : FG_TRANSVERSE;
+  const tube = inst.family === 'flute';
+  const geo = tube ? FG_TUBE : fgIsPendant(inst) ? FG_PENDANT : FG_TRANSVERSE;
   const chambers = inst.chambers ?? [];
   const main = fingeringFor(inst, midi);
   const second = blowBoth != null ? fingeringFor(inst, blowBoth) : null;
@@ -3041,16 +3102,22 @@ function renderFingering(inst, midi, opts = {}) {
     const blown = main?.chamberIndex === ci || second?.chamberIndex === ci;
     const f = main?.chamberIndex === ci ? main : second?.chamberIndex === ci ? second : null;
     const states = f ? f.states : ch.holes.map(() => 'c');
-    const rel = relativeSizes(ch, a4);
+    // Proportions from target notes only make sense for scale-built vessel
+    // ocarinas; charts (and flutes, where position sets pitch) draw equal holes.
+    const rel = relativeSizes(ch, a4, { fromNotes: inst.kind === 'scale' });
     const g = [];
     // Body
-    if (geo === FG_PENDANT) {
+    const tubeXY = tube ? fgTubePositions(ch.holes, y0) : null;
+    if (tube) {
+      g.push(`<rect class="fg-body" x="38" y="${y0 + 22}" width="${FG_W - 52}" height="36" rx="18"/>`);
+    } else if (geo === FG_PENDANT) {
       g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
     } else {
       g.push(`<rect class="fg-body" x="14" y="${y0 + 12}" width="${FG_W - 28}" height="${geo.bodyH - 12}" rx="${(geo.bodyH - 12) / 2}"/>`);
     }
     // Mouthpiece, marked when this chamber is blown
-    g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
+    if (tube) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
+    else g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
     if (blown && chambers.length > 1) {
       g.push(`<text class="fg-blow-label" x="${FG_W / 2 + 22}" y="${y0 + 9}">${second ? 'blow both' : 'blow'}</text>`);
     }
@@ -3069,6 +3136,8 @@ function renderFingering(inst, midi, opts = {}) {
       if (h.side === 'bottom') {
         x = FG_THUMB_X[h.finger] ?? FG_W / 2;
         y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2;
+      } else if (tube) {
+        [x, y] = tubeXY[i];
       } else {
         [x, y] = geo.pos[h.finger] ?? [FG_W / 2, y0 + geo.bodyH / 2];
         y += y0;
@@ -3076,7 +3145,7 @@ function renderFingering(inst, midi, opts = {}) {
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
       const count = ch.holes.filter(x => x.finger === h.finger).length;
       if (split) y += (k - (count - 1) / 2) * (16 / Math.max(1, count - 1));
-      const r = Math.max(4, (split ? 18 / count : 13) * rel[i]);
+      const r = Math.max(4, (split ? 18 / count : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.55 : 1));
       const changed = moves && (moves.lift.includes(h.finger) || moves.cover.includes(h.finger)) && f;
       const cls = `${changed ? 'fg-changed' : ''}`;
       g.push(fgHoleShape(x, y, r, states[i], cls));
@@ -3630,7 +3699,8 @@ function newWizard(firstRun) {
     families: [],
     queue: [],
     search: '',
-    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12 },
+    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12, chartId: 'custom', keyId: null },
+    fl: { chartId: chartsForFamily('flute')[0]?.id ?? null, keyId: null, name: '' },
   };
 }
 
@@ -3691,10 +3761,12 @@ function viewWizard() {
       <div class="wizard">
         <div class="wizard-title">Which instruments do you play?</div>
         <div class="pills">
-          ${INSTRUMENT_FAMILIES.map(f => `
+          ${INSTRUMENT_FAMILIES.map(f => {
+            const unavailable = f.id === 'flute' && chartsForFamily('flute').length === 0;
+            return `
             <button class="pill ${w.families.includes(f.id) ? 'active' : ''}" data-action="wizard-family" data-family="${f.id}"
-              ${f.unavailable ? `disabled title="${escHtml(f.unavailable)}"` : ''}>${f.name}${f.unavailable ? ' (soon)' : ''}</button>
-          `).join('')}
+              ${unavailable ? 'disabled title="Flute fingering charts are still being sourced"' : ''}>${f.name}${unavailable ? ' (soon)' : ''}</button>`;
+          }).join('')}
         </div>
         <div class="wizard-actions">
           <button class="btn btn-primary" data-action="wizard-families-next" ${w.families.length ? '' : 'disabled'}>Next →</button>
@@ -3749,12 +3821,20 @@ function viewWizard() {
           <label class="wizard-field">Name
             <input class="name-input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="My ocarina">
           </label>
+          ${chartsForFamily('ocarina').length ? `
+            <label class="wizard-field">Type
+              <select class="select-input" data-action="wizard-chart" data-fam="oc">
+                <option value="custom" ${oc.chartId === 'custom' ? 'selected' : ''}>Unknown or other: chart it with the tuner</option>
+                ${chartsForFamily('ocarina').map(c => `<option value="${c.id}" ${oc.chartId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+              </select>
+            </label>` : ''}
+          ${oc.chartId !== 'custom' && getChart(oc.chartId) ? wizardKeySelect('oc', getChart(oc.chartId), oc.keyId) : `
           <label class="wizard-field">Number of holes, thumb holes included
             <select class="select-input" data-action="wizard-oc-holes">
               ${[4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(n => `<option value="${n}" ${oc.holeCount === n ? 'selected' : ''}>${n}</option>`).join('')}
             </select>
           </label>
-          <div class="hint">Its fingering chart is worked out from the instrument itself: once the tuner arrives, you blow it with all holes closed and then each hole open on its own.</div>
+          <div class="hint">Its fingering chart is worked out from the instrument itself: you blow it into the tuner with all holes closed and then each hole open on its own.</div>`}
           <div class="wizard-actions">
             <button class="btn btn-primary" data-action="wizard-oc-create">Add ocarina</button>
             <button class="btn btn-secondary" data-action="wizard-oc-path" data-path="">Back</button>
@@ -3809,7 +3889,39 @@ function viewWizard() {
         </div>
       </div>`;
   }
+  if (w.step === 'flute') {
+    const fl = w.fl;
+    const charts = chartsForFamily('flute');
+    const chart = getChart(fl.chartId) ?? charts[0];
+    return `${header}
+      <div class="wizard">
+        <div class="wizard-title">Your flute</div>
+        <label class="wizard-field">Name
+          <input class="name-input" id="wizard-fl-name" value="${escHtml(fl.name)}" placeholder="${escHtml(chart ? chart.name : 'My flute')}">
+        </label>
+        <label class="wizard-field">Type
+          <select class="select-input" data-action="wizard-chart" data-fam="fl">
+            ${charts.map(c => `<option value="${c.id}" ${chart?.id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+          </select>
+        </label>
+        ${chart ? wizardKeySelect('fl', chart, fl.keyId) : ''}
+        <div class="wizard-actions">
+          <button class="btn btn-primary" data-action="wizard-fl-create" ${chart ? '' : 'disabled'}>Add flute</button>
+          <button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button>
+        </div>
+      </div>`;
+  }
   return header;
+}
+
+function wizardKeySelect(fam, chart, keyId) {
+  return `
+    <label class="wizard-field">Key
+      <select class="select-input" data-action="wizard-key" data-fam="${fam}">
+        ${chart.keys.map(k => `<option value="${k.id}" ${(keyId ?? chart.keys[0].id) === k.id ? 'selected' : ''}>${escHtml(k.name)}</option>`).join('')}
+      </select>
+    </label>
+    <div class="hint">Chart source: ${chart.source.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(new URL(u).hostname)}</a>`).join(', ')}</div>`;
 }
 
 // Pitch classes of a scale from data.js, for the Notes and Chords filter.
@@ -5980,6 +6092,17 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-skip-step') { wizardNext(); return; }
+  if (action === 'wizard-fl-create') {
+    const fl = state.wizard.fl;
+    const chart = getChart(fl.chartId) ?? chartsForFamily('flute')[0];
+    if (!chart) return;
+    const inst = instrumentFromChart(chart.id, fl.keyId ?? chart.keys[0].id, { name: fl.name.trim() });
+    saveInstrument(inst);
+    refreshInstruments();
+    showToast(`${inst.name} added`);
+    wizardNext();
+    return;
+  }
   if (action === 'wizard-pick-handpan') {
     const scale = SCALES.find(sc => sc.id === el.dataset.id);
     if (!scale) return;
@@ -6015,7 +6138,9 @@ document.addEventListener('click', e => {
   }
   if (action === 'wizard-oc-create') {
     const oc = state.wizard.oc;
-    const inst = oc.path === 'have'
+    const inst = oc.path === 'have' && oc.chartId !== 'custom' && getChart(oc.chartId)
+      ? instrumentFromChart(oc.chartId, oc.keyId ?? getChart(oc.chartId).keys[0].id, { name: oc.name.trim() })
+      : oc.path === 'have'
       ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
       : Object.assign(createScaleOcarina({
           scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu,
@@ -6720,6 +6845,13 @@ document.addEventListener('change', e => {
 
   if (action === 'oc-category') { state.oc.category = el.value; render(); }
   if (action === 'oc-playlist') { state.oc.playlistId = el.value; state.oc.expanded = null; render(); }
+  if (action === 'wizard-chart') {
+    const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
+    t.chartId = el.value; t.keyId = null; render();
+  }
+  if (action === 'wizard-key') {
+    (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;
+  }
   if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }
   if (action === 'wizard-oc-scale') {
     Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
@@ -6759,6 +6891,10 @@ document.addEventListener('input', e => {
     render();
     const input = document.getElementById('wizard-search-input');
     if (input) { input.focus(); input.setSelectionRange(pos, pos); }
+    return;
+  }
+  if (e.target.id === 'wizard-fl-name' && state.wizard) {
+    state.wizard.fl.name = e.target.value;
     return;
   }
   if (e.target.id === 'wizard-oc-name' && state.wizard) {

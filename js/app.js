@@ -26,6 +26,7 @@ import {
   defaultCustomHoles, calibrateChamber,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER } from './ocarina.js';
+import { chartsForFamily, getChart, instrumentFromChart } from './charts.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
@@ -270,7 +271,8 @@ function newWizard(firstRun) {
     families: [],
     queue: [],
     search: '',
-    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12 },
+    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12, chartId: 'custom', keyId: null },
+    fl: { chartId: chartsForFamily('flute')[0]?.id ?? null, keyId: null, name: '' },
   };
 }
 
@@ -331,10 +333,12 @@ function viewWizard() {
       <div class="wizard">
         <div class="wizard-title">Which instruments do you play?</div>
         <div class="pills">
-          ${INSTRUMENT_FAMILIES.map(f => `
+          ${INSTRUMENT_FAMILIES.map(f => {
+            const unavailable = f.id === 'flute' && chartsForFamily('flute').length === 0;
+            return `
             <button class="pill ${w.families.includes(f.id) ? 'active' : ''}" data-action="wizard-family" data-family="${f.id}"
-              ${f.unavailable ? `disabled title="${escHtml(f.unavailable)}"` : ''}>${f.name}${f.unavailable ? ' (soon)' : ''}</button>
-          `).join('')}
+              ${unavailable ? 'disabled title="Flute fingering charts are still being sourced"' : ''}>${f.name}${unavailable ? ' (soon)' : ''}</button>`;
+          }).join('')}
         </div>
         <div class="wizard-actions">
           <button class="btn btn-primary" data-action="wizard-families-next" ${w.families.length ? '' : 'disabled'}>Next →</button>
@@ -389,12 +393,20 @@ function viewWizard() {
           <label class="wizard-field">Name
             <input class="name-input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="My ocarina">
           </label>
+          ${chartsForFamily('ocarina').length ? `
+            <label class="wizard-field">Type
+              <select class="select-input" data-action="wizard-chart" data-fam="oc">
+                <option value="custom" ${oc.chartId === 'custom' ? 'selected' : ''}>Unknown or other: chart it with the tuner</option>
+                ${chartsForFamily('ocarina').map(c => `<option value="${c.id}" ${oc.chartId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+              </select>
+            </label>` : ''}
+          ${oc.chartId !== 'custom' && getChart(oc.chartId) ? wizardKeySelect('oc', getChart(oc.chartId), oc.keyId) : `
           <label class="wizard-field">Number of holes, thumb holes included
             <select class="select-input" data-action="wizard-oc-holes">
               ${[4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(n => `<option value="${n}" ${oc.holeCount === n ? 'selected' : ''}>${n}</option>`).join('')}
             </select>
           </label>
-          <div class="hint">Its fingering chart is worked out from the instrument itself: once the tuner arrives, you blow it with all holes closed and then each hole open on its own.</div>
+          <div class="hint">Its fingering chart is worked out from the instrument itself: you blow it into the tuner with all holes closed and then each hole open on its own.</div>`}
           <div class="wizard-actions">
             <button class="btn btn-primary" data-action="wizard-oc-create">Add ocarina</button>
             <button class="btn btn-secondary" data-action="wizard-oc-path" data-path="">Back</button>
@@ -449,7 +461,39 @@ function viewWizard() {
         </div>
       </div>`;
   }
+  if (w.step === 'flute') {
+    const fl = w.fl;
+    const charts = chartsForFamily('flute');
+    const chart = getChart(fl.chartId) ?? charts[0];
+    return `${header}
+      <div class="wizard">
+        <div class="wizard-title">Your flute</div>
+        <label class="wizard-field">Name
+          <input class="name-input" id="wizard-fl-name" value="${escHtml(fl.name)}" placeholder="${escHtml(chart ? chart.name : 'My flute')}">
+        </label>
+        <label class="wizard-field">Type
+          <select class="select-input" data-action="wizard-chart" data-fam="fl">
+            ${charts.map(c => `<option value="${c.id}" ${chart?.id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+          </select>
+        </label>
+        ${chart ? wizardKeySelect('fl', chart, fl.keyId) : ''}
+        <div class="wizard-actions">
+          <button class="btn btn-primary" data-action="wizard-fl-create" ${chart ? '' : 'disabled'}>Add flute</button>
+          <button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button>
+        </div>
+      </div>`;
+  }
   return header;
+}
+
+function wizardKeySelect(fam, chart, keyId) {
+  return `
+    <label class="wizard-field">Key
+      <select class="select-input" data-action="wizard-key" data-fam="${fam}">
+        ${chart.keys.map(k => `<option value="${k.id}" ${(keyId ?? chart.keys[0].id) === k.id ? 'selected' : ''}>${escHtml(k.name)}</option>`).join('')}
+      </select>
+    </label>
+    <div class="hint">Chart source: ${chart.source.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(new URL(u).hostname)}</a>`).join(', ')}</div>`;
 }
 
 // Pitch classes of a scale from data.js, for the Notes and Chords filter.
@@ -2620,6 +2664,17 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-skip-step') { wizardNext(); return; }
+  if (action === 'wizard-fl-create') {
+    const fl = state.wizard.fl;
+    const chart = getChart(fl.chartId) ?? chartsForFamily('flute')[0];
+    if (!chart) return;
+    const inst = instrumentFromChart(chart.id, fl.keyId ?? chart.keys[0].id, { name: fl.name.trim() });
+    saveInstrument(inst);
+    refreshInstruments();
+    showToast(`${inst.name} added`);
+    wizardNext();
+    return;
+  }
   if (action === 'wizard-pick-handpan') {
     const scale = SCALES.find(sc => sc.id === el.dataset.id);
     if (!scale) return;
@@ -2655,7 +2710,9 @@ document.addEventListener('click', e => {
   }
   if (action === 'wizard-oc-create') {
     const oc = state.wizard.oc;
-    const inst = oc.path === 'have'
+    const inst = oc.path === 'have' && oc.chartId !== 'custom' && getChart(oc.chartId)
+      ? instrumentFromChart(oc.chartId, oc.keyId ?? getChart(oc.chartId).keys[0].id, { name: oc.name.trim() })
+      : oc.path === 'have'
       ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
       : Object.assign(createScaleOcarina({
           scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu,
@@ -3360,6 +3417,13 @@ document.addEventListener('change', e => {
 
   if (action === 'oc-category') { state.oc.category = el.value; render(); }
   if (action === 'oc-playlist') { state.oc.playlistId = el.value; state.oc.expanded = null; render(); }
+  if (action === 'wizard-chart') {
+    const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
+    t.chartId = el.value; t.keyId = null; render();
+  }
+  if (action === 'wizard-key') {
+    (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;
+  }
   if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }
   if (action === 'wizard-oc-scale') {
     Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
@@ -3399,6 +3463,10 @@ document.addEventListener('input', e => {
     render();
     const input = document.getElementById('wizard-search-input');
     if (input) { input.focus(); input.setSelectionRange(pos, pos); }
+    return;
+  }
+  if (e.target.id === 'wizard-fl-name' && state.wizard) {
+    state.wizard.fl.name = e.target.value;
     return;
   }
   if (e.target.id === 'wizard-oc-name' && state.wizard) {

@@ -19,7 +19,7 @@ const ONBOARDED_KEY = 'hp-onboarded';
 export const INSTRUMENT_FAMILIES = [
   { id: 'handpan', name: 'Handpan' },
   { id: 'ocarina', name: 'Ocarina' },
-  { id: 'flute', name: 'Flute', unavailable: 'Flute fingering charts come in a later update' },
+  { id: 'flute', name: 'Flute' }, // offered when js/charts.js has a sourced flute chart
 ];
 
 export const BUILD_STAGES = [
@@ -136,6 +136,10 @@ export function createCustomOcarina({ name, holeCount }, now = nowIso()) {
 // One line under the instrument's name on its card.
 export function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
+  if (inst.kind === 'traditional') {
+    const n = Object.keys(inst.chambers?.[0]?.fingerings ?? {}).length;
+    return `Key of ${inst.key} · ${n} notes`;
+  }
   if (inst.kind === 'custom') {
     return inst.calibration ? `${inst.holeCount} holes` : `${inst.holeCount} holes · not set up yet`;
   }
