@@ -305,6 +305,137 @@ export function playablePairs(chambers, midis) {
   return pairs;
 }
 
+// ── Building fewer chambers than the full scale needs ───────────────────────
+
+// How many chambers the full set of notes needs.
+export function chambersNeeded(midis) {
+  return splitChambers(midis).length;
+}
+
+// Every way to keep a run of consecutive scale notes that fits in
+// `chambers` chambers, longest runs only: for each starting note, the most
+// notes upward that still split into at most `chambers` chambers. Runs that
+// sit wholly inside a longer run are dropped. Lowest start first.
+//   e.g. F Low Pygmy (17), 1 chamber → Ab2–Bb3, …, F3–Gb4 (starts on the ding), …
+// Returns [{ start, notes }] with start = MIDI of the lowest kept note.
+export function noteWindows(midis, chambers = 1) {
+  const notes = [...new Set(midis)].sort((a, b) => a - b);
+  const runs = [];
+  for (let i = 0; i < notes.length; i++) {
+    let end = i;
+    while (end + 1 < notes.length && chambersNeeded(notes.slice(i, end + 2)) <= chambers) end++;
+    runs.push({ i, end });
+  }
+  return runs
+    .filter(r => !runs.some(o => o !== r && o.i <= r.i && o.end >= r.end && (o.end - o.i) > (r.end - r.i)))
+    .map(r => ({ start: notes[r.i], notes: notes.slice(r.i, r.end + 1) }));
+}
+
+// ── Calibration: fingerings from the instrument itself ──────────────────────
+//
+// For an ocarina whose maker chart is unknown. The pitch of a vessel flute
+// depends on the total open hole size, not on where the holes are:
+//   f = f0 × √(1 + Σ wᵢ·rᵢ)
+// where f0 is the all-closed pitch, rᵢ = Dᵢ / W is hole i's size relative to
+// the window, and wᵢ is 1 for an open hole, 0 for a covered one and about ½
+// for a half-covered one (an approximation; the tuner confirms it). Measure a
+// few fingerings, solve for r, then predict every fingering.
+
+const OC_STATE_WEIGHT = { c: 0, o: 1, h: 0.5 };
+
+// Pitch of any fingering (states, one per hole) from the hole ratios.
+export function predictFingeringHz(f0, ratios, states) {
+  const sum = states.reduce((acc, s, i) => acc + OC_STATE_WEIGHT[s] * ratios[i], 0);
+  return f0 * Math.sqrt(1 + sum);
+}
+
+// Hole ratios rᵢ from measurements [{ states, hz }] by least squares on
+// (hz/f0)² − 1 = Σ wᵢ rᵢ. The simplest calibration is one measurement per
+// hole with only that hole open, which gives rᵢ = (fᵢ/f0)² − 1 directly.
+// Throws if the measurements don't pin down every hole.
+export function solveHoleRatios(f0, measurements) {
+  const n = measurements[0].states.length;
+  const AtA = Array.from({ length: n }, () => new Array(n).fill(0));
+  const Atb = new Array(n).fill(0);
+  for (const { states, hz } of measurements) {
+    const w = states.map(s => OC_STATE_WEIGHT[s]);
+    const y = (hz / f0) ** 2 - 1;
+    for (let i = 0; i < n; i++) {
+      Atb[i] += w[i] * y;
+      for (let j = 0; j < n; j++) AtA[i][j] += w[i] * w[j];
+    }
+  }
+  // Gaussian elimination with partial pivoting.
+  const M = AtA.map((row, i) => [...row, Atb[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-12) throw new RangeError(`Hole ${c} is not covered by the measurements`);
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const k = M[r][c] / M[c][c];
+      for (let j = c; j <= n; j++) M[r][j] -= k * M[c][j];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+// How awkward a fingering is: 10 per half-holed hole, plus 1 for every open
+// hole that comes after a covered one in opening order (holes are listed in
+// opening order, so the standard scale scores 0).
+export function fingeringAwkwardness(states) {
+  let score = 0;
+  let seenClosed = false;
+  for (const s of states) {
+    if (s === 'h') score += 10;
+    if (s === 'o' && seenClosed) score += 1;
+    if (s !== 'o') seenClosed = true;
+  }
+  return score;
+}
+
+// Fingerings that give `targetHz` within `toleranceCents`, easiest first
+// (least awkward, then closest). At most `maxHalf` half-holed holes.
+// Returns [{ states, hz, cents }].
+export function findFingerings(f0, ratios, targetHz, { toleranceCents = 20, maxHalf = 1, limit = 3 } = {}) {
+  const n = ratios.length;
+  const found = [];
+  const consider = states => {
+    const hz = predictFingeringHz(f0, ratios, states);
+    const cents = centsBetween(hz, targetHz);
+    if (Math.abs(cents) <= toleranceCents) found.push({ states, hz, cents });
+  };
+  for (let mask = 0; mask < (1 << n); mask++) {
+    const base = Array.from({ length: n }, (_, i) => (mask >> i & 1 ? 'o' : 'c'));
+    consider(base);
+    if (maxHalf >= 1) {
+      base.forEach((s, i) => {
+        if (s === 'c') { const h = [...base]; h[i] = 'h'; consider(h); }
+      });
+    }
+  }
+  found.sort((a, b) =>
+    fingeringAwkwardness(a.states) - fingeringAwkwardness(b.states) ||
+    Math.abs(a.cents) - Math.abs(b.cents));
+  return found.slice(0, limit);
+}
+
+// A full chromatic fingering chart predicted from calibration: for every
+// semitone from the all-closed note to the all-open note, the easiest
+// fingering within tolerance. Notes with no fingering in tolerance are left
+// out. Returns { [midi]: { states, hz, cents } }.
+export function calibratedChart(f0, ratios, { a4 = OC_DEFAULT_A4, toleranceCents = 20, maxHalf = 1 } = {}) {
+  const top = predictFingeringHz(f0, ratios, ratios.map(() => 'o'));
+  const chart = {};
+  for (let midi = Math.ceil(hzToMidi(f0, a4) - toleranceCents / 100);
+       midi <= Math.floor(hzToMidi(top, a4) + toleranceCents / 100); midi++) {
+    const [best] = findFingerings(f0, ratios, midiToHz(midi, a4), { toleranceCents, maxHalf, limit: 1 });
+    if (best) chart[midi] = best;
+  }
+  return chart;
+}
+
 // ── Traditional charts ───────────────────────────────────────────────────────
 
 // TODO(phase 1, needs a source): 12-hole Italian system fingering chart.
@@ -312,7 +443,10 @@ export function playablePairs(chambers, midis) {
 // recorded here, per docs/ocarina-mode.md and CLAUDE.md. Do not fill in from
 // memory. A Nov 2026 search found no maker chart in a checkable text form;
 // candidate to review: https://pureocarinas.com/ocarina-fingering-system
-// (alto C list, not a full 12-hole chart). Intended shape (fingerings relative to the lowest note, so one
+// (alto C list, not a full 12-hole chart). Makers differ mainly in hole
+// sizes, which decide the cross-fingerings and half-holes, so an ocarina of
+// unknown make is charted by calibration instead (calibratedChart above).
+// Intended shape (fingerings relative to the lowest note, so one
 // chart serves every key; concert pitch = lowest note of the key + offset):
 //
 //   {

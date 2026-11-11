@@ -10,6 +10,8 @@ import {
   splitHole, applyHoleSizes, windowArea, defaultWindow, helmholtzVolume,
   ballDiameter, chamberVolume, leatherTarget, firedPitch, learnedShrinkage,
   canPlayTogether, playablePairs,
+  chambersNeeded, noteWindows, predictFingeringHz, solveHoleRatios,
+  fingeringAwkwardness, findFingerings, calibratedChart,
 } from '../js/ocarina.js';
 
 const m = n => noteToMidi(n);
@@ -228,4 +230,76 @@ test('half-holed counts as on', () => {
   const b = { holes: [{ finger: 'R4' }], fingerings: { 72: ['c'], 74: ['o'] } };
   assert.equal(canPlayTogether(a, 60, b, 72), true);
   assert.equal(canPlayTogether(a, 60, b, 74), false);
+});
+
+// ── Fewer chambers than the full scale ───────────────────────────────────────
+
+test('F Low Pygmy (17) in one chamber: 9-note windows, including one from the ding', () => {
+  const midis = scaleToMidis(scale('F-Low-Pygmy-17'));
+  assert.equal(chambersNeeded(midis), 3);
+  const wins = noteWindows(midis, 1);
+  assert.deepEqual(wins[0].notes, ms('Ab2 Bb2 C3 Db3 Eb3 F3 Gb3 Ab3 Bb3'));
+  const fromDing = wins.find(w => w.start === m('F3'));
+  assert.deepEqual(fromDing.notes, ms('F3 Gb3 Ab3 Bb3 C4 Db4 Eb4 F4 Gb4'));
+  wins.forEach(w => assert.equal(chambersNeeded(w.notes), 1));
+  // No window is wholly inside another.
+  wins.forEach(a => wins.forEach(b => {
+    if (a !== b) assert.ok(!(b.notes[0] <= a.notes[0] && b.notes.at(-1) >= a.notes.at(-1)));
+  }));
+});
+
+test('two-chamber windows and the full scale', () => {
+  const midis = scaleToMidis(scale('F-Low-Pygmy-17'));
+  noteWindows(midis, 2).forEach(w => assert.ok(chambersNeeded(w.notes) <= 2));
+  assert.deepEqual(noteWindows(midis, 3), [{ start: midis[0], notes: midis }]);
+  // D Kurd in one chamber from the ding: D3–E4.
+  assert.deepEqual(noteWindows(scaleToMidis(scale('D-Kurd')), 1)[0].notes, ms('D3 A3 Bb3 C4 D4 E4'));
+});
+
+// ── Calibration ──────────────────────────────────────────────────────────────
+
+test('calibration: hole ratios from one-hole-open readings, then any fingering', () => {
+  // A made-up 4-hole ocarina: closed 262 Hz, hole ratios 0.12, 0.15, 0.2, 0.3.
+  const f0 = 262, truth = [0.12, 0.15, 0.2, 0.3];
+  const single = i => truth.map((_, j) => (j === i ? 'o' : 'c'));
+  const readings = truth.map((_, i) => ({ states: single(i), hz: predictFingeringHz(f0, truth, single(i)) }));
+  // One hole open alone: f = f0 × √(1 + r)
+  close(readings[0].hz, 262 * Math.sqrt(1.12), 1e-9);
+  const ratios = solveHoleRatios(f0, readings);
+  ratios.forEach((r, i) => close(r, truth[i], 1e-9));
+  // All open: f0 × √(1 + 0.77)
+  close(predictFingeringHz(f0, ratios, ['o', 'o', 'o', 'o']), 262 * Math.sqrt(1.77), 1e-9);
+  // Half-holing counts half the hole.
+  close(predictFingeringHz(f0, ratios, ['o', 'h', 'c', 'c']), 262 * Math.sqrt(1.195), 1e-9);
+  assert.throws(() => solveHoleRatios(f0, readings.slice(0, 3)), RangeError);
+});
+
+test('calibration: least squares over extra, noisy readings', () => {
+  const f0 = 300, truth = [0.1, 0.2, 0.3];
+  const ms3 = [['o','c','c'], ['c','o','c'], ['c','c','o'], ['o','o','c'], ['o','o','o']];
+  const readings = ms3.map((states, k) => ({ states, hz: predictFingeringHz(f0, truth, states) * (1 + (k % 2 ? 0.001 : -0.001)) }));
+  solveHoleRatios(f0, readings).forEach((r, i) => close(r, truth[i], 0.01));
+});
+
+test('fingering search prefers the standard order, then no half-holes', () => {
+  assert.equal(fingeringAwkwardness(['o', 'o', 'c', 'c']), 0);
+  assert.equal(fingeringAwkwardness(['c', 'o', 'c', 'c']), 1);
+  assert.equal(fingeringAwkwardness(['o', 'h', 'c', 'c']), 10);
+  // Hole sizes designed for a C major scale from C4 (cumulative opening).
+  const f0 = midiToHz(60);
+  const scaleHz = ms('D4 E4 F4 G4 A4 B4 C5').map(x => midiToHz(x));
+  const totals = scaleHz.map(f => (f / f0) ** 2 - 1);
+  const ratios = totals.map((t, i) => t - (i ? totals[i - 1] : 0));
+  // E4: the first two holes open, in standard order.
+  const [e4] = findFingerings(f0, ratios, midiToHz(m('E4')));
+  assert.deepEqual(e4.states, ['o', 'o', 'c', 'c', 'c', 'c', 'c']);
+  close(e4.cents, 0, 1e-6);
+  const chart = calibratedChart(f0, ratios);
+  // Every scale note gets its standard fingering.
+  ms('C4 D4 E4 F4 G4 A4 B4 C5').forEach((x, k) => {
+    assert.deepEqual(chart[x].states, ratios.map((_, i) => (i < k ? 'o' : 'c')));
+  });
+  // Sharps get some fingering within 20 cents, cross-fingered or half-holed.
+  const sharps = ms('C#4 D#4 F#4 G#4 A#4');
+  sharps.forEach(x => assert.ok(chart[x] && Math.abs(chart[x].cents) <= 20, `no fingering for ${x}`));
 });
