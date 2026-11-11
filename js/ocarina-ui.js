@@ -168,32 +168,68 @@ export function nextVoicing(inst, midis, midi) {
 }
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
-// Diagram coordinates (viewBox units). Seen from above with the holes up,
-// as the player looks down at it: a transverse ("sweet potato") body with
-// the mouthpiece sticking out of its wide left end and the tail tapering to
-// the right; left hand on the wide part, right hand towards the tail.
+// Diagram coordinates (viewBox units). A transverse ocarina is drawn the way
+// printed charts show it: seen from above, lying on a diagonal with the head
+// (mouthpiece) at the top left and the tail at the bottom right. The holes
+// run in one line from head to tail: the left hand covers the head end, the
+// right hand the tail end. Thumb holes are underneath, so they are drawn as
+// dots outside the body: the left thumb's beside the head, the right
+// thumb's below the belly.
+//
+// Positions are in the body's own frame (x along the body from the head,
+// y across it), then turned by FG_TILT degrees onto the page.
 
 const FG_W = 300;
+const FG_TILT = 15;
 const FG_TRANSVERSE = {
-  bodyH: 110,
+  bodyH: 186,
   pos: {
-    L1: [140, 48], L2: [112, 42], L3: [86, 48], L4: [62, 66],
-    R1: [178, 50], R2: [206, 46], R3: [234, 52], R4: [260, 64],
+    L1: [48, -6], L2: [75, -6], L3: [101, -4], L4: [126, 6],
+    R1: [152, 2], R2: [178, 2], R3: [204, 3], R4: [229, 2],
   },
+  thumbs: { LT: [-22, 72], RT: [96, 80] },
 };
 
-// Body outlines (y relative to the chamber's top). Sweet potato for
-// soprano to tenor; bass chambers (closed note below C3) are drawn as the
-// fatter, aubergine-like body bass ocarinas have.
-const FG_SWEET_POTATO = 'M 34 61 C 34 24, 72 14, 122 18 C 176 22, 240 28, 278 48 C 297 58, 294 76, 272 84 C 232 100, 172 108, 112 106 C 62 104, 34 96, 34 61 Z';
-const FG_AUBERGINE = 'M 30 62 C 30 6, 112 4, 152 22 C 190 38, 246 34, 280 48 C 298 56, 297 76, 278 82 C 246 92, 198 90, 162 104 C 122 118, 30 118, 30 62 Z';
+// Body outlines in the body's frame. Sweet potato for soprano to tenor;
+// bass chambers (closed note below C3) get the fatter, aubergine-like head.
+const FG_SWEET_POTATO = 'M -8 2 C -8 -52, 40 -64, 86 -52 C 142 -38, 214 -30, 258 -16 C 282 -8, 282 18, 258 24 C 208 38, 138 54, 86 60 C 34 66, -8 54, -8 2 Z';
+const FG_AUBERGINE = 'M -16 2 C -16 -76, 60 -80, 104 -54 C 140 -34, 212 -30, 258 -16 C 282 -8, 282 18, 258 24 C 214 34, 148 40, 112 62 C 64 90, -16 80, -16 2 Z';
 
-function fgBodyPath(chamber, y0) {
-  const d = (chamber.notes?.[0] ?? 60) < 48 ? FG_AUBERGINE : FG_SWEET_POTATO;
-  // Shift every y coordinate (the odd-numbered numbers) by y0.
-  let i = 0;
-  return d.replace(/-?\d+(\.\d+)?/g, n => (i++ % 2 === 1 ? String(Number(n) + y0) : n));
+function fgBodyPath(chamber) {
+  return (chamber.notes?.[0] ?? 60) < 48 ? FG_AUBERGINE : FG_SWEET_POTATO;
 }
+
+// Half the body's width at distance x from the head, so holes always fit.
+function fgHalfWidth(x) {
+  return x <= 80 ? 50 : Math.max(16, 50 - (x - 80) * (34 / 180));
+}
+
+// Multi-chamber transverse ocarinas are one body, drawn level (as printed
+// charts show them): chamber 1 is a normal transverse ocarina along the top,
+// and each further chamber is a row of holes below, in columns under the
+// fingers that cover them (mostly the right hand), with its own windway at
+// the head. Column x per finger, in the same frame as FG_TRANSVERSE.pos.
+const FG_MULTI_COL = { L4: 48, L3: 75, L2: 101, L1: 126, R1: 152, R2: 178, R3: 204, R4: 229 };
+const FG_MULTI_ROW = 32;   // distance between chamber rows
+const FG_MULTI_FIRST = 46; // chamber 1 line to chamber 2 row
+
+// The body's lower-left edge runs from the head's chin down to just left of
+// the leftmost hole in the lower rows (minX, page coordinates), so rows
+// that only use the right hand leave the cut-away shape of a real one.
+function fgMultiBody(y1, yn, minX) {
+  const left = Math.max(44, Math.min(168, minX - 22));
+  return `M 40 ${y1 - 2} C 40 ${y1 - 50}, 84 ${y1 - 62}, 126 ${y1 - 50} `
+    + `C 184 ${y1 - 36}, 252 ${y1 - 34}, 284 ${y1 - 16} C 300 ${y1 - 6}, 298 ${y1 + 12}, 294 ${y1 + 24} `
+    + `L 294 ${yn + 8} C 294 ${yn + 30}, 276 ${yn + 34}, 250 ${yn + 33} L ${left + 20} ${yn + 30} `
+    + `C ${left - 10} ${yn + 29}, ${left - 10} ${y1 + 48}, ${Math.min(78, left)} ${y1 + 34} C 52 ${y1 + 26}, 40 ${y1 + 16}, 40 ${y1 - 2} Z`;
+}
+
+// Body frame → page coordinates for a chamber whose block starts at y0.
+function fgToPage(lx, ly, y0) {
+  const t = FG_TILT * Math.PI / 180;
+  return [48 + lx * Math.cos(t) - ly * Math.sin(t), y0 + 70 + lx * Math.sin(t) + ly * Math.cos(t)];
+}
+
 const FG_PENDANT = {
   bodyH: 170,
   pos: {
@@ -272,13 +308,32 @@ export function renderFingering(inst, midi, opts = {}) {
   const aria = describeFingering(inst, midi, label);
   const hasThumbs = chambers.some(c => c.holes.some(h => h.side === 'bottom'));
   const pad = 22; // room for arrows and the mouthpiece
-  const chamberH = geo.bodyH + (hasThumbs ? FG_STRIP_H : 0) + 14;
+  const transverse = geo === FG_TRANSVERSE;
+  const multi = transverse && chambers.length > 1;
+  const chamberH = geo.bodyH + (hasThumbs && !transverse ? FG_STRIP_H : 0) + 14;
   const labelH = size === 'mini' ? 26 : 30;
-  const H = pad + chambers.length * chamberH + labelH;
+  // Multi: chamber 1's line, then one row per further chamber, then thumbs.
+  const y1 = pad + 58;
+  const rowY = ci => y1 + FG_MULTI_FIRST + (ci - 1) * FG_MULTI_ROW;
+  const bodyBottom = multi ? rowY(chambers.length - 1) + 38 + (hasThumbs ? 22 : 0) : 0;
+  const H = multi ? bodyBottom + labelH : pad + chambers.length * chamberH + labelH;
 
   const parts = [];
+  if (multi) {
+    const lowerXs = chambers.slice(1).flatMap(c => c.holes.filter(h => h.side !== 'bottom').map(h => 48 + (FG_MULTI_COL[h.finger] ?? 150)));
+    parts.push(`<path class="fg-body" d="${fgMultiBody(y1, rowY(chambers.length - 1), Math.min(...lowerXs, 200))}"/>`);
+    chambers.forEach((_, ci) => {
+      const blown = main?.chamberIndex === ci || second?.chamberIndex === ci;
+      // One windway per chamber at the head, top one for chamber 1.
+      parts.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="2" y="${y1 - 40 + ci * 14}" width="42" height="11" rx="4" transform="rotate(-12 44 ${y1 - 34 + ci * 14})"/>`);
+      if (size !== 'mini' && ci > 0) parts.push(`<text class="fg-row-label" x="282" y="${rowY(ci)}">${ci + 1}</text>`);
+    });
+    if (main || second) {
+      parts.push(`<text class="fg-blow-label" x="4" y="${y1 - 52}">${second ? 'blow both' : `blow ${(main ?? second).chamberIndex + 1}`}</text>`);
+    }
+  }
   chambers.forEach((ch, ci) => {
-    const y0 = pad + ci * chamberH;
+    const y0 = multi ? 0 : pad + ci * chamberH;
     const blown = main?.chamberIndex === ci || second?.chamberIndex === ci;
     const f = main?.chamberIndex === ci ? main : second?.chamberIndex === ci ? second : null;
     const states = f ? f.states : ch.holes.map(() => 'c');
@@ -288,25 +343,27 @@ export function renderFingering(inst, midi, opts = {}) {
     const g = [];
     // Body
     const tubeXY = tube ? fgTubePositions(ch.holes, y0) : null;
-    if (tube) {
+    if (multi) {
+      // Body and windways are drawn once for all chambers, above.
+    } else if (tube) {
       g.push(`<rect class="fg-body" x="38" y="${y0 + 22}" width="${FG_W - 52}" height="36" rx="18"/>`);
     } else if (geo === FG_PENDANT) {
       g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
     } else {
-      g.push(`<path class="fg-body" d="${fgBodyPath(ch, y0)}"/>`);
+      g.push(`<g transform="translate(48 ${y0 + 70}) rotate(${FG_TILT})"><path class="fg-body" d="${fgBodyPath(ch)}"/>`
+        + `<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="-38" y="-46" width="42" height="22" rx="6" transform="rotate(-28 -17 -35)"/></g>`);
     }
     // Mouthpiece, marked when this chamber is blown
     if (tube) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
     else if (geo === FG_PENDANT) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
-    // Transverse: the windway sticks out of the wide end, slightly down.
-    else g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="2" y="${y0 + 58}" width="38" height="20" rx="5" transform="rotate(12 40 ${y0 + 68})"/>`);
-    if (blown && chambers.length > 1) {
-      const lx = geo === FG_PENDANT ? FG_W / 2 + 22 : 4;
-      const ly = geo === FG_PENDANT ? y0 + 9 : y0 + 42;
+    // (Transverse mouthpiece is drawn with the body, at the head.)
+    if (blown && chambers.length > 1 && !multi) {
+      const lx = geo === FG_PENDANT ? FG_W / 2 + 22 : 64;
+      const ly = geo === FG_PENDANT ? y0 + 9 : y0 + 14;
       g.push(`<text class="fg-blow-label" x="${lx}" y="${ly}">${second ? 'blow both' : 'blow'}</text>`);
     }
-    // Underside strip for thumb holes
-    if (hasThumbs) {
+    // Underside strip for thumb holes (pendants; transverse draws them as dots)
+    if (hasThumbs && !transverse) {
       const sy = y0 + geo.bodyH + 6;
       g.push(`<rect class="fg-strip" x="60" y="${sy}" width="${FG_W - 120}" height="${FG_STRIP_H - 6}" rx="6"/>`);
       if (size === 'large') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
@@ -321,7 +378,37 @@ export function renderFingering(inst, midi, opts = {}) {
       const sameFinger = ch.holes.filter(x => x.finger === h.finger && !x.sub);
       const split = !h.sub && sameFinger.length > 1;
       let x, y;
-      if (h.side === 'bottom') {
+      let maxR = Infinity;
+      if (multi) {
+        if (h.side === 'bottom') {
+          // Thumbs: left beside the head, right below the body.
+          [x, y] = h.finger === 'LT' ? [22, y1 + 14] : [132, bodyBottom - 10];
+        } else if (ci === 0) {
+          let [lx, ly] = geo.pos[h.finger] ?? [150, 0];
+          const n = sameFinger.length;
+          if (split) ly += (sameFinger.indexOf(h) - (n - 1) / 2) * (16 / Math.max(1, n - 1));
+          if (h.sub) { lx += 8; ly += 16; }
+          maxR = 12;
+          [x, y] = [48 + lx, y1 + ly];
+        } else {
+          let lx = FG_MULTI_COL[h.finger] ?? 150;
+          let ly = 0;
+          const n = sameFinger.length;
+          if (split) lx += (sameFinger.indexOf(h) - (n - 1) / 2) * 10;
+          if (h.sub) { lx += 8; ly += 10; }
+          maxR = 11;
+          [x, y] = [48 + lx, rowY(ci) + ly];
+        }
+      } else if (transverse) {
+        let [lx, ly] = h.side === 'bottom'
+          ? (FG_TRANSVERSE.thumbs[h.finger] ?? [100, 64])
+          : (geo.pos[h.finger] ?? [150, 0]);
+        const n = sameFinger.length;
+        if (split) ly += (sameFinger.indexOf(h) - (n - 1) / 2) * (16 / Math.max(1, n - 1));
+        if (h.sub) { lx += 8; ly += 16; }
+        if (h.side !== 'bottom') maxR = fgHalfWidth(lx) - Math.abs(ly) - 3;
+        [x, y] = fgToPage(lx, ly, y0);
+      } else if (h.side === 'bottom') {
         x = FG_THUMB_X[h.finger] ?? FG_W / 2;
         y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2;
       } else if (tube) {
@@ -332,9 +419,13 @@ export function renderFingering(inst, midi, opts = {}) {
       }
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
       const count = sameFinger.length;
-      if (split) y += (sameFinger.indexOf(h) - (count - 1) / 2) * (16 / Math.max(1, count - 1));
-      if (h.sub) { x += 13; y += 15; }
-      const r = Math.max(4, (split ? 18 / count : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1));
+      if (!transverse) {
+        if (split) y += (sameFinger.indexOf(h) - (count - 1) / 2) * (16 / Math.max(1, count - 1));
+        if (h.sub) { x += 13; y += 15; }
+      }
+      // Transverse holes sit about 26 units apart, so 11 keeps a gap between them.
+      const base = transverse ? 11 : 13;
+      const r = Math.max(4, Math.min(maxR, (split ? 18 / count : base) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1)));
       const hk = fgHoleName(h);
       const changed = moves && (moves.lift.includes(hk) || moves.cover.includes(hk)) && f;
       const cls = `${changed ? 'fg-changed' : ''}`;
@@ -352,7 +443,7 @@ export function renderFingering(inst, midi, opts = {}) {
     parts.push(`<g class="fg-chamber ${blown ? '' : 'fg-dim'}">${g.join('')}</g>`);
   });
 
-  const noteY = pad + chambers.length * chamberH + (size === 'mini' ? 14 : 16);
+  const noteY = (multi ? bodyBottom : pad + chambers.length * chamberH) + (size === 'mini' ? 14 : 16);
   const overblow = main && main.chamber.overblow?.includes(midi);
   parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
 
