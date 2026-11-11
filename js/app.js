@@ -111,11 +111,13 @@ function render() {
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
-  if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
+  if (state.tuner.on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
   app.insertAdjacentHTML('beforeend', sheetHtml());
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
+  // A record field stays armed only while it is on screen.
+  if (state.rec.armed && !app.querySelector('.rec-field.is-armed')) disarmRecord();
   settleFocus(app, prevSheet, focusKey);
 }
 
@@ -1449,12 +1451,28 @@ window.addEventListener('hp-instruments-changed', () => {
 // A step-by-step project per scale-built ocarina. Each instrument remembers
 // its stage; readings are kept per stage, so going back loses nothing.
 
-function hzField(path, value, placeholder = 'Hz') {
-  return `<span class="b-field">
-    <input class="b-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
-      value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${placeholder}">
-    <button class="btn btn-secondary btn-sm" data-action="b-record" data-path="${path}" title="Fill in from the tuner" aria-label="Fill in from the tuner">${icon('mic')}</button>
-  </span>`;
+// Record field (§5.3): [ input Hz ][ mic ]. The mic arms the field and turns
+// the tuner on if needed; the first steady reading fills it (onTunerReading).
+// Typing still works as before (b-input).
+function uiHzField(path, value, { label = 'Reading in Hz' } = {}) {
+  const r = state.rec;
+  const armed = r.armed === path;
+  const captured = r.captured === path;
+  const help = r.error?.path === path ? `<span class="is-error">${escHtml(r.error.msg)}</span>`
+    : armed && r.slow ? '<span class="is-warning">No steady note yet: keep blowing, or type the value</span>'
+    : armed ? '<span class="sr-only">Listening for a steady note</span>' : '';
+  return `
+    <div class="rec-field${armed ? ' is-armed' : ''}" data-rec="${escHtml(path)}">
+      <div class="rec">
+        <input class="rec-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
+          value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${armed ? 'Listening…' : 'Hz'}" aria-label="${escHtml(label)}">
+        <span class="rec-unit" aria-hidden="true">Hz</span>
+        <button type="button" class="rec-btn${captured ? ' is-captured' : ''}" data-action="b-record" data-path="${path}"
+          aria-pressed="${armed ? 'true' : 'false'}" aria-label="${armed ? 'Stop listening' : 'Fill in from the tuner'}"
+          title="${armed ? 'Stop listening' : 'Fill in from the tuner'}">${armed ? '<span class="rec-dot" aria-hidden="true"></span>' : ''}${icon(captured ? 'check' : 'mic')}</button>
+      </div>
+      <div class="rec-help" aria-live="polite">${help}</div>
+    </div>`;
 }
 
 function stepper(stage) {
@@ -1580,7 +1598,7 @@ function viewBuilder(inst) {
       return `
         <div class="b-section">
           <div class="editor-section-title">Chamber ${ci + 1}</div>
-          <div class="b-row"><span>1. Closed pitch (all holes covered), target ${nn(ch.notes[0])} ≈ ${targets[ch.notes[0]].toFixed(1)} Hz</span>${hzField(`${ci}:leather:f0`, r.f0)}${old?.f0 ? `<span class="hint">last build ${old.f0.toFixed(1)}</span>` : ''}</div>
+          <div class="b-row"><span>1. Closed pitch (all holes covered), target ${nn(ch.notes[0])} ≈ ${targets[ch.notes[0]].toFixed(1)} Hz</span>${uiHzField(`${ci}:leather:f0`, r.f0, { label: 'Closed pitch, Hz' })}${old?.f0 ? `<span class="hint">last build ${old.f0.toFixed(1)}</span>` : ''}</div>
           ${r.f0 > 0 ? (() => {
             const a = noteAdvice('leather', r.f0, targets[ch.notes[0]]);
             const text = a.status === 'ok' ? '✓ closed note in tune'
@@ -1590,7 +1608,7 @@ function viewBuilder(inst) {
           })() : ''}
           <div class="b-row"><span>2. Drill a test hole of</span>
             <span class="b-field"><input class="b-input" type="number" step="0.5" min="1" data-action="b-input" data-path="${ci}:leather:d" value="${r.d ?? cb.testHoleMm}"> mm</span>
-            <span>where ${ch.holes[0].finger} goes, then blow with only it open</span>${hzField(`${ci}:leather:f1`, r.f1)}</div>
+            <span>where ${ch.holes[0].finger} goes, then blow with only it open</span>${uiHzField(`${ci}:leather:f1`, r.f1, { label: 'Test hole pitch, Hz' })}</div>
           ${plan ? `
             <div class="b-holes">
               <div class="hint">Drill in this order. Hole sizes are at leather-hard; targets are already lowered by ${(shrink * 100).toFixed(1)}% for shrinkage.</div>
@@ -1605,7 +1623,7 @@ function viewBuilder(inst) {
                     <b>${h.finger}</b> ${h.parts.length > 1 ? `${['', '', 'two', 'three', 'four'][h.parts.length] ?? h.parts.length} holes of ${h.parts[0].toFixed(1)} mm` : `${h.mm.toFixed(1)} mm`}
                     ${h.index === plan.testHoleIndex ? '<span class="oc-badge">your test hole: enlarge it</span>' : ''}</label>
                   <span class="hint">${nn(midi)} → ${targets[midi].toFixed(1)} Hz</span>
-                  ${hzField(`${ci}:leather:n:${midi}`, measured)}
+                  ${uiHzField(`${ci}:leather:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
                   ${adv ? `<span class="b-adv ${adv.status}">${escHtml(`${nn(midi)} is ${adv.text}`).replace(`${nn(midi)} is in tune`, `${nn(midi)} ✓ in tune`)}</span>` : ''}
                 </div>`;
               }).join('')}
@@ -1636,7 +1654,7 @@ function viewBuilder(inst) {
             return `
               <div class="b-hole">
                 <span><b>${nn(midi)}</b> <span class="hint">${targets[midi].toFixed(1)} Hz</span></span>
-                ${hzField(`${ci}:${stage}:n:${midi}`, measured)}
+                ${uiHzField(`${ci}:${stage}:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
                 ${rise != null ? `<span class="hint">rose ${rise >= 0 ? '+' : ''}${rise} cents since leather-hard</span>` : ''}
                 ${old[midi] ? `<span class="hint">last build ${old[midi].toFixed(1)}</span>` : ''}
                 ${adv ? `<span class="b-adv ${adv.status}">${adv.status === 'ok' ? '✓ in tune' : escHtml(adv.text)}</span>` : ''}
@@ -1686,7 +1704,7 @@ function viewSetup(inst) {
   const ready = setup.f0 > 0 && setup.holes.every((_, i) => setup.singles[i] > 0);
   return `${ocHeader(inst, 'setup')}
     <div class="instrument-view">
-      <div class="hint">The ocarina charts itself: turn on the tuner with the microphone button at the top, then blow each line below and tap its microphone button while the note sounds. Blow steadily at a medium breath.</div>
+      <div class="hint">The ocarina charts itself: tap the microphone on a line and blow, and it fills itself in, then the next line listens. Blow steadily at a medium breath.</div>
       <div class="b-section">
         <div class="editor-section-title">Holes and fingers</div>
         <div class="hint">Check which finger covers each hole. The order should be the order the holes open going up the scale.</div>
@@ -1700,8 +1718,8 @@ function viewSetup(inst) {
       </div>
       <div class="b-section">
         <div class="editor-section-title">Readings</div>
-        <div class="b-row"><span>All holes closed</span>${hzField('s:f0', setup.f0)}</div>
-        ${setup.holes.map((h, i) => `<div class="b-row"><span>Only hole ${i + 1} (${h.finger}) open</span>${hzField(`s:${i}`, setup.singles[i])}</div>`).join('')}
+        <div class="b-row"><span>All holes closed</span>${uiHzField('s:f0', setup.f0, { label: 'All holes closed, Hz' })}</div>
+        ${setup.holes.map((h, i) => `<div class="b-row"><span>Only hole ${i + 1} (${h.finger}) open</span>${uiHzField(`s:${i}`, setup.singles[i], { label: `Only hole ${i + 1} open, Hz` })}</div>`).join('')}
       </div>
       <div class="wizard-actions">
         <button class="btn btn-primary" data-action="s-calibrate" ${ready ? '' : 'disabled'}>Work out the fingering chart</button>
@@ -1782,40 +1800,78 @@ function tunerTarget() {
   return null;
 }
 
-function tunerPanelInner() {
-  const t = state.tuner;
-  if (t.error) return `<div class="tuner-msg">${escHtml(t.error)}</div><button class="btn-icon" data-action="tuner-toggle">${icon('x')}</button>`;
-  const r = t.reading;
+// The docked strip (§5.13): the heard note and cents, a status line, the
+// meter, and close. Its parts are redrawn in place on every reading; the
+// close button and the screen-reader line stay put.
+function tunerStripHtml() {
+  return `
+    <div id="tuner-panel" class="tuner" role="region" aria-label="Tuner">
+      <div id="tuner-parts" class="tuner-parts">${tunerPanelInner()}</div>
+      ${uiIconBtn('x', 'Stop the tuner', { action: 'tuner-toggle', cls: 'tuner-close' })}
+      <span id="tuner-live" class="sr-only" aria-live="polite"></span>
+    </div>`;
+}
+
+// Where to read how to allow the microphone, for the browsers that say.
+function micHelpUrl() {
+  const ua = navigator.userAgent;
+  if (/Firefox\//.test(ua)) return 'https://support.mozilla.org/kb/how-manage-your-camera-and-microphone-permissions';
+  if (/Chrome\/|CriOS\//.test(ua)) return 'https://support.google.com/chrome/answer/2693767';
+  return null;
+}
+
+// What the strip shows for the current reading: tone ok | near | far | idle.
+function tunerReadout() {
+  const r = state.tuner.reading;
   const uf = state.useFlats, us = state.useSolfege;
   const target = tunerTarget();
   const heard = r?.midi != null ? Math.round(r.midi) : null;
-  let line = 'Listening…', cents = null, cls = '';
-  if (heard != null) {
-    const name = displayNote(midiToNoteName(heard), uf, us);
-    if (target != null) {
-      const tName = displayNote(midiToNoteName(target), uf, us);
-      const off = Math.round(centsBetween(r.hz, midiToHz(target)));
-      cents = off;
-      if (Math.abs(off) <= 10) { line = `${tName} ✓ in tune`; cls = 'ok'; }
-      else if (Math.abs(off) < 50) { line = `${tName} is ${Math.abs(off)} cents ${off < 0 ? 'flat' : 'sharp'}`; cls = 'near'; }
-      else line = `Hearing ${name}, looking for ${tName}`;
-    } else {
-      cents = Math.round(centsBetween(r.hz, midiToHz(heard)));
-      line = `${name} ${cents === 0 ? '' : (cents > 0 ? '+' : '') + cents + ' cents'}`;
-    }
+  if (heard == null) return { tone: 'idle', note: '—', cents: null, status: 'Listening…', hz: null };
+  const name = displayNote(midiToNoteName(heard), uf, us);
+  if (target != null) {
+    const tName = displayNote(midiToNoteName(target), uf, us);
+    const off = Math.round(centsBetween(r.hz, midiToHz(target)));
+    if (Math.abs(off) <= 10) return { tone: 'ok', note: name, cents: off, status: `Target ${tName} · in tune`, hz: r.hz };
+    if (Math.abs(off) < 50) return { tone: 'near', note: name, cents: off, status: `${tName} is ${Math.abs(off)} ¢ ${off < 0 ? 'flat' : 'sharp'}`, hz: r.hz };
+    return { tone: 'far', note: name, cents: Math.max(-50, Math.min(50, off)), status: `Hearing ${name}, looking for ${tName}`, hz: r.hz };
   }
-  const pos = cents == null ? 50 : 50 + Math.max(-50, Math.min(50, cents));
-  return `
-    <div class="tuner-main">
-      <div class="tuner-line ${cls}">${escHtml(line)}</div>
-      <div class="tuner-hz">${r?.hz ? r.hz.toFixed(1) + ' Hz' : '&nbsp;'}</div>
-    </div>
-    <div class="tuner-bar"><div class="tuner-mid"></div>${cents == null ? '' : `<div class="tuner-needle ${cls}" style="left:${pos}%"></div>`}</div>
-    <button class="btn-icon" data-action="tuner-toggle" title="Stop tuner">${icon('x')}</button>`;
+  // No target: the nearest note, in neutral colours.
+  const cents = Math.round(centsBetween(r.hz, midiToHz(heard)));
+  return { tone: 'far', note: name, cents, status: Math.abs(cents) <= 10 ? `${name} · in tune` : `${name} is ${Math.abs(cents)} ¢ ${cents < 0 ? 'flat' : 'sharp'}`, hz: r.hz };
 }
 
+function tunerPanelInner() {
+  const t = state.tuner;
+  if (t.error) {
+    const help = micHelpUrl();
+    return `<div class="tuner-err">${escHtml(t.error)}${help && /refused/.test(t.error) ? ` <a href="${help}" target="_blank" rel="noopener">How to allow the microphone</a>` : ''}</div>`;
+  }
+  const o = tunerReadout();
+  const fmtCents = c => (c > 0 ? '+' : c < 0 ? '−' : '±') + Math.abs(c) + ' ¢';
+  return `
+    <div class="tuner-note is-${o.tone}">
+      <div class="tuner-name">${escHtml(o.note)}</div>
+      <div class="tuner-cents">${o.cents == null ? '&nbsp;' : fmtCents(o.cents)}</div>
+    </div>
+    <div class="tuner-mid">
+      <div class="tuner-row"><span class="tuner-status is-${o.tone}">${escHtml(o.status)}</span><span class="tuner-hz">${o.hz ? o.hz.toFixed(1) + ' Hz' : ''}</span></div>
+      <div class="tuner-meter" aria-hidden="true">
+        <div class="tuner-band"></div><div class="tuner-tick"></div>
+        ${o.cents == null ? '' : `<div class="tuner-needle is-${o.tone}" style="left:${50 + Math.max(-50, Math.min(50, o.cents))}%"></div>`}
+      </div>
+    </div>`;
+}
+
+let _tunerLiveAt = 0;
 function onTunerReading(reading) {
   state.tuner.reading = reading;
+  // An armed record field takes the first steady reading. One armed by
+  // itself after a capture waits for a note that started after it.
+  const rec = state.rec;
+  if (rec.armed && reading.stable && reading.hz > 0 && (!rec.auto || reading.since > rec.armedAt)) {
+    captureReading(reading.hz);
+    return;
+  }
   // Practice mode: move on once the right note has held steady, but only for
   // a note started after the last advance (so a repeated note isn't skipped).
   const pr = state.oc.practice;
@@ -1831,14 +1887,21 @@ function onTunerReading(reading) {
       return;
     }
   }
-  const panel = document.getElementById('tuner-panel');
-  if (panel) panel.innerHTML = tunerPanelInner();
+  const parts = document.getElementById('tuner-parts');
+  if (parts) parts.innerHTML = tunerPanelInner();
+  // Screen readers hear steady readings only, at most every 1.5 s.
+  const live = document.getElementById('tuner-live');
+  if (live && reading.stable && performance.now() - _tunerLiveAt > 1500) {
+    const text = tunerReadout().status;
+    if (live.textContent !== text) { live.textContent = text; _tunerLiveAt = performance.now(); }
+  }
 }
 
 async function toggleTuner() {
   if (state.tuner.on) {
     if (_tunerStop) { _tunerStop(); _tunerStop = null; }
     state.tuner = { on: false, reading: null, error: null, lastAdvance: 0 };
+    disarmRecord();
     render();
     return;
   }
@@ -1850,8 +1913,61 @@ async function toggleTuner() {
     state.tuner.error = err?.name === 'NotAllowedError'
       ? 'Microphone access was refused. Allow it in the browser settings to use the tuner.'
       : `The tuner can't start: ${err?.message || err}`;
+    if (state.rec.armed) { const path = state.rec.armed; disarmRecord(); state.rec.error = { path, msg: state.tuner.error }; }
     render();
   }
+}
+
+// ── Record fields ────────────────────────────────────────────────────────────
+let _recSlowTimer = null;
+
+function armRecord(path, { auto = false } = {}) {
+  clearTimeout(_recSlowTimer);
+  state.rec = { ...newRecState(), armed: path, armedAt: performance.now(), auto };
+  // After 8 s without a steady note, say what to do (in place, no re-render).
+  _recSlowTimer = setTimeout(() => {
+    if (state.rec.armed !== path) return;
+    state.rec.slow = true;
+    const help = document.querySelector(`.rec-field[data-rec="${CSS.escape(path)}"] .rec-help`);
+    if (help) help.innerHTML = '<span class="is-warning">No steady note yet: keep blowing, or type the value</span>';
+  }, 8000);
+}
+
+function disarmRecord() {
+  clearTimeout(_recSlowTimer);
+  state.rec = newRecState();
+}
+
+// Fills the armed field with a reading, saves, and on Set up arms the next
+// empty reading. The mic shows a check for a second.
+function captureReading(hz) {
+  const path = state.rec.armed;
+  disarmRecord();
+  const inst = currentInstrument();
+  if (!inst || inst.id === SHARED_ID) { render(); return; }
+  setReading(inst, path, Math.round(hz * 10) / 10);
+  saveInstrument(inst);
+  state.rec.captured = path;
+  const next = path.startsWith('s:') ? nextEmptySetupPath(inst, path) : null;
+  if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
+  render();
+  if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  setTimeout(() => {
+    if (state.rec.captured !== path) return;
+    state.rec.captured = null;
+    const btn = document.querySelector(`.rec-btn[data-path="${CSS.escape(path)}"]`);
+    if (btn) { btn.classList.remove('is-captured'); btn.querySelector('.ico')?.replaceWith(document.createRange().createContextualFragment(icon('mic'))); }
+  }, 1000);
+}
+
+// The next Set up reading without a value after `fromPath`, wrapping round.
+function nextEmptySetupPath(inst, fromPath) {
+  const setup = inst.setup;
+  if (!setup) return null;
+  const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
+  const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
+  const at = paths.indexOf(fromPath);
+  return [...paths.slice(at + 1), ...paths.slice(0, at)].find(p => !(value(p) > 0)) ?? null;
 }
 
 function openInstrument(id, { push = true } = {}) {
@@ -3011,13 +3127,14 @@ document.addEventListener('click', e => {
 
   // ── Builder and set-up ────────────────────────────────────────────────────
   if (action === 'b-record') {
-    const r = state.tuner.reading;
-    if (!state.tuner.on) { toggleTuner(); showToast('Tuner on: blow the note, then tap the microphone again'); return; }
-    if (!r?.stable || !r.hz) { showToast('No steady note yet: keep blowing'); return; }
-    const inst = currentInstrument();
-    if (!inst) return;
-    setReading(inst, el.dataset.path, Math.round(r.hz * 10) / 10);
-    saveInstrument(inst);
+    // Arm the field (or disarm it); the tuner turns on if it's off.
+    if (state.rec.armed === el.dataset.path) { disarmRecord(); render(); return; }
+    armRecord(el.dataset.path);
+    if (!state.tuner.on || state.tuner.error) {
+      if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+      toggleTuner();
+      return;
+    }
     render();
     return;
   }

@@ -190,7 +190,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 
 /* Numbers that change (Hz, cents, counts) don't jitter. */
 input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tuner-line,
-.share-code, .b-input, .b-result, .b-step-no, .scale-count, .num { font-variant-numeric: tabular-nums; }
+.share-code, .b-input, .b-result, .b-step-no, .scale-count, .num, .rec-input { font-variant-numeric: tabular-nums; }
 
 #app { min-height: 100vh; }
 /* The content column under the app bar. */
@@ -1109,31 +1109,89 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .oc-practice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .oc-practice-next { display: flex; align-items: center; gap: 12px; }
 
-/* Tuner panel */
-.tuner-panel {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom));
-  width: min(520px, calc(100% - 24px)); z-index: 50;
-  display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 6px 10px; align-items: center;
-  background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); padding: 10px 12px;
-  box-shadow: var(--e-2);
+/* Tuner strip (§5.13): docked above the tab bar (or the bottom edge) on
+   phones and tablets, floating at the bottom of the content on desktop. */
+.tuner {
+  position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom); z-index: var(--z-tuner);
+  height: var(--tuner-h); display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: var(--space-1);
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-4);
+  background: var(--surface-1); border-top: 1px solid var(--border-strong); box-shadow: var(--e-2);
 }
-.tuner-panel .btn-icon { grid-column: 2; grid-row: 1; }
-.tuner-main { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.tuner-line { color: var(--heading); font-weight: 600; font-size: 15px; }
-.tuner-line.ok { color: var(--chord-c2-stroke); }
-.tuner-line.near { color: var(--chord-c1-stroke); }
-.tuner-hz { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-.tuner-msg { color: var(--heading); font-size: 13px; }
-.tuner-bar { grid-column: 1 / -1; position: relative; height: 8px; background: var(--card); border-radius: 4px; }
-.tuner-mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--muted); }
-.tuner-needle { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--primary); transition: left 0.08s; }
-.tuner-needle.ok { background: var(--chord-c2); }
-.tuner-needle.near { background: var(--chord-c1); }
-#app:has(.tuner-panel) .main { padding-bottom: 110px; }
-@media (max-width: 1023px) {
-  body.has-tabbar .tuner-panel { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px); }
-  body.has-tabbar #app:has(.tuner-panel) .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 110px); }
+body.has-tabbar .tuner { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .tuner, body.has-tabbar .tuner {
+    left: 50%; right: auto; transform: translateX(-50%); bottom: var(--space-4);
+    width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  }
 }
+.tuner-parts { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-3); align-items: center; min-width: 0; }
+.tuner-note { min-width: 0; }
+.tuner-name { font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); white-space: nowrap; }
+.tuner-cents { font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tuner-mid { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.tuner-row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.tuner-status { min-width: 0; font: var(--fw-medium) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tuner-hz { flex-shrink: 0; font-size: var(--fs-12); line-height: var(--lh-12); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tuner-meter { position: relative; height: 8px; border-radius: var(--r-full); background: var(--surface-3); }
+.tuner-band { position: absolute; top: 0; bottom: 0; left: 40%; width: 20%; background: var(--success-soft); }
+.tuner-tick { position: absolute; left: 50%; top: -4px; width: 2px; height: 16px; margin-left: -1px; background: var(--text-3); }
+.tuner-needle {
+  position: absolute; top: -6px; width: 4px; height: 20px; margin-left: -2px; border-radius: var(--r-full);
+  background: var(--text-1); transition: left 80ms linear;
+}
+.tuner-note.is-ok .tuner-name, .tuner-note.is-ok .tuner-cents, .tuner-status.is-ok { color: var(--success); }
+.tuner-needle.is-ok { background: var(--success); }
+.tuner-note.is-near .tuner-name, .tuner-note.is-near .tuner-cents, .tuner-status.is-near { color: var(--warning); }
+.tuner-needle.is-near { background: var(--warning); }
+.tuner-err { grid-column: 1 / -1; color: var(--danger); font-size: var(--fs-13); line-height: var(--lh-13); }
+.tuner-err a { color: inherit; font-weight: var(--fw-semibold); }
+@media (prefers-reduced-motion: reduce) { .tuner-needle { transition: none; } }
+/* The page makes room for the strip, so it never covers content. */
+body.tuner-on .main { padding-bottom: calc(var(--tuner-h) + env(safe-area-inset-bottom) + var(--space-4)); }
+body.tuner-on.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) + env(safe-area-inset-bottom) + var(--space-4)); }
+@media (min-width: 1024px) {
+  body.tuner-on .main, body.tuner-on.has-tabbar .main { padding-bottom: calc(var(--tuner-h) + var(--space-8) + var(--space-4)); }
+}
+
+/* Record field (§5.3): [ input Hz ][ mic ] */
+.rec-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 200px; max-width: 280px;
+  scroll-margin-top: calc(var(--appbar-h) + var(--space-4));
+  scroll-margin-bottom: calc(var(--tabbar-h) + var(--tuner-h) + var(--space-4)); }
+.rec {
+  position: relative; display: flex; min-width: 0; height: var(--field-h);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface-2); overflow: hidden;
+}
+.rec:focus-within { border-color: var(--focus); }
+.rec-input {
+  flex: 1; min-width: 96px; width: 0; height: 100%; padding: 0 40px 0 12px; border: 0; background: transparent;
+  color: var(--text-1); font: var(--fw-regular) 16px/1.2 var(--font); font-variant-numeric: tabular-nums;
+}
+.rec-input:focus { outline: none; }
+.rec-input:focus-visible { outline: none; }
+.rec-input::placeholder { color: var(--text-3); }
+.rec-unit { position: absolute; right: 60px; top: 50%; transform: translateY(-50%); font-size: var(--fs-13); color: var(--text-3); pointer-events: none; }
+.rec-input:placeholder-shown + .rec-unit { display: none; }
+.rec-btn {
+  position: relative; flex: 0 0 48px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-left: 1px solid var(--border-strong); background: transparent; color: var(--text-2); cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.rec-btn .ico { width: 22px; height: 22px; }
+.rec-btn:focus-visible { outline-offset: -3px; }
+@media (hover: hover) { .rec-btn:hover { background: var(--surface-3); color: var(--text-1); } }
+.rec-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-text); }
+.rec-btn.is-captured { color: var(--success); }
+.rec-dot {
+  position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: var(--r-full);
+  background: var(--accent); animation: rec-pulse 1s ease-in-out infinite;
+}
+@keyframes rec-pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+.rec-help:empty { display: none; }
+.rec-help { font-size: var(--fs-13); line-height: var(--lh-13); }
+.rec-help .is-warning { color: var(--warning); }
+.rec-help .is-error { color: var(--danger); }
+@media (min-width: 1024px) { .rec { height: 44px; } .rec-input { font-size: var(--fs-15); } }
 
 /* Builder */
 .b-stepper { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
@@ -1149,8 +1207,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .b-hole { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
 .b-hole.done { opacity: 0.75; }
 .b-adv { font-size: 12px; font-weight: 600; }
-.b-adv.ok { color: var(--chord-c2-stroke); }
-.b-adv.flat, .b-adv.sharp { color: var(--chord-c1-stroke); }
+.b-adv.ok { color: var(--success); }
+.b-adv.flat, .b-adv.sharp { color: var(--warning); }
 .b-result { font-size: 13px; color: var(--heading); }
 .b-advanced summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .b-preview { max-width: 240px; }
@@ -4218,11 +4276,13 @@ function render() {
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
-  if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
+  if (state.tuner.on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
   app.insertAdjacentHTML('beforeend', sheetHtml());
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
+  // A record field stays armed only while it is on screen.
+  if (state.rec.armed && !app.querySelector('.rec-field.is-armed')) disarmRecord();
   settleFocus(app, prevSheet, focusKey);
 }
 
@@ -5556,12 +5616,28 @@ window.addEventListener('hp-instruments-changed', () => {
 // A step-by-step project per scale-built ocarina. Each instrument remembers
 // its stage; readings are kept per stage, so going back loses nothing.
 
-function hzField(path, value, placeholder = 'Hz') {
-  return `<span class="b-field">
-    <input class="b-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
-      value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${placeholder}">
-    <button class="btn btn-secondary btn-sm" data-action="b-record" data-path="${path}" title="Fill in from the tuner" aria-label="Fill in from the tuner">${icon('mic')}</button>
-  </span>`;
+// Record field (§5.3): [ input Hz ][ mic ]. The mic arms the field and turns
+// the tuner on if needed; the first steady reading fills it (onTunerReading).
+// Typing still works as before (b-input).
+function uiHzField(path, value, { label = 'Reading in Hz' } = {}) {
+  const r = state.rec;
+  const armed = r.armed === path;
+  const captured = r.captured === path;
+  const help = r.error?.path === path ? `<span class="is-error">${escHtml(r.error.msg)}</span>`
+    : armed && r.slow ? '<span class="is-warning">No steady note yet: keep blowing, or type the value</span>'
+    : armed ? '<span class="sr-only">Listening for a steady note</span>' : '';
+  return `
+    <div class="rec-field${armed ? ' is-armed' : ''}" data-rec="${escHtml(path)}">
+      <div class="rec">
+        <input class="rec-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
+          value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${armed ? 'Listening…' : 'Hz'}" aria-label="${escHtml(label)}">
+        <span class="rec-unit" aria-hidden="true">Hz</span>
+        <button type="button" class="rec-btn${captured ? ' is-captured' : ''}" data-action="b-record" data-path="${path}"
+          aria-pressed="${armed ? 'true' : 'false'}" aria-label="${armed ? 'Stop listening' : 'Fill in from the tuner'}"
+          title="${armed ? 'Stop listening' : 'Fill in from the tuner'}">${armed ? '<span class="rec-dot" aria-hidden="true"></span>' : ''}${icon(captured ? 'check' : 'mic')}</button>
+      </div>
+      <div class="rec-help" aria-live="polite">${help}</div>
+    </div>`;
 }
 
 function stepper(stage) {
@@ -5687,7 +5763,7 @@ function viewBuilder(inst) {
       return `
         <div class="b-section">
           <div class="editor-section-title">Chamber ${ci + 1}</div>
-          <div class="b-row"><span>1. Closed pitch (all holes covered), target ${nn(ch.notes[0])} ≈ ${targets[ch.notes[0]].toFixed(1)} Hz</span>${hzField(`${ci}:leather:f0`, r.f0)}${old?.f0 ? `<span class="hint">last build ${old.f0.toFixed(1)}</span>` : ''}</div>
+          <div class="b-row"><span>1. Closed pitch (all holes covered), target ${nn(ch.notes[0])} ≈ ${targets[ch.notes[0]].toFixed(1)} Hz</span>${uiHzField(`${ci}:leather:f0`, r.f0, { label: 'Closed pitch, Hz' })}${old?.f0 ? `<span class="hint">last build ${old.f0.toFixed(1)}</span>` : ''}</div>
           ${r.f0 > 0 ? (() => {
             const a = noteAdvice('leather', r.f0, targets[ch.notes[0]]);
             const text = a.status === 'ok' ? '✓ closed note in tune'
@@ -5697,7 +5773,7 @@ function viewBuilder(inst) {
           })() : ''}
           <div class="b-row"><span>2. Drill a test hole of</span>
             <span class="b-field"><input class="b-input" type="number" step="0.5" min="1" data-action="b-input" data-path="${ci}:leather:d" value="${r.d ?? cb.testHoleMm}"> mm</span>
-            <span>where ${ch.holes[0].finger} goes, then blow with only it open</span>${hzField(`${ci}:leather:f1`, r.f1)}</div>
+            <span>where ${ch.holes[0].finger} goes, then blow with only it open</span>${uiHzField(`${ci}:leather:f1`, r.f1, { label: 'Test hole pitch, Hz' })}</div>
           ${plan ? `
             <div class="b-holes">
               <div class="hint">Drill in this order. Hole sizes are at leather-hard; targets are already lowered by ${(shrink * 100).toFixed(1)}% for shrinkage.</div>
@@ -5712,7 +5788,7 @@ function viewBuilder(inst) {
                     <b>${h.finger}</b> ${h.parts.length > 1 ? `${['', '', 'two', 'three', 'four'][h.parts.length] ?? h.parts.length} holes of ${h.parts[0].toFixed(1)} mm` : `${h.mm.toFixed(1)} mm`}
                     ${h.index === plan.testHoleIndex ? '<span class="oc-badge">your test hole: enlarge it</span>' : ''}</label>
                   <span class="hint">${nn(midi)} → ${targets[midi].toFixed(1)} Hz</span>
-                  ${hzField(`${ci}:leather:n:${midi}`, measured)}
+                  ${uiHzField(`${ci}:leather:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
                   ${adv ? `<span class="b-adv ${adv.status}">${escHtml(`${nn(midi)} is ${adv.text}`).replace(`${nn(midi)} is in tune`, `${nn(midi)} ✓ in tune`)}</span>` : ''}
                 </div>`;
               }).join('')}
@@ -5743,7 +5819,7 @@ function viewBuilder(inst) {
             return `
               <div class="b-hole">
                 <span><b>${nn(midi)}</b> <span class="hint">${targets[midi].toFixed(1)} Hz</span></span>
-                ${hzField(`${ci}:${stage}:n:${midi}`, measured)}
+                ${uiHzField(`${ci}:${stage}:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
                 ${rise != null ? `<span class="hint">rose ${rise >= 0 ? '+' : ''}${rise} cents since leather-hard</span>` : ''}
                 ${old[midi] ? `<span class="hint">last build ${old[midi].toFixed(1)}</span>` : ''}
                 ${adv ? `<span class="b-adv ${adv.status}">${adv.status === 'ok' ? '✓ in tune' : escHtml(adv.text)}</span>` : ''}
@@ -5793,7 +5869,7 @@ function viewSetup(inst) {
   const ready = setup.f0 > 0 && setup.holes.every((_, i) => setup.singles[i] > 0);
   return `${ocHeader(inst, 'setup')}
     <div class="instrument-view">
-      <div class="hint">The ocarina charts itself: turn on the tuner with the microphone button at the top, then blow each line below and tap its microphone button while the note sounds. Blow steadily at a medium breath.</div>
+      <div class="hint">The ocarina charts itself: tap the microphone on a line and blow, and it fills itself in, then the next line listens. Blow steadily at a medium breath.</div>
       <div class="b-section">
         <div class="editor-section-title">Holes and fingers</div>
         <div class="hint">Check which finger covers each hole. The order should be the order the holes open going up the scale.</div>
@@ -5807,8 +5883,8 @@ function viewSetup(inst) {
       </div>
       <div class="b-section">
         <div class="editor-section-title">Readings</div>
-        <div class="b-row"><span>All holes closed</span>${hzField('s:f0', setup.f0)}</div>
-        ${setup.holes.map((h, i) => `<div class="b-row"><span>Only hole ${i + 1} (${h.finger}) open</span>${hzField(`s:${i}`, setup.singles[i])}</div>`).join('')}
+        <div class="b-row"><span>All holes closed</span>${uiHzField('s:f0', setup.f0, { label: 'All holes closed, Hz' })}</div>
+        ${setup.holes.map((h, i) => `<div class="b-row"><span>Only hole ${i + 1} (${h.finger}) open</span>${uiHzField(`s:${i}`, setup.singles[i], { label: `Only hole ${i + 1} open, Hz` })}</div>`).join('')}
       </div>
       <div class="wizard-actions">
         <button class="btn btn-primary" data-action="s-calibrate" ${ready ? '' : 'disabled'}>Work out the fingering chart</button>
@@ -5889,40 +5965,78 @@ function tunerTarget() {
   return null;
 }
 
-function tunerPanelInner() {
-  const t = state.tuner;
-  if (t.error) return `<div class="tuner-msg">${escHtml(t.error)}</div><button class="btn-icon" data-action="tuner-toggle">${icon('x')}</button>`;
-  const r = t.reading;
+// The docked strip (§5.13): the heard note and cents, a status line, the
+// meter, and close. Its parts are redrawn in place on every reading; the
+// close button and the screen-reader line stay put.
+function tunerStripHtml() {
+  return `
+    <div id="tuner-panel" class="tuner" role="region" aria-label="Tuner">
+      <div id="tuner-parts" class="tuner-parts">${tunerPanelInner()}</div>
+      ${uiIconBtn('x', 'Stop the tuner', { action: 'tuner-toggle', cls: 'tuner-close' })}
+      <span id="tuner-live" class="sr-only" aria-live="polite"></span>
+    </div>`;
+}
+
+// Where to read how to allow the microphone, for the browsers that say.
+function micHelpUrl() {
+  const ua = navigator.userAgent;
+  if (/Firefox\//.test(ua)) return 'https://support.mozilla.org/kb/how-manage-your-camera-and-microphone-permissions';
+  if (/Chrome\/|CriOS\//.test(ua)) return 'https://support.google.com/chrome/answer/2693767';
+  return null;
+}
+
+// What the strip shows for the current reading: tone ok | near | far | idle.
+function tunerReadout() {
+  const r = state.tuner.reading;
   const uf = state.useFlats, us = state.useSolfege;
   const target = tunerTarget();
   const heard = r?.midi != null ? Math.round(r.midi) : null;
-  let line = 'Listening…', cents = null, cls = '';
-  if (heard != null) {
-    const name = displayNote(midiToNoteName(heard), uf, us);
-    if (target != null) {
-      const tName = displayNote(midiToNoteName(target), uf, us);
-      const off = Math.round(centsBetween(r.hz, midiToHz(target)));
-      cents = off;
-      if (Math.abs(off) <= 10) { line = `${tName} ✓ in tune`; cls = 'ok'; }
-      else if (Math.abs(off) < 50) { line = `${tName} is ${Math.abs(off)} cents ${off < 0 ? 'flat' : 'sharp'}`; cls = 'near'; }
-      else line = `Hearing ${name}, looking for ${tName}`;
-    } else {
-      cents = Math.round(centsBetween(r.hz, midiToHz(heard)));
-      line = `${name} ${cents === 0 ? '' : (cents > 0 ? '+' : '') + cents + ' cents'}`;
-    }
+  if (heard == null) return { tone: 'idle', note: '—', cents: null, status: 'Listening…', hz: null };
+  const name = displayNote(midiToNoteName(heard), uf, us);
+  if (target != null) {
+    const tName = displayNote(midiToNoteName(target), uf, us);
+    const off = Math.round(centsBetween(r.hz, midiToHz(target)));
+    if (Math.abs(off) <= 10) return { tone: 'ok', note: name, cents: off, status: `Target ${tName} · in tune`, hz: r.hz };
+    if (Math.abs(off) < 50) return { tone: 'near', note: name, cents: off, status: `${tName} is ${Math.abs(off)} ¢ ${off < 0 ? 'flat' : 'sharp'}`, hz: r.hz };
+    return { tone: 'far', note: name, cents: Math.max(-50, Math.min(50, off)), status: `Hearing ${name}, looking for ${tName}`, hz: r.hz };
   }
-  const pos = cents == null ? 50 : 50 + Math.max(-50, Math.min(50, cents));
-  return `
-    <div class="tuner-main">
-      <div class="tuner-line ${cls}">${escHtml(line)}</div>
-      <div class="tuner-hz">${r?.hz ? r.hz.toFixed(1) + ' Hz' : '&nbsp;'}</div>
-    </div>
-    <div class="tuner-bar"><div class="tuner-mid"></div>${cents == null ? '' : `<div class="tuner-needle ${cls}" style="left:${pos}%"></div>`}</div>
-    <button class="btn-icon" data-action="tuner-toggle" title="Stop tuner">${icon('x')}</button>`;
+  // No target: the nearest note, in neutral colours.
+  const cents = Math.round(centsBetween(r.hz, midiToHz(heard)));
+  return { tone: 'far', note: name, cents, status: Math.abs(cents) <= 10 ? `${name} · in tune` : `${name} is ${Math.abs(cents)} ¢ ${cents < 0 ? 'flat' : 'sharp'}`, hz: r.hz };
 }
 
+function tunerPanelInner() {
+  const t = state.tuner;
+  if (t.error) {
+    const help = micHelpUrl();
+    return `<div class="tuner-err">${escHtml(t.error)}${help && /refused/.test(t.error) ? ` <a href="${help}" target="_blank" rel="noopener">How to allow the microphone</a>` : ''}</div>`;
+  }
+  const o = tunerReadout();
+  const fmtCents = c => (c > 0 ? '+' : c < 0 ? '−' : '±') + Math.abs(c) + ' ¢';
+  return `
+    <div class="tuner-note is-${o.tone}">
+      <div class="tuner-name">${escHtml(o.note)}</div>
+      <div class="tuner-cents">${o.cents == null ? '&nbsp;' : fmtCents(o.cents)}</div>
+    </div>
+    <div class="tuner-mid">
+      <div class="tuner-row"><span class="tuner-status is-${o.tone}">${escHtml(o.status)}</span><span class="tuner-hz">${o.hz ? o.hz.toFixed(1) + ' Hz' : ''}</span></div>
+      <div class="tuner-meter" aria-hidden="true">
+        <div class="tuner-band"></div><div class="tuner-tick"></div>
+        ${o.cents == null ? '' : `<div class="tuner-needle is-${o.tone}" style="left:${50 + Math.max(-50, Math.min(50, o.cents))}%"></div>`}
+      </div>
+    </div>`;
+}
+
+let _tunerLiveAt = 0;
 function onTunerReading(reading) {
   state.tuner.reading = reading;
+  // An armed record field takes the first steady reading. One armed by
+  // itself after a capture waits for a note that started after it.
+  const rec = state.rec;
+  if (rec.armed && reading.stable && reading.hz > 0 && (!rec.auto || reading.since > rec.armedAt)) {
+    captureReading(reading.hz);
+    return;
+  }
   // Practice mode: move on once the right note has held steady, but only for
   // a note started after the last advance (so a repeated note isn't skipped).
   const pr = state.oc.practice;
@@ -5938,14 +6052,21 @@ function onTunerReading(reading) {
       return;
     }
   }
-  const panel = document.getElementById('tuner-panel');
-  if (panel) panel.innerHTML = tunerPanelInner();
+  const parts = document.getElementById('tuner-parts');
+  if (parts) parts.innerHTML = tunerPanelInner();
+  // Screen readers hear steady readings only, at most every 1.5 s.
+  const live = document.getElementById('tuner-live');
+  if (live && reading.stable && performance.now() - _tunerLiveAt > 1500) {
+    const text = tunerReadout().status;
+    if (live.textContent !== text) { live.textContent = text; _tunerLiveAt = performance.now(); }
+  }
 }
 
 async function toggleTuner() {
   if (state.tuner.on) {
     if (_tunerStop) { _tunerStop(); _tunerStop = null; }
     state.tuner = { on: false, reading: null, error: null, lastAdvance: 0 };
+    disarmRecord();
     render();
     return;
   }
@@ -5957,8 +6078,61 @@ async function toggleTuner() {
     state.tuner.error = err?.name === 'NotAllowedError'
       ? 'Microphone access was refused. Allow it in the browser settings to use the tuner.'
       : `The tuner can't start: ${err?.message || err}`;
+    if (state.rec.armed) { const path = state.rec.armed; disarmRecord(); state.rec.error = { path, msg: state.tuner.error }; }
     render();
   }
+}
+
+// ── Record fields ────────────────────────────────────────────────────────────
+let _recSlowTimer = null;
+
+function armRecord(path, { auto = false } = {}) {
+  clearTimeout(_recSlowTimer);
+  state.rec = { ...newRecState(), armed: path, armedAt: performance.now(), auto };
+  // After 8 s without a steady note, say what to do (in place, no re-render).
+  _recSlowTimer = setTimeout(() => {
+    if (state.rec.armed !== path) return;
+    state.rec.slow = true;
+    const help = document.querySelector(`.rec-field[data-rec="${CSS.escape(path)}"] .rec-help`);
+    if (help) help.innerHTML = '<span class="is-warning">No steady note yet: keep blowing, or type the value</span>';
+  }, 8000);
+}
+
+function disarmRecord() {
+  clearTimeout(_recSlowTimer);
+  state.rec = newRecState();
+}
+
+// Fills the armed field with a reading, saves, and on Set up arms the next
+// empty reading. The mic shows a check for a second.
+function captureReading(hz) {
+  const path = state.rec.armed;
+  disarmRecord();
+  const inst = currentInstrument();
+  if (!inst || inst.id === SHARED_ID) { render(); return; }
+  setReading(inst, path, Math.round(hz * 10) / 10);
+  saveInstrument(inst);
+  state.rec.captured = path;
+  const next = path.startsWith('s:') ? nextEmptySetupPath(inst, path) : null;
+  if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
+  render();
+  if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  setTimeout(() => {
+    if (state.rec.captured !== path) return;
+    state.rec.captured = null;
+    const btn = document.querySelector(`.rec-btn[data-path="${CSS.escape(path)}"]`);
+    if (btn) { btn.classList.remove('is-captured'); btn.querySelector('.ico')?.replaceWith(document.createRange().createContextualFragment(icon('mic'))); }
+  }, 1000);
+}
+
+// The next Set up reading without a value after `fromPath`, wrapping round.
+function nextEmptySetupPath(inst, fromPath) {
+  const setup = inst.setup;
+  if (!setup) return null;
+  const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
+  const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
+  const at = paths.indexOf(fromPath);
+  return [...paths.slice(at + 1), ...paths.slice(0, at)].find(p => !(value(p) > 0)) ?? null;
 }
 
 function openInstrument(id, { push = true } = {}) {
@@ -7118,13 +7292,14 @@ document.addEventListener('click', e => {
 
   // ── Builder and set-up ────────────────────────────────────────────────────
   if (action === 'b-record') {
-    const r = state.tuner.reading;
-    if (!state.tuner.on) { toggleTuner(); showToast('Tuner on: blow the note, then tap the microphone again'); return; }
-    if (!r?.stable || !r.hz) { showToast('No steady note yet: keep blowing'); return; }
-    const inst = currentInstrument();
-    if (!inst) return;
-    setReading(inst, el.dataset.path, Math.round(r.hz * 10) / 10);
-    saveInstrument(inst);
+    // Arm the field (or disarm it); the tuner turns on if it's off.
+    if (state.rec.armed === el.dataset.path) { disarmRecord(); render(); return; }
+    armRecord(el.dataset.path);
+    if (!state.tuner.on || state.tuner.error) {
+      if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+      toggleTuner();
+      return;
+    }
     render();
     return;
   }
