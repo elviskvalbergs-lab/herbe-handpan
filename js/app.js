@@ -45,6 +45,8 @@ const state = {
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
   sharedStatus: null,      // 'loading' | 'missing' while a share link loads
   shareModal: null,        // { code, url, qr } while the share dialog is open
+  menu: false,             // the instrument's ⋯ menu is open
+  confirm: null,           // { kind: 'instrument' | 'playlist', id, title, body, ok } while confirming
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
@@ -84,6 +86,8 @@ const state = {
 // ── Render ───────────────────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
+  const prevSheet = app.querySelector('.sheet-root')?.dataset.sheet ?? null;
+  const focusKey = focusKeyOf(document.activeElement);
   let html = '';
   if (state.view === 'home') html = viewHome();
   else if (state.view === 'wizard') html = viewWizard();
@@ -98,10 +102,55 @@ function render() {
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
-  if (state.shareModal) app.insertAdjacentHTML('beforeend', shareModalHtml());
   if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
+  app.insertAdjacentHTML('beforeend', sheetHtml());
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
+  settleFocus(app, prevSheet, focusKey);
+}
+
+// ── Focus across re-renders ──────────────────────────────────────────────────
+// Every render replaces the DOM, so focus is put back on the equivalent
+// element afterwards. A sheet that opens takes focus; when it closes, focus
+// returns to the control that opened it.
+let _lastTrigger = null;     // focus key of the last clicked control
+let _sheetReturnFocus = null;
+
+function focusKeyOf(el) {
+  if (!el || el === document.body || !el.closest?.('#app')) return null;
+  if (el.id) return '#' + CSS.escape(el.id);
+  if (!el.dataset?.action) return null;
+  const scope = el.closest('.sheet') ? '.sheet ' : el.closest('.appbar') ? '.appbar ' : '.main ';
+  return scope + Object.entries(el.dataset)
+    .map(([k, v]) => `[data-${k.replace(/[A-Z]/g, c => '-' + c.toLowerCase())}="${CSS.escape(v)}"]`).join('');
+}
+
+function focusByKey(key) {
+  if (!key) return false;
+  const el = document.querySelector(key);
+  if (!el) return false;
+  el.focus({ preventScroll: true });
+  return true;
+}
+
+function settleFocus(app, prevSheet, focusKey) {
+  const root = app.querySelector('.sheet-root');
+  const sheet = root?.dataset.sheet ?? null;
+  if (sheet && sheet !== prevSheet) {
+    root.classList.add('is-entering');
+    if (!prevSheet) _sheetReturnFocus = _lastTrigger;
+    const first = ['.sheet-body [data-action]:not([disabled])', '.sheet-foot .btn-primary', '.sheet-body input', '.sheet-foot .btn']
+      .map(sel => root.querySelector(sel)).find(Boolean);
+    (first ?? root.querySelector('.sheet')).focus({ preventScroll: true });
+    return;
+  }
+  if (!sheet && prevSheet) {
+    focusByKey(_sheetReturnFocus);
+    _sheetReturnFocus = null;
+    return;
+  }
+  const active = document.activeElement;
+  if (focusKey && (!active || active === document.body) && !/^#/.test(focusKey)) focusByKey(focusKey);
 }
 
 // ── Navigation ───────────────────────────────────────────────────────────────
@@ -109,7 +158,7 @@ function render() {
 // it can step back through the browser history; without one (a deep link)
 // it goes to the screen's logical parent instead.
 function navPush(url) { history.pushState({ hp: 1 }, '', url); }
-function navReplace(url) { history.replaceState(history.state, '', url); }
+function navReplace(url, extra = {}) { history.replaceState({ ...(history.state ?? {}), ...extra }, '', url); }
 
 function goHome() {
   stopAutoplay();
@@ -117,6 +166,7 @@ function goHome() {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
     sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
     wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
+    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null,
   });
   refreshInstruments();
   navPush(location.pathname);
@@ -133,6 +183,36 @@ function goSelector() {
   state.sourceEntryId = null;
   state.currentInstrumentId = null;
   navPush('#scales');
+  render();
+}
+
+// Removes an instrument once confirmed. A handpan instrument is its saved
+// layout, so removing one removes both. Leaves the instrument if it is open.
+function removeInstrument(id) {
+  const inst = getInstrument(id);
+  if (!inst) { render(); return; }
+  if (inst.family === 'handpan') {
+    deleteLayout(inst.layoutId);
+    state.savedLayouts = getSavedLayouts();
+    scheduleSave();
+  } else {
+    deleteInstrument(inst.id);
+  }
+  refreshInstruments();
+  if (state.currentInstrumentId === id) { goHome(); return; }
+  render();
+}
+
+function removePlaylist(id) {
+  if (id === 'favorites') { render(); return; }
+  deletePlaylist(id);
+  state.playlists = getPlaylists();
+  if (state.view === 'playlist' && state.activePlaylistId === id) {
+    state.view = 'home';
+    state.activePlaylistId = null;
+    navPush(location.pathname);
+  }
+  scheduleSave();
   render();
 }
 
@@ -156,7 +236,7 @@ function handpanAppBar(tabs = '') {
       ? { name: state.layout.name, action: 'back-home', title: 'My instruments' }
       : { name: state.layout.name, action: 'back-selector', title: 'Other scales' },
     badge: saved ? '' : uiBadge('Not saved'),
-    actions: [tunerAppBtn()],
+    actions: [tunerAppBtn(), menuAppBtn()],
     tabs,
   });
 }
@@ -711,7 +791,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
     ${uiAppBar({
       switcher: { name: inst.name, action: 'back-home', title: 'My instruments' },
       badge: shared ? uiBadge(inst.publicId) : '',
-      actions: [tunerAppBtn(), shared ? '' : uiIconBtn('share-2', 'Share: code, link and QR code', { action: 'share-instrument' })],
+      actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
     })}
     ${shared ? `
@@ -908,8 +988,7 @@ function viewOcarinaChords(inst) {
             </div>`).join('')}
         </div>` : ''}
     </div>
-    ${state.pickerChordFavId ? renderPlaylistPicker() : ''}
-    ${handLegendModal()}`;
+`;
 }
 
 // Practice mode: autoplay on an ocarina playlist, one arpeggio note at a
@@ -966,15 +1045,11 @@ function viewOcarinaPractice(inst) {
 
 function handLegendModal() {
   if (!state.oc.handLegend) return '';
-  return `
-    <div class="modal-overlay" data-action="oc-hand-close">
-      <div class="modal">
-        <div class="modal-title">Which finger is which</div>
-        <div class="modal-sub">As you hold the instrument, looking at the backs of your hands.</div>
-        ${renderHandLegend()}
-        <div class="modal-actions"><button class="btn btn-secondary btn-sm" data-action="oc-hand-close">Close</button></div>
-      </div>
-    </div>`;
+  return uiSheet({
+    key: 'hand', title: 'Which finger is which', close: 'oc-hand-close',
+    body: `<p class="sheet-text">As you hold the instrument, looking at the backs of your hands.</p>${renderHandLegend()}`,
+    footer: `<button class="btn btn-secondary" data-action="oc-hand-close">Close</button>`,
+  });
 }
 
 // An ocarina or flute: the Notes view (fingering chart).
@@ -1038,8 +1113,7 @@ function viewInstrument() {
           </div>`).join('')}
       </div>
       ${inst.kind === 'scale' ? `<div class="hint">${escHtml(instrumentStatus(inst))}</div>` : ''}
-    </div>
-    ${handLegendModal()}`;
+    </div>`;
 }
 
 function legendHole(state) {
@@ -1158,20 +1232,17 @@ async function shareInstrument() {
 function shareModalHtml() {
   const m = state.shareModal;
   if (!m) return '';
-  return `
-    <div class="modal-overlay" data-action="share-close">
-      <div class="modal share-modal">
-        <div class="modal-title">Share this instrument</div>
-        <div class="modal-sub">Anyone with the code, link or QR code sees its fingering chart and chords, read-only, and can add it to their own instruments. Stamp the code into the clay or tie the QR code to it.</div>
-        <div class="share-code">${escHtml(m.code)}</div>
-        <div class="share-qr">${m.qr ?? '<span class="hint">QR code loading…</span>'}</div>
-        <input class="name-input share-url" readonly value="${escHtml(m.url)}">
-        <div class="modal-actions">
-          <button class="btn btn-primary btn-sm" data-action="share-copy">Copy link</button>
-          <button class="btn btn-secondary btn-sm" data-action="share-close">Close</button>
-        </div>
-      </div>
-    </div>`;
+  return uiSheet({
+    key: 'share', title: 'Share this instrument', close: 'share-close',
+    body: `
+      <p class="sheet-text">Anyone with the code, link or QR code sees its fingering chart and chords, read-only, and can add it to their own instruments. Stamp the code into the clay or tie the QR code to it.</p>
+      <div class="share-code">${escHtml(m.code)}</div>
+      <div class="share-qr">${m.qr ?? '<span class="hint">QR code loading…</span>'}</div>
+      <input class="input share-url" readonly value="${escHtml(m.url)}" aria-label="Share link">`,
+    footer: `
+      <button class="btn btn-ghost" data-action="share-close">Close</button>
+      <button class="btn btn-primary" data-action="share-copy">${icon('link')} Copy link</button>`,
+  });
 }
 
 // ── Instruments sync ─────────────────────────────────────────────────────────
@@ -1743,7 +1814,6 @@ function viewEditor() {
       </div>
     </div>
 
-    ${state.pendingSlot ? renderNotePicker() : ''}
   `;
 }
 
@@ -1756,13 +1826,13 @@ function renderNotePicker() {
       const noteStr = `${name}${oct}`;
       const inUse = allNotes.has(noteStr);
       const label = displayNote(name, state.useFlats);
-      return `<button class="note-btn ${inUse ? 'in-use' : ''}"
-        data-action="pick-note" data-note="${noteStr}"
+      return `<button class="chip note-chip ${inUse ? 'is-static' : ''}"
+        data-action="pick-note" data-note="${noteStr}" aria-label="${escHtml(label + oct)}${inUse ? ', already on the instrument' : ''}"
         ${inUse ? 'disabled' : ''}>${label}</button>`;
     }).join('');
     return `<div class="note-octave-row">
       <span class="octave-label">${oct}</span>
-      ${cols}
+      <div class="note-octave-notes">${cols}</div>
     </div>`;
   }).join('');
 
@@ -1770,18 +1840,11 @@ function renderNotePicker() {
     ? 'ding (center)'
     : `${state.pendingSlot.shell === 'top' ? 'ring' : 'gu'} slot ${state.pendingSlot.index + 1}`;
 
-  return `
-    <div class="modal-overlay" data-action="close-picker">
-      <div class="modal">
-        <div class="modal-title">Choose a note</div>
-        <div class="modal-sub">For ${slotLabel} · Grayed notes already on instrument</div>
-        ${rows}
-        <div class="modal-actions">
-          <button class="btn btn-secondary btn-sm" data-action="close-picker">Cancel</button>
-        </div>
-      </div>
-    </div>
-  `;
+  return uiSheet({
+    key: 'note', title: 'Add a note', close: 'close-picker',
+    body: `<p class="sheet-text">For the ${slotLabel}. Greyed notes are already on the instrument.</p>${rows}`,
+    footer: `<button class="btn btn-ghost" data-action="close-picker">Cancel</button>`,
+  });
 }
 
 // ── View 3: Chord Explorer ───────────────────────────────────────────────────
@@ -1902,7 +1965,6 @@ function viewChords() {
           title="Switch between letter names (C, D) and solfège (Do, Re)">Do-Re-Mi</button>
         <button class="btn ${state.discoverMode ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-discover-mode"
           title="Click note fields on the pan to identify what chord they form">${icon('search')} Discover</button>
-        <button class="btn btn-secondary btn-sm" data-action="copy-url">Copy URL</button>
       </div>
     </div>
 
@@ -2055,40 +2117,81 @@ function viewChords() {
         </div>
       </div>
     </div>
-    ${state.pickerChordFavId ? renderPlaylistPicker() : ''}
   `;
 }
 
-// ── Playlist picker overlay ──────────────────────────────────────────────────
+// ── Sheets ───────────────────────────────────────────────────────────────────
+// At most one sheet is open; it's rendered from state after the view.
+function sheetHtml() {
+  if (state.confirm) return confirmSheet();
+  if (state.menu) return menuSheet();
+  if (state.shareModal) return shareModalHtml();
+  if (state.pickerChordFavId && (state.view === 'chords' || state.view === 'instrument')) return renderPlaylistPicker();
+  if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
+  if (state.oc.handLegend && state.view === 'instrument') return handLegendModal();
+  return '';
+}
+
+// Add to playlist: tick playlists, or start a new one.
 function renderPlaylistPicker() {
   const favId = state.pickerChordFavId;
-  return `
-    <div class="modal-overlay" data-action="close-playlist-picker">
-      <div class="modal picker-modal">
-        <div class="picker-title">Add to playlist</div>
-        ${state.playlists.map(pl => {
-          const inPl = pl.chords.some(c => c.id === favId);
-          return `<div class="picker-row ${inPl ? 'in-playlist' : ''}"
-            data-action="toggle-playlist-chord" data-playlist-id="${escHtml(pl.id)}">
-            <span class="picker-check">${inPl ? icon('check') : ''}</span>
-            <span class="picker-name">${escHtml(pl.name)}</span>
-            <span class="picker-count">${pl.chords.length}</span>
-          </div>`;
-        }).join('')}
-        ${state.pickerNewPlaylist
-          ? `<div class="picker-new-row">
-               <input class="name-input picker-new-input" id="new-playlist-input" placeholder="Playlist name…">
-               <button class="btn btn-primary btn-sm" data-action="confirm-new-playlist">Create</button>
-             </div>`
-          : `<div class="picker-row picker-create" data-action="show-new-playlist-input">
-               <span class="picker-check">${icon('plus')}</span>
-               <span class="picker-name">New playlist</span>
-             </div>`
-        }
-      </div>
-    </div>
-  `;
+  const rows = state.playlists.map(pl => {
+    const inPl = pl.chords.some(c => c.id === favId);
+    return uiRow({
+      lead: `<span class="row-check">${inPl ? icon('check') : ''}</span>`, title: pl.name,
+      trail: `<span class="chord-count">${pl.chords.length}</span>`, cls: inPl ? 'is-current' : '',
+      action: 'toggle-playlist-chord', data: { 'playlist-id': pl.id },
+    });
+  }).join('');
+  const create = state.pickerNewPlaylist
+    ? `<div class="picker-new-row">
+         <input class="input" id="new-playlist-input" placeholder="Playlist name" aria-label="New playlist name">
+         <button class="btn btn-primary" data-action="confirm-new-playlist">Create</button>
+       </div>`
+    : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New playlist', action: 'show-new-playlist-input' });
+  return uiSheet({
+    key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
+    body: `<div class="list">${rows}${create}</div>`,
+  });
 }
+
+// The ⋯ menu of the instrument on screen.
+function menuSheet() {
+  const rows = [];
+  let title = 'Menu';
+  if (state.view === 'instrument') {
+    const inst = currentInstrument();
+    const shared = inst?.id === SHARED_ID;
+    title = inst?.name ?? title;
+    if (inst && !shared) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument' }));
+    if (inst) rows.push(uiRow({ lead: 'hand', title: 'Which finger is which', action: 'oc-hand-open' }));
+    rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
+    if (inst && !shared) rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
+  } else if (state.layout) {
+    title = state.layout.name;
+    rows.push(uiRow({ lead: 'link', title: state.selectedChord ? 'Copy link to this chord' : 'Copy link', action: 'copy-url' }));
+    rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
+    if (state.currentInstrumentId) {
+      rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: state.currentInstrumentId }, cls: 'is-danger' }));
+    }
+  }
+  return uiSheet({ key: 'menu', variant: 'menu', title, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
+}
+
+// Are you sure? Replaces window.confirm for removing instruments and playlists.
+function confirmSheet() {
+  const c = state.confirm;
+  return uiSheet({
+    key: 'confirm', variant: 'confirm', title: c.title, close: 'confirm-cancel',
+    body: `<p class="sheet-text">${escHtml(c.body)}</p>`,
+    footer: `
+      <button class="btn btn-ghost" data-action="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger is-filled" data-action="confirm-ok">${escHtml(c.ok)}</button>`,
+  });
+}
+
+// ⋯ button of an instrument's app bar.
+function menuAppBtn() { return uiIconBtn('ellipsis', 'More', { action: 'menu-open', attrs: 'aria-haspopup="dialog"' }); }
 
 // ── View 4: Playlist ─────────────────────────────────────────────────────────
 function viewPlaylist() {
@@ -2575,11 +2678,29 @@ document.addEventListener('click', e => {
   if (!el) return;
   const action = el.dataset.action;
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
+  if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
+
+  // ── Sheets: the ⋯ menu and confirm ────────────────────────────────────────
+  if (action === 'menu-open') { state.menu = true; render(); return; }
+  if (action === 'menu-close') { state.menu = false; render(); return; }
+  // A menu row closes the menu, then does what it says.
+  if (state.menu && el.closest('.sheet-menu')) { state.menu = false; render(); }
+  if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
+  if (action === 'confirm-ok') {
+    const c = state.confirm;
+    state.confirm = null;
+    if (c?.kind === 'instrument') removeInstrument(c.id);
+    else if (c?.kind === 'playlist') removePlaylist(c.id);
+    else render();
+    return;
+  }
 
   if (action === 'hp-playlists') {
     stopAutoplay();
     state.pendingSlot = null;
     state.view = 'hp-playlists';
+    // Remembered on the history entry, so coming back to it reopens this tab.
+    if (state.layout) navReplace(stateToHash(), { hpTab: 'playlists' });
     render();
     return;
   }
@@ -2594,16 +2715,13 @@ document.addEventListener('click', e => {
   if (action === 'delete-instrument') {
     e.stopPropagation();
     const inst = getInstrument(el.dataset.id);
-    if (!inst || !confirm(`Remove ${inst.name} from My instruments?`)) return;
-    if (inst.family === 'handpan') {
-      // A handpan instrument is its saved layout: removing one removes both.
-      deleteLayout(inst.layoutId);
-      state.savedLayouts = getSavedLayouts();
-      scheduleSave();
-    } else {
-      deleteInstrument(inst.id);
-    }
-    refreshInstruments();
+    if (!inst) return;
+    state.confirm = {
+      kind: 'instrument', id: inst.id, ok: 'Remove', title: `Remove ${inst.name}?`,
+      body: inst.family === 'handpan'
+        ? 'Its saved layout is removed from My instruments on this device and from sync.'
+        : 'Its readings and build history are removed from this device and from sync.',
+    };
     render();
     return;
   }
@@ -2673,18 +2791,12 @@ document.addEventListener('click', e => {
   if (action === 'oc-toggle-sizes') { state.showSizes = !state.showSizes; savePrefs(); render(); return; }
   if (action === 'oc-legend-dismiss') { state.ocLegendSeen = true; savePrefs(); render(); return; }
   if (action === 'oc-hand-open') { state.oc.handLegend = true; render(); return; }
-  if (action === 'oc-hand-close') {
-    if (e.target.closest('.modal') && !e.target.closest('[data-action="oc-hand-close"].btn')) return;
-    state.oc.handLegend = false; render(); return;
-  }
+  if (action === 'oc-hand-close') { state.oc.handLegend = false; render(); return; }
 
 
   if (action === 'tuner-toggle') { toggleTuner(); return; }
   if (action === 'share-instrument') { shareInstrument(); return; }
-  if (action === 'share-close') {
-    if (e.target.closest('.modal') && !e.target.closest('.btn')) return;
-    state.shareModal = null; render(); return;
-  }
+  if (action === 'share-close') { state.shareModal = null; render(); return; }
   if (action === 'share-copy') {
     navigator.clipboard?.writeText(state.shareModal?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
     return;
@@ -3094,7 +3206,6 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'close-playlist-picker') {
-    if (e.target.closest('.modal')) return;
     state.pickerChordFavId = null;
     state.pickerChordObj = null;
     state.pickerNewPlaylist = false;
@@ -3173,13 +3284,12 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'delete-playlist') {
-    if (state.activePlaylistId === 'favorites') return;
-    deletePlaylist(state.activePlaylistId);
-    state.playlists = getPlaylists();
-    state.view = 'home';
-    state.activePlaylistId = null;
-    navPush(location.pathname);
-    scheduleSave();
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl || pl.id === 'favorites') return;
+    state.confirm = {
+      kind: 'playlist', id: pl.id, ok: 'Delete', title: `Delete ${pl.name}?`,
+      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
+    };
     render();
     return;
   }
@@ -3241,7 +3351,7 @@ document.addEventListener('click', e => {
     state.selectedChord = null;
     state.sourcePlaylistId = null;
     state.sourceEntryId = null;
-    navReplace(stateToHash());
+    navReplace(stateToHash(), { hpTab: null });
     render();
     return;
   }
@@ -3332,8 +3442,6 @@ document.addEventListener('click', e => {
 
   // Note picker: cancel or overlay background click
   if (action === 'close-picker') {
-    // Ignore clicks that landed inside the modal but not on the Cancel button
-    if (el.classList.contains('modal-overlay') && e.target.closest('.modal')) return;
     state.pendingSlot = null;
     render();
     return;
@@ -3508,7 +3616,7 @@ document.addEventListener('click', e => {
 
   if (action === 'copy-url') {
     const url = location.origin + location.pathname + stateToHash();
-    navigator.clipboard.writeText(url).then(() => showToast('URL copied!'));
+    navigator.clipboard.writeText(url).then(() => showToast('URL copied!'), () => showToast('Copy the link from the address bar'));
     return;
   }
 });
@@ -3711,13 +3819,26 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {
+    // preventDefault: focus moves back to the heart button as the sheet
+    // closes, and Enter's default action would press it again.
+    e.preventDefault();
     document.querySelector('[data-action="confirm-new-playlist"]')?.click();
   }
-  if (e.key === 'Escape' && state.pickerChordFavId) {
-    state.pickerChordFavId = null;
-    state.pickerChordObj = null;
-    state.pickerNewPlaylist = false;
-    render();
+  const sheet = document.querySelector('.sheet-root .sheet');
+  if (!sheet) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    sheet.querySelector('[data-sheet-close]')?.click();
+    return;
+  }
+  if (e.key === 'Tab') {
+    const items = [...sheet.querySelectorAll('button:not([disabled]), input, select, textarea, [tabindex="0"]')]
+      .filter(x => x.offsetParent !== null);
+    if (items.length === 0) return;
+    const first = items[0], last = items[items.length - 1];
+    if (!sheet.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 });
 
@@ -3731,5 +3852,6 @@ window.addEventListener('popstate', () => {
   });
   refreshInstruments();
   loadFromHash();
+  if (history.state?.hpTab === 'playlists' && state.layout && (state.view === 'editor' || state.view === 'chords')) state.view = 'hp-playlists';
   render();
 });
