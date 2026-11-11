@@ -645,6 +645,28 @@ body {
 .oc-practice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .oc-practice-next { display: flex; align-items: center; gap: 12px; }
 
+/* Tuner panel */
+.tuner-panel {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom));
+  width: min(520px, calc(100% - 24px)); z-index: 50;
+  display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 6px 10px; align-items: center;
+  background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); padding: 10px 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+.tuner-panel .btn-icon { grid-column: 2; grid-row: 1; }
+.tuner-main { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.tuner-line { color: var(--heading); font-weight: 600; font-size: 15px; }
+.tuner-line.ok { color: var(--chord-c2-stroke); }
+.tuner-line.near { color: var(--chord-c1-stroke); }
+.tuner-hz { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tuner-msg { color: var(--heading); font-size: 13px; }
+.tuner-bar { grid-column: 1 / -1; position: relative; height: 8px; background: var(--card); border-radius: 4px; }
+.tuner-mid { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--muted); }
+.tuner-needle { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--primary); transition: left 0.08s; }
+.tuner-needle.ok { background: var(--chord-c2); }
+.tuner-needle.near { background: var(--chord-c1); }
+#app:has(.tuner-panel) { padding-bottom: 110px; }
+
   </style>
 </head>
 <body>
@@ -1742,6 +1764,112 @@ function calibratedChart(f0, ratios, { a4 = OC_DEFAULT_A4, toleranceCents = 20, 
 //     fingerings: [{ offset: 0, states: ['c', ...] }, ...],
 //   }
 const OC_TRADITIONAL_CHARTS = {};
+
+
+// ── js/tuner.js ──
+// Tuner: microphone → AnalyserNode → YIN pitch detection. See
+// docs/ocarina-mode.md, "Tuner".
+//
+// yinPitch() and createStabilityTracker() are pure and unit tested in Node
+// with synthetic tones; startTuner() is the browser part. Microphone access
+// needs HTTPS (Vercel provides it) or localhost.
+
+// YIN (de Cheveigné & Kawahara, 2002) on one window of samples. Returns
+// { hz, clarity } (clarity 0–1, higher is cleaner) or null when no pitch is
+// found. Ocarinas are close to pure sine tones, so a plain YIN is enough;
+// the 4096-sample window covers bass notes down to ~70 Hz at 48 kHz.
+function yinPitch(buf, sampleRate, { threshold = 0.15, minHz = 70, maxHz = 2500, minRms = 0.01 } = {}) {
+  const n = buf.length;
+  let rms = 0;
+  for (let i = 0; i < n; i++) rms += buf[i] * buf[i];
+  if (Math.sqrt(rms / n) < minRms) return null;
+
+  const tauMin = Math.max(2, Math.floor(sampleRate / maxHz));
+  const tauMax = Math.min(Math.floor(n / 2), Math.ceil(sampleRate / minHz));
+  const w = n - tauMax;
+  const d = new Float32Array(tauMax + 1);
+  for (let tau = 1; tau <= tauMax; tau++) {
+    let sum = 0;
+    for (let i = 0; i < w; i++) {
+      const delta = buf[i] - buf[i + tau];
+      sum += delta * delta;
+    }
+    d[tau] = sum;
+  }
+  // Cumulative mean normalised difference.
+  const cmnd = new Float32Array(tauMax + 1);
+  cmnd[0] = 1;
+  let running = 0;
+  for (let tau = 1; tau <= tauMax; tau++) {
+    running += d[tau];
+    cmnd[tau] = running > 0 ? d[tau] * tau / running : 1;
+  }
+  let tau = -1;
+  for (let t = tauMin; t <= tauMax; t++) {
+    if (cmnd[t] < threshold) {
+      while (t + 1 <= tauMax && cmnd[t + 1] < cmnd[t]) t++;
+      tau = t;
+      break;
+    }
+  }
+  if (tau < 0) return null;
+  // Parabolic interpolation around the minimum.
+  let better = tau;
+  if (tau > 1 && tau < tauMax) {
+    const a = cmnd[tau - 1], b = cmnd[tau], c = cmnd[tau + 1];
+    const denom = a - 2 * b + c;
+    if (denom !== 0) better = tau + (a - c) / (2 * denom);
+  }
+  return { hz: sampleRate / better, clarity: 1 - cmnd[tau] };
+}
+
+// Reports a note only after it has held for `holdMs` within `toleranceCents`.
+// push(hz | null, timeMs) → { hz, midi, stable, since } where midi is
+// fractional and `since` is when the current stable stretch began.
+function createStabilityTracker({ holdMs = 200, toleranceCents = 35, a4 = 440 } = {}) {
+  let anchor = null; // { midi, since }
+  let lastHz = null;
+  return {
+    push(hz, t) {
+      if (!hz) { anchor = null; lastHz = null; return { hz: null, midi: null, stable: false, since: null }; }
+      const midi = 69 + 12 * Math.log2(hz / a4);
+      if (!anchor || Math.abs(midi - anchor.midi) * 100 > toleranceCents) anchor = { midi, since: t };
+      else anchor.midi = anchor.midi * 0.7 + midi * 0.3; // smooth
+      lastHz = hz;
+      return { hz: lastHz, midi: anchor.midi, stable: t - anchor.since >= holdMs, since: anchor.since };
+    },
+    reset() { anchor = null; lastHz = null; },
+  };
+}
+
+// Starts listening. onReading({ hz, midi, stable, since }) is called about
+// 20 times a second. Returns a promise of a stop() function; rejects if the
+// microphone can't be opened (no permission, no HTTPS, no device).
+async function startTuner(onReading, { a4 = 440 } = {}) {
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no microphone access');
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+  });
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new Ctx();
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 4096;
+  source.connect(analyser);
+  const buf = new Float32Array(analyser.fftSize);
+  const tracker = createStabilityTracker({ a4 });
+  const timer = setInterval(() => {
+    analyser.getFloatTimeDomainData(buf);
+    const res = yinPitch(buf, ctx.sampleRate);
+    onReading(tracker.push(res && res.clarity > 0.8 ? res.hz : null, performance.now()));
+  }, 50);
+  return () => {
+    clearInterval(timer);
+    stream.getTracks().forEach(t => t.stop());
+    source.disconnect();
+    ctx.close();
+  };
+}
 
 
 // ── js/instruments.js ──
@@ -2951,6 +3079,7 @@ const state = {
   instruments: [],         // My instruments (instruments.js), most recently played first
   currentInstrumentId: null, // instrument being played; null = browsing the catalogue
   wizard: null,            // add-instrument wizard state, see viewWizard()
+  tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
@@ -2997,6 +3126,7 @@ function render() {
   else if (state.view === 'editor') app.innerHTML = viewEditor();
   else if (state.view === 'chords') app.innerHTML = viewChords();
   else if (state.view === 'playlist') app.innerHTML = viewPlaylist();
+  if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
 }
 
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
@@ -3155,6 +3285,7 @@ function viewHome() {
       <div style="display:flex;gap:6px;margin-left:auto">
         <button class="btn btn-primary btn-sm" data-action="add-instrument">${icon('plus')} Add instrument</button>
         <button class="btn btn-secondary btn-sm" data-action="other-instrument">Other instrument</button>
+        ${tunerButton()}
       </div>
     </div>
     ${authBarHtml()}
@@ -3503,6 +3634,7 @@ function viewOcarinaChords(inst) {
           ${playlists.map(p => `<option value="${escHtml(p.id)}" ${oc.playlistId === p.id ? 'selected' : ''}>${escHtml(p.name)}</option>`).join('')}
         </select>
         ${practiceable ? `<button class="btn btn-primary btn-sm" data-action="oc-practice-start">${icon('play')} Practice</button>` : ''}
+        ${tunerButton()}
       </div>
       <div class="hint">${pl ? '' : `${model.items.length} chord${model.items.length !== 1 ? 's' : ''} · `}Tap a chord to see its fingerings.</div>
       <div class="oc-chords">${cards}</div>
@@ -3556,7 +3688,7 @@ function viewOcarinaPractice(inst) {
           <div class="chord-panel-title">${displayNote(en.rootName, uf, us)} ${escHtml(en.typeName)}</div>
           <div class="chord-panel-sub">${escHtml(pl.name)} · chord ${chordNo} of ${entries.length}</div>
         </div>
-        <button class="btn btn-secondary btn-sm" data-action="oc-practice-stop">Stop</button>
+        <div style="display:flex;gap:6px">${tunerButton()}<button class="btn btn-secondary btn-sm" data-action="oc-practice-stop">Stop</button></div>
       </div>
       <div class="fg-large" data-action="oc-practice-next" title="Tap for the next note">
         ${renderFingering(inst, cur.midi, { ...opts, size: 'large', nextMidi: next.midi })}
@@ -3566,6 +3698,7 @@ function viewOcarinaPractice(inst) {
         <div class="oc-arp-cell">${renderFingering(inst, next.midi, { ...opts, size: 'mini' })}</div>
         <div class="hint">Up next${nextEn && nextEn.id !== en.id ? `: ${displayNote(nextEn.rootName, uf, us)} ${escHtml(nextEn.typeName)}` : ''}</div>
       </div>
+      <div class="hint">${state.tuner.on ? 'Play the note: the tuner moves on when it hears it.' : 'Tap Next, or turn on the tuner to move on when you play the note.'}</div>
       <div class="wizard-actions">
         <button class="btn btn-secondary" data-action="oc-practice-prev">← Back</button>
         <button class="btn btn-primary" data-action="oc-practice-next">Next →</button>
@@ -3617,6 +3750,7 @@ function viewInstrument() {
           ${SCALES.map(sc => `<option value="${sc.id}" ${oc.scaleFilter === sc.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
         </select>
         <button class="btn btn-secondary btn-sm" data-action="oc-play-scale">${icon('play')} Scale</button>
+        ${tunerButton()}
         <button class="btn ${state.showFingers ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-fingers" title="Show finger names in the holes">R4 L1</button>
         <button class="btn ${state.showSizes ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-sizes" title="Show hole sizes in mm">mm</button>
         <button class="btn btn-secondary btn-sm" data-action="oc-hand-open" title="Which finger is which">✋ Fingers</button>
@@ -3685,6 +3819,104 @@ function openPlaylistEntryOnInstrument(pl, entry) {
   Object.assign(state.oc, { tab: 'chords', playlistId: pl.id, expanded: 'e:' + entry.id });
   history.replaceState(null, '', `#i/${entry.instrumentId}/chords`);
   return true;
+}
+
+// ── Tuner ────────────────────────────────────────────────────────────────────
+// A panel pinned to the bottom of the screen while the tuner is on. It is
+// updated in place ~20 times a second; only a practice-mode advance
+// re-renders the page.
+
+let _tunerStop = null;
+
+function tunerButton() {
+  return `<button class="btn ${state.tuner.on ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="tuner-toggle" title="Listen through the microphone">🎤 Tuner</button>`;
+}
+
+// The note the player should be playing right now, if any.
+function tunerTarget() {
+  if (state.view !== 'instrument') return null;
+  const inst = getInstrument(state.currentInstrumentId);
+  if (!inst) return null;
+  const oc = state.oc;
+  if (oc.practice) {
+    const pl = state.playlists.find(p => p.id === oc.practice.playlistId);
+    const steps = pl ? practiceSteps(inst, pl) : [];
+    return steps.length ? steps[oc.practice.idx % steps.length].midi : null;
+  }
+  if (oc.tab === 'notes') return oc.selected;
+  return null;
+}
+
+function tunerPanelInner() {
+  const t = state.tuner;
+  if (t.error) return `<div class="tuner-msg">${escHtml(t.error)}</div><button class="btn-icon" data-action="tuner-toggle">${icon('x')}</button>`;
+  const r = t.reading;
+  const uf = state.useFlats, us = state.useSolfege;
+  const target = tunerTarget();
+  const heard = r?.midi != null ? Math.round(r.midi) : null;
+  let line = 'Listening…', cents = null, cls = '';
+  if (heard != null) {
+    const name = displayNote(midiToNoteName(heard), uf, us);
+    if (target != null) {
+      const tName = displayNote(midiToNoteName(target), uf, us);
+      const off = Math.round(centsBetween(r.hz, midiToHz(target)));
+      cents = off;
+      if (Math.abs(off) <= 10) { line = `${tName} ✓ in tune`; cls = 'ok'; }
+      else if (Math.abs(off) < 50) { line = `${tName} is ${Math.abs(off)} cents ${off < 0 ? 'flat' : 'sharp'}`; cls = 'near'; }
+      else line = `Hearing ${name}, looking for ${tName}`;
+    } else {
+      cents = Math.round(centsBetween(r.hz, midiToHz(heard)));
+      line = `${name} ${cents === 0 ? '' : (cents > 0 ? '+' : '') + cents + ' cents'}`;
+    }
+  }
+  const pos = cents == null ? 50 : 50 + Math.max(-50, Math.min(50, cents));
+  return `
+    <div class="tuner-main">
+      <div class="tuner-line ${cls}">${escHtml(line)}</div>
+      <div class="tuner-hz">${r?.hz ? r.hz.toFixed(1) + ' Hz' : '&nbsp;'}</div>
+    </div>
+    <div class="tuner-bar"><div class="tuner-mid"></div>${cents == null ? '' : `<div class="tuner-needle ${cls}" style="left:${pos}%"></div>`}</div>
+    <button class="btn-icon" data-action="tuner-toggle" title="Stop tuner">${icon('x')}</button>`;
+}
+
+function onTunerReading(reading) {
+  state.tuner.reading = reading;
+  // Practice mode: move on once the right note has held steady, but only for
+  // a note started after the last advance (so a repeated note isn't skipped).
+  const pr = state.oc.practice;
+  const target = tunerTarget();
+  if (pr && target != null && reading.stable && reading.since > state.tuner.lastAdvance
+      && Math.abs(reading.midi - target) < 0.4) {
+    state.tuner.lastAdvance = performance.now();
+    const inst = getInstrument(state.currentInstrumentId);
+    const pl = state.playlists.find(p => p.id === pr.playlistId);
+    if (inst && pl) {
+      pr.idx = (pr.idx + 1) % practiceSteps(inst, pl).length;
+      render();
+      return;
+    }
+  }
+  const panel = document.getElementById('tuner-panel');
+  if (panel) panel.innerHTML = tunerPanelInner();
+}
+
+async function toggleTuner() {
+  if (state.tuner.on) {
+    if (_tunerStop) { _tunerStop(); _tunerStop = null; }
+    state.tuner = { on: false, reading: null, error: null, lastAdvance: 0 };
+    render();
+    return;
+  }
+  state.tuner = { on: true, reading: null, error: null, lastAdvance: performance.now() };
+  render();
+  try {
+    _tunerStop = await startTuner(onTunerReading);
+  } catch (err) {
+    state.tuner.error = err?.name === 'NotAllowedError'
+      ? 'Microphone access was refused. Allow it in the browser settings to use the tuner.'
+      : `The tuner can't start: ${err?.message || err}`;
+    render();
+  }
 }
 
 function openInstrument(id, { push = true } = {}) {
@@ -4613,6 +4845,7 @@ initSupabase(handleLogin);
 
 // Sync when the user brings the app back to the foreground (tab switch, PWA resume).
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && state.tuner.on) toggleTuner();
   if (document.visibilityState === 'visible') checkForUpdates();
 });
 
@@ -4761,6 +4994,8 @@ document.addEventListener('click', e => {
   }
 
 
+  if (action === 'tuner-toggle') { toggleTuner(); return; }
+
   // ── Ocarina Chords view and practice ──────────────────────────────────────
   if (action === 'oc-tab') {
     state.oc.tab = el.dataset.tab;
@@ -4834,6 +5069,7 @@ document.addEventListener('click', e => {
     if (!inst || !pl) return;
     const n = practiceSteps(inst, pl).length;
     state.oc.practice.idx = (state.oc.practice.idx + (action === 'oc-practice-next' ? 1 : n - 1)) % n;
+    state.tuner.lastAdvance = performance.now();
     playPracticeStep();
     render();
     return;
