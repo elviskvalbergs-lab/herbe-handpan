@@ -62,7 +62,7 @@ test('renderFingering: SVG with label, states and moves', () => {
   assert.equal((svg.match(/fg-hole fg-o/g) || []).length, 2);
   assert.equal((svg.match(/fg-arrow-up/g) || []).length, 2);
   assert.match(svg, />R4</);
-  assert.match(svg, /blow</);
+  assert.match(svg, /blow( \d)?</); // which chamber to blow
   // Mini drops arrows and labels.
   const mini = renderFingering(dKurd, m('Bb3'), { size: 'mini', previousMidi: m('D3'), showFingers: true });
   assert.doesNotMatch(mini, /fg-arrow|>R4</);
