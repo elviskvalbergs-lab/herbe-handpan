@@ -729,14 +729,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 :root[data-theme="light"] .toast-action { color: #EE7A66; }
 @media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #EE7A66; } }
 
-/* Custom name input */
-.name-input {
-  background: transparent; border: none; border-bottom: 1px solid var(--border);
-  color: var(--heading); font-family: inherit; font-size: 14px; font-weight: 600;
-  padding: 2px 4px; min-width: 160px; max-width: 260px;
-}
-.name-input:focus { border-bottom-color: var(--primary); }
-
 /* Select dropdown */
 .select-input {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -759,36 +751,13 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   text-transform: uppercase; letter-spacing: var(--tracking-overline);
 }
 
-/* Playlist view */
-.playlist-view { padding: 0 0 40px; }
-.playlist-header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
-}
-.playlist-header .name-input { flex: 1; }
-
-.playlist-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 0; border-bottom: 1px solid var(--border);
-}
-.playlist-item-reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-.playlist-item-reorder .btn-icon { padding: 2px 5px; }
-.playlist-item-reorder .ico { width: 12px; height: 12px; }
-.playlist-item-info {
-  flex: 1; cursor: pointer; min-width: 0;
-}
-.playlist-item-info:hover .playlist-item-name { color: var(--primary); }
-.playlist-item-name { font-size: 14px; font-weight: 600; color: var(--heading); }
-.playlist-item-scale { font-size: 12px; color: var(--muted); margin-top: 1px; }
-.playlist-item-notes { font-size: 12px; margin-top: 2px; }
-.playlist-item-remove {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: none; color: var(--muted); cursor: pointer;
-  padding: 4px 6px; line-height: 1; flex-shrink: 0;
-  transition: color 0.1s;
-}
-.playlist-item-remove .ico { width: 14px; height: 14px; }
-.playlist-item-remove:hover { color: var(--primary); }
+/* Playlists tab and playlist detail (§6.9) */
+.playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
+.pl-entries { display: flex; flex-direction: column; gap: var(--space-2); }
+.pl-new { margin-top: var(--space-3); }
+.pl-order-row .row-trail { gap: 0; }
+@media (min-width: 600px) { .sheet-plrow .sheet { width: min(360px, 100%); } }
+.sheet-plrow .row.is-danger .row-lead { color: var(--danger); }
 
 /* Playlist picker sheet */
 .row-check { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; color: var(--text-1); }
@@ -811,7 +780,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
-  .name-input, .select-input {
+  .select-input {
     font-size: 16px !important;
   }
 }
@@ -4238,6 +4207,10 @@ const state = {
   sourceEntryId: null,     // that entry's id at load time — lets "update" find it after a swap
   hpFilters: false,        // the handpan Chords Filters sheet is open
   hpMore: false,           // the selected chord's More sheet is open (phones)
+  pickerInstrumentId: null, // instrument of the ocarina card whose ♡ opened the picker
+  plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
+  plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
+  plName: null,            // { mode: 'new' | 'rename', id, value, error } while naming a playlist
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -5179,28 +5152,36 @@ function handpanTabs(current) {
 
 // The Playlists tab: the user's playlists, with how many of each one's
 // chords belong to this instrument. A row opens the playlist; on a handpan
-// the play button opens it in Chords, on an ocarina it starts practice.
+// Play opens it in Chords and auto-plays it, on an ocarina Practice starts.
 function playlistsTabHtml(inst) {
+  const newBtn = `<button type="button" class="btn btn-ghost pl-new" data-action="pl-new-open">${icon('plus')} New playlist</button>`;
   if (state.playlists.length === 0) {
     return uiEmpty({
       icon: 'list-music', title: 'No playlists yet', body: 'Tap ♡ on any chord to start one.',
       action: `<button class="btn btn-secondary" data-action="${inst ? 'oc-tab' : 'go-chords'}" data-tab="chords">Go to Chords</button>`,
-    });
+    }) + newBtn;
   }
-  const layoutId = !inst && state.layout ? (state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id) : null;
+  const layoutId = !inst ? hpCurrentLayoutId() : null;
   return `
     <div class="list">
       ${state.playlists.map(pl => {
         const here = pl.chords.filter(c => (inst ? c.instrumentId === inst.id : !c.instrumentId && c.layoutId === layoutId)).length;
         const trail = inst
-          ? (here ? `<button class="btn btn-primary btn-sm" data-action="oc-practice-start" data-id="${escHtml(pl.id)}">${icon('play')} Practice</button>` : '')
-          : (pl.chords.length ? uiIconBtn('play', 'Open in Chords', { action: 'open-playlist-chords', data: { id: pl.id } }) : '');
+          ? `<button type="button" class="btn btn-primary btn-sm" data-action="oc-practice-start" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
+          : `<button type="button" class="btn btn-primary btn-sm" data-action="hp-play-playlist" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
         return uiRow({
           lead: 'list-music', title: pl.name, chevron: true, action: 'open-playlist', data: { id: pl.id }, trail,
-          meta: `${here} here · ${pl.chords.length} in total`,
+          meta: `${here} chord${here !== 1 ? 's' : ''} here · ${pl.chords.length} in total`,
         });
       }).join('')}
-    </div>`;
+    </div>
+    ${newBtn}`;
+}
+
+// Id that playlist entries of the handpan on screen carry, or null.
+function hpCurrentLayoutId() {
+  const l = state.layout;
+  return l ? (l.isCustom ? (l.savedId || l.id) : l.id) : null;
 }
 
 function viewHandpanPlaylists() {
@@ -5300,30 +5281,15 @@ function viewOcarinaChords(inst) {
   const oc = state.oc;
   const uf = state.useFlats, us = state.useSolfege;
   const model = ocChordModel(inst);
-  const playlists = state.playlists;
-  const pl = oc.playlistId !== 'All' ? playlists.find(p => p.id === oc.playlistId) : null;
-  let cards;
-  if (pl) {
-    const entries = pl.chords.filter(c => c.instrumentId === inst.id);
-    cards = entries.length === 0
-      ? `<div class="empty-state">No chords for ${escHtml(inst.name)} in this playlist yet.</div>`
-      : entries.map(en => ocChordCard(inst, {
-          key: 'e:' + en.id, chordId: en.chordId, entry: en, favId: en.id,
-          title: `${displayNote(en.rootName, uf, us)} ${escHtml(en.typeName)}`, sub: escHtml(en.category ?? ''),
-          midis: (oc.voicings['e:' + en.id] ?? en.notes.map(noteToMidi)).sort((a, b) => a - b),
-          rootPC: notePC(en.rootName + '4'),
-        })).join('');
-  } else {
-    cards = model.items.length === 0
-      ? `<div class="empty-state">No chords match these filters</div>`
-      : model.items.map(({ chord, midis }) => ocChordCard(inst, {
-          key: chord.id, chordId: chord.id, canonical: chord.notes,
-          title: `${displayNote(chord.rootName, uf, us)} ${chord.type.name}`, sub: chord.type.category,
-          midis, rootPC: notePC(chord.rootNote),
-          favId: ocFavId(inst, chord.id, midis.map(midiToNoteName), chord.notes),
-        })).join('');
-  }
-  const practiceable = pl && pl.chords.some(c => c.instrumentId === inst.id);
+  // A playlist's chords and Practice live in the Playlists tab (§6.9).
+  const cards = model.items.length === 0
+    ? `<div class="empty-state">No chords match these filters</div>`
+    : model.items.map(({ chord, midis }) => ocChordCard(inst, {
+        key: chord.id, chordId: chord.id, canonical: chord.notes,
+        title: `${displayNote(chord.rootName, uf, us)} ${chord.type.name}`, sub: chord.type.category,
+        midis, rootPC: notePC(chord.rootNote),
+        favId: ocFavId(inst, chord.id, midis.map(midiToNoteName), chord.notes),
+      })).join('');
   return `${ocHeader(inst, 'chords')}
     <div class="instrument-view">
       <div class="oc-toolbar">
@@ -5335,15 +5301,10 @@ function viewOcarinaChords(inst) {
           <option value="All" ${oc.category === 'All' ? 'selected' : ''}>All types</option>
           ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${oc.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
         </select>
-        <select class="select-input" data-action="oc-playlist">
-          <option value="All" ${oc.playlistId === 'All' ? 'selected' : ''}>All chords</option>
-          ${playlists.map(p => `<option value="${escHtml(p.id)}" ${oc.playlistId === p.id ? 'selected' : ''}>${escHtml(p.name)}</option>`).join('')}
-        </select>
-        ${practiceable ? `<button class="btn btn-primary btn-sm" data-action="oc-practice-start">${icon('play')} Practice</button>` : ''}
       </div>
-      <div class="hint">${pl ? '' : `${model.items.length} chord${model.items.length !== 1 ? 's' : ''} · `}Tap a chord to see its fingerings.</div>
+      <div class="hint">${model.items.length} chord${model.items.length !== 1 ? 's' : ''} · Tap a chord to see its fingerings.</div>
       <div class="oc-chords">${cards}</div>
-      ${!pl && model.missing.length ? `
+      ${model.missing.length ? `
         <div class="pwa-section-title mt-16">Not on this ocarina${model.source ? ` (from ${escHtml(model.source.name)})` : ''}</div>
         <div class="oc-missing">
           ${model.missing.map(({ chord, fit }) => `
@@ -5490,6 +5451,13 @@ function legendHole(state) {
 
 // Everything a chord card's buttons need, looked up by its key: a chord id
 // in the plain list, or 'e:' + entry id when a playlist is selected.
+// The instrument a chord card belongs to: an entry's own (cards in a
+// playlist), otherwise the instrument on screen.
+function ocCardInstrument(key) {
+  const en = key?.startsWith('e:') ? state.playlists.flatMap(p => p.chords).find(c => 'e:' + c.id === key) : null;
+  return (en?.instrumentId && getInstrument(en.instrumentId)) || currentInstrument();
+}
+
 function ocCardData(inst, key) {
   if (key.startsWith('e:')) {
     const en = state.playlists.flatMap(p => p.chords).find(c => 'e:' + c.id === key);
@@ -5518,10 +5486,13 @@ function playPracticeStep() {
   if (step) { initAudio(); playNote(midiToNoteName(step.midi)); }
 }
 
+// An ocarina or flute entry opens its instrument, showing the playlist with
+// that instrument's chord cards (entry expanded) and Practice.
 function openPlaylistEntryOnInstrument(pl, entry) {
-  if (!openInstrument(entry.instrumentId)) { showToast('That ocarina is no longer in My instruments'); return false; }
-  Object.assign(state.oc, { tab: 'chords', playlistId: pl.id, expanded: 'e:' + entry.id });
-  navReplace(`#i/${entry.instrumentId}/chords`);
+  if (!openInstrument(entry.instrumentId, { push: false })) { showToast('That ocarina is no longer in My instruments'); return false; }
+  Object.assign(state, { view: 'playlist', activePlaylistId: pl.id, plMode: 'chords', plRowMenu: null });
+  state.oc.expanded = 'e:' + entry.id;
+  navPush(`#pl/${encodeURIComponent(pl.id)}`);
   return true;
 }
 
@@ -6623,7 +6594,9 @@ function sheetHtml() {
   if (state.confirm) return confirmSheet();
   if (state.menu) return menuSheet();
   if (state.shareModal) return shareModalHtml();
-  if (state.pickerChordFavId && (state.view === 'chords' || state.view === 'instrument')) return renderPlaylistPicker();
+  if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
+  if (state.plName) return plNameSheet();
+  if (state.plRowMenu != null && state.view === 'playlist') return plRowMenuSheet();
   if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
   if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
@@ -6660,7 +6633,12 @@ function menuSheet() {
   if (state.menu?.id) return rowMenuSheet(state.menu.id);
   const rows = [];
   let title = 'Menu';
-  if (state.view === 'instrument') {
+  if (state.view === 'playlist') {
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    title = pl?.name ?? title;
+    if (pl) rows.push(uiRow({ lead: 'pencil', title: 'Rename', action: 'pl-rename-open' }));
+    if (pl && pl.id !== 'favorites') rows.push(uiRow({ lead: 'trash-2', title: 'Delete playlist', action: 'delete-playlist', cls: 'is-danger' }));
+  } else if (state.view === 'instrument') {
     const inst = currentInstrument();
     const shared = inst?.id === SHARED_ID;
     title = inst?.name ?? title;
@@ -6695,46 +6673,127 @@ function confirmSheet() {
 function menuAppBtn() { return uiIconBtn('ellipsis', 'More', { action: 'menu-open', attrs: 'aria-haspopup="dialog"' }); }
 
 // ── View 4: Playlist ─────────────────────────────────────────────────────────
+// Playlist detail (§6.9): Play or Practice on the instrument you came from,
+// the chords (handpan rows, ocarina and flute entries as their instrument's
+// chord cards), an Order mode to rearrange, and Rename / Delete in ⋯.
+
+// The instrument the playlist was opened from and how many entries are its.
+function plHere(pl) {
+  const inst = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
+  if (inst && inst.family !== 'handpan') {
+    return { kind: 'oc', name: inst.name, n: pl.chords.filter(c => c.instrumentId === inst.id).length };
+  }
+  const layoutId = hpCurrentLayoutId();
+  if (!layoutId) return null;
+  return { kind: 'hp', name: state.layout.name, n: pl.chords.filter(c => !c.instrumentId && c.layoutId === layoutId).length };
+}
+
+function plEntryTitle(en) {
+  return `${displayNote(en.rootName, state.useFlats, state.useSolfege)} ${en.typeName}`;
+}
+function plEntryMeta(en) {
+  return escHtml(`${en.scaleName} · ${en.notes.map(n => displayNote(n, state.useFlats, state.useSolfege)).join(' · ')}`);
+}
+
 function viewPlaylist() {
   const pl = state.playlists.find(p => p.id === state.activePlaylistId);
   if (!pl) return viewSelector();
-  const uf = state.useFlats;
-  const us = state.useSolfege;
+  const uf = state.useFlats, us = state.useSolfege;
+  const here = plHere(pl);
+  const order = state.plMode === 'order';
+  const last = pl.chords.length - 1;
+
+  const play = !here?.n ? '' : here.kind === 'oc'
+    ? `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="pl-practice">${icon('play')} Practice on ${escHtml(here.name)}</button>`
+    : `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="hp-play-playlist" data-id="${escHtml(pl.id)}">${icon('play')} Play</button>`;
+
+  let entries;
+  if (pl.chords.length === 0) {
+    entries = uiEmpty({
+      icon: 'heart', title: 'No chords yet', body: 'Tap ♡ on any chord to add it here.',
+      action: here ? '<button type="button" class="btn btn-secondary" data-action="pl-go-chords">Go to Chords</button>' : '',
+    });
+  } else if (order) {
+    entries = `<div class="list">${pl.chords.map((en, idx) => uiRow({
+      title: plEntryTitle(en), meta: plEntryMeta(en), cls: 'pl-order-row',
+      trail: `
+        ${uiIconBtn('chevron-up', 'Move up', { action: 'move-chord-up', data: { idx }, disabled: idx === 0 })}
+        ${uiIconBtn('chevron-down', 'Move down', { action: 'move-chord-down', data: { idx }, disabled: idx === last })}
+        ${uiIconBtn('x', 'Remove from playlist', { action: 'remove-playlist-chord', data: { idx } })}`,
+    })).join('')}</div>`;
+  } else {
+    entries = `<div class="pl-entries">${pl.chords.map((en, idx) => {
+      const inst = en.instrumentId ? getInstrument(en.instrumentId) : null;
+      if (inst && playableMidis(inst).length) {
+        const key = 'e:' + en.id;
+        return ocChordCard(inst, {
+          key, chordId: en.chordId, entry: en, favId: en.id,
+          title: `${displayNote(en.rootName, uf, us)} ${escHtml(en.typeName)}`,
+          sub: `${escHtml(inst.name)}${en.category ? ' · ' + escHtml(en.category) : ''}`,
+          midis: (state.oc.voicings[key] ?? en.notes.map(noteToMidi)).sort((a, b) => a - b),
+          rootPC: notePC(en.rootName + '4'),
+        });
+      }
+      return `<div class="list">${uiRow({
+        title: plEntryTitle(en),
+        meta: en.instrumentId ? `${escHtml(en.scaleName)} · no longer in My instruments` : plEntryMeta(en),
+        action: en.instrumentId ? '' : 'open-playlist-chord', data: { idx },
+        trail: uiIconBtn('ellipsis', 'Move or remove', { action: 'pl-row-menu', data: { idx }, attrs: 'aria-haspopup="dialog"' }),
+      })}</div>`;
+    }).join('')}</div>`;
+  }
 
   return `
-    ${backAppBar(pl.name, { actions: [tunerAppBtn()] })}
-
+    ${backAppBar(pl.name, { actions: [tunerAppBtn(), menuAppBtn()] })}
     <div class="playlist-view">
-      <div class="playlist-header">
-        <input class="name-input" id="playlist-name-input" value="${escHtml(pl.name)}" placeholder="Playlist name">
-        ${pl.id !== 'favorites' ? `
-          <button class="btn btn-secondary btn-sm" data-action="delete-playlist"
-            style="color:var(--danger);border-color:var(--danger)">Delete</button>
-        ` : ''}
-      </div>
-
-      ${pl.chords.length === 0
-        ? `<div class="empty-state" style="margin-top:40px">No chords yet.<br>
-            Use the heart icon in the chord explorer to add chords here.</div>`
-        : pl.chords.map((chord, idx) => `
-          <div class="playlist-item">
-            <div class="playlist-item-reorder">
-              <button class="btn-icon" data-action="move-chord-up" data-idx="${idx}"
-                ${idx === 0 ? 'disabled' : ''}>${icon('chevron-up')}</button>
-              <button class="btn-icon" data-action="move-chord-down" data-idx="${idx}"
-                ${idx === pl.chords.length - 1 ? 'disabled' : ''}>${icon('chevron-down')}</button>
-            </div>
-            <div class="playlist-item-info" data-action="open-playlist-chord" data-idx="${idx}">
-              <div class="playlist-item-name">${escHtml(displayNote(chord.rootName, uf, us))} ${escHtml(chord.typeName)}</div>
-              <div class="playlist-item-scale">${escHtml(chord.scaleName)}</div>
-              <div class="playlist-item-notes hint">${chord.notes.map(n => displayNote(n, uf, us)).join(' · ')}</div>
-            </div>
-            <button class="playlist-item-remove" data-action="remove-playlist-chord" data-idx="${idx}">${icon('x')}</button>
-          </div>
-        `).join('')
-      }
+      ${play}
+      ${pl.chords.length > 1 ? uiSeg([{ value: 'chords', label: 'Chords' }, { value: 'order', label: 'Order' }], state.plMode, { action: 'pl-mode', label: 'Show' }) : ''}
+      ${entries}
     </div>
   `;
+}
+
+// ⋯ of a playlist entry: Move up, Move down, Remove.
+function plRowMenuSheet() {
+  const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+  const idx = state.plRowMenu;
+  const en = pl?.chords[idx];
+  if (!en) return '';
+  const rows = [
+    uiRow({ lead: 'chevron-up', title: 'Move up', action: 'move-chord-up', data: { idx }, cls: idx === 0 ? 'is-disabled' : '' }),
+    uiRow({ lead: 'chevron-down', title: 'Move down', action: 'move-chord-down', data: { idx }, cls: idx === pl.chords.length - 1 ? 'is-disabled' : '' }),
+    uiRow({ lead: 'trash-2', title: 'Remove from playlist', action: 'remove-playlist-chord', data: { idx }, cls: 'is-danger' }),
+  ].join('');
+  return uiSheet({ key: 'pl-row', variant: 'plrow', title: plEntryTitle(en), close: 'pl-row-close', body: `<div class="list">${rows}</div>` });
+}
+
+// New playlist / Rename playlist: one name field.
+function plNameSheet() {
+  const n = state.plName;
+  const isNew = n.mode === 'new';
+  return uiSheet({
+    key: 'pl-name', title: isNew ? 'New playlist' : 'Rename playlist', close: 'pl-name-cancel',
+    body: `<div class="hp-sheet-form">${uiField({
+      label: 'Name', id: 'pl-name-input', error: n.error ? 'Give it a name' : '',
+      control: `<input class="input" id="pl-name-input" value="${escHtml(n.value)}" placeholder="Playlist name" autocomplete="off">`,
+    })}</div>`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="pl-name-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" data-action="pl-name-save">${isNew ? 'Create' : 'Save'}</button>`,
+  });
+}
+
+// Plays a playlist on the handpan on screen: opens its first chord for this
+// handpan in Chords, filtered to the playlist, and turns auto-play on.
+function hpPlayPlaylist(pl) {
+  const layoutId = hpCurrentLayoutId();
+  const idx = pl.chords.findIndex(c => !c.instrumentId && c.layoutId === layoutId);
+  if (idx < 0) return;
+  if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
+  state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
+  state.view = 'chords';
+  navPush(stateToHash());
+  startAutoplay(pl);
 }
 
 // ── Playlist chord navigation (shared by manual open + autoplay) ────────────
@@ -6787,7 +6846,9 @@ function playlistEntryFor(chord, favId) {
     typeName: chord.type.name, category: chord.type.category,
     notes: chord.notes, noteCount: chord.noteCount,
   };
-  const inst = state.view === 'instrument' ? currentInstrument() : null;
+  // In a playlist, an ocarina entry's card adds to playlists for its own instrument.
+  const inst = state.view === 'instrument' ? currentInstrument()
+    : state.view === 'playlist' && state.pickerInstrumentId ? getInstrument(state.pickerInstrumentId) : null;
   if (inst) {
     return { ...common, layoutId: ocLayoutId(inst), layoutData: null, scaleName: inst.name, family: inst.family, instrumentId: inst.id };
   }
@@ -6907,7 +6968,7 @@ function loadFromHash() {
   if (hash === '#settings/clay') { state.view = 'clay'; return; }
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
-    if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; }
+    if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; }
     return;
   }
   if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
@@ -7222,6 +7283,7 @@ document.addEventListener('click', e => {
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
   if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
+  if (state.plRowMenu != null && el.closest('.sheet-plrow') && action !== 'pl-row-close') { state.plRowMenu = null; render(); }
   if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
   if (action === 'confirm-ok') {
     const c = state.confirm;
@@ -7440,7 +7502,7 @@ document.addEventListener('click', e => {
   }
   if (['oc-play-arp', 'oc-voicing', 'oc-show-playlist-picker'].includes(action)) {
     e.stopPropagation();
-    const inst = currentInstrument();
+    const inst = ocCardInstrument(el.dataset.key);
     if (!inst) return;
     const key = el.dataset.key;
     const card = ocCardData(inst, key);
@@ -7470,6 +7532,7 @@ document.addEventListener('click', e => {
       type: { name: card.typeName, category: card.category },
     };
     state.pickerNewPlaylist = false;
+    state.pickerInstrumentId = inst.id;
     render();
     return;
   }
@@ -7806,8 +7869,70 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // ── Playlists tab and playlist detail ─────────────────────────────────────
+  if (action === 'hp-play-playlist') {
+    const pl = state.playlists.find(p => p.id === el.dataset.id);
+    if (pl) hpPlayPlaylist(pl);
+    return;
+  }
+  if (action === 'pl-practice') {
+    const inst = currentInstrument();
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!inst || !pl) return;
+    state.view = 'instrument';
+    state.oc.tab = 'playlists';
+    state.oc.playlistId = pl.id;
+    state.oc.practice = { playlistId: pl.id, idx: 0 };
+    navPush(`#i/${inst.id}/playlists`);
+    playPracticeStep();
+    render();
+    return;
+  }
+  if (action === 'pl-go-chords') {
+    if (state.layout) {
+      state.chords = findAllChords(state.layout);
+      state.selectedChord = null;
+      state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+      state.view = 'chords';
+      navPush(stateToHash());
+    } else if (state.currentInstrumentId) {
+      state.view = 'instrument';
+      state.oc.tab = 'chords';
+      navPush(`#i/${state.currentInstrumentId}/chords`);
+    }
+    render();
+    return;
+  }
+  if (action === 'pl-mode') { state.plMode = el.dataset.value; render(); return; }
+  if (action === 'pl-row-menu') { e.stopPropagation(); state.plRowMenu = parseInt(el.dataset.idx, 10); render(); return; }
+  if (action === 'pl-row-close') { state.plRowMenu = null; render(); return; }
+  if (action === 'pl-new-open' || action === 'pl-rename-open') {
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    state.plName = action === 'pl-new-open' ? { mode: 'new', value: '' } : { mode: 'rename', id: pl?.id, value: pl?.name ?? '' };
+    render();
+    setTimeout(() => document.getElementById('pl-name-input')?.focus(), 0);
+    return;
+  }
+  if (action === 'pl-name-cancel') { state.plName = null; render(); return; }
+  if (action === 'pl-name-save') {
+    const n = state.plName;
+    if (!n) return;
+    const name = (document.getElementById('pl-name-input')?.value ?? n.value).trim();
+    if (!name) { n.error = true; render(); document.getElementById('pl-name-input')?.focus(); return; }
+    if (n.mode === 'new') addPlaylist(name);
+    else renamePlaylist(n.id, name);
+    state.playlists = getPlaylists();
+    state.plName = null;
+    scheduleSave();
+    if (n.mode === 'new') showToast('Playlist created');
+    render();
+    return;
+  }
+
   if (action === 'open-playlist') {
     stopAutoplay();
+    state.plMode = 'chords';
+    state.plRowMenu = null;
     state.activePlaylistId = el.dataset.id;
     state.view = 'playlist';
     navPush(`#pl/${encodeURIComponent(el.dataset.id)}`);
@@ -8077,6 +8202,7 @@ document.addEventListener('click', e => {
     // Same as the old "Edit playlist" option of the playlist select.
     stopAutoplay();
     state.hpFilters = false;
+    state.plMode = 'chords';
     state.activePlaylistId = state.chordFilter.playlist;
     state.view = 'playlist';
     navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
@@ -8340,7 +8466,6 @@ document.addEventListener('change', e => {
   }
 
   if (action === 'oc-category') { state.oc.category = el.value; render(); }
-  if (action === 'oc-playlist') { state.oc.playlistId = el.value; state.oc.expanded = null; render(); }
   if (action === 'wizard-chart') {
     const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
     t.chartId = el.value; t.keyId = null; render();
@@ -8404,11 +8529,7 @@ document.addEventListener('input', e => {
     const actions = document.querySelector('.ed-actions');
     if (actions) actions.innerHTML = edActionsHtml();
   }
-  if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
-    renamePlaylist(state.activePlaylistId, e.target.value);
-    state.playlists = getPlaylists();
-    scheduleSave();
-  }
+  if (e.target.id === 'pl-name-input' && state.plName) { state.plName.value = e.target.value; return; }
   if (e.target.id === 'clay-name-input' && state.clayEdit) { state.clayEdit.name = e.target.value; return; }
   if (e.target.id === 'clay-pct-input' && state.clayEdit) { state.clayEdit.pct = e.target.value; return; }
   if (e.target.id === 'auth-email-input') {
@@ -8431,7 +8552,7 @@ document.addEventListener('keydown', e => {
     e.target.click();
     return;
   }
-  const enterAction = { 'auth-email-input': 'auth-send-link', 'auth-code-input': 'auth-verify', 'clay-name-input': 'clay-save', 'clay-pct-input': 'clay-save' }[e.target.id];
+  const enterAction = { 'auth-email-input': 'auth-send-link', 'auth-code-input': 'auth-verify', 'clay-name-input': 'clay-save', 'clay-pct-input': 'clay-save', 'pl-name-input': 'pl-name-save' }[e.target.id];
   if (e.key === 'Enter' && enterAction) {
     e.preventDefault();
     document.querySelector(`[data-action="${enterAction}"]`)?.click();
