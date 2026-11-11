@@ -88,8 +88,12 @@ const state = {
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
+let _lastScreen = null;
 function render() {
   const app = document.getElementById('app');
+  const screen = [state.view, state.wizard?.step, state.wizard?.oc?.path, state.view === 'instrument' ? state.oc.tab : '', state.currentInstrumentId].join('|');
+  if (screen !== _lastScreen && !_toastFresh) hideToast();
+  _lastScreen = screen;
   const prevSheet = app.querySelector('.sheet-root')?.dataset.sheet ?? null;
   const focusKey = focusKeyOf(document.activeElement);
   let html = '';
@@ -111,6 +115,7 @@ function render() {
   app.insertAdjacentHTML('beforeend', sheetHtml());
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
+  document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
   settleFocus(app, prevSheet, focusKey);
 }
 
@@ -2636,16 +2641,32 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function showToast(msg) {
+// Toast (§5.7): bottom centre above the tab bar, tuner, wizard action bar
+// or sheet footer (CSS), 3 s, or 5 s with an action ({ label, run }). A
+// toast belongs to the screen it was shown on: render() hides it when the
+// screen changes, unless it was shown in the same event that changed it.
+let _toastTimer = null;
+let _toastFresh = false;
+function showToast(msg, { action = null } = {}) {
   let toast = document.querySelector('.toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.className = 'toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
     document.body.appendChild(toast);
   }
-  toast.textContent = msg;
+  toast.innerHTML = `<span class="toast-msg">${escHtml(msg)}</span>${action ? `<button type="button" class="toast-action">${escHtml(action.label)}</button>` : ''}`;
+  if (action) toast.querySelector('.toast-action').addEventListener('click', () => { hideToast(); action.run(); });
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2000);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(hideToast, action ? 5000 : 3000);
+  _toastFresh = true;
+  queueMicrotask(() => { _toastFresh = false; });
+}
+function hideToast() {
+  clearTimeout(_toastTimer);
+  document.querySelector('.toast')?.classList.remove('show');
 }
 
 // ── Preferences (persist across sessions) ────────────────────────────────────

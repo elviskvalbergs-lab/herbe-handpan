@@ -52,6 +52,7 @@
   --appbar-h: 56px;
   --tabbar-h: 64px;
   --tuner-h: 72px;
+  --actionbar-h: 77px;        /* wizard action bar and sheet footer: 52 + 2 × 12 + 1 */
   --gutter: 16px;             /* 24px at ≥1024 */
   --content-max: 1200px;
   --reading-max: 640px;       /* forms, wizard, practice */
@@ -823,16 +824,35 @@ body:has(.sheet-root) { overflow: hidden; }
 }
 .sheet-menu .row.is-danger .row-lead { color: var(--danger); }
 
-/* Toast */
-.toast {
-  position: fixed; bottom: 24px; right: 24px;
-  background: var(--primary); color: var(--on-accent);
-  padding: 9px 18px; border-radius: var(--radius);
-  font-family: inherit; font-size: 13px; font-weight: 600;
-  opacity: 0; transition: opacity 0.18s;
-  pointer-events: none; z-index: 200;
+/* Toast (§5.7): inverted, bottom centre, above whatever is docked at the bottom */
+body { --toast-base: 0px; }
+@media (max-width: 1023px) {
+  body.has-tabbar { --toast-base: calc(var(--tabbar-h)); }
+  body.tuner-on { --toast-base: var(--tuner-h); }
+  body.has-tabbar.tuner-on { --toast-base: calc(var(--tabbar-h) + var(--tuner-h)); }
+  body.has-actionbar { --toast-base: var(--actionbar-h); }
 }
-.toast.show { opacity: 1; }
+@media (min-width: 1024px) { body.tuner-on { --toast-base: calc(var(--tuner-h) + var(--space-4)); } }
+body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
+.toast {
+  position: fixed; left: 50%; z-index: var(--z-toast);
+  bottom: calc(var(--toast-base) + env(safe-area-inset-bottom) + var(--space-3));
+  display: flex; align-items: center; gap: var(--space-3);
+  width: max-content; max-width: min(420px, calc(100% - 32px));
+  padding: var(--space-3) var(--space-4); border-radius: var(--r-sm); box-shadow: var(--e-2);
+  background: var(--text-1); color: var(--bg); font: var(--fw-medium) 14px/20px var(--font);
+  opacity: 0; transform: translate(-50%, 8px); pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast-msg { min-width: 0; }
+.toast-action {
+  flex-shrink: 0; min-height: 44px; margin: -12px -8px -12px 0; padding: 0 var(--space-2);
+  background: none; border: 0; border-radius: var(--r-sm); cursor: pointer;
+  color: var(--accent-fill); font: var(--fw-semibold) 14px/20px var(--font);
+}
+:root[data-theme="light"] .toast-action { color: #EE7A66; }
+@media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #EE7A66; } }
 
 /* Custom name input */
 .name-input {
@@ -4175,8 +4195,12 @@ const state = {
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
+let _lastScreen = null;
 function render() {
   const app = document.getElementById('app');
+  const screen = [state.view, state.wizard?.step, state.wizard?.oc?.path, state.view === 'instrument' ? state.oc.tab : '', state.currentInstrumentId].join('|');
+  if (screen !== _lastScreen && !_toastFresh) hideToast();
+  _lastScreen = screen;
   const prevSheet = app.querySelector('.sheet-root')?.dataset.sheet ?? null;
   const focusKey = focusKeyOf(document.activeElement);
   let html = '';
@@ -4198,6 +4222,7 @@ function render() {
   app.insertAdjacentHTML('beforeend', sheetHtml());
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
+  document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
   settleFocus(app, prevSheet, focusKey);
 }
 
@@ -6723,16 +6748,32 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function showToast(msg) {
+// Toast (§5.7): bottom centre above the tab bar, tuner, wizard action bar
+// or sheet footer (CSS), 3 s, or 5 s with an action ({ label, run }). A
+// toast belongs to the screen it was shown on: render() hides it when the
+// screen changes, unless it was shown in the same event that changed it.
+let _toastTimer = null;
+let _toastFresh = false;
+function showToast(msg, { action = null } = {}) {
   let toast = document.querySelector('.toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.className = 'toast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
     document.body.appendChild(toast);
   }
-  toast.textContent = msg;
+  toast.innerHTML = `<span class="toast-msg">${escHtml(msg)}</span>${action ? `<button type="button" class="toast-action">${escHtml(action.label)}</button>` : ''}`;
+  if (action) toast.querySelector('.toast-action').addEventListener('click', () => { hideToast(); action.run(); });
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2000);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(hideToast, action ? 5000 : 3000);
+  _toastFresh = true;
+  queueMicrotask(() => { _toastFresh = false; });
+}
+function hideToast() {
+  clearTimeout(_toastTimer);
+  document.querySelector('.toast')?.classList.remove('show');
 }
 
 // ── Preferences (persist across sessions) ────────────────────────────────────
