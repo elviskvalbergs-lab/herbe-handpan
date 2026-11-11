@@ -116,7 +116,7 @@ Settings opens from the gear icon on Home and from the ⋯ menu on any instrumen
 | | Hole sizes in mm | switch | `showSizes` |
 | | Which finger is which | row › opens the hand sheet | (`oc-hand-open`) |
 | | Show the diagram legend again | row button | resets `ocLegendSeen` and `handLegendSeen` |
-| **Tuning** | A4 reference | number field, Hz, default 440 | `a4` (new; see the note in §7 step 12) |
+| **Tuning** | ~~A4 reference~~ | deferred by the owner's decision: no setting for now, A4 is 440 Hz everywhere | (none; see §7 step 15) |
 | | Clay bodies | row › Clay bodies page: list with name and shrinkage %, editable | `getClayBodies` / `saveClayBodies` |
 | **Sync** | Signed out: email field + "Send code"; code sent: code field + Verify + Cancel; signed in: email, "Sync now", "Sign out" | `authBarHtml` contents, moved here | |
 | **About** | Version, "Check for updates" | row | (`checkForUpdates`) |
@@ -1000,7 +1000,6 @@ FINGERING DIAGRAMS
 │ Which finger is which               › │
 │ Show the diagram legend again          │ row button; toast "The legend will show again"
 TUNING
-│ A4 reference          [ 440   Hz ]     │
 │ Clay bodies                          › │ → page: list of rows "Generic clay · 11.0%
                                            (learned from 2 builds)", tap = sheet with
                                            Name and Shrinkage % fields
@@ -1040,5 +1039,5 @@ Each step is one small commit that can be checked on the Vercel preview at 360px
 12. **Handpan Chords and Pan** (§6.7–6.8): the sticky pan and selected-chord bar on phone, the Filters, More and Now playing bars, the Identify segment, and the two-column desktop layout. *Check against the old build, side by side:* the same chord list order and counts for every filter combination, discover results, autoplay timing and saving voicings.
 13. **Playlists tab and playlist detail** (§6.9), including Practice start and the ocarina playlist-entry cards. Remove the ocarina playlist select from Chords.
 14. **Ocarina Notes, Chords and Practice** (§6.10–6.12): the sticky stage, medium grid, master-detail Chords on desktop, and the Practice focus view.
-15. **Build and Set up** (§6.13–6.17): the stepper, chamber switch, card structure, desktop preview panel, Set up guided capture and hole-fingers sheet, and the Clay bodies page in Settings. **A4:** add the Settings row only where the code already takes an `a4` (new builds get `build.a4` from it). If the tuner's `midiToHz`/`centsBetween` path has no `a4` parameter, leave the row out and raise it with the owner rather than changing tuning maths.
+15. **Build and Set up** (§6.13–6.17): the stepper, chamber switch, card structure, desktop preview panel, Set up guided capture and hole-fingers sheet, and the Clay bodies page in Settings. **A4:** deferred by the owner's decision. There is no A4 setting for now: the reference stays 440 Hz everywhere (tuner, builder targets and `build.a4` of new builds).
 16. **Final pass:** at 360px every screen in both themes, no horizontal scroll (`document.documentElement.scrollWidth === innerWidth`), every interactive element ≥44px (spot-check with devtools), `aria-label` on every icon button, keyboard-only navigation through the tabs, sheets and wizard, and reduced motion. Retake the 34 screenshots for the PR description.
