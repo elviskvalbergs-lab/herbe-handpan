@@ -49,6 +49,10 @@ html = f'''<!DOCTYPE html>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Handpan">
   <meta name="theme-color" content="#090F0D">
+  <script>
+    // The theme pref before first paint (applyTheme() in app.js keeps it in step).
+    try {{ var t = JSON.parse(localStorage.getItem('hp-prefs') || '{{}}').theme; if (t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; }} catch (e) {{}}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>

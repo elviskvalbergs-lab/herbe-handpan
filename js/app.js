@@ -42,6 +42,10 @@ const state = {
   currentInstrumentId: null, // instrument being played; null = browsing the catalogue
   wizard: null,            // add-instrument wizard state, see viewWizard()
   tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
+  rec: newRecState(),      // the armed record field, see uiHzField()
+  theme: 'dark',           // 'dark' | 'light' | 'auto' (follows the OS)
+  syncTipHidden: false,    // the "Sync across devices" tip on Home was dismissed
+  clayEdit: null,          // { id, name, pct, error } while a clay body is edited
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
   sharedStatus: null,      // 'loading' | 'missing' while a share link loads
   shareModal: null,        // { code, url, qr } while the share dialog is open
@@ -98,6 +102,7 @@ function render() {
   else if (state.view === 'hp-playlists') html = viewHandpanPlaylists();
   else if (state.view === 'playlist') html = viewPlaylist();
   else if (state.view === 'settings') html = viewSettings();
+  else if (state.view === 'clay') html = viewClayBodies();
   // Everything after the app bar goes into <main>, the page's content column.
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
@@ -186,6 +191,14 @@ function goSelector() {
   render();
 }
 
+function openSettings({ push = true } = {}) {
+  stopAutoplay();
+  Object.assign(state, { view: 'settings', clayEdit: null, menu: false });
+  state.oc.handLegend = false;
+  if (push) navPush('#settings'); else navReplace('#settings');
+  render();
+}
+
 // Removes an instrument once confirmed. A handpan instrument is its saved
 // layout, so removing one removes both. Leaves the instrument if it is open.
 function removeInstrument(id) {
@@ -241,10 +254,136 @@ function handpanAppBar(tabs = '') {
   });
 }
 
-// Settings (#settings). A later step fills it; for now it is the route.
+// Settings (#settings): everything that is set once (docs/design-system.md
+// §6.19). Every row writes an existing pref through savePrefs(), so it
+// persists and syncs as before.
+const AUTOPLAY_SECONDS = [3, 4, 5, 6, 8, 10];
+
 function viewSettings() {
+  const secIdx = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
+  const clays = getClayBodies();
   return `${backAppBar('Settings')}
-    ${uiEmpty({ icon: 'settings', title: 'Settings are on the way', body: 'Note names, ring orientation and the diagram options are still on each screen for now.' })}`;
+    <div class="settings">
+      <h2 class="list-title">Display</h2>
+      <div class="list">
+        ${uiSetRow({ label: 'Theme', control: uiSeg([
+          { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'auto', label: 'Auto' },
+        ], state.theme, { action: 'set-theme', label: 'Theme' }) })}
+        ${uiSetRow({ label: 'Note names', control: uiSeg([
+          { value: 'sharps', label: 'C#' }, { value: 'flats', label: 'D♭' },
+        ], state.useFlats ? 'flats' : 'sharps', { action: 'set-flats', label: 'Note names' }) })}
+        ${uiSetRow({ label: 'Note style', control: uiSeg([
+          { value: 'letters', label: 'C D E' }, { value: 'solfege', label: 'Do Re Mi' },
+        ], state.useSolfege ? 'solfege' : 'letters', { action: 'set-solfege', label: 'Note style' }) })}
+      </div>
+
+      <h2 class="list-title">Handpan</h2>
+      <div class="list">
+        ${uiSetRow({ label: 'Ring orientation', help: 'Rotated puts the two lowest notes towards you', control: uiSeg([
+          { value: 'standard', label: 'Standard' }, { value: 'rotated', label: 'Rotated' },
+        ], state.ringRotated ? 'rotated' : 'standard', { action: 'set-rotation', label: 'Ring orientation' }) })}
+        ${uiSetRow({ label: 'Seconds per chord in autoplay', control: uiStepper({
+          value: `${state.autoplaySeconds} s`, label: 'Seconds per chord', action: 'set-autoplay-step',
+          min: secIdx === 0, max: secIdx === AUTOPLAY_SECONDS.length - 1,
+        }) })}
+      </div>
+
+      <h2 class="list-title">Fingering diagrams</h2>
+      <div class="list">
+        ${uiSwitchRow({ label: 'Finger labels in holes', help: 'R4, L1, LT inside each hole', on: state.showFingers, action: 'oc-toggle-fingers' })}
+        ${uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' })}
+        ${uiRow({ title: 'Which finger is which', action: 'oc-hand-open', chevron: true })}
+        ${uiRow({ title: 'Show the diagram legend again', meta: 'The hole and finger legends show once more', action: 'reset-legends' })}
+      </div>
+
+      <h2 class="list-title">Tuning</h2>
+      <div class="list">
+        ${uiRow({ title: 'Clay bodies', meta: `${clays.length} clay bod${clays.length === 1 ? 'y' : 'ies'} · shrinkage used by the builder`, action: 'open-clay-bodies', chevron: true })}
+      </div>
+
+      <h2 class="list-title">Sync</h2>
+      <div class="list">${syncSettingsHtml()}</div>
+
+      <h2 class="list-title">About</h2>
+      <div class="list">
+        ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
+      </div>
+    </div>`;
+}
+
+// Settings › Sync: the sign-in flow (email → code → verify), or who is
+// signed in with Sync now and Sign out.
+function syncSettingsHtml() {
+  if (isLoggedIn()) {
+    return `
+      ${uiRow({ title: getUserEmail() ?? 'Signed in', meta: 'Playlists, layouts, instruments and settings sync to this account' })}
+      <div class="set-actions">
+        <button type="button" class="btn btn-secondary" data-action="auth-sync">${icon('refresh')} Sync now</button>
+        <button type="button" class="btn btn-ghost" data-action="auth-signout">Sign out</button>
+      </div>`;
+  }
+  if (state.authLinkSent) {
+    return `
+      <div class="set-form">
+        ${uiField({
+          label: 'Code from the email', id: 'auth-code-input', help: `Sent to ${escHtml(state.authEmail)}`,
+          control: `<input class="input" id="auth-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8"
+            placeholder="6–8 digits" value="${escHtml(state.authCode)}" autocomplete="one-time-code">`,
+        })}
+        <div class="set-actions">
+          <button type="button" class="btn btn-primary" data-action="auth-verify">Verify</button>
+          <button type="button" class="btn btn-ghost" data-action="auth-cancel">Cancel</button>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="set-form">
+      ${uiField({
+        label: 'Email', id: 'auth-email-input', help: 'Sync playlists, layouts and instruments across your devices. We email you a sign-in code.',
+        control: `<input class="input" id="auth-email-input" type="email" autocomplete="email"
+          placeholder="you@example.com" value="${escHtml(state.authEmail)}">`,
+      })}
+      <div class="set-actions">
+        <button type="button" class="btn btn-secondary" data-action="auth-send-link">Send code</button>
+      </div>
+    </div>`;
+}
+
+// Settings › Clay bodies (#settings/clay): name and shrinkage of each clay
+// body the builder offers. A row opens a sheet to edit it.
+function viewClayBodies() {
+  const clays = getClayBodies();
+  return `${backAppBar('Clay bodies', { fallback: 'settings' })}
+    <div class="settings">
+      <p class="settings-intro">The builder lowers each hole's target by the clay's shrinkage, and learns it from every finished build.</p>
+      <div class="list">
+        ${clays.map(c => uiRow({
+          lead: 'circle-dot', title: c.name, chevron: true, action: 'clay-edit', data: { id: c.id },
+          meta: `${Number(c.shrinkPct).toFixed(1)}% shrinkage${c.builds ? ` · learned from ${c.builds} build${c.builds !== 1 ? 's' : ''}` : ''}`,
+        })).join('')}
+        ${uiRow({ lead: 'plus', title: 'Add a clay body', action: 'clay-edit', data: { id: '__new__' } })}
+      </div>
+    </div>`;
+}
+
+// The edit sheet of a clay body (state.clayEdit = { id, name, pct, error }).
+function clayEditSheet() {
+  const c = state.clayEdit;
+  const isNew = c.id === '__new__';
+  return uiSheet({
+    key: 'clay', title: isNew ? 'Add a clay body' : 'Edit clay body', close: 'clay-cancel',
+    body: `
+      <div class="set-form is-sheet">
+        ${uiField({ label: 'Name', id: 'clay-name-input', error: c.error === 'name' ? 'Give it a name' : '',
+          control: `<input class="input" id="clay-name-input" value="${escHtml(c.name)}" placeholder="Stoneware, Earthenware…">` })}
+        ${uiField({ label: 'Shrinkage, leather-hard to fired', id: 'clay-pct-input', error: c.error === 'pct' ? 'Between 0 and 30%' : '',
+          help: 'From the clay\'s data sheet, or 11% if you don\'t know it',
+          control: `<span class="input-unit"><input class="input" id="clay-pct-input" type="number" inputmode="decimal" step="0.1" min="0" max="30" value="${escHtml(c.pct)}"><span class="input-unit-label">%</span></span>` })}
+      </div>`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="clay-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" data-action="clay-save">${isNew ? 'Add' : 'Save'}</button>`,
+  });
 }
 
 // ── UI primitives ────────────────────────────────────────────────────────────
@@ -382,6 +521,40 @@ function uiEmpty({ icon: ico = 'info', title, body = '', action = '' }) {
     </div>`;
 }
 
+// A switch row: the whole row is the control (role=switch), the track is
+// drawn at the right. `help` is a meta line under the label.
+function uiSwitchRow({ label, help = '', on, action, data }) {
+  return `
+    <button type="button" class="row no-lead set-row" role="switch" aria-checked="${on ? 'true' : 'false'}"
+      data-action="${action}"${uiData(data)}>
+      <span class="row-text"><span class="row-title">${escHtml(label)}</span>${help ? `<span class="row-meta">${escHtml(help)}</span>` : ''}</span>
+      <span class="switch${on ? ' is-on' : ''}" aria-hidden="true"></span>
+    </button>`;
+}
+
+// A settings row with a control at the right (it drops below the label on
+// narrow phones): a segmented control, a stepper or a field.
+function uiSetRow({ label, help = '', control, wide = false }) {
+  return `
+    <div class="row no-lead set-row${wide ? ' is-wide' : ''}">
+      <span class="row-text"><span class="row-title">${escHtml(label)}</span>${help ? `<span class="row-meta">${help}</span>` : ''}</span>
+      <div class="set-control">${control}</div>
+    </div>`;
+}
+
+// Number stepper [−] value [+]; the buttons carry data-delta -1 / 1.
+function uiStepper({ value, label, action, data, min = false, max = false, help = '' }) {
+  return `
+    <div class="stepper-num">
+      <div class="stepper-num-row" role="group" aria-label="${escHtml(label)}">
+        ${uiIconBtn('minus', `Less (${label})`, { action, data: { ...data, delta: -1 }, cls: 'tonal', disabled: min })}
+        <span class="stepper-num-val" aria-live="polite">${escHtml(value)}</span>
+        ${uiIconBtn('plus', `More (${label})`, { action, data: { ...data, delta: 1 }, cls: 'tonal', disabled: max })}
+      </div>
+      ${help ? `<div class="stepper-num-help">${help}</div>` : ''}
+    </div>`;
+}
+
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
 function viewSelector() {
   const q = state.scaleSearch.trim().toLowerCase();
@@ -428,10 +601,6 @@ function viewSelector() {
             ${f === 'all' ? 'All' : f + ' notes'}
           </button>
         `).join('')}
-        <button class="pill ${useFlats ? 'active' : ''}"
-          data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
-          ♭ Flats
-        </button>
       </div>
     </div>
     ${authBar}
@@ -1092,10 +1261,7 @@ function viewInstrument() {
           ${SCALES.map(sc => `<option value="${sc.id}" ${oc.scaleFilter === sc.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
         </select>
         <button class="btn btn-secondary btn-sm" data-action="oc-play-scale">${icon('play')} Scale</button>
-        <button class="btn ${state.showFingers ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-fingers" title="Show finger names in the holes">R4 L1</button>
-        <button class="btn ${state.showSizes ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-sizes" title="Show hole sizes in mm">mm</button>
-        <button class="btn btn-secondary btn-sm" data-action="oc-hand-open" title="Which finger is which">${icon('hand')} Fingers</button>
-        <button class="btn ${uf ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-flats">♭ Flats</button>
+        ${state.showFingers ? uiIconBtn('hand', 'Which finger is which', { action: 'oc-hand-open', cls: 'tonal' }) : ''}
       </div>
       ${state.ocLegendSeen ? '' : `
         <div class="oc-legend">
@@ -1590,6 +1756,12 @@ function finishInstrumentBuild(inst) {
 
 let _tunerStop = null;
 
+// The record field armed to take the tuner's next steady reading (§5.3).
+// auto: armed by itself after a capture on Set up, so it waits for a new note.
+function newRecState() {
+  return { armed: null, armedAt: 0, auto: false, slow: false, captured: null, error: null };
+}
+
 // The note the player should be playing right now, if any.
 function tunerTarget() {
   if (state.view !== 'instrument') return null;
@@ -1746,18 +1918,9 @@ function viewEditor() {
               ${m === 'both' ? 'Both Shells' : m === 'top' ? 'Top Shell' : 'Bottom Shell'}
             </button>
           `).join('')}
-          <button class="pill ${state.ringRotated ? 'active' : ''}"
-            data-action="toggle-rotation"
-            title="Rotate the ring so two lowest notes face you instead of one">
-            ${icon('rotate')} Rotate
-          </button>
-          <button class="pill ${state.useFlats ? 'active' : ''}"
-            data-action="toggle-flats" title="Switch between sharp (C#) and flat (Db) notation">
-            ♭ Flats
-          </button>
         </div>
         <div class="pan-wrap">
-          ${panSvg}
+          ${panRotateBtn()}${panSvg}
         </div>
         ${isCustom ? `
           <p class="hint" style="text-align:center;margin-top:8px">
@@ -1955,15 +2118,7 @@ function viewChords() {
     ${handpanAppBar(handpanTabs('chords'))}
     <div class="toolbar">
       <div class="toolbar-btns">
-        <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
-          title="Rotate the ring so two lowest notes face you instead of one">
-          ${icon('rotate')} ${state.ringRotated ? 'Standard' : 'Rotate'}
-        </button>
-        <button class="btn ${uf ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-flats"
-          title="Switch between sharp (C#) and flat (Db) notation">♭ Flats</button>
-        <button class="btn ${us ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-solfege"
-          title="Switch between letter names (C, D) and solfège (Do, Re)">Do-Re-Mi</button>
-        <button class="btn ${state.discoverMode ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-discover-mode"
+        <button class="btn btn-secondary btn-sm" data-action="toggle-discover-mode" aria-pressed="${state.discoverMode ? 'true' : 'false'}"
           title="Click note fields on the pan to identify what chord they form">${icon('search')} Discover</button>
       </div>
     </div>
@@ -2113,11 +2268,18 @@ function viewChords() {
 
       <div class="pan-col">
         <div class="pan-wrap">
-          ${panSvg}
+          ${panRotateBtn()}${panSvg}
         </div>
       </div>
     </div>
   `;
+}
+
+// Rotate button overlaid on the pan drawing (Chords and Pan).
+function panRotateBtn() {
+  return uiIconBtn('rotate', 'Rotate the ring so the two lowest notes face you', {
+    action: 'toggle-rotation', pressed: state.ringRotated, cls: 'tonal pan-rotate',
+  });
 }
 
 // ── Sheets ───────────────────────────────────────────────────────────────────
@@ -2128,7 +2290,8 @@ function sheetHtml() {
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && (state.view === 'chords' || state.view === 'instrument')) return renderPlaylistPicker();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
-  if (state.oc.handLegend && state.view === 'instrument') return handLegendModal();
+  if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
+  if (state.clayEdit && state.view === 'clay') return clayEditSheet();
   return '';
 }
 
@@ -2403,6 +2566,7 @@ function loadFromHash() {
 
   if (hash === '#scales') { state.view = 'selector'; return; }
   if (hash === '#settings') { state.view = 'settings'; return; }
+  if (hash === '#settings/clay') { state.view = 'clay'; return; }
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
     if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; }
@@ -2496,8 +2660,22 @@ function loadPrefs() {
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
+    if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
+    if (typeof p.syncTipHidden === 'boolean') state.syncTipHidden = p.syncTipHidden;
   } catch {}
+  applyTheme();
 }
+
+// The theme pref on <html data-theme> (the CSS does the rest) and the
+// browser chrome colour to match. Auto follows the OS as it changes.
+const THEME_COLORS = { dark: '#090F0D', light: '#F3F6F4' };
+const _themeQuery = window.matchMedia?.('(prefers-color-scheme: light)');
+function applyTheme() {
+  document.documentElement.dataset.theme = state.theme;
+  const resolved = state.theme === 'auto' ? (_themeQuery?.matches ? 'light' : 'dark') : state.theme;
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_COLORS[resolved]);
+}
+_themeQuery?.addEventListener?.('change', applyTheme);
 
 function savePrefs() {
   localStorage.setItem('hp-prefs', JSON.stringify({
@@ -2509,6 +2687,8 @@ function savePrefs() {
     showSizes: state.showSizes,
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
+    theme: state.theme,
+    syncTipHidden: state.syncTipHidden,
   }));
   scheduleSave();
 }
@@ -2729,16 +2909,11 @@ document.addEventListener('click', e => {
   if (action === 'nav-back') {
     if (history.state?.hp) history.back();
     else if (el.dataset.fallback === 'selector') goSelector();
+    else if (el.dataset.fallback === 'settings') openSettings({ push: false });
     else goHome();
     return;
   }
-  if (action === 'open-settings') {
-    stopAutoplay();
-    state.view = 'settings';
-    navPush('#settings');
-    render();
-    return;
-  }
+  if (action === 'open-settings') { openSettings(); return; }
   if (action === 'other-instrument') {
     state.currentInstrumentId = null;
     state.view = 'selector';
@@ -3356,6 +3531,65 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // ── Settings ──────────────────────────────────────────────────────────────
+  if (action === 'set-theme') { state.theme = el.dataset.value; applyTheme(); savePrefs(); render(); return; }
+  if (action === 'set-flats') { state.useFlats = el.dataset.value === 'flats'; savePrefs(); render(); return; }
+  if (action === 'set-solfege') { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; }
+  if (action === 'set-rotation') { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; }
+  if (action === 'set-autoplay-step') {
+    const i = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
+    const next = AUTOPLAY_SECONDS[Math.max(0, Math.min(AUTOPLAY_SECONDS.length - 1, (i < 0 ? 1 : i) + parseInt(el.dataset.delta, 10)))];
+    state.autoplaySeconds = next;
+    savePrefs();
+    render();
+    return;
+  }
+  if (action === 'reset-legends') {
+    state.ocLegendSeen = false;
+    state.handLegendSeen = false;
+    savePrefs();
+    showToast('The legend will show again');
+    return;
+  }
+  if (action === 'open-clay-bodies') {
+    state.view = 'clay';
+    navPush('#settings/clay');
+    render();
+    return;
+  }
+  if (action === 'clay-edit') {
+    const c = getClayBodies().find(x => x.id === el.dataset.id);
+    state.clayEdit = c
+      ? { id: c.id, name: c.name, pct: String(c.shrinkPct), error: null }
+      : { id: '__new__', name: '', pct: '11', error: null };
+    render();
+    return;
+  }
+  if (action === 'clay-cancel') { state.clayEdit = null; render(); return; }
+  if (action === 'clay-save') {
+    const c = state.clayEdit;
+    if (!c) return;
+    c.name = (document.getElementById('clay-name-input')?.value ?? c.name).trim();
+    c.pct = document.getElementById('clay-pct-input')?.value ?? c.pct;
+    const pct = parseFloat(c.pct);
+    c.error = !c.name ? 'name' : !(pct >= 0 && pct <= 30) ? 'pct' : null;
+    if (c.error) { render(); return; }
+    const list = getClayBodies();
+    if (c.id === '__new__') list.push({ id: 'clay-' + Date.now().toString(36), name: c.name, shrinkPct: pct, builds: 0 });
+    else Object.assign(list.find(x => x.id === c.id) ?? {}, { name: c.name, shrinkPct: pct });
+    saveClayBodies(list);
+    state.clayEdit = null;
+    showToast(`${c.name} saved`);
+    render();
+    return;
+  }
+  if (action === 'check-updates') {
+    navigator.serviceWorker?.getRegistration?.().then(r => r?.update()).catch(() => {});
+    if (isLoggedIn()) checkForUpdates();
+    showToast(isLoggedIn() ? 'Checked for updates and synced' : 'Checked for updates');
+    return;
+  }
+
   // ── Pan rotation ──────────────────────────────────────────────────────────
   if (action === 'toggle-rotation') {
     state.ringRotated = !state.ringRotated;
@@ -3798,6 +4032,8 @@ document.addEventListener('input', e => {
     state.playlists = getPlaylists();
     scheduleSave();
   }
+  if (e.target.id === 'clay-name-input' && state.clayEdit) { state.clayEdit.name = e.target.value; return; }
+  if (e.target.id === 'clay-pct-input' && state.clayEdit) { state.clayEdit.pct = e.target.value; return; }
   if (e.target.id === 'auth-email-input') {
     state.authEmail = e.target.value;
   }
@@ -3816,6 +4052,12 @@ document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('[role="button"][data-action]')) {
     e.preventDefault();
     e.target.click();
+    return;
+  }
+  const enterAction = { 'auth-email-input': 'auth-send-link', 'auth-code-input': 'auth-verify', 'clay-name-input': 'clay-save', 'clay-pct-input': 'clay-save' }[e.target.id];
+  if (e.key === 'Enter' && enterAction) {
+    e.preventDefault();
+    document.querySelector(`[data-action="${enterAction}"]`)?.click();
     return;
   }
   if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {

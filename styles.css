@@ -358,8 +358,8 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
   border-radius: var(--r-full); background: var(--text-2); transition: transform var(--dur-1), background var(--dur-1);
 }
-.switch[aria-checked="true"] { background: var(--selected-bg); border-color: var(--selected-bg); }
-.switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--on-selected); }
+.switch[aria-checked="true"], .switch.is-on { background: var(--selected-bg); border-color: var(--selected-bg); }
+.switch[aria-checked="true"]::after, .switch.is-on::after { transform: translateX(18px); background: var(--on-selected); }
 
 /* Fields */
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -1123,3 +1123,34 @@ body:has(.sheet-root) { overflow: hidden; }
 .share-qr svg { width: 224px; height: 224px; }
 .share-url { margin-top: var(--space-3); font-size: var(--fs-13); }
 .fingering .fg-overblow { fill: var(--chord-c1-stroke); font-size: 12px; font-weight: 600; }
+
+/* Settings (§6.19): grouped list rows, the control at the right of each */
+.settings { max-width: var(--reading-max); margin: 0 auto; }
+.settings-intro { color: var(--text-2); margin-bottom: var(--space-4); }
+.set-row { grid-template-columns: minmax(0, 1fr) auto; padding-right: var(--space-3); }
+.set-row .row-title { white-space: normal; }
+.set-control { display: flex; justify-content: flex-end; min-width: 0; }
+.set-control .seg { min-width: 200px; }
+button.set-row[role="switch"] { cursor: pointer; }
+@media (max-width: 399px) {
+  /* Narrow phones: the control drops below its label. */
+  .set-row:not([role="switch"]) { grid-template-columns: minmax(0, 1fr); padding-bottom: var(--space-3); }
+  .set-row:not([role="switch"]) .set-control { justify-content: flex-start; }
+  .set-row:not([role="switch"]) .set-control, .set-control .seg { width: 100%; min-width: 0; }
+}
+.set-form { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.set-form.is-sheet { padding: 0; }
+.set-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-4) var(--space-4); }
+.set-form .set-actions { padding: 0; }
+.list > .set-actions { padding-top: 0; }
+
+/* Pan drawing: always on its dark stage, with the rotate button over it.
+   The drawing uses a few theme tokens, pinned here to their dark values. */
+.pan-wrap {
+  position: relative; background: var(--pan-stage); border-radius: var(--r-md);
+  --border: #1F3B2E; --border-strong: #2F5544; --text-1: #E4F2EA; --text-2: #B8D0C4; --text-3: #8BA898;
+  --surface-2: #172A21; --surface-3: #1E372B; --focus: #7FD6D4;
+  --accent-soft: rgba(205, 76, 56, 0.16); --accent-text: #EE7A66;
+}
+.pan-rotate { position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1; }
+.btn-secondary[aria-pressed="true"] { background: var(--selected-bg); border-color: var(--selected-bg); color: var(--on-selected); }
