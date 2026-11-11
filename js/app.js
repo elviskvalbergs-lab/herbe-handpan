@@ -1906,7 +1906,7 @@ function viewPlaylist() {
         <input class="name-input" id="playlist-name-input" value="${escHtml(pl.name)}" placeholder="Playlist name">
         ${pl.id !== 'favorites' ? `
           <button class="btn btn-secondary btn-sm" data-action="delete-playlist"
-            style="color:var(--error,#e05);border-color:var(--error,#e05)">Delete</button>
+            style="color:var(--danger);border-color:var(--danger)">Delete</button>
         ` : ''}
       </div>
 

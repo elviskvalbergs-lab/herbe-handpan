@@ -1,28 +1,154 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg: #090f0d;
-  --surface: #0d1a16;
-  --card: #112018;
-  --border: #1c3828;
-  --muted: #4d7560;
-  --text: #b8d0c4;
-  --heading: #dff0e8;
-  --primary: #CD4C38;
-  --primary-hover: #d85a44;
-  --primary-light: rgba(205,76,56,0.12);
-  --note-rest-bg: #162c22;
-  --note-rest-text: #5a9878;
-  --note-active-bg: #CD4C38;
-  --note-active-text: #fff;
-  --note-empty-border: #224838;
-  --radius: 4px;
-  /* Per-scale-degree chord colors — root reuses the accent color, 3 more spread around the wheel */
+  /* ── Type ─────────────────────────────────────────────── */
+  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-12: 12px;  --lh-12: 16px;   /* minimum: captions, badges, tab labels */
+  --fs-13: 13px;  --lh-13: 18px;   /* meta, helper text */
+  --fs-15: 15px;  --lh-15: 22px;   /* body, buttons, list titles */
+  --fs-17: 17px;  --lh-17: 24px;   /* app bar title, card titles, sheet titles */
+  --fs-20: 20px;  --lh-20: 28px;   /* screen titles, moves line in practice */
+  --fs-24: 24px;  --lh-24: 32px;   /* wizard questions, tuner note */
+  --fs-32: 32px;  --lh-32: 40px;   /* share code, large numerics */
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --tracking-overline: 0.06em;
+
+  /* ── Spacing (4px grid) ───────────────────────────────── */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --space-12: 48px; --space-16: 64px;
+
+  /* ── Radii (herbe: square-first) ──────────────────────── */
+  --r-xs: 2px;   /* badges */
+  --r-sm: 4px;   /* buttons, chips, inputs, segmented */
+  --r-md: 8px;   /* cards, popovers, desktop modal, tuner (desktop) */
+  --r-lg: 12px;  /* bottom-sheet top corners */
+  --r-full: 999px; /* switch track, needle, progress dots only */
+
+  /* ── Sizes and layout ─────────────────────────────────── */
+  --touch: 44px;
+  --control-h: 44px;          /* buttons, segmented, chips' hit area */
+  --field-h: 48px;            /* inputs and selects on touch (16px font, no iOS zoom) */
+  --appbar-h: 56px;
+  --tabbar-h: 64px;
+  --tuner-h: 72px;
+  --gutter: 16px;             /* 24px at ≥1024 */
+  --content-max: 1200px;
+  --reading-max: 640px;       /* forms, wizard, practice */
+  --z-appbar: 20; --z-tabbar: 20; --z-tuner: 30; --z-sheet: 40; --z-toast: 50;
+
+  /* ── Motion ───────────────────────────────────────────── */
+  --dur-1: 120ms;  /* hover, press, colour */
+  --dur-2: 200ms;  /* expand, toast */
+  --dur-3: 280ms;  /* sheet in/out */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ── Colour: dark (default) ───────────────────────────── */
+  --bg:           #090F0D;
+  --surface-0:    #0C1713;   /* sunken: inside cards, fingering mouthpiece */
+  --surface-1:    #111F19;   /* cards, list groups, sheets, tab bar */
+  --surface-2:    #172A21;   /* inputs, secondary buttons, hover */
+  --surface-3:    #1E372B;   /* pressed, switch track off, meter track */
+  --border:       #1F3B2E;
+  --border-strong:#2F5544;   /* inputs, secondary buttons, dividers you must see */
+
+  --text-1:       #E4F2EA;   /* titles, values, covered holes        ~16:1 */
+  --text-2:       #B8D0C4;   /* body                                  ~11:1 */
+  --text-3:       #8BA898;   /* meta, helper, captions                 ~7:1 */
+  --text-disabled:#56705F;   /* disabled only, never for information   */
+
+  --accent:            #CD4C38;   /* brand mark: blow, changed holes, indicators */
+  --accent-fill:       #C2412E;   /* primary button background (white text 5.1:1) */
+  --accent-fill-hover: #CD4C38;
+  --accent-fill-press: #A9382A;
+  --on-accent:         #FFFFFF;
+  --accent-text:       #EE7A66;   /* accent as text/icon on dark (7:1) */
+  --accent-soft:       rgba(205, 76, 56, 0.16);
+
+  --selected-bg:  #E4F2EA;   /* selected chip / segment: neutral, not red */
+  --on-selected:  #0B1A14;
+
+  --success:      #4CC38A;  --success-soft: rgba(76, 195, 138, 0.16);  /* in tune */
+  --warning:      #E8B33A;  --warning-soft: rgba(232, 179, 58, 0.16);  /* near (10–50 ¢) */
+  --danger:       #F07563;  --danger-soft:  rgba(240, 117, 99, 0.14);  /* delete, errors */
+  --focus:        #7FD6D4;  /* 2px focus ring, distinct from accent and selection */
+
+  --move-lift:    #6FD0CE;  /* lift arrow + "lift" word */
+  --move-cover:   #E8B33A;  /* cover arrow + "cover" word */
+  --hole-covered: var(--text-1);
+  --hole-open:    var(--bg);
+  --pan-stage:    #090F0D;  /* card behind the pan drawing */
+  --scrim:        rgba(0, 0, 0, 0.6);
+
+  --e-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --e-2: 0 8px 24px rgba(0, 0, 0, 0.45);   /* tuner, popover, toast */
+  --e-3: 0 -12px 40px rgba(0, 0, 0, 0.55); /* bottom sheet */
+
+  /* Chord colours (pan) — unchanged */
   --chord-c0: #CD4C38; --chord-c0-stroke: #e8906e; --chord-c0-text: #fff;
   --chord-c1: #D9A62E; --chord-c1-stroke: #f0c866; --chord-c1-text: #241c05;
   --chord-c2: #3FA7A6; --chord-c2-stroke: #7fd6d4; --chord-c2-text: #04211f;
   --chord-c3: #9B6FD4; --chord-c3-stroke: #c6a3f0; --chord-c3-text: #1c0d2e;
+  --note-rest-bg: #162c22; --note-rest-text: #5a9878;
+  --note-active-bg: #CD4C38; --note-active-text: #fff; --note-empty-border: #224838;
+  --pan-playing: #FFFFFF;    /* ring around a sounding note on the (always dark) pan */
+  --qr-bg: #FFFFFF;          /* QR codes need a white quiet zone in both themes */
+
+  /* ── Legacy aliases (remove as rules migrate) ─────────── */
+  --surface: var(--surface-0);
+  --card:    var(--surface-1);
+  --muted:   var(--text-3);
+  --text:    var(--text-2);
+  --heading: var(--text-1);
+  --primary: var(--accent-fill);
+  --primary-hover: var(--accent-fill-hover);
+  --primary-light: var(--accent-soft);
+  --radius:  var(--r-sm);
 }
+
+/* ── Colour: light (daylight) ───────────────────────────── */
+:root[data-theme="light"] {
+  --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
+  --border: #D3DED7; --border-strong: #A9BDB1;
+  --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
+  --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
+  --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
+  --selected-bg: #0F231A; --on-selected: #FFFFFF;
+  --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
+  --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
+  --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10);
+  --focus: #0B6E6C;
+  --move-lift: #0E7C7B; --move-cover: #9A6700;
+  --hole-covered: #0F231A; --hole-open: #FFFFFF;
+  --pan-stage: #0C1713; --scrim: rgba(15, 35, 26, 0.45);
+  --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
+  --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
+  --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+}
+/* Auto: the same values as light when the OS asks for it. Keep this block identical to the one above. */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
+    --border: #D3DED7; --border-strong: #A9BDB1;
+    --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
+    --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
+    --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
+    --selected-bg: #0F231A; --on-selected: #FFFFFF;
+    --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
+    --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
+    --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10);
+    --focus: #0B6E6C;
+    --move-lift: #0E7C7B; --move-cover: #9A6700;
+    --hole-covered: #0F231A; --hole-open: #FFFFFF;
+    --pan-stage: #0C1713; --scrim: rgba(15, 35, 26, 0.45);
+    --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
+    --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
+    --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+  }
+}
+@media (min-width: 1024px) { :root { --gutter: 24px; } }
+@media (prefers-reduced-motion: reduce) { :root { --dur-1: 0ms; --dur-2: 0ms; --dur-3: 0ms; } }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -52,7 +178,7 @@ body {
   padding: 8px 16px; border-radius: var(--radius); border: none;
   font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.12s;
 }
-.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary { background: var(--primary); color: var(--on-accent); }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-secondary {
   background: var(--card); color: var(--text);
@@ -78,7 +204,7 @@ body {
   font-weight: 500; cursor: pointer; transition: all 0.12s;
 }
 .pill:hover { border-color: var(--primary); color: var(--primary); }
-.pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.pill.active { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
 
 /* Search input */
 .scale-search {
@@ -104,7 +230,7 @@ body {
 }
 .scale-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 2px 12px rgba(205,76,56,0.1);
+  box-shadow: 0 2px 12px var(--accent-soft);
 }
 .scale-card-name { font-size: 14px; font-weight: 600; color: var(--heading); margin-bottom: 2px; }
 .scale-card-meta { font-size: 11px; color: var(--primary); margin-bottom: 6px; font-weight: 500; }
@@ -202,7 +328,7 @@ body {
    note already has (default or per-degree highlight color) unchanged. */
 @keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
 .pan-note.playing rect, .pan-note.playing circle {
-  stroke: #fff !important;
+  stroke: var(--pan-playing) !important;
   stroke-width: 2.5;
   filter: drop-shadow(0 0 8px rgba(255,255,255,0.55));
 }
@@ -323,13 +449,13 @@ body {
 
 /* Note picker modal */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  position: fixed; inset: 0; background: var(--scrim);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
 .modal {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 24px; max-width: 420px; width: 94%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  box-shadow: var(--e-2);
 }
 .modal-title { font-size: 15px; font-weight: 700; color: var(--heading); margin-bottom: 4px; }
 .modal-sub { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
@@ -347,7 +473,7 @@ body {
 /* Toast */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
-  background: var(--primary); color: #fff;
+  background: var(--primary); color: var(--on-accent);
   padding: 9px 18px; border-radius: var(--radius);
   font-family: inherit; font-size: 13px; font-weight: 600;
   opacity: 0; transition: opacity 0.18s;
@@ -488,8 +614,8 @@ body {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 16px; cursor: pointer; transition: background 0.1s;
 }
-.picker-row:hover { background: rgba(255,255,255,0.04); }
-.picker-row.in-playlist { background: rgba(232,144,110,0.07); }
+.picker-row:hover { background: var(--surface-2); }
+.picker-row.in-playlist { background: var(--accent-soft); }
 .picker-check { display: inline-flex; align-items: center; justify-content: center; width: 16px; color: var(--primary); flex-shrink: 0; }
 .picker-check .ico { width: 14px; height: 14px; }
 .picker-name { flex: 1; font-size: 13px; color: var(--heading); }
@@ -635,7 +761,7 @@ body {
   width: min(520px, calc(100% - 24px)); z-index: 50;
   display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 6px 10px; align-items: center;
   background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); padding: 10px 12px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  box-shadow: var(--e-2);
 }
 .tuner-panel .btn-icon { grid-column: 2; grid-row: 1; }
 .tuner-main { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
@@ -677,7 +803,7 @@ body {
 .breadcrumb .btn-icon { font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--primary); border: 1px solid var(--border); border-radius: 2px; padding: 2px 6px; margin-left: 4px; }
 .share-modal { max-width: 360px; }
 .share-code { font-size: 32px; font-weight: 700; letter-spacing: 0.18em; text-align: center; color: var(--heading); margin: 8px 0; }
-.share-qr { display: flex; justify-content: center; background: #fff; border-radius: var(--radius); padding: 8px; min-height: 60px; align-items: center; }
+.share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--radius); padding: 8px; min-height: 60px; align-items: center; }
 .share-qr svg { width: 220px; height: 220px; }
 .share-url { width: 100%; margin-top: 10px; font-size: 12px; }
 .fingering .fg-overblow { fill: var(--chord-c1-stroke); font-size: 12px; font-weight: 600; }
