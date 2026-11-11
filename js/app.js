@@ -14,6 +14,7 @@ import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
+import { renderFingering, renderHandLegend, fingeringMoves, playableMidis } from './ocarina-ui.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
@@ -26,6 +27,11 @@ const state = {
   instruments: [],         // My instruments (instruments.js), most recently played first
   currentInstrumentId: null, // instrument being played; null = browsing the catalogue
   wizard: null,            // add-instrument wizard state, see viewWizard()
+  oc: { selected: null, previous: null, scaleFilter: 'All', handLegend: false }, // ocarina Notes view
+  showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
+  showSizes: false,        // hole sizes in mm on ocarina diagrams
+  ocLegendSeen: false,     // the hole-state legend line has been dismissed
+  handLegendSeen: false,   // the finger legend has been shown once
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
   ringRotated: false,      // false = standard; true = rotated half-slot
@@ -419,21 +425,14 @@ function viewWizard() {
   return header;
 }
 
-// An ocarina or flute. Phase 2 shows what the instrument is; the fingering
-// views arrive with the fingering diagram.
-function viewInstrument() {
-  const inst = getInstrument(state.currentInstrumentId);
-  if (!inst) return viewHome();
-  const uf = state.useFlats, us = state.useSolfege;
-  const nn = m => displayNote(midiToNoteName(m), uf, us);
-  const body = inst.kind === 'scale'
-    ? inst.chambers.map((ch, i) => `
-        <div class="editor-section">
-          <div class="editor-section-title">Chamber ${i + 1}</div>
-          <div class="pills">${ch.notes.map(m => `<span class="pill">${nn(m)}</span>`).join('')}</div>
-          <div class="hint" style="margin-top:6px">${ch.holes.length} holes: ${ch.holes.map(h => h.finger).join(', ')}</div>
-        </div>`).join('')
-    : `<div class="hint">Set it up by playing it into the tuner: all holes closed, then each hole open on its own. This arrives with the tuner update.</div>`;
+// Pitch classes of a scale from data.js, for the Notes and Chords filter.
+function scalePitchClasses(scaleId) {
+  const scale = SCALES.find(sc => sc.id === scaleId);
+  if (!scale) return null;
+  return new Set(scaleToMidis(scale).map(m => ((m % 12) + 12) % 12));
+}
+
+function ocHeader(inst, view) {
   return `
     <div class="app-header">
       <div class="breadcrumb">
@@ -441,13 +440,82 @@ function viewInstrument() {
         <span>/</span>
         <span>${escHtml(inst.name)}</span>
       </div>
-    </div>
+    </div>`;
+}
+
+function handLegendModal() {
+  if (!state.oc.handLegend) return '';
+  return `
+    <div class="modal-overlay" data-action="oc-hand-close">
+      <div class="modal">
+        <div class="modal-title">Which finger is which</div>
+        <div class="modal-sub">As you hold the instrument, looking at the backs of your hands.</div>
+        ${renderHandLegend()}
+        <div class="modal-actions"><button class="btn btn-secondary btn-sm" data-action="oc-hand-close">Close</button></div>
+      </div>
+    </div>`;
+}
+
+// An ocarina or flute: the Notes view (fingering chart).
+function viewInstrument() {
+  const inst = getInstrument(state.currentInstrumentId);
+  if (!inst) return viewHome();
+  const uf = state.useFlats, us = state.useSolfege;
+  const midis = playableMidis(inst);
+
+  if (midis.length === 0) {
+    return `${ocHeader(inst, 'notes')}
+      <div class="instrument-view">
+        <div class="scale-card-meta">${escHtml(instrumentStatus(inst))}</div>
+        <div class="hint">This ocarina's fingering chart is worked out from the instrument itself: blow it with all holes closed, then with each hole open on its own, into the tuner. Setting it up arrives with the tuner update.</div>
+      </div>`;
+  }
+
+  const oc = state.oc;
+  if (!midis.includes(oc.selected)) { oc.selected = midis[0]; oc.previous = null; }
+  const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
+  const inScale = m => !pcs || pcs.has(((m % 12) + 12) % 12);
+  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes };
+  const moves = oc.previous != null && oc.previous !== oc.selected ? fingeringMoves(inst, oc.previous, oc.selected) : null;
+
+  return `${ocHeader(inst, 'notes')}
     <div class="instrument-view">
-      <div class="scale-card-meta">${escHtml(instrumentStatus(inst))}</div>
-      ${body}
-      <div class="hint mt-16">Fingering charts and chords for ocarinas arrive in the next update.</div>
+      <div class="oc-toolbar">
+        <select class="select-input" data-action="oc-scale-filter" title="Dim notes outside a handpan scale">
+          <option value="All" ${oc.scaleFilter === 'All' ? 'selected' : ''}>All notes</option>
+          ${SCALES.map(sc => `<option value="${sc.id}" ${oc.scaleFilter === sc.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
+        </select>
+        <button class="btn btn-secondary btn-sm" data-action="oc-play-scale">${icon('play')} Scale</button>
+        <button class="btn ${state.showFingers ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-fingers" title="Show finger names in the holes">R4 L1</button>
+        <button class="btn ${state.showSizes ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-sizes" title="Show hole sizes in mm">mm</button>
+        <button class="btn btn-secondary btn-sm" data-action="oc-hand-open" title="Which finger is which">✋ Fingers</button>
+        <button class="btn ${uf ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-flats">♭ Flats</button>
+      </div>
+      ${state.ocLegendSeen ? '' : `
+        <div class="oc-legend">
+          <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span><span>${legendHole('h')} half-covered</span>
+          <button class="btn-icon" data-action="oc-legend-dismiss" title="Got it">${icon('x')}</button>
+        </div>`}
+      <div class="fg-large" data-action="oc-play-selected">
+        ${renderFingering(inst, oc.selected, { ...opts, size: 'large', previousMidi: oc.previous })}
+        <div class="fg-moves">${moves ? escHtml(moves.text) : '&nbsp;'}</div>
+      </div>
+      <div class="fg-grid">
+        ${midis.map(m => `
+          <div class="fg-cell ${m === oc.selected ? 'selected' : ''} ${inScale(m) ? '' : 'dimmed'}" data-action="oc-select-note" data-midi="${m}">
+            ${renderFingering(inst, m, { ...opts, size: 'medium' })}
+          </div>`).join('')}
+      </div>
+      ${inst.kind === 'scale' ? `<div class="hint">${escHtml(instrumentStatus(inst))}</div>` : ''}
     </div>
-  `;
+    ${handLegendModal()}`;
+}
+
+function legendHole(state) {
+  const body = state === 'c' ? '<circle class="fg-c" cx="8" cy="8" r="6"/>'
+    : state === 'o' ? '<circle class="fg-o" cx="8" cy="8" r="6"/>'
+    : '<circle class="fg-o" cx="8" cy="8" r="6"/><path class="fg-c" d="M 2 8 A 6 6 0 0 0 14 8 Z"/>';
+  return `<svg class="fingering" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">${body}</svg>`;
 }
 
 function openInstrument(id, { push = true } = {}) {
@@ -455,6 +523,7 @@ function openInstrument(id, { push = true } = {}) {
   if (!inst) return false;
   stopAutoplay();
   touchInstrument(id);
+  if (state.currentInstrumentId !== id) state.oc = { selected: null, previous: null, scaleFilter: 'All', handLegend: false };
   state.currentInstrumentId = id;
   state.selectedChord = null;
   state.sourcePlaylistId = null;
@@ -1221,6 +1290,10 @@ function loadPrefs() {
     if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
     if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
     if (typeof p.autoplaySeconds === 'number') state.autoplaySeconds = p.autoplaySeconds;
+    if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
+    if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
+    if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
+    if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
   } catch {}
 }
 
@@ -1230,6 +1303,10 @@ function savePrefs() {
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
     autoplaySeconds: state.autoplaySeconds,
+    showFingers: state.showFingers,
+    showSizes: state.showSizes,
+    ocLegendSeen: state.ocLegendSeen,
+    handLegendSeen: state.handLegendSeen,
   }));
   scheduleSave();
 }
@@ -1443,6 +1520,49 @@ document.addEventListener('click', e => {
     state.view = 'wizard';
     render();
     return;
+  }
+
+
+  // ── Ocarina Notes view ────────────────────────────────────────────────────
+  if (action === 'oc-select-note') {
+    const m = parseInt(el.dataset.midi, 10);
+    if (m !== state.oc.selected) { state.oc.previous = state.oc.selected; state.oc.selected = m; }
+    initAudio();
+    playNote(midiToNoteName(m));
+    render();
+    return;
+  }
+  if (action === 'oc-play-selected') {
+    initAudio();
+    playNote(midiToNoteName(state.oc.selected));
+    return;
+  }
+  if (action === 'oc-play-scale') {
+    const inst = getInstrument(state.currentInstrumentId);
+    if (!inst) return;
+    const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
+    const notes = playableMidis(inst).filter(m => !pcs || pcs.has(((m % 12) + 12) % 12)).map(midiToNoteName);
+    playScale(notes, n => {
+      const m = noteToMidi(n);
+      if (state.view !== 'instrument') return;
+      state.oc.previous = state.oc.selected;
+      state.oc.selected = m;
+      render();
+    });
+    return;
+  }
+  if (action === 'oc-toggle-fingers') {
+    state.showFingers = !state.showFingers;
+    // The finger legend opens by itself the first time labels are switched on.
+    if (state.showFingers && !state.handLegendSeen) { state.handLegendSeen = true; state.oc.handLegend = true; }
+    savePrefs(); render(); return;
+  }
+  if (action === 'oc-toggle-sizes') { state.showSizes = !state.showSizes; savePrefs(); render(); return; }
+  if (action === 'oc-legend-dismiss') { state.ocLegendSeen = true; savePrefs(); render(); return; }
+  if (action === 'oc-hand-open') { state.oc.handLegend = true; render(); return; }
+  if (action === 'oc-hand-close') {
+    if (e.target.closest('.modal') && !e.target.closest('[data-action="oc-hand-close"].btn')) return;
+    state.oc.handLegend = false; render(); return;
   }
 
   // ── Add-instrument wizard ─────────────────────────────────────────────────
@@ -2153,6 +2273,7 @@ document.addEventListener('change', e => {
     render();
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
+  if (action === 'oc-scale-filter') { state.oc.scaleFilter = el.value; render(); }
   if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }
   if (action === 'wizard-oc-scale') {
     Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });

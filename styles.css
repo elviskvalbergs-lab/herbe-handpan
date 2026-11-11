@@ -574,3 +574,41 @@ body {
 .wizard-notes .pill { cursor: default; }
 .wizard-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .instrument-view { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+
+/* Fingering diagram (js/ocarina-ui.js) */
+.fingering { display: block; width: 100%; height: auto; overflow: visible; }
+.fingering .fg-body { fill: var(--card); stroke: var(--border); stroke-width: 2; }
+.fingering .fg-mouth { fill: var(--surface); stroke: var(--border); stroke-width: 2; }
+.fingering .fg-mouth.fg-blow { fill: var(--primary); stroke: var(--primary); }
+.fingering .fg-blow-label { fill: var(--primary); font-size: 12px; font-weight: 600; dominant-baseline: central; }
+.fingering .fg-strip { fill: var(--surface); stroke: var(--border); stroke-dasharray: 4 3; }
+.fingering .fg-strip-label { fill: var(--muted); font-size: 10px; text-anchor: middle; dominant-baseline: central; letter-spacing: 0.08em; }
+.fingering .fg-c { fill: var(--heading); stroke: var(--heading); stroke-width: 2; }
+.fingering .fg-o { fill: var(--bg); stroke: var(--heading); stroke-width: 2; }
+.fingering .fg-changed, .fingering .fg-changed circle { stroke: var(--primary); stroke-width: 4; }
+.fingering .fg-dim { opacity: 0.3; }
+.fingering .fg-note { fill: var(--heading); font-size: 20px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-finger { fill: var(--heading); font-size: 10px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.fingering .fg-finger.on-dark { fill: var(--bg); }
+.fingering .fg-size { fill: var(--muted); font-size: 9px; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-arrow line, .fingering .fg-arrow polyline { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.fingering .fg-arrow-up line, .fingering .fg-arrow-up polyline { stroke: var(--chord-c2); }
+.fingering .fg-arrow-down line, .fingering .fg-arrow-down polyline { stroke: var(--chord-c1); }
+.fingering-large { max-width: min(70vw, 420px); margin: 0 auto; }
+.fingering-mini .fg-note { font-size: 26px; }
+
+.oc-toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.oc-legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.oc-legend span { display: inline-flex; gap: 5px; align-items: center; }
+.oc-legend .fingering { width: 16px; display: inline-block; }
+.oc-legend .btn-icon { margin-left: auto; }
+.fg-large { cursor: pointer; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.fg-moves { text-align: center; color: var(--heading); font-weight: 500; margin-top: 6px; min-height: 1.4em; }
+.fg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.fg-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; cursor: pointer; transition: border-color 0.12s, opacity 0.12s; }
+.fg-cell:hover, .fg-cell.selected { border-color: var(--primary); }
+.fg-cell.dimmed { opacity: 0.3; }
+.hand-legend { width: 100%; max-width: 420px; display: block; margin: 8px auto; }
+.hand-legend .hand-palm, .hand-legend .hand-finger { fill: var(--card); stroke: var(--muted); stroke-width: 1.5; }
+.hand-legend .hand-label { fill: var(--heading); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.hand-legend .hand-name { fill: var(--muted); font-size: 12px; text-anchor: middle; }

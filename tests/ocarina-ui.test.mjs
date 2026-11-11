@@ -1,0 +1,70 @@
+// Unit tests for the pure parts of js/ocarina-ui.js. Run with: node --test
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { noteToMidi } from '../js/data.js';
+import { buildScaleChambers, scaleToMidis, applyHoleSizes } from '../js/ocarina.js';
+import { SCALES } from '../js/data.js';
+import {
+  playableMidis, fingeringFor, fingeringMoves, describeFingering,
+  relativeSizes, renderFingering, renderHandLegend,
+} from '../js/ocarina-ui.js';
+
+const m = n => noteToMidi(n);
+const dKurd = { chambers: buildScaleChambers(scaleToMidis(SCALES.find(s => s.id === 'D-Kurd'))) };
+
+test('playable notes and fingering lookup', () => {
+  assert.deepEqual(playableMidis(dKurd), ['D3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'].map(m));
+  const f = fingeringFor(dKurd, m('F4'));
+  assert.equal(f.chamberIndex, 1);
+  assert.deepEqual(f.states, ['o', 'c', 'c']);
+  assert.equal(fingeringFor(dKurd, m('B3')), null);
+});
+
+test('moves between notes', () => {
+  assert.deepEqual(fingeringMoves(dKurd, m('D3'), m('Bb3')), {
+    lift: ['R4', 'R3'], cover: [], switchChamber: false, text: 'Lift R4 and R3',
+  });
+  assert.equal(fingeringMoves(dKurd, m('C4'), m('A3')).text, 'Cover R3 and R2');
+  // Changing chamber: D4 (all four open) → F4 on chamber 2 (only R4 open).
+  const mv = fingeringMoves(dKurd, m('D4'), m('F4'));
+  assert.equal(mv.switchChamber, true);
+  assert.equal(mv.text, 'Blow chamber 2, cover R3 and R2');
+  assert.equal(fingeringMoves(dKurd, m('D3'), m('D3')).text, 'No change');
+});
+
+test('mixed moves read as "Cover …, lift …"', () => {
+  const inst = { chambers: [{ notes: [60, 62, 64], holes: [{ finger: 'R4' }, { finger: 'L1' }],
+    fingerings: { 60: ['c', 'c'], 62: ['o', 'c'], 64: ['c', 'o'] } }] };
+  assert.equal(fingeringMoves(inst, 64, 62).text, 'Cover L1, lift R4');
+});
+
+test('accessible description', () => {
+  assert.equal(describeFingering(dKurd, m('Bb3'), 'Bb3'), 'Bb3 (chamber 1): R4 and R3 open, all others closed');
+  assert.equal(describeFingering(dKurd, m('D3'), 'D3'), 'D3 (chamber 1): all holes closed');
+  assert.equal(describeFingering(dKurd, m('D4'), 'D4'), 'D4 (chamber 1): R4, R3, R2 and R1 open');
+  assert.equal(describeFingering(dKurd, m('B3'), 'B3'), 'B3: not on this instrument');
+});
+
+test('hole sizes in proportion: target notes, then measured mm', () => {
+  const ch = dKurd.chambers[0];
+  const rel = relativeSizes(ch);
+  assert.equal(Math.max(...rel), 1);
+  assert.ok(rel.every(r => r > 0 && r <= 1));
+  const sized = applyHoleSizes(ch, [4, 5, 6, 8]);
+  assert.deepEqual(relativeSizes(sized), [0.5, 0.625, 0.75, 1]);
+});
+
+test('renderFingering: SVG with label, states and moves', () => {
+  const svg = renderFingering(dKurd, m('Bb3'), { size: 'large', previousMidi: m('D3'), showFingers: true });
+  assert.match(svg, /^<svg class="fingering fingering-large"/);
+  assert.match(svg, /aria-label="A#3 \(chamber 1\): R4 and R3 open, all others closed"/);
+  assert.equal((svg.match(/fg-hole fg-o/g) || []).length, 2);
+  assert.equal((svg.match(/fg-arrow-up/g) || []).length, 2);
+  assert.match(svg, />R4</);
+  assert.match(svg, /blow</);
+  // Mini drops arrows and labels.
+  const mini = renderFingering(dKurd, m('Bb3'), { size: 'mini', previousMidi: m('D3'), showFingers: true });
+  assert.doesNotMatch(mini, /fg-arrow|>R4</);
+  assert.match(renderHandLegend(), /L1.*L4|LT/s);
+});
