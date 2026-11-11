@@ -1182,6 +1182,10 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .hp-stage .hp-pan { grid-column: 2; grid-row: 1; }
   .hp-pan svg { width: min(100%, var(--hp-list-h)); }
   .hp-card-title { font-size: var(--fs-17); line-height: var(--lh-17); }
+  /* The list head scrolls away with the list, roots on one scrolling line. */
+  .hp-list-head { position: static; gap: var(--space-2); }
+  .hp-filter-row { flex-direction: row; align-items: center; }
+  .hp-roots { flex-wrap: nowrap; overflow-x: auto; }
 }
 @media (max-width: 599px) {
   /* Keyboard focus and in-page scrolling keep list rows clear of the sticky stage and the tab bar. */
