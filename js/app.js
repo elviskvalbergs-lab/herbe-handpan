@@ -2027,7 +2027,7 @@ function viewSetup(inst) {
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Set up</h2>
-        <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}, blow, and it fills itself in.</p>
+        <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}<span class="sr-only">the microphone</span>, blow, and it fills itself in.</p>
         <p class="b-meta">Blow steadily at a medium breath.</p>
         <div class="card b-card">
           <div class="b-card-head">
