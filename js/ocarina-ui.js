@@ -168,17 +168,32 @@ export function nextVoicing(inst, midis, midi) {
 }
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
-// Diagram coordinates (viewBox units). Seen from above, mouthpiece at the
-// top, left hand on the left with the index finger nearest the middle.
+// Diagram coordinates (viewBox units). Seen from above with the holes up,
+// as the player looks down at it: a transverse ("sweet potato") body with
+// the mouthpiece sticking out of its wide left end and the tail tapering to
+// the right; left hand on the wide part, right hand towards the tail.
 
 const FG_W = 300;
 const FG_TRANSVERSE = {
   bodyH: 110,
   pos: {
-    L1: [128, 52], L2: [98, 46], L3: [68, 50], L4: [42, 64],
-    R1: [172, 52], R2: [202, 46], R3: [232, 50], R4: [258, 64],
+    L1: [140, 48], L2: [112, 42], L3: [86, 48], L4: [62, 66],
+    R1: [178, 50], R2: [206, 46], R3: [234, 52], R4: [260, 64],
   },
 };
+
+// Body outlines (y relative to the chamber's top). Sweet potato for
+// soprano to tenor; bass chambers (closed note below C3) are drawn as the
+// fatter, aubergine-like body bass ocarinas have.
+const FG_SWEET_POTATO = 'M 34 61 C 34 24, 72 14, 122 18 C 176 22, 240 28, 278 48 C 297 58, 294 76, 272 84 C 232 100, 172 108, 112 106 C 62 104, 34 96, 34 61 Z';
+const FG_AUBERGINE = 'M 30 62 C 30 6, 112 4, 152 22 C 190 38, 246 34, 280 48 C 298 56, 297 76, 278 82 C 246 92, 198 90, 162 104 C 122 118, 30 118, 30 62 Z';
+
+function fgBodyPath(chamber, y0) {
+  const d = (chamber.notes?.[0] ?? 60) < 48 ? FG_AUBERGINE : FG_SWEET_POTATO;
+  // Shift every y coordinate (the odd-numbered numbers) by y0.
+  let i = 0;
+  return d.replace(/-?\d+(\.\d+)?/g, n => (i++ % 2 === 1 ? String(Number(n) + y0) : n));
+}
 const FG_PENDANT = {
   bodyH: 170,
   pos: {
@@ -204,9 +219,12 @@ function fgTubePositions(holes, y0) {
 }
 const FG_STRIP_H = 34;
 
+// Round pendant body only for small single-chamber ocarinas (4 holes or
+// fewer, like the English-system pendants); everything else is transverse.
 function fgIsPendant(inst) {
-  const holes = Math.max(0, ...(inst.chambers ?? []).map(c => c.holes.length));
-  return holes <= 6;
+  const chambers = inst.chambers ?? [];
+  const holes = Math.max(0, ...chambers.map(c => c.holes.length));
+  return chambers.length === 1 && holes <= 4;
 }
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -275,13 +293,17 @@ export function renderFingering(inst, midi, opts = {}) {
     } else if (geo === FG_PENDANT) {
       g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
     } else {
-      g.push(`<rect class="fg-body" x="14" y="${y0 + 12}" width="${FG_W - 28}" height="${geo.bodyH - 12}" rx="${(geo.bodyH - 12) / 2}"/>`);
+      g.push(`<path class="fg-body" d="${fgBodyPath(ch, y0)}"/>`);
     }
     // Mouthpiece, marked when this chamber is blown
     if (tube) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
-    else g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
+    else if (geo === FG_PENDANT) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
+    // Transverse: the windway sticks out of the wide end, slightly down.
+    else g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="2" y="${y0 + 58}" width="38" height="20" rx="5" transform="rotate(12 40 ${y0 + 68})"/>`);
     if (blown && chambers.length > 1) {
-      g.push(`<text class="fg-blow-label" x="${FG_W / 2 + 22}" y="${y0 + 9}">${second ? 'blow both' : 'blow'}</text>`);
+      const lx = geo === FG_PENDANT ? FG_W / 2 + 22 : 4;
+      const ly = geo === FG_PENDANT ? y0 + 9 : y0 + 42;
+      g.push(`<text class="fg-blow-label" x="${lx}" y="${ly}">${second ? 'blow both' : 'blow'}</text>`);
     }
     // Underside strip for thumb holes
     if (hasThumbs) {
@@ -294,7 +316,10 @@ export function renderFingering(inst, midi, opts = {}) {
     ch.holes.forEach((h, i) => {
       // k numbers the holes under one finger; a sub-hole gets its own arrow.
       const k = h.sub ? 0 : (seen[h.finger] = (seen[h.finger] ?? -1) + 1);
-      const split = ch.holes.filter(x => x.finger === h.finger).length > 1;
+      // Holes a finger shares because one was split (over 12 mm); a sub-hole
+      // is not a split, it sits on its own beside its main hole.
+      const sameFinger = ch.holes.filter(x => x.finger === h.finger && !x.sub);
+      const split = !h.sub && sameFinger.length > 1;
       let x, y;
       if (h.side === 'bottom') {
         x = FG_THUMB_X[h.finger] ?? FG_W / 2;
@@ -306,9 +331,10 @@ export function renderFingering(inst, midi, opts = {}) {
         y += y0;
       }
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
-      const count = ch.holes.filter(x => x.finger === h.finger).length;
-      if (split) y += (k - (count - 1) / 2) * (16 / Math.max(1, count - 1));
-      const r = Math.max(4, (split ? 18 / count : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.55 : 1));
+      const count = sameFinger.length;
+      if (split) y += (sameFinger.indexOf(h) - (count - 1) / 2) * (16 / Math.max(1, count - 1));
+      if (h.sub) { x += 13; y += 15; }
+      const r = Math.max(4, (split ? 18 / count : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1));
       const hk = fgHoleName(h);
       const changed = moves && (moves.lift.includes(hk) || moves.cover.includes(hk)) && f;
       const cls = `${changed ? 'fg-changed' : ''}`;

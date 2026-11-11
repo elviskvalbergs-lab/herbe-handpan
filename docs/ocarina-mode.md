@@ -87,7 +87,7 @@ One SVG component draws every fingering in the app, at three sizes. It replaces 
 
 **What it shows**
 
-- **The body, seen from above:** a transverse outline for 10-hole, 12-hole and multi-chamber types, and a round outline for pendants. A scale-built ocarina uses the transverse shape above 6 holes and the pendant shape at 6 or fewer.
+- **The body, seen from above:** a transverse "sweet potato" outline (mouthpiece out of the wide end, tail tapering away) for 10-hole, 12-hole, multi-chamber and scale-built ocarinas, drawn fatter, like an aubergine, for bass chambers (closed note below C3). Only small single-chamber ocarinas with 4 holes or fewer, like English-system pendants, get the round pendant outline. (Changed after review: the first version drew everything with 6 holes or fewer as round pendants.)
 - **Holes in their real positions:** for scale-built instruments, hole circles are drawn in proportion to their actual diameters, so the diagram doubles as a drilling map.
 - **Thumb holes:** drawn in a small strip below the body labelled “underside”, placed under the hand they belong to.
 - **Hole states:** filled means covered, an empty ring means open, half-filled means half-holed. This is the convention printed ocarina charts use, and a one-line legend appears the first time a user opens the ocarina side.
