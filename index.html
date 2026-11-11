@@ -116,17 +116,6 @@
   --note-active-bg: #CD4C38; --note-active-text: #fff; --note-empty-border: #224838;
   --pan-playing: #FFFFFF;    /* ring around a sounding note on the (always dark) pan */
   --qr-bg: #FFFFFF;          /* QR codes need a white quiet zone in both themes */
-
-  /* ── Legacy aliases (remove as rules migrate) ─────────── */
-  --surface: var(--surface-0);
-  --card:    var(--surface-1);
-  --muted:   var(--text-3);
-  --text:    var(--text-2);
-  --heading: var(--text-1);
-  --primary: var(--accent-fill);
-  --primary-hover: var(--accent-fill-hover);
-  --primary-light: var(--accent-soft);
-  --radius:  var(--r-sm);
 }
 
 /* ── Colour: light (daylight) ───────────────────────────── */
@@ -189,8 +178,7 @@ button, input, select, textarea { font-family: inherit; }
 input:focus-visible, select:focus-visible, textarea:focus-visible { border-color: var(--focus) !important; }
 
 /* Numbers that change (Hz, cents, counts) don't jitter. */
-input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tuner-line,
-.share-code, .b-input, .b-result, .b-step-no, .scale-count, .num, .rec-input { font-variant-numeric: tabular-nums; }
+input[type="number"], .chord-count, .tuner-hz, .share-code, .b-result, .rec-input { font-variant-numeric: tabular-nums; }
 
 #app { min-height: 100vh; }
 /* The content column under the app bar. */
@@ -271,9 +259,6 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   body.has-tabbar .main { padding-bottom: max(var(--space-6), env(safe-area-inset-bottom)); }
 }
 
-/* Toolbars of existing controls under the app bar */
-.toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
-.toolbar-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* Icons — inline SVGs, herbe icon style (see herbe-calendar/menuIcons.tsx) */
 .ico { width: 14px; height: 14px; flex-shrink: 0; fill: none; }
@@ -500,26 +485,6 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
-.btn-icon {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 4px 10px; background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius); cursor: pointer; color: var(--text);
-  font-family: inherit; font-size: 16px; line-height: 1.4;
-}
-.btn-icon:hover { border-color: var(--primary); color: var(--primary); }
-.btn-icon .ico { width: 15px; height: 15px; }
-
-/* Filter chips — square-first (herbe design system) */
-.pills { display: flex; flex-wrap: wrap; gap: 5px; }
-.pill {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  padding: 4px 10px; border-radius: var(--radius); border: 1px solid var(--border);
-  background: var(--card); color: var(--muted); font-family: inherit; font-size: 12px;
-  font-weight: 500; cursor: pointer; transition: all 0.12s;
-}
-.pill:hover { border-color: var(--primary); color: var(--primary); }
-.pill.active { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
-
 /* Layout editor: the handpan Pan tab (§6.8) */
 .editor-layout {
   display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6); align-items: start;
@@ -528,8 +493,6 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   body { min-height: 0; }
   .main { padding-top: var(--space-3); }
   .editor-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
-  .editor-section { padding: 10px; }
-  .editor-section-title { margin-bottom: 7px; }
 }
 .editor-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ed-pan svg { width: min(100%, 55dvh); max-width: none; height: auto; }
@@ -551,15 +514,6 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   font: var(--fw-medium) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-1);
 }
 .banner .btn { flex-shrink: 0; }
-
-.editor-section {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px;
-}
-.editor-section-title {
-  font-size: 12px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px;
-}
 
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
@@ -614,34 +568,26 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   filter: drop-shadow(0 0 8px rgba(255,255,255,0.55));
 }
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
+@media (prefers-reduced-motion: reduce) {
+  .pan-note rect, .pan-note circle, .pan-note ellipse, .pan-note text { transition: none; }
+  .pan-note.playing { animation: none; }
+}
 
-.chord-item {
-  padding: 9px 14px; display: flex; justify-content: space-between; align-items: center;
-  cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s;
-}
-.chord-item:last-child { border-bottom: none; }
-.chord-item:hover { background: var(--surface); }
-.chord-item.selected {
-  background: var(--primary-light);
-  border-left: 3px solid var(--primary);
-  padding-left: 11px;
-}
-.chord-item-name { font-weight: 600; color: var(--heading); font-size: 13px; }
-.chord-item-type { font-size: 12px; color: var(--muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.05em; }
 .chord-count {
   min-width: 28px; padding: 0 4px; text-align: center; flex-shrink: 0;
   font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-3);
 }
-
-.chord-panel-title { font-size: 18px; font-weight: 700; color: var(--heading); margin-bottom: 2px; letter-spacing: -0.02em; }
-.chord-panel-sub { font-size: 12px; color: var(--muted); }
 
 /* Note picker sheet */
 .note-octave-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: var(--space-2); align-items: start; margin-bottom: var(--space-3); }
 .octave-label { font-size: var(--fs-13); color: var(--text-3); text-align: right; line-height: 40px; }
 .note-octave-notes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .note-chip { padding: 0; min-width: 0; font-weight: var(--fw-semibold); }
-@media (min-width: 600px) { .note-octave-notes { grid-template-columns: repeat(12, minmax(0, 1fr)); } }
+@media (min-width: 600px) {
+  .note-octave-notes { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  /* Twelve 44px notes a row need a wider modal. */
+  .sheet-root[data-sheet="note"] .sheet { width: min(720px, calc(100% - 48px)); }
+}
 
 /* Sheet (§5.6): bottom sheet on phones, centred modal ≥600px, popover menu ≥600px */
 body:has(.sheet-root) { overflow: hidden; }
@@ -729,28 +675,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 :root[data-theme="light"] .toast-action { color: #EE7A66; }
 @media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #EE7A66; } }
 
-/* Select dropdown */
-.select-input {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--text); font-family: inherit; font-size: 12px; padding: 5px 10px;
-  cursor: pointer;
-}
-.select-input:focus { border-color: var(--primary); }
-
-/* Utility */
-.flex-row { display: flex; align-items: center; gap: 8px; }
-.mt-8 { margin-top: 8px; }
-.mt-12 { margin-top: 12px; }
-.mt-16 { margin-top: 16px; }
-.empty-state { text-align: center; padding: 32px 20px; color: var(--muted); line-height: 1.6; }
-.hint { font-size: 12px; color: var(--muted); }
-
-/* Section title inside ocarina chords ("Not on this ocarina") */
-.pwa-section-title {
-  font: var(--fw-semibold) var(--fs-12)/var(--lh-12) var(--font); color: var(--text-3);
-  text-transform: uppercase; letter-spacing: var(--tracking-overline);
-}
-
 /* Playlists tab and playlist detail (§6.9) */
 .playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
 .pl-entries { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -765,35 +689,10 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .picker-new-row { display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-top: 1px solid var(--border); }
 .picker-new-row .input { flex: 1; min-width: 0; }
 
-/* Heart button in chord list */
-.chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
-.fav-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer;
-  color: var(--muted); padding: 3px; line-height: 1;
-  transition: color 0.12s; flex-shrink: 0; opacity: 0.5;
-}
-.fav-btn .ico { width: 15px; height: 15px; }
-.fav-btn:hover { color: var(--primary); opacity: 1; }
-.fav-btn.active { color: var(--primary); opacity: 1; }
-.fav-btn.active .ico { fill: currentColor; }
-
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
-  .select-input {
-    font-size: 16px !important;
-  }
+  .input, .select, .rec-input { font-size: 16px !important; }
 }
-
-/* My instruments and the add-instrument wizard */
-.wizard-title { font-size: 18px; font-weight: 600; color: var(--heading); }
-.wizard-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.wizard-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text); }
-.wizard-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
-.wizard-check { display: flex; gap: 6px; align-items: center; font-size: 13px; padding-bottom: 8px; }
-.wizard-notes { display: flex; flex-wrap: wrap; gap: 4px; }
-.wizard-notes .pill { cursor: default; }
-.instrument-view { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
 
 /* Fingering diagram (js/ocarina-ui.js, §5.14). It follows the theme: ink on
    paper in the light theme. */
@@ -961,7 +860,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .practice-next { display: flex; align-items: center; gap: var(--space-3); color: var(--text-2); }
 .practice-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .practice-bar .btn { width: 100%; }
-@media (min-width: 1024px) { .fg-stage.is-practice { width: 100%; } .fg-stage.is-practice .fingering { max-height: 60dvh; } }
+@media (min-width: 1024px) { .fg-stage.is-practice { width: 100%; } .fg-stage.is-practice .fingering { max-height: min(60dvh, calc(100dvh - 400px)); } }
 
 /* Tuner strip (§5.13): docked above the tab bar (or the bottom edge) on
    phones and tablets, floating at the bottom of the content on desktop. */
@@ -973,7 +872,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 }
 body.has-tabbar .tuner { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
 /* Practice: above its Back / Next bar. */
-body.has-actionbar .tuner { bottom: calc(var(--actionbar-h) + env(safe-area-inset-bottom)); }
+@media (max-width: 1023px) { body.has-actionbar .tuner { bottom: calc(var(--actionbar-h) + env(safe-area-inset-bottom)); } }
 @media (min-width: 1024px) {
   .tuner, body.has-tabbar .tuner {
     left: 50%; right: auto; transform: translateX(-50%); bottom: var(--space-4);
@@ -1048,7 +947,7 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 .rec-help { font-size: var(--fs-13); line-height: var(--lh-13); }
 .rec-help .is-warning { color: var(--warning); }
 .rec-help .is-error { color: var(--danger); }
-@media (min-width: 1024px) { .rec { height: 44px; } .rec-input { font-size: var(--fs-15); } }
+@media (min-width: 1024px) { .rec { height: 46px; } .rec-input { font-size: var(--fs-15); } }
 
 /* Build and Set up (§6.13–6.17). Phone: one column, Next at the end of
    the content. Desktop: the content at reading width and a sticky preview. */
@@ -1057,7 +956,7 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 .b-aside { display: none; }
 @media (min-width: 1024px) {
   .b-layout { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
-  .b-layout.is-single { grid-template-columns: minmax(0, 640px); }
+  .b-layout.is-single { grid-template-columns: minmax(0, 640px); justify-content: center; }
   .b-aside { display: block; position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); max-width: 360px; }
   .b-aside .fingering { max-height: 60dvh; }
   .b-preview { display: none; }
@@ -1187,10 +1086,10 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 @media (min-width: 1024px) { .s-readings { margin: 0 calc(-1 * var(--space-5)); } .s-reading { padding-inline: var(--space-5); } }
 
 /* Sharing */
-.shared-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 12px; background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius); font-size: 13px; color: var(--heading); }
-.share-code { font-size: 32px; font-weight: 700; letter-spacing: 0.18em; text-align: center; color: var(--heading); margin: 8px 0; }
-.share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--radius); padding: 8px; min-height: 60px; align-items: center; }
+.share-code { font: var(--fw-bold) var(--fs-32)/var(--lh-32) var(--font); letter-spacing: 0.18em; text-align: center; color: var(--text-1); margin: var(--space-2) 0; }
+.share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--r-sm); padding: 8px; min-height: 60px; align-items: center; }
 .share-qr svg { width: 224px; height: 224px; }
+.share-loading { font-size: var(--fs-13); color: #557064; }
 .share-url { margin-top: var(--space-3); font-size: var(--fs-13); }
 
 /* Settings (§6.19): grouped list rows, the control at the right of each */
@@ -1409,6 +1308,8 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .hp-stage {
     grid-column: 2; grid-row: 1; top: var(--hp-top); z-index: 1;
     margin: 0; padding: 0; border: 0; background: none; gap: var(--space-4);
+    /* Taller than the window (a small window, many related chords): it scrolls. */
+    max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
   }
   .hp-pan svg { width: min(100%, 60dvh); }
   .hp-card { padding: var(--space-4); }
@@ -1421,7 +1322,8 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
     grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-6);
   }
   body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tuner-h) - var(--space-8)); }
-  .hp-pan svg { width: min(100%, 64dvh); }
+  /* The pan leaves room for the chord card and its related chords below it. */
+  .hp-pan svg { width: min(100%, 64dvh, max(240px, calc(100dvh - 400px))); }
   .hp-card { padding: var(--space-5); }
 }
 /* Short landscape (phone on its side): list | chord card | pan */
@@ -4055,7 +3957,7 @@ function renderFingering(inst, midi, opts = {}) {
     if (hasThumbs) {
       const sy = y0 + geo.bodyH + 6;
       g.push(`<rect class="fg-strip" x="60" y="${sy}" width="${FG_W - 120}" height="${FG_STRIP_H - 6}" rx="6"/>`);
-      if (size !== 'mini') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
+      if (size === 'large') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
     }
     // Holes
     const seen = {};
@@ -5368,9 +5270,9 @@ function ocHeader(inst, view, { practice = false } = {}) {
       tabs,
     })}
     ${shared ? `
-      <div class="shared-bar">
+      <div class="banner">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
-        <button class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
       </div>` : ''}`;
 }
 
@@ -5422,7 +5324,7 @@ function viewHandpanPlaylists() {
 }
 
 function viewOcarinaPlaylists(inst) {
-  return `${ocHeader(inst, 'playlists')}<div class="instrument-view">${playlistsTabHtml(inst)}</div>`;
+  return `${ocHeader(inst, 'playlists')}${playlistsTabHtml(inst)}`;
 }
 
 // State of the ocarina / flute views; reset when switching instrument.
@@ -5911,7 +5813,7 @@ function shareModalHtml() {
     body: `
       <p class="sheet-text">Anyone with the code, link or QR code sees its fingering chart and chords, read-only, and can add it to their own instruments. Stamp the code into the clay or tie the QR code to it.</p>
       <div class="share-code">${escHtml(m.code)}</div>
-      <div class="share-qr">${m.qr ?? '<span class="hint">QR code loading…</span>'}</div>
+      <div class="share-qr">${m.qr ?? '<span class="share-loading">QR code loading…</span>'}</div>
       <input class="input share-url" readonly value="${escHtml(m.url)}" aria-label="Share link">`,
     footer: `
       <button class="btn btn-ghost" data-action="share-close">Close</button>
@@ -6114,7 +6016,7 @@ function bPreviewHtml(inst, stage, nn) {
   return `
     <aside class="b-aside" aria-label="Preview">
       <div class="card">
-        <div class="overline">${inst.chambers.length > 1 ? `Chamber ${ci + 1} · ` : ''}drilling map</div>
+        <div class="overline">${inst.chambers.length > 1 ? `Chamber ${ci + 1} · ` : ''}${stage === 'design' || stage === 'body' ? 'preview' : 'drilling map'}</div>
         ${renderFingering(drawn, ch.notes[0], { size: 'medium', showSizes: true, useFlats: state.useFlats, useSolfege: state.useSolfege })}
         ${summary ? `<p class="b-aside-sum">${summary}</p>` : ''}
       </div>
@@ -6677,7 +6579,7 @@ function captureReading(hz) {
   const next = path.startsWith('s:') ? nextEmptySetupPath(inst, path) : null;
   if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
   render();
-  if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   setTimeout(() => {
     if (state.rec.captured !== path) return;
     state.rec.captured = null;
@@ -9075,17 +8977,8 @@ document.addEventListener('change', e => {
   if (action === 'wizard-key') {
     (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;
   }
-  if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }
   if (action === 'wizard-oc-scale') {
     Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
-    render();
-  }
-  if (action === 'wizard-oc-transpose') {
-    Object.assign(state.wizard.oc, { transpose: parseInt(el.value, 10), windowStart: null });
-    render();
-  }
-  if (action === 'wizard-oc-gu') {
-    Object.assign(state.wizard.oc, { includeGu: el.checked, chambers: null, windowStart: null });
     render();
   }
   if (action === 'set-autoplay-seconds') {

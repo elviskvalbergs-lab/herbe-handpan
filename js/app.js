@@ -1007,9 +1007,9 @@ function ocHeader(inst, view, { practice = false } = {}) {
       tabs,
     })}
     ${shared ? `
-      <div class="shared-bar">
+      <div class="banner">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
-        <button class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
       </div>` : ''}`;
 }
 
@@ -1061,7 +1061,7 @@ function viewHandpanPlaylists() {
 }
 
 function viewOcarinaPlaylists(inst) {
-  return `${ocHeader(inst, 'playlists')}<div class="instrument-view">${playlistsTabHtml(inst)}</div>`;
+  return `${ocHeader(inst, 'playlists')}${playlistsTabHtml(inst)}`;
 }
 
 // State of the ocarina / flute views; reset when switching instrument.
@@ -1550,7 +1550,7 @@ function shareModalHtml() {
     body: `
       <p class="sheet-text">Anyone with the code, link or QR code sees its fingering chart and chords, read-only, and can add it to their own instruments. Stamp the code into the clay or tie the QR code to it.</p>
       <div class="share-code">${escHtml(m.code)}</div>
-      <div class="share-qr">${m.qr ?? '<span class="hint">QR code loading…</span>'}</div>
+      <div class="share-qr">${m.qr ?? '<span class="share-loading">QR code loading…</span>'}</div>
       <input class="input share-url" readonly value="${escHtml(m.url)}" aria-label="Share link">`,
     footer: `
       <button class="btn btn-ghost" data-action="share-close">Close</button>
@@ -1753,7 +1753,7 @@ function bPreviewHtml(inst, stage, nn) {
   return `
     <aside class="b-aside" aria-label="Preview">
       <div class="card">
-        <div class="overline">${inst.chambers.length > 1 ? `Chamber ${ci + 1} · ` : ''}drilling map</div>
+        <div class="overline">${inst.chambers.length > 1 ? `Chamber ${ci + 1} · ` : ''}${stage === 'design' || stage === 'body' ? 'preview' : 'drilling map'}</div>
         ${renderFingering(drawn, ch.notes[0], { size: 'medium', showSizes: true, useFlats: state.useFlats, useSolfege: state.useSolfege })}
         ${summary ? `<p class="b-aside-sum">${summary}</p>` : ''}
       </div>
@@ -2316,7 +2316,7 @@ function captureReading(hz) {
   const next = path.startsWith('s:') ? nextEmptySetupPath(inst, path) : null;
   if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
   render();
-  if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   setTimeout(() => {
     if (state.rec.captured !== path) return;
     state.rec.captured = null;
@@ -4714,17 +4714,8 @@ document.addEventListener('change', e => {
   if (action === 'wizard-key') {
     (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;
   }
-  if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }
   if (action === 'wizard-oc-scale') {
     Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
-    render();
-  }
-  if (action === 'wizard-oc-transpose') {
-    Object.assign(state.wizard.oc, { transpose: parseInt(el.value, 10), windowStart: null });
-    render();
-  }
-  if (action === 'wizard-oc-gu') {
-    Object.assign(state.wizard.oc, { includeGu: el.checked, chambers: null, windowStart: null });
     render();
   }
   if (action === 'set-autoplay-seconds') {

@@ -287,7 +287,7 @@ export function renderFingering(inst, midi, opts = {}) {
     if (hasThumbs) {
       const sy = y0 + geo.bodyH + 6;
       g.push(`<rect class="fg-strip" x="60" y="${sy}" width="${FG_W - 120}" height="${FG_STRIP_H - 6}" rx="6"/>`);
-      if (size !== 'mini') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
+      if (size === 'large') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
     }
     // Holes
     const seen = {};
