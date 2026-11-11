@@ -775,58 +775,173 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .wizard-notes .pill { cursor: default; }
 .instrument-view { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
 
-/* Fingering diagram (js/ocarina-ui.js) */
+/* Fingering diagram (js/ocarina-ui.js, §5.14). It follows the theme: ink on
+   paper in the light theme. */
 .fingering { display: block; width: 100%; height: auto; overflow: visible; }
-.fingering .fg-body { fill: var(--card); stroke: var(--border); stroke-width: 2; }
-.fingering .fg-mouth { fill: var(--surface); stroke: var(--border); stroke-width: 2; }
-.fingering .fg-mouth.fg-blow { fill: var(--primary); stroke: var(--primary); }
-.fingering .fg-blow-label { fill: var(--primary); font-size: 12px; font-weight: 600; dominant-baseline: central; }
-.fingering .fg-strip { fill: var(--surface); stroke: var(--border); stroke-dasharray: 4 3; }
-.fingering .fg-strip-label { fill: var(--muted); font-size: 12px; text-anchor: middle; dominant-baseline: central; letter-spacing: 0.08em; }
-.fingering .fg-c { fill: var(--heading); stroke: var(--heading); stroke-width: 2; }
-.fingering .fg-o { fill: var(--bg); stroke: var(--heading); stroke-width: 2; }
-.fingering .fg-changed, .fingering .fg-changed circle { stroke: var(--primary); stroke-width: 4; }
+.fingering .fg-body { fill: var(--surface-0); stroke: var(--border-strong); stroke-width: 2; }
+.fingering .fg-mouth { fill: var(--surface-0); stroke: var(--border-strong); stroke-width: 2; }
+.fingering .fg-mouth.fg-blow { fill: var(--accent); stroke: var(--accent); }
+.fingering .fg-blow-label { fill: var(--accent-text); font-size: 12px; font-weight: 600; dominant-baseline: central; }
+.fingering .fg-strip { fill: var(--surface-0); stroke: var(--border-strong); stroke-dasharray: 4 3; }
+.fingering .fg-strip-label { fill: var(--text-3); font-size: 12px; text-anchor: middle; dominant-baseline: central; letter-spacing: 0.08em; }
+.fingering .fg-c { fill: var(--hole-covered); stroke: var(--hole-covered); stroke-width: 2; }
+.fingering .fg-o { fill: var(--hole-open); stroke: var(--hole-covered); stroke-width: 2; }
+.fingering .fg-changed, .fingering .fg-changed circle { stroke: var(--accent); stroke-width: 4; }
 .fingering .fg-dim { opacity: 0.3; }
-.fingering .fg-note { fill: var(--heading); font-size: 20px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
-.fingering .fg-finger { fill: var(--heading); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.fingering .fg-finger.on-dark { fill: var(--bg); }
-.fingering .fg-size { fill: var(--muted); font-size: 12px; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-note { fill: var(--text-1); font-size: 20px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-finger { fill: var(--text-1); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.fingering .fg-finger.on-dark { fill: var(--hole-open); }
+.fingering .fg-size { fill: var(--text-3); font-size: 12px; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-overblow { fill: var(--move-cover); font-size: 12px; font-weight: 600; }
 .fingering .fg-arrow line, .fingering .fg-arrow polyline { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.fingering .fg-arrow-up line, .fingering .fg-arrow-up polyline { stroke: var(--chord-c2); }
-.fingering .fg-arrow-down line, .fingering .fg-arrow-down polyline { stroke: var(--chord-c1); }
-.fingering-large { max-width: min(70vw, 420px); margin: 0 auto; }
+.fingering .fg-arrow-up line, .fingering .fg-arrow-up polyline { stroke: var(--move-lift); }
+.fingering .fg-arrow-down line, .fingering .fg-arrow-down polyline { stroke: var(--move-cover); }
 .fingering-mini .fg-note { font-size: 26px; }
+.move-lift { color: var(--move-lift); }
+.move-cover { color: var(--move-cover); }
 
-.oc-toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.oc-legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
-.oc-legend span { display: inline-flex; gap: 5px; align-items: center; }
-.oc-legend .fingering { width: 16px; display: inline-block; }
-.oc-legend .btn-icon { margin-left: auto; }
-.fg-large { cursor: pointer; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
-.fg-moves { text-align: center; color: var(--heading); font-weight: 500; margin-top: 6px; min-height: 1.4em; }
-.fg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-.fg-cell { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; cursor: pointer; transition: border-color 0.12s, opacity 0.12s; }
-.fg-cell:hover, .fg-cell.selected { border-color: var(--primary); }
-.fg-cell.dimmed { opacity: 0.3; }
+/* Large: the stage. Tapping the drawing plays the note (or, in Practice,
+   moves on); the moves line sits under it with the hand button at its right. */
+.fg-stage {
+  width: min(100%, 420px); margin: 0 auto; padding: var(--space-4) var(--space-4) var(--space-2);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.fg-stage-play {
+  display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-sm); color: inherit;
+}
+.fg-stage .fingering { max-height: 36dvh; }
+.fg-moves-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; min-height: 44px; }
+.fg-moves {
+  min-height: 24px; text-align: center; color: var(--text-1);
+  font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font);
+}
+.fg-stage-wrap {
+  position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top)); z-index: 5;
+  margin: 0 calc(-1 * var(--gutter)); padding: var(--space-2) var(--gutter); background: var(--bg);
+}
+
+/* Legend, first time only */
+.fg-legend {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+  font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2);
+}
+.fg-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.fg-legend .fingering { width: 16px; height: 16px; display: inline-block; }
+.fg-legend .btn { margin-left: auto; }
+
+/* Medium: the grid of every note */
+.fg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-2); }
+.fg-cell {
+  display: block; width: 100%; min-width: 0; padding: 6px; cursor: pointer; color: inherit;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-sm);
+  transition: border-color var(--dur-1), opacity var(--dur-1);
+}
+@media (hover: hover) { .fg-cell:hover { border-color: var(--border-strong); } }
+.fg-cell[aria-pressed="true"] { border-color: var(--selected-bg); box-shadow: inset 0 0 0 1px var(--selected-bg); }
+.fg-cell.is-dim { opacity: 0.35; }
+
+/* Mini: arpeggio, up next, pairs. Between minis, the move to the next one. */
+.fg-mini { flex: 0 0 64px; width: 64px; display: block; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; border-radius: var(--r-sm); }
+.fg-mini.is-next { flex-basis: 72px; width: 72px; cursor: default; }
+.fg-mini.is-medium { flex-basis: 132px; width: 132px; padding: 6px; background: var(--surface-1); border: 1px solid var(--border); }
+.fg-move {
+  flex: 0 0 56px; width: 56px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font: var(--fw-medium) var(--fs-12)/var(--lh-12) var(--font); color: var(--text-2); text-align: center;
+}
+.fg-move > span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.fg-move .ico { width: 16px; height: 16px; color: var(--text-3); }
 .hand-legend { width: 100%; max-width: 420px; display: block; margin: 8px auto; }
-.hand-legend .hand-palm, .hand-legend .hand-finger { fill: var(--card); stroke: var(--muted); stroke-width: 1.5; }
-.hand-legend .hand-label { fill: var(--heading); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
-.hand-legend .hand-name { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+.hand-legend .hand-palm, .hand-legend .hand-finger { fill: var(--surface-1); stroke: var(--text-3); stroke-width: 1.5; }
+.hand-legend .hand-label { fill: var(--text-1); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.hand-legend .hand-name { fill: var(--text-3); font-size: 12px; text-anchor: middle; }
 
-/* Ocarina chords and practice */
-.oc-chords { display: flex; flex-direction: column; gap: 8px; }
-.oc-chord { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
-.oc-chord.expanded { border-color: var(--primary); }
-.oc-chord-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; }
-.oc-chord-notes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 0 12px 8px; }
-.oc-arp { display: flex; align-items: center; gap: 4px; overflow-x: auto; padding: 4px 12px 12px; }
-.oc-arp-cell { flex: 0 0 auto; width: 76px; cursor: pointer; }
-.oc-arp-move { flex: 0 0 auto; max-width: 84px; font-size: 12px; line-height: 1.3; color: var(--muted); text-align: center; }
-.oc-pair { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; font-size: 12px; }
-.oc-badge { display: inline-block; padding: 1px 6px; border-radius: 2px; background: var(--primary-light); color: var(--primary); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
-.oc-missing { display: flex; flex-direction: column; gap: 4px; opacity: 0.7; }
-.oc-practice-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-.oc-practice-next { display: flex; align-items: center; gap: 12px; }
+/* Ocarina Notes (§6.10). Phone: the stage sticks under the app bar while
+   the grid scrolls. Desktop: context row and stage at the left, sticky. */
+.oc-notes { display: flex; flex-direction: column; gap: var(--space-3); }
+.oc-notes-side { display: contents; }
+.oc-context { display: flex; gap: var(--space-2); }
+.oc-context .select { flex: 1; min-width: 0; }
+.oc-context .btn { flex-shrink: 0; }
+.oc-notes-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.oc-count, .oc-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+@media (min-width: 1024px) {
+  .oc-notes { display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+  .oc-notes-side {
+    display: flex; flex-direction: column; gap: var(--space-3);
+    position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4));
+  }
+  .fg-stage-wrap { position: static; margin: 0; padding: 0; background: none; }
+  .fg-stage { width: 100%; }
+  .fg-stage .fingering { max-height: 52dvh; }
+  .fg-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+}
+
+/* Ocarina Chords (§6.11): filters, a list of rows that open in place;
+   desktop is list | detail. */
+.oc-chords-view, .oc-chords-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.oc-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); }
+.oc-chord { position: relative; }
+.list > .oc-chord + .oc-chord::before {
+  content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--border); z-index: 1;
+}
+.oc-chord.is-open { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.oc-chord.is-open .oc-chord-row { box-shadow: none; background: transparent; }
+.oc-chord-row .row-trail { gap: 0; }
+.oc-chord-row .row-meta .badge { margin-right: var(--space-1); vertical-align: 1px; }
+.oc-chord-body { display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4) var(--space-4); min-width: 0; }
+.oc-label { font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-2); margin-bottom: var(--space-2); }
+.oc-voicing .oc-hint { margin-top: var(--space-2); }
+.oc-arp { display: flex; align-items: flex-start; gap: var(--space-1); }
+.oc-arp.chips-scroll { margin-inline: calc(-1 * var(--space-4)); padding-inline: var(--space-4); padding-bottom: var(--space-1); }
+.oc-arp.chips-scroll > * { scroll-snap-align: none; }
+.oc-arp .fg-move { padding-top: 24px; }
+.oc-chord-body.is-medium .oc-arp { flex-wrap: wrap; row-gap: var(--space-3); }
+.oc-chord-body.is-medium .fg-move { flex-basis: 96px; width: 96px; padding-top: 56px; }
+.oc-chord-body.is-medium .fg-move > span { -webkit-line-clamp: 5; }
+.oc-pair {
+  display: grid; grid-template-columns: minmax(0, 1fr) 64px; align-items: center; gap: var(--space-3);
+  width: 100%; min-height: 44px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); text-align: left;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-sm); color: var(--text-2); cursor: pointer;
+  font: var(--fw-regular) var(--fs-13)/var(--lh-13) var(--font);
+}
+@media (hover: hover) { .oc-pair:hover { border-color: var(--border-strong); } }
+.oc-pair-text { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.oc-missing > summary {
+  display: flex; align-items: center; gap: var(--space-2); min-height: 44px; cursor: pointer; list-style: none;
+  font: var(--fw-semibold) var(--fs-15)/var(--lh-15) var(--font); color: var(--text-2);
+}
+.oc-missing > summary::-webkit-details-marker { display: none; }
+.oc-missing > summary .ico { width: 20px; height: 20px; transition: transform var(--dur-1); }
+.oc-missing[open] > summary .ico { transform: rotate(90deg); }
+.oc-missing > .oc-hint { margin-bottom: var(--space-2); }
+.oc-missing .list { opacity: 0.7; }
+.oc-detail-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.oc-detail-text { flex: 1 1 220px; min-width: 0; }
+.oc-detail-title { font: var(--fw-semibold) var(--fs-20)/var(--lh-20) var(--font); color: var(--text-1); }
+.oc-detail-meta { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); margin-top: 2px; }
+.oc-detail .oc-chord-body { padding: 0; }
+.oc-detail .empty { padding: var(--space-8) 0; }
+@media (min-width: 1024px) {
+  .oc-chords-view.is-wide { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+  .oc-chords-detail {
+    position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); min-width: 0;
+    max-height: calc(100dvh - var(--appbar-h) - env(safe-area-inset-top) - var(--space-8)); overflow-y: auto; overscroll-behavior: contain;
+  }
+  body.tuner-on .oc-chords-detail { max-height: calc(100dvh - var(--appbar-h) - var(--tuner-h) - var(--space-12)); }
+}
+
+/* Practice (§6.12): a focus view with Back and Next at the bottom. */
+.practice { display: flex; flex-direction: column; gap: var(--space-3); max-width: var(--reading-max); margin: 0 auto; }
+.practice-title { font: var(--fw-semibold) var(--fs-20)/var(--lh-20) var(--font); color: var(--text-1); }
+.practice-sub, .practice-status { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.practice-progress { height: 4px; margin-top: var(--space-2); border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }
+.practice-progress > span { display: block; height: 100%; background: var(--text-1); transition: width var(--dur-2) var(--ease-out); }
+.fg-stage.is-practice .fingering { max-height: 52dvh; }
+.fg-stage.is-practice .fg-moves { font-size: var(--fs-20); line-height: var(--lh-20); }
+.practice-next { display: flex; align-items: center; gap: var(--space-3); color: var(--text-2); }
+.practice-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.practice-bar .btn { width: 100%; }
+@media (min-width: 1024px) { .fg-stage.is-practice { width: 100%; } .fg-stage.is-practice .fingering { max-height: 60dvh; } }
 
 /* Tuner strip (§5.13): docked above the tab bar (or the bottom edge) on
    phones and tablets, floating at the bottom of the content on desktop. */
@@ -837,6 +952,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   background: var(--surface-1); border-top: 1px solid var(--border-strong); box-shadow: var(--e-2);
 }
 body.has-tabbar .tuner { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
+/* Practice: above its Back / Next bar. */
+body.has-actionbar .tuner { bottom: calc(var(--actionbar-h) + env(safe-area-inset-bottom)); }
 @media (min-width: 1024px) {
   .tuner, body.has-tabbar .tuner {
     left: 50%; right: auto; transform: translateX(-50%); bottom: var(--space-4);
@@ -868,6 +985,7 @@ body.has-tabbar .tuner { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bott
 /* The page makes room for the strip, so it never covers content. */
 body.tuner-on .main { padding-bottom: calc(var(--tuner-h) + env(safe-area-inset-bottom) + var(--space-4)); }
 body.tuner-on.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) + env(safe-area-inset-bottom) + var(--space-4)); }
+body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + var(--tuner-h) + env(safe-area-inset-bottom) + var(--space-4)); }
 @media (min-width: 1024px) {
   body.tuner-on .main, body.tuner-on.has-tabbar .main { padding-bottom: calc(var(--tuner-h) + var(--space-8) + var(--space-4)); }
 }
@@ -939,7 +1057,6 @@ body.tuner-on.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + var(--tu
 .share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--radius); padding: 8px; min-height: 60px; align-items: center; }
 .share-qr svg { width: 224px; height: 224px; }
 .share-url { margin-top: var(--space-3); font-size: var(--fs-13); }
-.fingering .fg-overblow { fill: var(--chord-c1-stroke); font-size: 12px; font-weight: 600; }
 
 /* Settings (§6.19): grouped list rows, the control at the right of each */
 .settings { max-width: var(--reading-max); margin: 0 auto; }
@@ -1190,4 +1307,9 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 @media (max-width: 599px) {
   /* Keyboard focus and in-page scrolling keep list rows clear of the sticky stage and the tab bar. */
   html:has(.hp-stage) { scroll-padding-top: calc(var(--appbar-h) + 36dvh + 120px); scroll-padding-bottom: calc(var(--tabbar-h) + 16px); }
+}
+@media (min-width: 1024px) {
+  /* Back and Next stay in reach under a tall diagram. */
+  .practice-bar { position: sticky; bottom: 0; z-index: 5; margin-top: 0; padding: var(--space-3) 0 var(--space-4); background: var(--bg); }
+  body.tuner-on .practice-bar { bottom: calc(var(--tuner-h) + var(--space-6)); }
 }
