@@ -91,6 +91,7 @@ function render() {
   else if (state.view === 'selector') html = viewSelector();
   else if (state.view === 'editor') html = viewEditor();
   else if (state.view === 'chords') html = viewChords();
+  else if (state.view === 'hp-playlists') html = viewHandpanPlaylists();
   else if (state.view === 'playlist') html = viewPlaylist();
   else if (state.view === 'settings') html = viewSettings();
   // Everything after the app bar goes into <main>, the page's content column.
@@ -689,33 +690,78 @@ function scalePitchClasses(scaleId) {
   return new Set(scaleToMidis(scale).map(m => ((m % 12) + 12) % 12));
 }
 
+// Tabs of an ocarina or flute: [id, label, icon]. Notes, Chords and
+// Playlists need a playable chart; a shared instrument is read-only.
 function ocTabs(inst) {
   const tabs = [];
-  if (playableMidis(inst).length > 0) tabs.push(['notes', 'Notes'], ['chords', 'Chords']);
+  const playable = playableMidis(inst).length > 0;
+  if (playable) tabs.push(['notes', 'Notes', 'layout-grid'], ['chords', 'Chords', 'music']);
   if (inst.id === SHARED_ID) return tabs;
-  if (inst.kind === 'scale') tabs.push(['builder', 'Builder']);
-  if (inst.kind === 'custom') tabs.push(['setup', 'Set up']);
+  if (playable) tabs.push(['playlists', 'Playlists', 'list-music']);
+  if (inst.kind === 'scale') tabs.push(['builder', 'Build', 'hammer']);
+  if (inst.kind === 'custom') tabs.push(['setup', 'Set up', 'wrench']);
   return tabs;
 }
 
-function ocHeader(inst, view) {
-  const tabs = ocTabs(inst);
+// App bar of an ocarina or flute, with its tabs (none in practice mode).
+function ocHeader(inst, view, { practice = false } = {}) {
   const shared = inst.id === SHARED_ID;
+  const tabs = practice ? '' : uiTabBar(ocTabs(inst).map(([id, label, ic]) => ({ id, label, icon: ic, action: 'oc-tab', data: { tab: id } })), view);
   return `
     ${uiAppBar({
       switcher: { name: inst.name, action: 'back-home', title: 'My instruments' },
       badge: shared ? uiBadge(inst.publicId) : '',
       actions: [tunerAppBtn(), shared ? '' : uiIconBtn('share-2', 'Share: code, link and QR code', { action: 'share-instrument' })],
+      tabs,
     })}
     ${shared ? `
       <div class="shared-bar">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
         <button class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
-      </div>` : ''}
-    ${tabs.length > 1 ? `
-      <div class="pills oc-tabs">
-        ${tabs.map(([id, name]) => `<button class="pill ${view === id ? 'active' : ''}" data-action="oc-tab" data-tab="${id}">${name}</button>`).join('')}
       </div>` : ''}`;
+}
+
+// Tabs of a handpan: Chords and Pan are the existing chords and editor views.
+function handpanTabs(current) {
+  return uiTabBar([
+    { id: 'chords', label: 'Chords', icon: 'music', action: 'go-chords' },
+    { id: 'editor', label: 'Pan', icon: 'circle-dot', action: 'back-editor' },
+    { id: 'playlists', label: 'Playlists', icon: 'list-music', action: 'hp-playlists' },
+  ], current);
+}
+
+// The Playlists tab: the user's playlists, with how many of each one's
+// chords belong to this instrument. A row opens the playlist; on a handpan
+// the play button opens it in Chords, on an ocarina it starts practice.
+function playlistsTabHtml(inst) {
+  if (state.playlists.length === 0) {
+    return uiEmpty({
+      icon: 'list-music', title: 'No playlists yet', body: 'Tap ♡ on any chord to start one.',
+      action: `<button class="btn btn-secondary" data-action="${inst ? 'oc-tab' : 'go-chords'}" data-tab="chords">Go to Chords</button>`,
+    });
+  }
+  const layoutId = !inst && state.layout ? (state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id) : null;
+  return `
+    <div class="list">
+      ${state.playlists.map(pl => {
+        const here = pl.chords.filter(c => (inst ? c.instrumentId === inst.id : !c.instrumentId && c.layoutId === layoutId)).length;
+        const trail = inst
+          ? (here ? `<button class="btn btn-primary btn-sm" data-action="oc-practice-start" data-id="${escHtml(pl.id)}">${icon('play')} Practice</button>` : '')
+          : (pl.chords.length ? uiIconBtn('play', 'Open in Chords', { action: 'open-playlist-chords', data: { id: pl.id } }) : '');
+        return uiRow({
+          lead: 'list-music', title: pl.name, chevron: true, action: 'open-playlist', data: { id: pl.id }, trail,
+          meta: `${here} here · ${pl.chords.length} in total`,
+        });
+      }).join('')}
+    </div>`;
+}
+
+function viewHandpanPlaylists() {
+  return `${handpanAppBar(handpanTabs('playlists'))}${playlistsTabHtml(null)}`;
+}
+
+function viewOcarinaPlaylists(inst) {
+  return `${ocHeader(inst, 'playlists')}<div class="instrument-view">${playlistsTabHtml(inst)}</div>`;
 }
 
 // State of the ocarina / flute views; reset when switching instrument.
@@ -805,7 +851,6 @@ function ocChordCard(inst, { key, chordId, title, sub, midis, rootPC, favId, can
 
 function viewOcarinaChords(inst) {
   const oc = state.oc;
-  if (oc.practice) return viewOcarinaPractice(inst);
   const uf = state.useFlats, us = state.useSolfege;
   const model = ocChordModel(inst);
   const playlists = state.playlists;
@@ -883,7 +928,7 @@ function viewOcarinaPractice(inst) {
   const pr = state.oc.practice;
   const pl = state.playlists.find(p => p.id === pr.playlistId);
   const steps = pl ? practiceSteps(inst, pl) : [];
-  if (steps.length === 0) { state.oc.practice = null; return viewOcarinaChords(inst); }
+  if (steps.length === 0) { state.oc.practice = null; return viewInstrument(); }
   const idx = Math.min(pr.idx, steps.length - 1);
   const cur = steps[idx];
   const next = steps[(idx + 1) % steps.length];
@@ -894,7 +939,7 @@ function viewOcarinaPractice(inst) {
   const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes };
   const moves = fingeringMoves(inst, cur.midi, next.midi);
   const nextEn = entries.find(c => c.id === next.entryId);
-  return `${ocHeader(inst, 'chords')}
+  return `${ocHeader(inst, state.oc.tab, { practice: true })}
     <div class="instrument-view">
       <div class="oc-practice-head">
         <div>
@@ -955,7 +1000,9 @@ function viewInstrument() {
   }
 
   const oc = state.oc;
+  if (oc.practice) return viewOcarinaPractice(inst);
   if (oc.tab === 'chords') return viewOcarinaChords(inst);
+  if (oc.tab === 'playlists') return viewOcarinaPlaylists(inst);
   if (!midis.includes(oc.selected)) { oc.selected = midis[0]; oc.previous = null; }
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const inScale = m => !pcs || pcs.has(((m % 12) + 12) % 12);
@@ -1583,7 +1630,7 @@ function openInstrument(id, { push = true } = {}) {
     state.view = 'instrument';
     if (inst.kind === 'scale' && inst.build && inst.build.stage !== 'done') state.oc.tab = 'builder';
     if (inst.kind === 'custom' && !inst.calibration) state.oc.tab = 'setup';
-    if (push) navPush(`#i/${id}`);
+    if (push) navPush(`#i/${id}/${state.oc.tab}`);
   }
   return true;
 }
@@ -1617,7 +1664,7 @@ function viewEditor() {
   const bottomFilled = layout.bottom.slots.filter(s => s.note).length;
 
   return `
-    ${handpanAppBar()}
+    ${handpanAppBar(handpanTabs('editor'))}
 
     <div class="editor-layout">
       <div>
@@ -1693,9 +1740,6 @@ function viewEditor() {
           </div>
         </div>
 
-        <button class="btn btn-primary" data-action="go-chords" style="width:100%">
-          Find Chords →
-        </button>
       </div>
     </div>
 
@@ -1845,10 +1889,9 @@ function viewChords() {
   }
 
   return `
-    ${handpanAppBar()}
+    ${handpanAppBar(handpanTabs('chords'))}
     <div class="toolbar">
       <div class="toolbar-btns">
-        <button class="btn btn-ghost btn-sm" data-action="back-editor">${icon('circle-dot')} Pan layout</button>
         <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
           title="Rotate the ring so two lowest notes face you instead of one">
           ${icon('rotate')} ${state.ringRotated ? 'Standard' : 'Rotate'}
@@ -2265,7 +2308,7 @@ function loadFromHash() {
   if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
   if (hash.startsWith('#i/')) {
     const [id, tab] = hash.slice(3).split('/');
-    if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'builder', 'setup'].includes(tab)) {
+    if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'playlists', 'builder', 'setup'].includes(tab)) {
       state.oc.tab = tab;
     }
     return;
@@ -2531,6 +2574,15 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const action = el.dataset.action;
+  if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
+
+  if (action === 'hp-playlists') {
+    stopAutoplay();
+    state.pendingSlot = null;
+    state.view = 'hp-playlists';
+    render();
+    return;
+  }
 
   // ── My instruments ────────────────────────────────────────────────────────
   if (action === 'open-instrument') {
@@ -2788,6 +2840,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'oc-practice-start') {
+    if (el.dataset.id) state.oc.playlistId = el.dataset.id;
     state.oc.practice = { playlistId: state.oc.playlistId, idx: 0 };
     playPracticeStep();
     render();

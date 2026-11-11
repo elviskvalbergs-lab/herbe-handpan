@@ -204,6 +204,51 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 .appbar-mid { display: flex; justify-content: center; min-width: 0; }
 .appbar-right { display: flex; align-items: center; }
 
+/* Tab bar (§5.8): bottom bar on phones and tablets, tabs in the app bar ≥1024px */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar);
+  display: flex; height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface-1); border-top: 1px solid var(--border);
+}
+.tab {
+  position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: flex-start; gap: 2px; padding-top: 12px;
+  background: none; border: 0; color: var(--text-3); cursor: pointer;
+  font: var(--fw-medium) var(--fs-12)/var(--lh-12) var(--font);
+}
+.tab .ico { width: 24px; height: 24px; }
+.tab-label { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) { .tab:hover { color: var(--text-2); } }
+.tab[aria-selected="true"] { color: var(--text-1); font-weight: var(--fw-semibold); }
+.tab[aria-selected="true"]::before {
+  content: ''; position: absolute; top: 3px; left: 50%; width: 24px; height: 3px; margin-left: -12px;
+  border-radius: var(--r-full); background: var(--accent);
+}
+.tab:focus-visible { outline-offset: -2px; }
+body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--space-4)); }
+@media (max-width: 599px) {
+  /* Keep the keyboard from pushing the bar up over the field being typed in. */
+  body:has(input:focus, select:focus, textarea:focus) .tabbar { display: none; }
+}
+@media (min-width: 1024px) {
+  .appbar-inner { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .appbar-right { justify-content: flex-end; }
+  .tabbar {
+    position: static; height: var(--appbar-h); padding: 0; background: none; border: 0;
+  }
+  .tab {
+    flex: none; flex-direction: row; align-items: center; justify-content: center;
+    padding: 0 var(--space-4); font-size: var(--fs-15); font-weight: var(--fw-semibold);
+  }
+  .tab .ico { display: none; }
+  .tab[aria-selected="true"]::before {
+    top: auto; bottom: -1px; left: var(--space-4); right: var(--space-4); width: auto; height: 2px;
+    margin-left: 0; border-radius: 0;
+  }
+  body.has-tabbar .main { padding-bottom: max(var(--space-6), env(safe-area-inset-bottom)); }
+}
+
 /* Toolbars of existing controls under the app bar */
 .toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
 .toolbar-btns { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -987,7 +1032,6 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 .hand-legend .hand-name { fill: var(--muted); font-size: 12px; text-anchor: middle; }
 
 /* Ocarina chords and practice */
-.oc-tabs { margin-bottom: var(--space-3); }
 .oc-chords { display: flex; flex-direction: column; gap: 8px; }
 .oc-chord { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
 .oc-chord.expanded { border-color: var(--primary); }
@@ -1023,6 +1067,10 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 .tuner-needle.ok { background: var(--chord-c2); }
 .tuner-needle.near { background: var(--chord-c1); }
 #app:has(.tuner-panel) .main { padding-bottom: 110px; }
+@media (max-width: 1023px) {
+  body.has-tabbar .tuner-panel { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 12px); }
+  body.has-tabbar #app:has(.tuner-panel) .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 110px); }
+}
 
 /* Builder */
 .b-stepper { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
