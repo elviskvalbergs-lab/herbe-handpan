@@ -3551,31 +3551,6 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (action === 'load-saved') {
-    const saved = state.savedLayouts.find(l => l.id === el.dataset.id);
-    if (!saved) return;
-    state.layout = saved.layout;
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = null;
-    state.shellMode = 'both';
-    state.chordFilter = { category: 'All', root: 'All' };
-    state.view = 'editor';
-    state.currentInstrumentId = handpanInstrumentId(saved.id);
-    touchInstrument(state.currentInstrumentId);
-    render();
-    return;
-  }
-
-  if (action === 'delete-saved') {
-    deleteLayout(el.dataset.id);
-    state.savedLayouts = getSavedLayouts();
-    refreshInstruments();
-    scheduleSave();
-    render();
-    return;
-  }
-
-  // ── Favorites ─────────────────────────────────────────────────────────────
   // ── Playlist picker ───────────────────────────────────────────────────────
   if (action === 'show-playlist-picker') {
     e.stopPropagation();
@@ -3824,20 +3799,6 @@ document.addEventListener('click', e => {
   // ── Pan rotation ──────────────────────────────────────────────────────────
   if (action === 'toggle-rotation') {
     state.ringRotated = !state.ringRotated;
-    savePrefs();
-    render();
-    return;
-  }
-
-  if (action === 'toggle-flats') {
-    state.useFlats = !state.useFlats;
-    savePrefs();
-    render();
-    return;
-  }
-
-  if (action === 'toggle-solfege') {
-    state.useSolfege = !state.useSolfege;
     savePrefs();
     render();
     return;
