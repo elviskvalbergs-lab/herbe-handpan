@@ -1067,7 +1067,8 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 /* Done */
 .b-done-title { display: flex; align-items: center; gap: var(--space-2); font: var(--fw-semibold) var(--fs-20)/var(--lh-20) var(--font); color: var(--success); }
 .b-done-title .ico { width: 24px; height: 24px; stroke-width: 3; }
-.b-table { width: 100%; max-width: 400px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.b-table { width: 100%; max-width: 400px; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+.b-table th:first-child { width: 40%; }
 .b-table caption { text-align: left; padding-bottom: var(--space-2); font: var(--fw-semibold) var(--fs-12)/var(--lh-12) var(--font); color: var(--text-3); text-transform: uppercase; letter-spacing: var(--tracking-overline); }
 .b-table th { text-align: left; font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-3); padding: var(--space-1) 0; border-bottom: 1px solid var(--border); }
 .b-table td { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); color: var(--text-1); }
