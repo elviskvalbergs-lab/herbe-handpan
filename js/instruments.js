@@ -137,8 +137,8 @@ export function createCustomOcarina({ name, holeCount }, now = nowIso()) {
 export function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
   if (inst.kind === 'traditional') {
-    const n = Object.keys(inst.chambers?.[0]?.fingerings ?? {}).length;
-    return `Key of ${inst.key} · ${n} notes`;
+    const notes = inst.chambers?.[0]?.notes ?? [];
+    return notes.length ? `${notes.length} notes, ${midiToNoteName(notes[0])} to ${midiToNoteName(notes[notes.length - 1])}` : '';
   }
   if (inst.kind === 'custom') {
     return inst.calibration ? `${inst.holeCount} holes` : `${inst.holeCount} holes · not set up yet`;

@@ -680,3 +680,4 @@ body {
 .share-qr { display: flex; justify-content: center; background: #fff; border-radius: var(--radius); padding: 8px; min-height: 60px; align-items: center; }
 .share-qr svg { width: 220px; height: 220px; }
 .share-url { width: 100%; margin-top: 10px; font-size: 12px; }
+.fingering .fg-overblow { fill: var(--chord-c1-stroke); font-size: 12px; font-weight: 600; }

@@ -8,16 +8,154 @@
 //
 //   {
 //     id, family: 'ocarina' | 'flute', name, source: [urls], notes: '…',
-//     holes: [{ id, finger, side: 'top' | 'bottom', sub? }],   // opening order
+//     holes: [{ id, finger, side: 'top' | 'bottom', sub? }],   // flutes: mouthpiece first
 //     keys: [{ id, name, lowest: 'D4' }],                       // lowest sounding note per key
 //     fingerings: [{ offset, states: ['c'|'o'|'h', …], alt?: true, overblow?: true }],
 //   }
+//
+// Charts with readings taken from images (High Spirits, STL) were read at
+// high resolution; their `notes` say so where something looked doubtful.
 //
 // Pure data and functions; unit tested in Node.
 
 import { noteToMidi } from './data.js';
 
-export const TRADITIONAL_CHARTS = [];
+// Row strings list one symbol per hole in the chart's `holes` order:
+// X covered, O open, H half-covered (½ in the sources).
+function rows(list) {
+  return list.map(([offset, row, extra = {}]) => ({
+    offset,
+    states: [...row.replace(/[\s|]/g, '')].map(ch => (ch === 'X' ? 'c' : ch === 'O' ? 'o' : 'h')),
+    ...extra,
+  }));
+}
+
+// Flutes list holes from the mouthpiece down; ocarinas by finger.
+const WHISTLE_HOLES = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'].map(f => ({ id: f, finger: f, side: 'top' }));
+// High Spirits doesn't name fingers; these are the usual upper/lower-hand ones.
+const NAF6_HOLES = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'].map(f => ({ id: f, finger: f, side: 'top' }));
+const NAF5_HOLES = ['L1', 'L2', 'R1', 'R2', 'R3'].map(f => ({ id: f, finger: f, side: 'top' }));
+
+// Octave choice where the source doesn't say which octave the flute sounds in.
+const octaves = (note, name) => [
+  { id: `${note}4`, name: `${name}, lowest note ${name}4` },
+  { id: `${note}3`, name: `${name}, lowest note ${name}3 (low flute)` },
+  { id: `${note}5`, name: `${name}, lowest note ${name}5 (high flute)` },
+].map(k => ({ ...k, lowest: k.id }));
+
+export const TRADITIONAL_CHARTS = [
+  {
+    id: 'tin-whistle-d',
+    family: 'flute',
+    name: 'Tin whistle in D',
+    source: [
+      'https://www.wfg.woodwind.org/tinwhistle/tw_bas_1.html',
+      'https://www.wfg.woodwind.org/tinwhistle/tw_bas_2.html',
+      'https://www.wfg.woodwind.org/tinwhistle/tw_bas_3.html',
+    ],
+    notes: 'Woodwind Fingering Guide basic chart (tin whistle chart credited to Eoin McAuley). Holes top to bottom: left index, middle, ring, right index, middle, ring. The second octave uses the same fingerings blown harder.',
+    holes: WHISTLE_HOLES,
+    keys: [{ id: 'D', name: 'D (lowest note D4)', lowest: 'D4' }],
+    fingerings: rows([
+      [0, 'XXX|XXX'], [1, 'XXX|XXH'], [2, 'XXX|XXO'], [3, 'XXX|XHO'], [4, 'XXX|XOO'],
+      [5, 'XXX|OOO'], [6, 'XXH|OOO'], [7, 'XXO|OOO'], [8, 'XHO|OOO'], [9, 'XOO|OOO'],
+      [10, 'HOO|OOO'], [10, 'OXX|OOO', { alt: true }], [11, 'OOO|OOO'], [11, 'OOO|OOX', { alt: true }],
+      [12, 'OXX|XXX', { overblow: true }], [13, 'XXX|XXH', { overblow: true }], [14, 'XXX|XXO', { overblow: true }],
+      [15, 'XXX|XHO', { overblow: true }], [16, 'XXX|XOO', { overblow: true }], [17, 'XXX|OOO', { overblow: true }],
+      [18, 'XXH|OOO', { overblow: true }], [19, 'XXO|OOO', { overblow: true }], [20, 'XHO|OOO', { overblow: true }],
+      [21, 'XOO|OOO', { overblow: true }], [22, 'HOO|OOO', { overblow: true }], [23, 'OOO|OOO', { overblow: true }],
+      [23, 'OOO|OOX', { alt: true, overblow: true }], [24, 'OXX|XXX', { overblow: true }],
+    ]),
+  },
+  {
+    id: 'naf6-a',
+    family: 'flute',
+    name: 'Native American flute, 6 holes, key of A',
+    source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
+    notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for A (p.16). Holes from the mouthpiece down. The booklet does not say which octave; pick the one your flute plays and check with the tuner.',
+    holes: NAF6_HOLES,
+    keys: octaves('A', 'A'),
+    fingerings: rows([
+      [0, 'XXXXXX'], [2, 'XXXXXH'], [3, 'XXXXXO'], [4, 'XXXXOX'], [5, 'XXXXOO'], [6, 'XXXOXO'],
+      [7, 'XXXOOO'], [8, 'XXOXOO'], [9, 'XXOOOO'], [10, 'XOXOOO'], [11, 'XOOOOO'], [12, 'OOXOOO'],
+      [13, 'OOOOOO'], [14, 'OXXXOX'], [15, 'OOXXXO'],
+    ]),
+  },
+  {
+    id: 'naf5-a',
+    family: 'flute',
+    name: 'Native American flute, 5 holes, key of A',
+    source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
+    notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for A (p.16), 5-hole column. Holes from the mouthpiece down. Octave not stated; check with the tuner.',
+    holes: NAF5_HOLES,
+    keys: octaves('A', 'A'),
+    fingerings: rows([
+      [0, 'XXXXX'], [2, 'XXXXH'], [3, 'XXXXO'], [4, 'XXXOX'], [5, 'XXXOO'], [6, 'XXOXO'],
+      [7, 'XXOOO'], [8, 'OXXOO'], [9, 'XOXOO'], [10, 'XOOOO'], [11, 'OOXOO'], [12, 'OOOOO'],
+      [13, 'OXXXX'], [14, 'OOXXX'], [15, 'OOXXO'],
+    ]),
+  },
+  {
+    id: 'naf6-fs',
+    family: 'flute',
+    name: 'Native American flute, 6 holes, key of F#',
+    source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
+    notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for F# (p.22). The booklet draws the high G# the same as the high A, which looks like a misprint, so that G# is left out. Octave not stated; check with the tuner.',
+    holes: NAF6_HOLES,
+    keys: octaves('F#', 'F#'),
+    fingerings: rows([
+      [0, 'XXXXXX'], [2, 'XXXXXH'], [3, 'XXXXXO'], [4, 'XXXXOX'], [5, 'XXXXOO'], [6, 'XXXOXO'],
+      [7, 'XXXOOO'], [8, 'XXOXOO'], [9, 'XXOOOO'], [10, 'XOXOOO'], [11, 'XOOOOO'], [12, 'OOXOOO'],
+      [13, 'OOOOOO'], [15, 'OOXXXO'],
+    ]),
+  },
+  {
+    id: 'naf5-fs',
+    family: 'flute',
+    name: 'Native American flute, 5 holes, key of F#',
+    source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
+    notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for F# (p.22), 5-hole column. Octave not stated; check with the tuner.',
+    holes: NAF5_HOLES,
+    keys: octaves('F#', 'F#'),
+    fingerings: rows([
+      [0, 'XXXXX'], [2, 'XXXXH'], [3, 'XXXXO'], [4, 'XXXOX'], [5, 'XXXOO'], [6, 'XXOXO'],
+      [7, 'XXOOO'], [8, 'XOXXO'], [9, 'XOXOO'], [10, 'XOOOO'], [11, 'OOXOO'], [12, 'OOOOO'],
+      [13, 'OXXXX'], [14, 'OXXOX'], [15, 'OXXXO'],
+    ]),
+  },
+  {
+    id: 'ocarina-12-stl-c',
+    family: 'ocarina',
+    name: '12-hole ocarina in C (STL chart, Asian top notes)',
+    source: [
+      'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/12tenorC.pdf',
+      'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/12_Hole_Ocarina_Instructions.pdf',
+      'https://pureocarinas.com/ocarina-fingering-system',
+    ],
+    notes: 'STL Ocarina "A Complete Fingering Chart for 12 Hole Tenor and Soprano Ocarinas", read from the scanned chart; written A3–F5. Sub-holes sit beside the middle-finger holes (STL guide, Pure Ocarinas). Top notes follow the Asian order (left thumb, then right thumb); on an Italian-system ocarina the last two notes swap which hole is lifted last. Thumb holes identified by position. Tenor sounds an octave above the written notes.',
+    holes: [
+      { id: 'L1', finger: 'L1', side: 'top' }, { id: 'L2', finger: 'L2', side: 'top' },
+      { id: 'L3', finger: 'L3', side: 'top' }, { id: 'L4', finger: 'L4', side: 'top' },
+      { id: 'L2s', finger: 'L2', side: 'top', sub: true },
+      { id: 'R1', finger: 'R1', side: 'top' }, { id: 'R2', finger: 'R2', side: 'top' },
+      { id: 'R3', finger: 'R3', side: 'top' }, { id: 'R4', finger: 'R4', side: 'top' },
+      { id: 'R2s', finger: 'R2', side: 'top', sub: true },
+      { id: 'LT', finger: 'LT', side: 'bottom' }, { id: 'RT', finger: 'RT', side: 'bottom' },
+    ],
+    keys: [
+      { id: 'C-A3', name: 'C, lowest note A3 (as written)', lowest: 'A3' },
+      { id: 'C-A4', name: 'C, lowest note A4 (an octave up, e.g. tenor)', lowest: 'A4' },
+    ],
+    fingerings: rows([
+      [0, 'XXXXX|XXXXX|XX'], [1, 'XXXXX|XXXXO|XX'], [2, 'XXXXO|XXXXX|XX'], [3, 'XXXXO|XXXXO|XX'],
+      [4, 'XXXXO|XXXOX|XX'], [5, 'XXXXO|XXXOO|XX'], [6, 'XXXXO|XXOOX|XX'], [7, 'XXXXO|XXOOO|XX'],
+      [8, 'XXXXO|XOOOO|XX'], [9, 'XXXXO|OOXOO|XX'], [10, 'XXXXO|OOOOO|XX'], [11, 'XXOXO|OOXOO|XX'],
+      [12, 'XXOXO|OOOOO|XX'], [13, 'XOOXO|OOXOO|XX'], [14, 'XOOXO|OOOOO|XX'], [15, 'OOOXO|OOOOO|XX'],
+      [16, 'OOOXO|OOXOO|OX'], [17, 'OOOXO|OOOOO|OX'], [18, 'OOOXO|OOXOO|OO'], [19, 'OOOXO|OOOOO|OO'],
+      [20, 'OOOOO|OOOOO|OO'],
+    ]),
+  },
+];
 
 export function getChart(id) {
   return TRADITIONAL_CHARTS.find(c => c.id === id) ?? null;
@@ -37,10 +175,13 @@ export function instrumentFromChart(chartId, keyId, { name, now = new Date().toI
   const base = noteToMidi(key.lowest);
   const fingerings = {};
   const alternates = {};
+  const overblow = [];
   for (const f of chart.fingerings) {
     const midi = base + f.offset;
-    if (!fingerings[midi] && !f.alt) fingerings[midi] = f.states;
-    else (alternates[midi] ??= []).push(f.states);
+    if (!fingerings[midi] && !f.alt) {
+      fingerings[midi] = f.states;
+      if (f.overblow) overblow.push(midi);
+    } else (alternates[midi] ??= []).push(f.states);
   }
   const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
   return {
@@ -49,8 +190,8 @@ export function instrumentFromChart(chartId, keyId, { name, now = new Date().toI
     kind: 'traditional',
     type: chart.id,
     key: key.id,
-    name: name || `${chart.name}, ${key.name}`,
-    chambers: [{ notes, holes: chart.holes.map(h => ({ ...h, x: null, y: null, sizeMm: null })), fingerings, alternates }],
+    name: name || (chart.keys.length > 1 ? `${chart.name} (${key.lowest})` : chart.name),
+    chambers: [{ notes, holes: chart.holes.map(h => ({ ...h, x: null, y: null, sizeMm: null })), fingerings, alternates, overblow }],
     createdAt: now,
     updatedAt: now,
     lastPlayedAt: now,

@@ -35,11 +35,16 @@ export function fingeringFor(inst, midi) {
   return null;
 }
 
-// Per finger, whether it is on a hole ('c' or 'h' anywhere under it).
+// What a hole is called in instructions: its finger, or "R2 sub-hole" for
+// the small extra hole a finger covers by sliding forward.
+function fgHoleName(h) { return h.sub ? `${h.finger} sub-hole` : h.finger; }
+
+// Per finger (sub-holes separately), whether it is on a hole ('c' or 'h').
 function fgFingersDown(chamber, states) {
   const down = {};
   chamber.holes.forEach((h, i) => {
-    down[h.finger] = (down[h.finger] ?? false) || states[i] !== 'o';
+    const k = fgHoleName(h);
+    down[k] = (down[k] ?? false) || states[i] !== 'o';
   });
   return down;
 }
@@ -77,16 +82,18 @@ export function describeFingering(inst, midi, noteLabel = midiToNoteName(midi)) 
   if (!f) return `${noteLabel}: not on this instrument`;
   const open = [], half = [];
   f.chamber.holes.forEach((h, i) => {
-    if (f.states[i] === 'o' && !open.includes(h.finger)) open.push(h.finger);
-    if (f.states[i] === 'h' && !half.includes(h.finger)) half.push(h.finger);
+    const k = fgHoleName(h);
+    if (f.states[i] === 'o' && !open.includes(k)) open.push(k);
+    if (f.states[i] === 'h' && !half.includes(k)) half.push(k);
   });
   const chamber = (inst.chambers.length > 1) ? ` (chamber ${f.chamberIndex + 1})` : '';
   const parts = [];
   if (open.length) parts.push(`${fgJoinFingers(open)} open`);
   if (half.length) parts.push(`${fgJoinFingers(half)} half-covered`);
-  if (!parts.length) return `${noteLabel}${chamber}: all holes closed`;
-  const rest = (open.length + half.length) < new Set(f.chamber.holes.map(h => h.finger)).size ? ', all others closed' : '';
-  return `${noteLabel}${chamber}: ${parts.join(', ')}${rest}`;
+  const blow = f.chamber.overblow?.includes(midi) ? ', blow harder' : '';
+  if (!parts.length) return `${noteLabel}${chamber}: all holes closed${blow}`;
+  const rest = (open.length + half.length) < new Set(f.chamber.holes.map(fgHoleName)).size ? ', all others closed' : '';
+  return `${noteLabel}${chamber}: ${parts.join(', ')}${rest}${blow}`;
 }
 
 // Hole sizes relative to the largest hole of the chamber (1 = largest).
@@ -181,16 +188,17 @@ const FG_PENDANT = {
 };
 const FG_THUMB_X = { LT: 100, RT: 200 };
 // Flutes: a tube seen from above, mouthpiece on the left, holes evenly
-// along it with the first-opened (lowest) hole nearest the foot.
+// along it in the order the chart lists them (mouthpiece first), with a
+// gap between the two hands.
 const FG_TUBE = { bodyH: 70, pos: {} };
 
 function fgTubePositions(holes, y0) {
   const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
   const xs = {};
   top.forEach((x, k) => {
-    // Opening order runs foot → mouthpiece: first hole at the right.
     const t = top.length === 1 ? 0.5 : k / (top.length - 1);
-    xs[x.i] = [258 - t * 150 - (k >= Math.ceil(top.length / 2) ? 14 : 0), y0 + 40];
+    const handGap = x.h.finger.startsWith('R') ? 14 : 0;
+    xs[x.i] = [96 + t * 150 + handGap, y0 + 40];
   });
   return xs;
 }
@@ -284,7 +292,8 @@ export function renderFingering(inst, midi, opts = {}) {
     // Holes
     const seen = {};
     ch.holes.forEach((h, i) => {
-      const k = seen[h.finger] = (seen[h.finger] ?? -1) + 1;
+      // k numbers the holes under one finger; a sub-hole gets its own arrow.
+      const k = h.sub ? 0 : (seen[h.finger] = (seen[h.finger] ?? -1) + 1);
       const split = ch.holes.filter(x => x.finger === h.finger).length > 1;
       let x, y;
       if (h.side === 'bottom') {
@@ -300,11 +309,12 @@ export function renderFingering(inst, midi, opts = {}) {
       const count = ch.holes.filter(x => x.finger === h.finger).length;
       if (split) y += (k - (count - 1) / 2) * (16 / Math.max(1, count - 1));
       const r = Math.max(4, (split ? 18 / count : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.55 : 1));
-      const changed = moves && (moves.lift.includes(h.finger) || moves.cover.includes(h.finger)) && f;
+      const hk = fgHoleName(h);
+      const changed = moves && (moves.lift.includes(hk) || moves.cover.includes(hk)) && f;
       const cls = `${changed ? 'fg-changed' : ''}`;
       g.push(fgHoleShape(x, y, r, states[i], cls));
       if (changed && size !== 'mini' && k === 0) {
-        g.push(fgArrow(x, y, r, moves.lift.includes(h.finger) ? 'up' : 'down'));
+        g.push(fgArrow(x, y, r, moves.lift.includes(hk) ? 'up' : 'down'));
       }
       if (showFingers && size !== 'mini' && k === 0) {
         g.push(`<text class="fg-finger ${states[i] === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${h.finger}</text>`);
@@ -317,7 +327,8 @@ export function renderFingering(inst, midi, opts = {}) {
   });
 
   const noteY = pad + chambers.length * chamberH + (size === 'mini' ? 14 : 16);
-  parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}</text>`);
+  const overblow = main && main.chamber.overblow?.includes(midi);
+  parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
 
   return `<svg class="fingering fingering-${size}" viewBox="0 0 ${FG_W} ${H}" role="img"
     aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${parts.join('')}</svg>`;
