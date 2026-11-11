@@ -500,27 +500,38 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .pill:hover { border-color: var(--primary); color: var(--primary); }
 .pill.active { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
 
-/* Layout editor */
+/* Layout editor: the handpan Pan tab (§6.8) */
 .editor-layout {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 24px;
-  align-items: start;
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6); align-items: start;
 }
 @media (max-width: 720px) {
   body { min-height: 0; }
   .main { padding-top: var(--space-3); }
-  .editor-layout { grid-template-columns: 1fr; }
-  .editor-sidebar { gap: 7px; }
-  .editor-shells { gap: 7px; }
+  .editor-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
   .editor-section { padding: 10px; }
   .editor-section-title { margin-bottom: 7px; }
 }
+.editor-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ed-pan svg { width: min(100%, 55dvh); max-width: none; height: auto; }
+.ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
+.editor-sidebar { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ed-card { display: flex; flex-direction: column; gap: var(--space-4); }
+.ed-shell .overline { margin-bottom: var(--space-2); }
+.ed-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.ed-actions .btn { flex: 1 1 0; }
+.ed-status { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--success); }
+.ed-status .ico { width: 16px; height: 16px; }
+@media (min-width: 721px) { .editor-sidebar { position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); } }
 
-.editor-sidebar { display: flex; flex-direction: column; gap: 10px; }
-.editor-secondary-actions { display: flex; gap: 6px; }
-.editor-shells { display: flex; gap: 10px; }
-.editor-shells .editor-section { flex: 1; min-width: 0; }
+/* Banner under the app bar: an unsaved handpan (§5.9) */
+.banner {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  min-height: 48px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); margin-bottom: var(--space-4);
+  background: var(--accent-soft); border-radius: var(--r-md);
+  font: var(--fw-medium) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-1);
+}
+.banner .btn { flex-shrink: 0; }
+
 .editor-section {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 14px;
@@ -529,16 +540,10 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   font-size: 12px; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px;
 }
-.capacity-control { display: flex; align-items: center; gap: 8px; }
-.capacity-val { font-size: 18px; font-weight: 700; color: var(--heading); min-width: 24px; text-align: center; }
 
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
 .pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
-.pan-col { display: flex; align-items: flex-start; justify-content: flex-start; }
-/* In the chord explorer, let the pan fill the full column width (capped by viewport height) */
-.pan-col .pan-wrap { width: 100%; }
-.pan-col .pan-wrap svg { max-width: min(100%, calc(100dvh - 80px)); }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
@@ -590,74 +595,6 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 }
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
 
-/* Chord explorer — 3-column landscape layout */
-.explorer-layout {
-  display: grid;
-  grid-template-columns: 250px minmax(200px, 280px) 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-/* Medium: 2-column — chord-list left, chord-panel+pan stacked right */
-@media (max-width: 900px) {
-  .explorer-layout {
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: auto auto;
-    gap: 14px;
-  }
-  .explorer-layout .chord-list  { grid-column: 1; grid-row: 1 / 3; }
-  .explorer-layout .chord-panel { grid-column: 2; grid-row: 1; }
-  .explorer-layout .pan-col     { grid-column: 2; grid-row: 2; }
-}
-
-/* Mobile: vertical stack — pan, chord-list, chord-panel */
-@media (max-width: 620px) {
-  .explorer-layout {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .explorer-layout .chord-list  { order: 2; max-height: 45dvh; }
-  .explorer-layout .pan-col     { order: 1; }
-  .explorer-layout .chord-panel { order: 3; }
-  .pan-wrap svg { max-width: 100%; }
-}
-
-/* Landscape (short viewport): force 3-column so pan isn't stacked under chord-panel */
-@media (max-height: 500px) and (min-width: 620px) {
-  .main { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
-  .explorer-layout {
-    display: grid !important;
-    grid-template-columns: 180px minmax(150px, 190px) 1fr !important;
-    grid-template-rows: auto !important;
-    gap: 8px !important;
-    align-items: start;
-  }
-  .explorer-layout .chord-list  { grid-column: 1 !important; grid-row: 1 !important; max-height: calc(100dvh - 52px); }
-  .explorer-layout .chord-panel { grid-column: 2 !important; grid-row: 1 !important; }
-  .explorer-layout .pan-col     { grid-column: 3 !important; grid-row: 1 !important; }
-  .pan-col .pan-wrap svg { max-width: min(100%, calc(100dvh - 52px)) !important; }
-  .chord-list-header { padding: 5px 8px !important; }
-  .chord-list .pills { gap: 2px !important; margin-bottom: 2px !important; }
-  .chord-list .pill { padding: 2px 5px !important; font-size: 12px !important; }
-  .chord-filter-dropdowns { gap: 3px !important; margin-bottom: 3px !important; }
-  .chord-filter-dropdowns .select-input { font-size: 12px !important; padding: 3px 4px !important; }
-  .count-pill { padding: 2px 5px !important; font-size: 12px !important; }
-  .chord-item { padding: 7px 10px !important; }
-  .chord-item-name { font-size: 12px !important; }
-}
-
-.chord-list {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: calc(100dvh - 120px); overflow-y: auto; min-height: 0;
-}
-.chord-list-header {
-  padding: 8px 10px; border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; background: var(--card); z-index: 1;
-}
-.discover-panel { padding: 14px; }
-.discover-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
-.discover-selected { margin-bottom: 10px; }
 .chord-item {
   padding: 9px 14px; display: flex; justify-content: space-between; align-items: center;
   cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s;
@@ -672,35 +609,12 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .chord-item-name { font-weight: 600; color: var(--heading); font-size: 13px; }
 .chord-item-type { font-size: 12px; color: var(--muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.05em; }
 .chord-count {
-  font-size: 12px; background: var(--surface); color: var(--muted);
-  padding: 2px 7px; border-radius: 2px; flex-shrink: 0;
+  min-width: 28px; padding: 0 4px; text-align: center; flex-shrink: 0;
+  font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-3);
 }
 
-.chord-panel {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.chord-panel-header {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px;
-}
 .chord-panel-title { font-size: 18px; font-weight: 700; color: var(--heading); margin-bottom: 2px; letter-spacing: -0.02em; }
 .chord-panel-sub { font-size: 12px; color: var(--muted); }
-.chord-play-btns { display: flex; gap: 6px; flex-shrink: 0; }
-.chord-panel-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.chord-actions { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-
-.related-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
-.related-title {
-  font-size: 12px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 7px;
-}
-.related-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.related-chip {
-  padding: 3px 9px; border-radius: var(--radius); font-size: 12px; font-weight: 600;
-  background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  cursor: pointer; transition: all 0.1s;
-}
-.related-chip:hover { border-color: var(--primary); color: var(--primary); }
 
 /* Note picker sheet */
 .note-octave-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: var(--space-2); align-items: start; margin-bottom: var(--space-3); }
@@ -825,21 +739,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   text-transform: uppercase; letter-spacing: var(--tracking-overline);
 }
 
-/* Filter dropdowns row in chord explorer */
-.chord-filter-dropdowns {
-  display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;
-}
-.chord-filter-dropdowns .select-input { flex: 1; min-width: 0; font-size: 12px; padding: 4px 6px; }
-.autoplay-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-.autoplay-bar .select-sm { flex: 0 0 auto; width: 56px; padding: 4px 6px; font-size: 12px; }
-.autoplay-bar .hint { flex: 1; text-align: right; }
-.count-pills { display: flex; gap: 3px; flex-shrink: 0; }
-.count-pill { padding: 3px 6px; font-size: 12px; }
-/* Compact pills inside chord list header */
-.chord-list .pill { padding: 3px 7px; font-size: 12px; }
-.chord-list .pills { gap: 3px; margin-bottom: 3px; }
-.chord-list .hint { line-height: 1.6; }
-
 /* Playlist view */
 .playlist-view { padding: 0 0 40px; }
 .playlist-header {
@@ -879,8 +778,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 
 /* Heart button in chord list */
 .chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
-.row-save { padding: 3px 6px; }
-.row-save .ico { width: 13px; height: 13px; }
 .fav-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
@@ -891,8 +788,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
 .fav-btn.active .ico { fill: currentColor; }
-.panel-fav { padding: 2px 6px; opacity: 0.45; align-self: center; }
-.panel-fav .ico { width: 18px; height: 18px; }
 
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
@@ -1208,4 +1103,118 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .actionbar { position: static; padding: var(--space-4) 0 0; margin-top: var(--space-2); }
   .actionbar-help { position: static; order: 2; padding: 0; background: none; }
   body.has-actionbar .main { padding-bottom: var(--space-8); }
+}
+
+/* Handpan Chords (§6.7). Phone: the pan and the selected-chord bar stick
+   under the app bar while the page (the chord list) scrolls under them.
+   ≥600px: list column at the left with its own scroll, pan and chord card
+   at the right. */
+.hp-chords { display: flex; flex-direction: column; gap: var(--space-4); }
+.hp-stage {
+  position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top)); z-index: 5;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--gutter)) 0;
+  padding: var(--space-3) var(--gutter); background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.hp-pan svg { width: min(100%, calc(100vw - 2 * var(--gutter)), 36dvh); max-width: none; height: auto; }
+.hp-card {
+  display: flex; flex-direction: column; gap: var(--space-3); min-height: 64px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.hp-card.is-empty { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.hp-card-hint { color: var(--text-2); }
+.hp-card-head { display: flex; align-items: center; gap: var(--space-2); min-height: 46px; }
+.hp-card-text { flex: 1; min-width: 0; }
+.hp-card-title {
+  font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hp-card-meta {
+  font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hp-card-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.hp-play { padding: 0 var(--space-3); }
+.hp-related .overline { margin: var(--space-3) 0 var(--space-2); }
+.hp-related .overline:first-child { margin-top: 0; }
+.sheet .hp-related { padding: var(--space-4) 0 var(--space-2); }
+.hp-heart.is-on { color: var(--accent-text); }
+.hp-heart.is-on .ico { fill: currentColor; }
+.hp-list { min-width: 0; }
+.hp-list-head { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-3); }
+.hp-filter-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.hp-filter-btn { flex-shrink: 0; padding: 0 var(--space-3); }
+.hp-roots { flex: 1; min-width: 0; margin-left: 0; padding-left: 0; }
+.hp-count, .hp-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.hp-hint { color: var(--text-2); }
+.hp-identify { display: flex; flex-direction: column; gap: var(--space-3); }
+.hp-identify-notes { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.hp-note-chip { cursor: default; height: 36px; }
+.chord-row .row-trail { gap: 0; }
+.hp-now {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.hp-now-top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.hp-now-top > .ico { width: 20px; height: 20px; color: var(--text-3); }
+.hp-now-name { flex: 1; min-width: 0; font-weight: var(--fw-semibold); color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hp-now-pos { font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-2); }
+.hp-now-ctl { display: flex; gap: var(--space-2); }
+.hp-now-ctl .btn { flex: 1; }
+.hp-secs { width: 96px; flex-shrink: 0; }
+.hp-sheet-form { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-1) 0 var(--space-4); }
+.hp-sheet-form .list .row { min-height: 52px; }
+@media (max-width: 599px) {
+  .hp-wide { display: none !important; }
+  .hp-chords.is-identify .hp-stage { padding-bottom: var(--space-3); }
+}
+@media (min-width: 600px) {
+  .hp-narrow { display: none !important; }
+  .hp-chords {
+    --hp-top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4));
+    --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - env(safe-area-inset-bottom) - var(--space-4));
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-4); align-items: start;
+  }
+  body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - var(--tuner-h) - env(safe-area-inset-bottom) - var(--space-4)); }
+  .hp-list {
+    grid-column: 1; grid-row: 1; position: sticky; top: var(--hp-top);
+    max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .hp-list-head { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: var(--space-3); margin-bottom: 0; }
+  .hp-filter-row { flex-direction: column; align-items: stretch; }
+  .hp-filter-btn { align-self: flex-start; }
+  .hp-roots { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .hp-stage {
+    grid-column: 2; grid-row: 1; top: var(--hp-top); z-index: 1;
+    margin: 0; padding: 0; border: 0; background: none; gap: var(--space-4);
+  }
+  .hp-pan svg { width: min(100%, 60dvh); }
+  .hp-card { padding: var(--space-4); }
+  .hp-card-head { flex-wrap: wrap; }
+  .hp-card-title { font-size: var(--fs-20); line-height: var(--lh-20); }
+}
+@media (min-width: 1024px) {
+  .hp-chords {
+    --hp-list-h: calc(100dvh - var(--hp-top) - var(--space-4));
+    grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-6);
+  }
+  body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tuner-h) - var(--space-8)); }
+  .hp-pan svg { width: min(100%, 64dvh); }
+  .hp-card { padding: var(--space-5); }
+}
+/* Short landscape (phone on its side): list | chord card | pan */
+@media (max-height: 500px) and (min-width: 620px) {
+  .main { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 6px); }
+  .hp-chords { --hp-top: calc(var(--appbar-h) + env(safe-area-inset-top) + 6px); grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-2); }
+  .hp-stage { display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); gap: var(--space-2); align-items: start; }
+  .hp-stage .hp-card { grid-column: 1; grid-row: 1; padding: var(--space-3); }
+  .hp-stage .hp-pan { grid-column: 2; grid-row: 1; }
+  .hp-pan svg { width: min(100%, var(--hp-list-h)); }
+  .hp-card-title { font-size: var(--fs-17); line-height: var(--lh-17); }
+}
+@media (max-width: 599px) {
+  /* Keyboard focus and in-page scrolling keep list rows clear of the sticky stage and the tab bar. */
+  html:has(.hp-stage) { scroll-padding-top: calc(var(--appbar-h) + 36dvh + 120px); scroll-padding-bottom: calc(var(--tabbar-h) + 16px); }
 }

@@ -85,6 +85,8 @@ const state = {
   discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
   sourcePlaylistId: null,  // playlist the current chord was opened from, if any
   sourceEntryId: null,     // that entry's id at load time — lets "update" find it after a swap
+  hpFilters: false,        // the handpan Chords Filters sheet is open
+  hpMore: false,           // the selected chord's More sheet is open (phones)
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ function goHome() {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
     sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
     wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
-    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null,
+    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false,
   });
   refreshInstruments();
   navPush(location.pathname);
@@ -2050,6 +2052,28 @@ function openStartView() {
 }
 
 // ── View 2: Layout Editor ────────────────────────────────────────────────────
+// Handpan Pan tab (§6.8): shells, the pan, capacities, name, Customize and Save.
+
+// Is the layout on screen saved, unchanged, in My instruments?
+function hpLayoutSaved() {
+  const layout = state.layout;
+  const savedId = layout.isCustom ? layout.savedId : layout.id;
+  // Read fresh: a layout opened from a playlist can share its object with state.savedLayouts.
+  const saved = savedId && getSavedLayouts().find(l => l.id === savedId);
+  return !!saved && JSON.stringify(saved.layout) === JSON.stringify(layout);
+}
+
+// Customize (a scale's layout) and Save; once saved and unchanged, a status.
+function edActionsHtml() {
+  const saved = hpLayoutSaved();
+  return `
+    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('pencil')} Customize</button>` : ''}
+    ${saved
+      ? `<span class="ed-status" role="status">${icon('check')} Saved</span>
+         <button type="button" class="btn btn-primary" data-action="save-layout" disabled>Saved</button>`
+      : `<button type="button" class="btn btn-primary" data-action="save-layout">${icon('save')} Save</button>`}`;
+}
+
 function viewEditor() {
   const layout = state.layout;
   const isCustom = layout.isCustom;
@@ -2067,75 +2091,45 @@ function viewEditor() {
 
   return `
     ${handpanAppBar(handpanTabs('editor'))}
+    ${state.currentInstrumentId ? '' : `
+      <div class="banner">
+        <span>Not saved · try it, then keep it in My instruments</span>
+        <button type="button" class="btn btn-primary btn-sm" data-action="save-layout">Save</button>
+      </div>`}
 
     <div class="editor-layout">
-      <div>
-        <div class="pills" style="margin-bottom:14px">
-          ${['both', 'top', 'bottom'].map(m => `
-            <button class="pill ${state.shellMode === m ? 'active' : ''}"
-              data-action="shell-mode" data-mode="${m}">
-              ${m === 'both' ? 'Both Shells' : m === 'top' ? 'Top Shell' : 'Bottom Shell'}
-            </button>
-          `).join('')}
-        </div>
-        <div class="pan-wrap">
+      <div class="editor-main">
+        ${uiSeg([{ value: 'both', label: 'Both shells' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }],
+          state.shellMode, { action: 'shell-mode', key: 'mode', label: 'Shells shown' })}
+        <div class="pan-wrap ed-pan">
           ${panRotateBtn()}${panSvg}
         </div>
-        ${isCustom ? `
-          <p class="hint" style="text-align:center;margin-top:8px">
-            Click a note to remove it · Click an empty slot (+) to add a note
-          </p>
-        ` : ''}
+        ${isCustom ? `<p class="ed-hint">Tap a note to remove it · tap + to add one</p>` : ''}
       </div>
 
       <div class="editor-sidebar">
-        ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
-        <div class="editor-secondary-actions">
-          ${!isCustom ? `
-            <button class="btn btn-secondary btn-sm" data-action="clone-layout" style="flex:1">
-              Clone &amp; Customize
-            </button>
-          ` : ''}
-          ${(() => {
-            const savedId = isCustom ? layout.savedId : layout.id;
-            const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
-            return `<button class="btn btn-secondary btn-sm" data-action="save-layout" style="flex:1">
-              ${isSaved ? icon('check') + ' Saved' : icon('save') + ' Save'}
-            </button>`;
-          })()}
-        </div>
-
-        <div class="editor-shells">
-          <div class="editor-section">
-            <div class="editor-section-title">Top shell</div>
-            <div class="capacity-control">
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
-                ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
-              <span class="capacity-val">${layout.top.capacity}</span>
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
-            </div>
-            <div class="hint" style="margin-top:6px">
-              ${topFilled + 1} notes (incl. ding) · ${topEmpty} empty
-            </div>
+        <div class="card ed-card">
+          ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
+          <div class="ed-shell">
+            <div class="overline">Top shell</div>
+            ${uiStepper({
+              value: layout.top.capacity, label: 'Top shell', action: 'adjust-capacity', data: { shell: 'top' },
+              min: topEmpty === 0 && layout.top.slots.length > 0, max: layout.top.capacity >= 12,
+              help: `${topFilled + 1} notes incl. ding · ${topEmpty} empty`,
+            })}
           </div>
-
-          <div class="editor-section">
-            <div class="editor-section-title">Bottom shell</div>
-            <div class="capacity-control">
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
-                ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
-              <span class="capacity-val">${layout.bottom.capacity}</span>
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
-            </div>
-            <div class="hint" style="margin-top:6px">
-              ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
-            </div>
+          <div class="ed-shell">
+            <div class="overline">Bottom shell</div>
+            ${uiStepper({
+              value: layout.bottom.capacity, label: 'Bottom shell', action: 'adjust-capacity', data: { shell: 'bottom' },
+              min: layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0, max: layout.bottom.capacity >= 12,
+              help: `${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty`,
+            })}
           </div>
         </div>
-
+        <div class="ed-actions">${edActionsHtml()}</div>
       </div>
     </div>
-
   `;
 }
 
@@ -2170,11 +2164,15 @@ function renderNotePicker() {
 }
 
 // ── View 3: Chord Explorer ───────────────────────────────────────────────────
-function viewChords() {
-  const { chords, chordFilter, selectedChord, layout } = state;
-  const uf = state.useFlats;
-  const us = state.useSolfege;
+// Handpan Chords tab (§6.7). Phone: the pan and the selected-chord bar stay
+// on screen (sticky) while the list scrolls under them. ≥600px: the list is
+// a column of its own at the left, the pan and a full chord card at the right.
 
+// The chords shown under the current filters, in display order: the
+// playlist's order while a playlist filter is on, otherwise by root, then
+// the bigger chords first.
+function hpFilteredChords() {
+  const { chords, chordFilter, layout } = state;
   // Root options: NOTE_NAMES[i] is at PC i — filter by which PCs have chords.
   const ROOT_ORDER = NOTE_NAMES;
   const usedRootPCs = new Set(chords.map(c => notePC(c.rootNote)));
@@ -2219,16 +2217,59 @@ function viewChords() {
       return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
     });
   }
+  return { filtered, roots, layoutId };
+}
+
+// The playlist entry the selected chord was opened from, and whether its
+// voicing has since changed (then "Save this voicing" is offered).
+function hpSourceEntry() {
+  const chord = state.selectedChord;
+  const pl = state.sourcePlaylistId ? state.playlists.find(p => p.id === state.sourcePlaylistId) : null;
+  const entry = pl ? pl.chords.find(c => c.id === state.sourceEntryId) : null;
+  const canUpdate = !!(chord && entry && entry.chordId === chord.id && entry.notes.join(',') !== chord.notes.join(','));
+  return { pl, canUpdate };
+}
+
+// Filters set in the Filters sheet (the root chips don't count).
+function hpFilterCount() {
+  const f = state.chordFilter;
+  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.playlist !== 'All' ? 1 : 0);
+}
+
+function hpChordName(c) {
+  return `${displayNote(c.rootName, state.useFlats, state.useSolfege)} ${c.type.name}`;
+}
+function hpNotesText(notes) {
+  return notes.map(n => displayNote(n, state.useFlats, state.useSolfege)).join(' · ');
+}
+
+// ♡ of a chord: opens the Add to playlist sheet; filled when the chord is
+// in any playlist (in any voicing).
+function hpHeartBtn(on, opts) {
+  return uiIconBtn('heart', 'Add to playlist', { ...opts, cls: `hp-heart${on ? ' is-on' : ''}` });
+}
+
+// "Same type, other roots" and "Shares 2+ notes" chips for a chord.
+function hpRelatedHtml(chord) {
+  const { sameType, sharedNotes } = getRelatedChords(chord, state.chords);
+  const chip = c => `<button type="button" class="chip" data-action="select-chord" data-id="${escHtml(c.id)}">${escHtml(hpChordName(c))}</button>`;
+  return `
+    ${sameType.length ? `<div class="overline">Same type, other roots</div><div class="chips">${sameType.map(chip).join('')}</div>` : ''}
+    ${sharedNotes.length ? `<div class="overline">Shares 2+ notes</div><div class="chips">${sharedNotes.slice(0, 10).map(chip).join('')}</div>` : ''}`;
+}
+
+function viewChords() {
+  const { chords, chordFilter, selectedChord, layout } = state;
+  const uf = state.useFlats;
+  const us = state.useSolfege;
+  const { filtered, roots, layoutId } = hpFilteredChords();
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
-
   // Show a "save voicing" button only when the selected chord came from a
   // playlist entry (same abstract chord) and its notes have since diverged.
-  const sourcePl = state.sourcePlaylistId ? state.playlists.find(p => p.id === state.sourcePlaylistId) : null;
-  const sourceEntry = sourcePl ? sourcePl.chords.find(c => c.id === state.sourceEntryId) : null;
-  const canUpdateEntry = !!(selectedChord && sourceEntry && sourceEntry.chordId === selectedChord.id
-    && sourceEntry.notes.join(',') !== selectedChord.notes.join(','));
+  const { pl: sourcePl, canUpdate: canUpdateEntry } = hpSourceEntry();
+  const saveVoicingBtn = cls => uiIconBtn('save', `Save this voicing to ${sourcePl.name}`, { action: 'update-playlist-entry', cls });
 
   const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
   const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
@@ -2245,193 +2286,177 @@ function viewChords() {
     : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf, useSolfege: us });
 
-  let relatedHtml = '';
-  if (selectedChord) {
-    const { sameType, sharedNotes } = getRelatedChords(selectedChord, chords);
-    const sameTypeChips = sameType.map(c =>
-      `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${displayNote(c.rootName, uf, us)} ${c.type.name}
-      </span>`
-    ).join('');
-    const sharedChips = sharedNotes.slice(0, 10).map(c =>
-      `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${displayNote(c.rootName, uf, us)} ${c.type.name}
-      </span>`
-    ).join('');
-
-    relatedHtml = `
-      <div class="related-section">
-        ${sameType.length > 0 ? `
-          <div class="related-title">Same type, other roots</div>
-          <div class="related-chips">${sameTypeChips}</div>
-        ` : ''}
-        ${sharedNotes.length > 0 ? `
-          <div class="related-title mt-12">Shares 2+ notes</div>
-          <div class="related-chips">${sharedChips}</div>
-        ` : ''}
+  // The selected chord: a bar on phones (More opens a sheet), a full card
+  // with every action and the related chords from 600px.
+  const card = state.discoverMode ? '' : selectedChord ? `
+    <div class="hp-card">
+      <div class="hp-card-head">
+        <div class="hp-card-text">
+          <div class="hp-card-title">${escHtml(hpChordName(selectedChord))}</div>
+          <div class="hp-card-meta">${escHtml(hpNotesText(selectedChord.notes))}</div>
+          <div class="hp-card-meta hp-wide">${escHtml(selectedChord.type.category)} · ${selectedChord.noteCount} notes</div>
+        </div>
+        <div class="hp-card-actions">
+          ${hpHeartBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
+          ${canUpdateEntry ? saveVoicingBtn('hp-wide') : ''}
+          <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
+          <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
+          ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}
+        </div>
       </div>
-    `;
+      <div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>
+    </div>` : `
+    <div class="hp-card is-empty">
+      <span class="hp-card-hint">Tap a chord to see it on the pan</span>
+      <button type="button" class="btn btn-secondary" data-action="play-scale">${icon('play')} Scale</button>
+    </div>`;
+
+  const nowPlaying = autoplayPl ? `
+    <div class="hp-now">
+      <div class="hp-now-top">
+        ${icon('list-music')}
+        <span class="hp-now-name">${escHtml(autoplayPl.name)}</span>
+        ${autoplayPos >= 0 ? `<span class="hp-now-pos num">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm" data-action="hp-edit-playlist">Edit</button>
+        ${uiIconBtn('x', 'Show all chords', { action: 'hp-clear-playlist', cls: 'is-dense' })}
+      </div>
+      <div class="hp-now-ctl">
+        <button type="button" class="btn btn-primary" data-action="toggle-autoplay">
+          ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
+        </button>
+        <select class="select hp-secs" data-action="set-autoplay-seconds" aria-label="Seconds per chord" title="Seconds per chord">
+          ${AUTOPLAY_SECONDS.map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s} s</option>`).join('')}
+        </select>
+      </div>
+    </div>` : '';
+
+  const nFilters = hpFilterCount();
+  const browseHead = `
+    ${nowPlaying}
+    <div class="hp-filter-row">
+      <button type="button" class="btn btn-secondary hp-filter-btn" data-action="hp-filters-open" aria-haspopup="dialog">
+        ${icon('sliders-horizontal')} Filters${nFilters ? ` · ${nFilters}` : ''}
+      </button>
+      <div class="chips-scroll hp-roots" role="group" aria-label="Root note">
+        ${roots.map(r => `<button type="button" class="chip" aria-pressed="${chordFilter.root === r ? 'true' : 'false'}"
+          data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
+      </div>
+    </div>
+    <div class="hp-count">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</div>`;
+
+  const rows = filtered.length === 0
+    ? uiEmpty({
+      icon: 'sliders-horizontal', title: 'No chords match these filters',
+      action: '<button type="button" class="btn btn-secondary" data-action="hp-filters-clear" data-all="1">Clear filters</button>',
+    })
+    : `<div class="list chord-rows">${filtered.map(c => {
+      const favId = `${layoutId}-${c.id}`;
+      const inAny = isChordBookmarkedAnyVoicing(layoutId, c.id);
+      const isSel = selectedChord?.id === c.id;
+      return uiRow({
+        title: hpChordName(c), meta: escHtml(c.type.category),
+        action: 'select-chord', data: { id: c.id }, cls: `chord-row${isSel ? ' is-current' : ''}`,
+        trail: `
+          ${hpHeartBtn(inAny, { action: 'show-playlist-picker', data: { 'chord-id': c.id, 'chord-fav-id': favId } })}
+          ${canUpdateEntry && isSel ? saveVoicingBtn('') : ''}
+          <span class="chord-count">${c.noteCount}</span>`,
+      });
+    }).join('')}</div>`;
+
+  // Identify: notes tapped on the pan, and the chords they make.
+  const dn = state.discoverNotes;
+  let matches = '';
+  if (dn.length < 2) {
+    matches = `<p class="hp-hint">Select 2 or more notes to identify a chord.</p>`;
+  } else if (discoverMatches.length === 0) {
+    matches = `<div class="list">${uiRow({
+      title: 'Custom combination',
+      meta: `Not a recognized chord type · ${dn.length} notes: ${escHtml(dn.map(n => displayNote(n, uf, us)).join(', '))}`,
+      trail: `${hpHeartBtn(false, { action: 'discover-bookmark-custom' })}${uiIconBtn('play', 'Play chord', { action: 'discover-play-custom' })}`,
+    })}</div>`;
+  } else {
+    matches = `<div class="list">${discoverMatches.map((m, idx) => uiRow({
+      title: hpChordName(m),
+      meta: `${escHtml(m.type.category)} · ${m.noteCount} notes: ${escHtml(m.notes.map(n => displayNote(n, uf, us)).join(', '))}`,
+      trail: `${hpHeartBtn(isChordBookmarkedAnyVoicing(layoutId, m.id), { action: 'discover-bookmark', data: { 'match-idx': idx } })}${uiIconBtn('play', 'Play chord', { action: 'discover-play', data: { 'match-idx': idx } })}`,
+    })).join('')}</div>`;
   }
+  const identify = `
+    <div class="hp-identify">
+      <p class="hp-hint">Tap notes on the pan to build a chord. Tap again to remove one.</p>
+      ${dn.length ? `
+        <div class="hp-identify-notes">
+          <div class="chips">${dn.map(n => `<span class="chip is-selected hp-note-chip">${escHtml(displayNote(n, uf, us))}</span>`).join('')}</div>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="discover-clear">Clear</button>
+        </div>` : ''}
+      ${matches}
+    </div>`;
 
   return `
     ${handpanAppBar(handpanTabs('chords'))}
-    <div class="toolbar">
-      <div class="toolbar-btns">
-        <button class="btn btn-secondary btn-sm" data-action="toggle-discover-mode" aria-pressed="${state.discoverMode ? 'true' : 'false'}"
-          title="Click note fields on the pan to identify what chord they form">${icon('search')} Discover</button>
+    <div class="hp-chords${state.discoverMode ? ' is-identify' : ''}">
+      <div class="hp-stage">
+        <div class="pan-wrap hp-pan">${panRotateBtn()}${panSvg}</div>
+        ${card}
       </div>
-    </div>
-
-    <div class="explorer-layout">
-      ${state.discoverMode ? `
-      <div class="chord-list">
-        <div class="discover-panel">
-          <div class="discover-hint">Click note fields on the pan to build a chord — click again to remove one.</div>
-          ${state.discoverNotes.length > 0 ? `
-            <div class="pills discover-selected">
-              ${state.discoverNotes.map(n => `<span class="pill active">${displayNote(n, uf, us)}</span>`).join('')}
-            </div>
-            <button class="btn btn-secondary btn-sm" data-action="discover-clear">Clear</button>
-          ` : ''}
+      <section class="hp-list chord-list" aria-label="Chords">
+        <div class="hp-list-head">
+          ${uiSeg([{ value: 'browse', label: 'Browse' }, { value: 'identify', label: 'Identify' }],
+            state.discoverMode ? 'identify' : 'browse', { action: 'toggle-discover-mode', label: 'Find chords by' })}
+          ${state.discoverMode ? '' : browseHead}
         </div>
-      </div>
-
-      <div class="chord-panel">
-        ${(() => {
-          if (state.discoverNotes.length < 2) {
-            return `<div class="chord-panel-empty"><span class="hint">Select 2 or more note fields to identify a chord</span></div>`;
-          }
-          if (discoverMatches.length === 0) {
-            return `
-              <div class="chord-panel-header">
-                <div>
-                  <div class="chord-panel-title">Custom combination</div>
-                  <div class="chord-panel-sub">Not a recognized chord type · ${state.discoverNotes.length} notes: ${state.discoverNotes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-                </div>
-                <div class="chord-play-btns">
-                  <button class="fav-btn panel-fav" data-action="discover-bookmark-custom" title="Bookmark this combination">${icon('heart')}</button>
-                  <button class="btn btn-primary btn-sm" data-action="discover-play-custom">${icon('play')} Chord</button>
-                </div>
-              </div>
-            `;
-          }
-          return discoverMatches.map((m, idx) => {
-            const favId = favIdForChord(layoutId, m, chords);
-            const inAny = isChordBookmarkedAnyVoicing(layoutId, m.id);
-            return `
-              <div class="chord-panel-header">
-                <div>
-                  <div class="chord-panel-title">${displayNote(m.rootName, uf, us)} ${m.type.name}</div>
-                  <div class="chord-panel-sub">${m.type.category} · ${m.noteCount} notes: ${m.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-                </div>
-                <div class="chord-play-btns">
-                  <button class="fav-btn panel-fav ${inAny ? 'active' : ''}"
-                    data-action="discover-bookmark" data-match-idx="${idx}" title="Bookmark this voicing">${icon('heart')}</button>
-                  <button class="btn btn-primary btn-sm" data-action="discover-play" data-match-idx="${idx}">${icon('play')} Chord</button>
-                </div>
-              </div>
-            `;
-          }).join('');
-        })()}
-      </div>
-      ` : `
-      <div class="chord-list">
-        <div class="chord-list-header">
-          <div class="chord-filter-dropdowns">
-            <div class="count-pills">
-              ${['2','3','4','5+'].map(n => `<button class="pill count-pill ${state.chordCountSet.has(n) ? 'active' : ''}" data-action="toggle-note-count" data-count="${n}">${n}</button>`).join('')}
-            </div>
-            <select class="select-input" data-action="filter-category">
-              <option value="All" ${chordFilter.category === 'All' ? 'selected' : ''}>All types</option>
-              ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `
-                <option value="${cat}" ${chordFilter.category === cat ? 'selected' : ''}>${cat}</option>
-              `).join('')}
-            </select>
-            <select class="select-input" data-action="select-playlist-filter">
-              <option value="All" ${chordFilter.playlist === 'All' ? 'selected' : ''}>All lists</option>
-              ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
-              ${chordFilter.playlist !== 'All' ? `<option value="__edit__">Edit playlist</option>` : ''}
-            </select>
-          </div>
-          ${autoplayPl ? `
-            <div class="autoplay-bar">
-              <button class="btn btn-sm ${state.autoplayOn ? 'btn-primary' : 'btn-secondary'}" data-action="toggle-autoplay">
-                ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
-              </button>
-              <select class="select-input select-sm" data-action="set-autoplay-seconds" title="Seconds per chord">
-                ${[3, 4, 5, 6, 8, 10].map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s}s</option>`).join('')}
-              </select>
-              ${autoplayPos >= 0 ? `<span class="hint">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
-            </div>
-          ` : ''}
-          <div class="pills" style="margin-bottom:4px">
-            ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
-              data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf, us)}</button>`).join('')}
-          </div>
-          <div style="margin-bottom:4px">
-            <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
-        ${(() => {
-          return filtered.length === 0
-            ? '<div class="empty-state">No chords match these filters</div>'
-            : filtered.map(c => {
-              const favId = `${layoutId}-${c.id}`;
-              const inAny = isChordBookmarkedAnyVoicing(layoutId, c.id);
-              return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
-                data-action="select-chord" data-id="${c.id}">
-                <div>
-                  <div class="chord-item-name">${displayNote(c.rootName, uf, us)} ${c.type.name}</div>
-                  <div class="chord-item-type">${c.type.category}</div>
-                </div>
-                <div class="chord-item-right">
-                  <button class="fav-btn ${inAny ? 'active' : ''}"
-                    data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">${icon('heart')}</button>
-                  ${canUpdateEntry && selectedChord?.id === c.id ? `
-                    <button class="btn-icon row-save" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">${icon('save')}</button>
-                  ` : ''}
-                  <span class="chord-count">${c.noteCount}</span>
-                </div>
-              </div>`;
-            }).join('');
-        })()}
-      </div>
-
-      <div class="chord-panel">
-        ${selectedChord ? `
-          <div class="chord-panel-header">
-            <div>
-              <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
-              <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-            </div>
-            <div class="chord-play-btns">
-              <button class="fav-btn panel-fav ${selectedInAny ? 'active' : ''}"
-                data-action="show-playlist-picker" data-chord-id="${selectedChord.id}"
-                data-chord-fav-id="${escHtml(selectedFavId)}" title="Add to playlist">${icon('heart')}</button>
-              ${canUpdateEntry ? `
-                <button class="btn-icon" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">${icon('save')}</button>
-              ` : ''}
-              <button class="btn btn-primary btn-sm" data-action="play-chord">${icon('play')} Chord</button>
-              <button class="btn btn-secondary btn-sm" data-action="play-scale">${icon('play')} Scale</button>
-            </div>
-          </div>
-          ${relatedHtml}
-        ` : `
-          <div class="chord-panel-empty">
-            <span class="hint">Select a chord to see it on the pan</span>
-            <button class="btn btn-secondary btn-sm" data-action="play-scale">${icon('play')} Scale</button>
-          </div>
-        `}
-      </div>
-      `}
-
-      <div class="pan-col">
-        <div class="pan-wrap">
-          ${panRotateBtn()}${panSvg}
-        </div>
-      </div>
+        ${state.discoverMode ? identify : rows}
+      </section>
     </div>
   `;
+}
+
+// Filters sheet: note counts, chord type and playlist (§6.7).
+function hpFiltersSheet() {
+  const f = state.chordFilter;
+  const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
+  const body = `
+    <div class="hp-sheet-form">
+      <div class="field">
+        <span class="field-label">Notes in chord</span>
+        <div class="chips" role="group" aria-label="Notes in chord">
+          ${['2', '3', '4', '5+'].map(n => `<button type="button" class="chip" aria-pressed="${state.chordCountSet.has(n) ? 'true' : 'false'}"
+            data-action="toggle-note-count" data-count="${n}">${n}</button>`).join('')}
+        </div>
+      </div>
+      ${uiField({ label: 'Type', control: `
+        <select class="select" data-action="filter-category" aria-label="Chord type">
+          <option value="All" ${f.category === 'All' ? 'selected' : ''}>All types</option>
+          ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${f.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+        </select>` })}
+      ${uiField({ label: 'Playlist', control: `
+        <select class="select" data-action="select-playlist-filter" aria-label="Playlist">
+          <option value="All" ${f.playlist === 'All' ? 'selected' : ''}>All chords</option>
+          ${state.playlists.map(p => `<option value="${escHtml(p.id)}" ${f.playlist === p.id ? 'selected' : ''}>${escHtml(p.name)}</option>`).join('')}
+        </select>` })}
+      ${pl ? `<div class="list">${uiRow({ lead: 'pencil', title: 'Edit playlist', meta: escHtml(pl.name), chevron: true, action: 'hp-edit-playlist' })}</div>` : ''}
+    </div>`;
+  return uiSheet({
+    key: 'hp-filters', title: 'Filters', close: 'hp-filters-close', body,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="hp-filters-clear">Clear all</button>
+      <button type="button" class="btn btn-primary" data-action="hp-filters-close">Done</button>`,
+  });
+}
+
+// More sheet of the selected chord on phones: what the desktop card shows inline.
+function hpMoreSheet() {
+  const chord = state.selectedChord;
+  const { pl, canUpdate } = hpSourceEntry();
+  const rows = [
+    uiRow({ lead: 'play', title: 'Play scale', action: 'play-scale' }),
+    canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',
+    uiRow({ lead: 'link', title: 'Copy link to this chord', action: 'copy-url' }),
+  ].join('');
+  return uiSheet({
+    key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
+    body: `<div class="list">${rows}</div><div class="hp-related">${hpRelatedHtml(chord)}</div>`,
+  });
 }
 
 // Rotate button overlaid on the pan drawing (Chords and Pan).
@@ -2448,6 +2473,8 @@ function sheetHtml() {
   if (state.menu) return menuSheet();
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && (state.view === 'chords' || state.view === 'instrument')) return renderPlaylistPicker();
+  if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
+  if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
   if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
   if (state.clayEdit && state.view === 'clay') return clayEditSheet();
@@ -3043,6 +3070,7 @@ document.addEventListener('click', e => {
   if (action === 'menu-close') { state.menu = false; render(); return; }
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
+  if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
   if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
   if (action === 'confirm-ok') {
     const c = state.confirm;
@@ -3913,6 +3941,36 @@ document.addEventListener('click', e => {
   }
 
   // ── Chord explorer ─────────────────────────────────────────────────────────
+  if (action === 'hp-filters-open') { state.hpFilters = true; render(); return; }
+  if (action === 'hp-filters-close') { state.hpFilters = false; render(); return; }
+  if (action === 'hp-more-open') { state.hpMore = true; render(); return; }
+  if (action === 'hp-more-close') { state.hpMore = false; render(); return; }
+  if (action === 'hp-filters-clear') {
+    // The sheet's filters; the empty list's "Clear filters" also clears the root.
+    state.chordCountSet.clear();
+    state.chordFilter.category = 'All';
+    if (state.autoplayOn && state.autoplayPlaylistId !== 'All') stopAutoplay();
+    state.chordFilter.playlist = 'All';
+    if (el.dataset.all) state.chordFilter.root = 'All';
+    render();
+    return;
+  }
+  if (action === 'hp-clear-playlist') {
+    if (state.autoplayOn) stopAutoplay();
+    state.chordFilter.playlist = 'All';
+    render();
+    return;
+  }
+  if (action === 'hp-edit-playlist') {
+    // Same as the old "Edit playlist" option of the playlist select.
+    stopAutoplay();
+    state.hpFilters = false;
+    state.activePlaylistId = state.chordFilter.playlist;
+    state.view = 'playlist';
+    navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
+    render();
+    return;
+  }
   if (action === 'toggle-note-count') {
     const count = el.dataset.count;
     if (state.chordCountSet.has(count)) state.chordCountSet.delete(count);
@@ -3990,6 +4048,8 @@ document.addEventListener('click', e => {
 
   // ── Discover mode ────────────────────────────────────────────────────────
   if (action === 'toggle-discover-mode') {
+    // From the Browse | Identify segment: only a change of mode toggles.
+    if (el.dataset.value && (el.dataset.value === 'identify') === state.discoverMode) return;
     stopAutoplay();
     state.discoverMode = !state.discoverMode;
     state.discoverNotes = [];
@@ -4229,6 +4289,8 @@ document.addEventListener('input', e => {
     state.layout.name = e.target.value;
     const barName = document.querySelector('.appbar-switcher-name');
     if (barName) barName.textContent = e.target.value;
+    const actions = document.querySelector('.ed-actions');
+    if (actions) actions.innerHTML = edActionsHtml();
   }
   if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
     renamePlaylist(state.activePlaylistId, e.target.value);

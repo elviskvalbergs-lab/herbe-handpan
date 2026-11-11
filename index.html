@@ -520,27 +520,38 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .pill:hover { border-color: var(--primary); color: var(--primary); }
 .pill.active { background: var(--primary); border-color: var(--primary); color: var(--on-accent); }
 
-/* Layout editor */
+/* Layout editor: the handpan Pan tab (§6.8) */
 .editor-layout {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 24px;
-  align-items: start;
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-6); align-items: start;
 }
 @media (max-width: 720px) {
   body { min-height: 0; }
   .main { padding-top: var(--space-3); }
-  .editor-layout { grid-template-columns: 1fr; }
-  .editor-sidebar { gap: 7px; }
-  .editor-shells { gap: 7px; }
+  .editor-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
   .editor-section { padding: 10px; }
   .editor-section-title { margin-bottom: 7px; }
 }
+.editor-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ed-pan svg { width: min(100%, 55dvh); max-width: none; height: auto; }
+.ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
+.editor-sidebar { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ed-card { display: flex; flex-direction: column; gap: var(--space-4); }
+.ed-shell .overline { margin-bottom: var(--space-2); }
+.ed-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.ed-actions .btn { flex: 1 1 0; }
+.ed-status { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--success); }
+.ed-status .ico { width: 16px; height: 16px; }
+@media (min-width: 721px) { .editor-sidebar { position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); } }
 
-.editor-sidebar { display: flex; flex-direction: column; gap: 10px; }
-.editor-secondary-actions { display: flex; gap: 6px; }
-.editor-shells { display: flex; gap: 10px; }
-.editor-shells .editor-section { flex: 1; min-width: 0; }
+/* Banner under the app bar: an unsaved handpan (§5.9) */
+.banner {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  min-height: 48px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); margin-bottom: var(--space-4);
+  background: var(--accent-soft); border-radius: var(--r-md);
+  font: var(--fw-medium) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-1);
+}
+.banner .btn { flex-shrink: 0; }
+
 .editor-section {
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 14px;
@@ -549,16 +560,10 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   font-size: 12px; font-weight: 700; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px;
 }
-.capacity-control { display: flex; align-items: center; gap: 8px; }
-.capacity-val { font-size: 18px; font-weight: 700; color: var(--heading); min-width: 24px; text-align: center; }
 
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
 .pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
-.pan-col { display: flex; align-items: flex-start; justify-content: flex-start; }
-/* In the chord explorer, let the pan fill the full column width (capped by viewport height) */
-.pan-col .pan-wrap { width: 100%; }
-.pan-col .pan-wrap svg { max-width: min(100%, calc(100dvh - 80px)); }
 
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
@@ -610,74 +615,6 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 }
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
 
-/* Chord explorer — 3-column landscape layout */
-.explorer-layout {
-  display: grid;
-  grid-template-columns: 250px minmax(200px, 280px) 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-/* Medium: 2-column — chord-list left, chord-panel+pan stacked right */
-@media (max-width: 900px) {
-  .explorer-layout {
-    grid-template-columns: 260px 1fr;
-    grid-template-rows: auto auto;
-    gap: 14px;
-  }
-  .explorer-layout .chord-list  { grid-column: 1; grid-row: 1 / 3; }
-  .explorer-layout .chord-panel { grid-column: 2; grid-row: 1; }
-  .explorer-layout .pan-col     { grid-column: 2; grid-row: 2; }
-}
-
-/* Mobile: vertical stack — pan, chord-list, chord-panel */
-@media (max-width: 620px) {
-  .explorer-layout {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .explorer-layout .chord-list  { order: 2; max-height: 45dvh; }
-  .explorer-layout .pan-col     { order: 1; }
-  .explorer-layout .chord-panel { order: 3; }
-  .pan-wrap svg { max-width: 100%; }
-}
-
-/* Landscape (short viewport): force 3-column so pan isn't stacked under chord-panel */
-@media (max-height: 500px) and (min-width: 620px) {
-  .main { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
-  .explorer-layout {
-    display: grid !important;
-    grid-template-columns: 180px minmax(150px, 190px) 1fr !important;
-    grid-template-rows: auto !important;
-    gap: 8px !important;
-    align-items: start;
-  }
-  .explorer-layout .chord-list  { grid-column: 1 !important; grid-row: 1 !important; max-height: calc(100dvh - 52px); }
-  .explorer-layout .chord-panel { grid-column: 2 !important; grid-row: 1 !important; }
-  .explorer-layout .pan-col     { grid-column: 3 !important; grid-row: 1 !important; }
-  .pan-col .pan-wrap svg { max-width: min(100%, calc(100dvh - 52px)) !important; }
-  .chord-list-header { padding: 5px 8px !important; }
-  .chord-list .pills { gap: 2px !important; margin-bottom: 2px !important; }
-  .chord-list .pill { padding: 2px 5px !important; font-size: 12px !important; }
-  .chord-filter-dropdowns { gap: 3px !important; margin-bottom: 3px !important; }
-  .chord-filter-dropdowns .select-input { font-size: 12px !important; padding: 3px 4px !important; }
-  .count-pill { padding: 2px 5px !important; font-size: 12px !important; }
-  .chord-item { padding: 7px 10px !important; }
-  .chord-item-name { font-size: 12px !important; }
-}
-
-.chord-list {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  max-height: calc(100dvh - 120px); overflow-y: auto; min-height: 0;
-}
-.chord-list-header {
-  padding: 8px 10px; border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; background: var(--card); z-index: 1;
-}
-.discover-panel { padding: 14px; }
-.discover-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
-.discover-selected { margin-bottom: 10px; }
 .chord-item {
   padding: 9px 14px; display: flex; justify-content: space-between; align-items: center;
   cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.1s;
@@ -692,35 +629,12 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .chord-item-name { font-weight: 600; color: var(--heading); font-size: 13px; }
 .chord-item-type { font-size: 12px; color: var(--muted); margin-top: 1px; text-transform: uppercase; letter-spacing: 0.05em; }
 .chord-count {
-  font-size: 12px; background: var(--surface); color: var(--muted);
-  padding: 2px 7px; border-radius: 2px; flex-shrink: 0;
+  min-width: 28px; padding: 0 4px; text-align: center; flex-shrink: 0;
+  font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-3);
 }
 
-.chord-panel {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 14px 16px;
-}
-.chord-panel-header {
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 14px;
-}
 .chord-panel-title { font-size: 18px; font-weight: 700; color: var(--heading); margin-bottom: 2px; letter-spacing: -0.02em; }
 .chord-panel-sub { font-size: 12px; color: var(--muted); }
-.chord-play-btns { display: flex; gap: 6px; flex-shrink: 0; }
-.chord-panel-empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.chord-actions { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-
-.related-section { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
-.related-title {
-  font-size: 12px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 7px;
-}
-.related-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.related-chip {
-  padding: 3px 9px; border-radius: var(--radius); font-size: 12px; font-weight: 600;
-  background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  cursor: pointer; transition: all 0.1s;
-}
-.related-chip:hover { border-color: var(--primary); color: var(--primary); }
 
 /* Note picker sheet */
 .note-octave-row { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: var(--space-2); align-items: start; margin-bottom: var(--space-3); }
@@ -845,21 +759,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   text-transform: uppercase; letter-spacing: var(--tracking-overline);
 }
 
-/* Filter dropdowns row in chord explorer */
-.chord-filter-dropdowns {
-  display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;
-}
-.chord-filter-dropdowns .select-input { flex: 1; min-width: 0; font-size: 12px; padding: 4px 6px; }
-.autoplay-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-.autoplay-bar .select-sm { flex: 0 0 auto; width: 56px; padding: 4px 6px; font-size: 12px; }
-.autoplay-bar .hint { flex: 1; text-align: right; }
-.count-pills { display: flex; gap: 3px; flex-shrink: 0; }
-.count-pill { padding: 3px 6px; font-size: 12px; }
-/* Compact pills inside chord list header */
-.chord-list .pill { padding: 3px 7px; font-size: 12px; }
-.chord-list .pills { gap: 3px; margin-bottom: 3px; }
-.chord-list .hint { line-height: 1.6; }
-
 /* Playlist view */
 .playlist-view { padding: 0 0 40px; }
 .playlist-header {
@@ -899,8 +798,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 
 /* Heart button in chord list */
 .chord-item-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
-.row-save { padding: 3px 6px; }
-.row-save .ico { width: 13px; height: 13px; }
 .fav-btn {
   display: inline-flex; align-items: center; justify-content: center;
   background: none; border: none; cursor: pointer;
@@ -911,8 +808,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fav-btn:hover { color: var(--primary); opacity: 1; }
 .fav-btn.active { color: var(--primary); opacity: 1; }
 .fav-btn.active .ico { fill: currentColor; }
-.panel-fav { padding: 2px 6px; opacity: 0.45; align-self: center; }
-.panel-fav .ico { width: 18px; height: 18px; }
 
 /* iOS auto-zooms when focusing inputs with font-size < 16px. Force 16px on iOS only. */
 @supports (-webkit-touch-callout: none) {
@@ -1228,6 +1123,120 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .actionbar { position: static; padding: var(--space-4) 0 0; margin-top: var(--space-2); }
   .actionbar-help { position: static; order: 2; padding: 0; background: none; }
   body.has-actionbar .main { padding-bottom: var(--space-8); }
+}
+
+/* Handpan Chords (§6.7). Phone: the pan and the selected-chord bar stick
+   under the app bar while the page (the chord list) scrolls under them.
+   ≥600px: list column at the left with its own scroll, pan and chord card
+   at the right. */
+.hp-chords { display: flex; flex-direction: column; gap: var(--space-4); }
+.hp-stage {
+  position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top)); z-index: 5;
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--gutter)) 0;
+  padding: var(--space-3) var(--gutter); background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.hp-pan svg { width: min(100%, calc(100vw - 2 * var(--gutter)), 36dvh); max-width: none; height: auto; }
+.hp-card {
+  display: flex; flex-direction: column; gap: var(--space-3); min-height: 64px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.hp-card.is-empty { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.hp-card-hint { color: var(--text-2); }
+.hp-card-head { display: flex; align-items: center; gap: var(--space-2); min-height: 46px; }
+.hp-card-text { flex: 1; min-width: 0; }
+.hp-card-title {
+  font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hp-card-meta {
+  font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hp-card-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.hp-play { padding: 0 var(--space-3); }
+.hp-related .overline { margin: var(--space-3) 0 var(--space-2); }
+.hp-related .overline:first-child { margin-top: 0; }
+.sheet .hp-related { padding: var(--space-4) 0 var(--space-2); }
+.hp-heart.is-on { color: var(--accent-text); }
+.hp-heart.is-on .ico { fill: currentColor; }
+.hp-list { min-width: 0; }
+.hp-list-head { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-3); }
+.hp-filter-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.hp-filter-btn { flex-shrink: 0; padding: 0 var(--space-3); }
+.hp-roots { flex: 1; min-width: 0; margin-left: 0; padding-left: 0; }
+.hp-count, .hp-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.hp-hint { color: var(--text-2); }
+.hp-identify { display: flex; flex-direction: column; gap: var(--space-3); }
+.hp-identify-notes { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.hp-note-chip { cursor: default; height: 36px; }
+.chord-row .row-trail { gap: 0; }
+.hp-now {
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+}
+.hp-now-top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.hp-now-top > .ico { width: 20px; height: 20px; color: var(--text-3); }
+.hp-now-name { flex: 1; min-width: 0; font-weight: var(--fw-semibold); color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hp-now-pos { font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-2); }
+.hp-now-ctl { display: flex; gap: var(--space-2); }
+.hp-now-ctl .btn { flex: 1; }
+.hp-secs { width: 96px; flex-shrink: 0; }
+.hp-sheet-form { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-1) 0 var(--space-4); }
+.hp-sheet-form .list .row { min-height: 52px; }
+@media (max-width: 599px) {
+  .hp-wide { display: none !important; }
+  .hp-chords.is-identify .hp-stage { padding-bottom: var(--space-3); }
+}
+@media (min-width: 600px) {
+  .hp-narrow { display: none !important; }
+  .hp-chords {
+    --hp-top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4));
+    --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - env(safe-area-inset-bottom) - var(--space-4));
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-4); align-items: start;
+  }
+  body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - var(--tuner-h) - env(safe-area-inset-bottom) - var(--space-4)); }
+  .hp-list {
+    grid-column: 1; grid-row: 1; position: sticky; top: var(--hp-top);
+    max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .hp-list-head { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: var(--space-3); margin-bottom: 0; }
+  .hp-filter-row { flex-direction: column; align-items: stretch; }
+  .hp-filter-btn { align-self: flex-start; }
+  .hp-roots { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .hp-stage {
+    grid-column: 2; grid-row: 1; top: var(--hp-top); z-index: 1;
+    margin: 0; padding: 0; border: 0; background: none; gap: var(--space-4);
+  }
+  .hp-pan svg { width: min(100%, 60dvh); }
+  .hp-card { padding: var(--space-4); }
+  .hp-card-head { flex-wrap: wrap; }
+  .hp-card-title { font-size: var(--fs-20); line-height: var(--lh-20); }
+}
+@media (min-width: 1024px) {
+  .hp-chords {
+    --hp-list-h: calc(100dvh - var(--hp-top) - var(--space-4));
+    grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-6);
+  }
+  body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tuner-h) - var(--space-8)); }
+  .hp-pan svg { width: min(100%, 64dvh); }
+  .hp-card { padding: var(--space-5); }
+}
+/* Short landscape (phone on its side): list | chord card | pan */
+@media (max-height: 500px) and (min-width: 620px) {
+  .main { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 6px); }
+  .hp-chords { --hp-top: calc(var(--appbar-h) + env(safe-area-inset-top) + 6px); grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-2); }
+  .hp-stage { display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); gap: var(--space-2); align-items: start; }
+  .hp-stage .hp-card { grid-column: 1; grid-row: 1; padding: var(--space-3); }
+  .hp-stage .hp-pan { grid-column: 2; grid-row: 1; }
+  .hp-pan svg { width: min(100%, var(--hp-list-h)); }
+  .hp-card-title { font-size: var(--fs-17); line-height: var(--lh-17); }
+}
+@media (max-width: 599px) {
+  /* Keyboard focus and in-page scrolling keep list rows clear of the sticky stage and the tab bar. */
+  html:has(.hp-stage) { scroll-padding-top: calc(var(--appbar-h) + 36dvh + 120px); scroll-padding-bottom: calc(var(--tabbar-h) + 16px); }
 }
 
   </style>
@@ -4227,6 +4236,8 @@ const state = {
   discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
   sourcePlaylistId: null,  // playlist the current chord was opened from, if any
   sourceEntryId: null,     // that entry's id at load time — lets "update" find it after a swap
+  hpFilters: false,        // the handpan Chords Filters sheet is open
+  hpMore: false,           // the selected chord's More sheet is open (phones)
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -4320,7 +4331,7 @@ function goHome() {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
     sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
     wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
-    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null,
+    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false,
   });
   refreshInstruments();
   navPush(location.pathname);
@@ -6192,6 +6203,28 @@ function openStartView() {
 }
 
 // ── View 2: Layout Editor ────────────────────────────────────────────────────
+// Handpan Pan tab (§6.8): shells, the pan, capacities, name, Customize and Save.
+
+// Is the layout on screen saved, unchanged, in My instruments?
+function hpLayoutSaved() {
+  const layout = state.layout;
+  const savedId = layout.isCustom ? layout.savedId : layout.id;
+  // Read fresh: a layout opened from a playlist can share its object with state.savedLayouts.
+  const saved = savedId && getSavedLayouts().find(l => l.id === savedId);
+  return !!saved && JSON.stringify(saved.layout) === JSON.stringify(layout);
+}
+
+// Customize (a scale's layout) and Save; once saved and unchanged, a status.
+function edActionsHtml() {
+  const saved = hpLayoutSaved();
+  return `
+    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('pencil')} Customize</button>` : ''}
+    ${saved
+      ? `<span class="ed-status" role="status">${icon('check')} Saved</span>
+         <button type="button" class="btn btn-primary" data-action="save-layout" disabled>Saved</button>`
+      : `<button type="button" class="btn btn-primary" data-action="save-layout">${icon('save')} Save</button>`}`;
+}
+
 function viewEditor() {
   const layout = state.layout;
   const isCustom = layout.isCustom;
@@ -6209,75 +6242,45 @@ function viewEditor() {
 
   return `
     ${handpanAppBar(handpanTabs('editor'))}
+    ${state.currentInstrumentId ? '' : `
+      <div class="banner">
+        <span>Not saved · try it, then keep it in My instruments</span>
+        <button type="button" class="btn btn-primary btn-sm" data-action="save-layout">Save</button>
+      </div>`}
 
     <div class="editor-layout">
-      <div>
-        <div class="pills" style="margin-bottom:14px">
-          ${['both', 'top', 'bottom'].map(m => `
-            <button class="pill ${state.shellMode === m ? 'active' : ''}"
-              data-action="shell-mode" data-mode="${m}">
-              ${m === 'both' ? 'Both Shells' : m === 'top' ? 'Top Shell' : 'Bottom Shell'}
-            </button>
-          `).join('')}
-        </div>
-        <div class="pan-wrap">
+      <div class="editor-main">
+        ${uiSeg([{ value: 'both', label: 'Both shells' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }],
+          state.shellMode, { action: 'shell-mode', key: 'mode', label: 'Shells shown' })}
+        <div class="pan-wrap ed-pan">
           ${panRotateBtn()}${panSvg}
         </div>
-        ${isCustom ? `
-          <p class="hint" style="text-align:center;margin-top:8px">
-            Click a note to remove it · Click an empty slot (+) to add a note
-          </p>
-        ` : ''}
+        ${isCustom ? `<p class="ed-hint">Tap a note to remove it · tap + to add one</p>` : ''}
       </div>
 
       <div class="editor-sidebar">
-        ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
-        <div class="editor-secondary-actions">
-          ${!isCustom ? `
-            <button class="btn btn-secondary btn-sm" data-action="clone-layout" style="flex:1">
-              Clone &amp; Customize
-            </button>
-          ` : ''}
-          ${(() => {
-            const savedId = isCustom ? layout.savedId : layout.id;
-            const isSaved = savedId && state.savedLayouts.some(l => l.id === savedId);
-            return `<button class="btn btn-secondary btn-sm" data-action="save-layout" style="flex:1">
-              ${isSaved ? icon('check') + ' Saved' : icon('save') + ' Save'}
-            </button>`;
-          })()}
-        </div>
-
-        <div class="editor-shells">
-          <div class="editor-section">
-            <div class="editor-section-title">Top shell</div>
-            <div class="capacity-control">
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="-1"
-                ${topEmpty === 0 && layout.top.slots.length > 0 ? 'disabled title="Remove a note first"' : ''}>−</button>
-              <span class="capacity-val">${layout.top.capacity}</span>
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="top" data-delta="1">+</button>
-            </div>
-            <div class="hint" style="margin-top:6px">
-              ${topFilled + 1} notes (incl. ding) · ${topEmpty} empty
-            </div>
+        <div class="card ed-card">
+          ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
+          <div class="ed-shell">
+            <div class="overline">Top shell</div>
+            ${uiStepper({
+              value: layout.top.capacity, label: 'Top shell', action: 'adjust-capacity', data: { shell: 'top' },
+              min: topEmpty === 0 && layout.top.slots.length > 0, max: layout.top.capacity >= 12,
+              help: `${topFilled + 1} notes incl. ding · ${topEmpty} empty`,
+            })}
           </div>
-
-          <div class="editor-section">
-            <div class="editor-section-title">Bottom shell</div>
-            <div class="capacity-control">
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="-1"
-                ${layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0 ? 'disabled' : ''}>−</button>
-              <span class="capacity-val">${layout.bottom.capacity}</span>
-              <button class="btn-icon" data-action="adjust-capacity" data-shell="bottom" data-delta="1">+</button>
-            </div>
-            <div class="hint" style="margin-top:6px">
-              ${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty
-            </div>
+          <div class="ed-shell">
+            <div class="overline">Bottom shell</div>
+            ${uiStepper({
+              value: layout.bottom.capacity, label: 'Bottom shell', action: 'adjust-capacity', data: { shell: 'bottom' },
+              min: layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0, max: layout.bottom.capacity >= 12,
+              help: `${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty`,
+            })}
           </div>
         </div>
-
+        <div class="ed-actions">${edActionsHtml()}</div>
       </div>
     </div>
-
   `;
 }
 
@@ -6312,11 +6315,15 @@ function renderNotePicker() {
 }
 
 // ── View 3: Chord Explorer ───────────────────────────────────────────────────
-function viewChords() {
-  const { chords, chordFilter, selectedChord, layout } = state;
-  const uf = state.useFlats;
-  const us = state.useSolfege;
+// Handpan Chords tab (§6.7). Phone: the pan and the selected-chord bar stay
+// on screen (sticky) while the list scrolls under them. ≥600px: the list is
+// a column of its own at the left, the pan and a full chord card at the right.
 
+// The chords shown under the current filters, in display order: the
+// playlist's order while a playlist filter is on, otherwise by root, then
+// the bigger chords first.
+function hpFilteredChords() {
+  const { chords, chordFilter, layout } = state;
   // Root options: NOTE_NAMES[i] is at PC i — filter by which PCs have chords.
   const ROOT_ORDER = NOTE_NAMES;
   const usedRootPCs = new Set(chords.map(c => notePC(c.rootNote)));
@@ -6361,16 +6368,59 @@ function viewChords() {
       return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
     });
   }
+  return { filtered, roots, layoutId };
+}
+
+// The playlist entry the selected chord was opened from, and whether its
+// voicing has since changed (then "Save this voicing" is offered).
+function hpSourceEntry() {
+  const chord = state.selectedChord;
+  const pl = state.sourcePlaylistId ? state.playlists.find(p => p.id === state.sourcePlaylistId) : null;
+  const entry = pl ? pl.chords.find(c => c.id === state.sourceEntryId) : null;
+  const canUpdate = !!(chord && entry && entry.chordId === chord.id && entry.notes.join(',') !== chord.notes.join(','));
+  return { pl, canUpdate };
+}
+
+// Filters set in the Filters sheet (the root chips don't count).
+function hpFilterCount() {
+  const f = state.chordFilter;
+  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.playlist !== 'All' ? 1 : 0);
+}
+
+function hpChordName(c) {
+  return `${displayNote(c.rootName, state.useFlats, state.useSolfege)} ${c.type.name}`;
+}
+function hpNotesText(notes) {
+  return notes.map(n => displayNote(n, state.useFlats, state.useSolfege)).join(' · ');
+}
+
+// ♡ of a chord: opens the Add to playlist sheet; filled when the chord is
+// in any playlist (in any voicing).
+function hpHeartBtn(on, opts) {
+  return uiIconBtn('heart', 'Add to playlist', { ...opts, cls: `hp-heart${on ? ' is-on' : ''}` });
+}
+
+// "Same type, other roots" and "Shares 2+ notes" chips for a chord.
+function hpRelatedHtml(chord) {
+  const { sameType, sharedNotes } = getRelatedChords(chord, state.chords);
+  const chip = c => `<button type="button" class="chip" data-action="select-chord" data-id="${escHtml(c.id)}">${escHtml(hpChordName(c))}</button>`;
+  return `
+    ${sameType.length ? `<div class="overline">Same type, other roots</div><div class="chips">${sameType.map(chip).join('')}</div>` : ''}
+    ${sharedNotes.length ? `<div class="overline">Shares 2+ notes</div><div class="chips">${sharedNotes.slice(0, 10).map(chip).join('')}</div>` : ''}`;
+}
+
+function viewChords() {
+  const { chords, chordFilter, selectedChord, layout } = state;
+  const uf = state.useFlats;
+  const us = state.useSolfege;
+  const { filtered, roots, layoutId } = hpFilteredChords();
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
-
   // Show a "save voicing" button only when the selected chord came from a
   // playlist entry (same abstract chord) and its notes have since diverged.
-  const sourcePl = state.sourcePlaylistId ? state.playlists.find(p => p.id === state.sourcePlaylistId) : null;
-  const sourceEntry = sourcePl ? sourcePl.chords.find(c => c.id === state.sourceEntryId) : null;
-  const canUpdateEntry = !!(selectedChord && sourceEntry && sourceEntry.chordId === selectedChord.id
-    && sourceEntry.notes.join(',') !== selectedChord.notes.join(','));
+  const { pl: sourcePl, canUpdate: canUpdateEntry } = hpSourceEntry();
+  const saveVoicingBtn = cls => uiIconBtn('save', `Save this voicing to ${sourcePl.name}`, { action: 'update-playlist-entry', cls });
 
   const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
   const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
@@ -6387,193 +6437,177 @@ function viewChords() {
     : [];
   const panSvg = renderPan(layout, { shellMode: 'both', highlightNotes, altHighlightNotes, rotated: state.ringRotated, useFlats: uf, useSolfege: us });
 
-  let relatedHtml = '';
-  if (selectedChord) {
-    const { sameType, sharedNotes } = getRelatedChords(selectedChord, chords);
-    const sameTypeChips = sameType.map(c =>
-      `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${displayNote(c.rootName, uf, us)} ${c.type.name}
-      </span>`
-    ).join('');
-    const sharedChips = sharedNotes.slice(0, 10).map(c =>
-      `<span class="related-chip" data-action="select-chord" data-id="${c.id}">
-        ${displayNote(c.rootName, uf, us)} ${c.type.name}
-      </span>`
-    ).join('');
-
-    relatedHtml = `
-      <div class="related-section">
-        ${sameType.length > 0 ? `
-          <div class="related-title">Same type, other roots</div>
-          <div class="related-chips">${sameTypeChips}</div>
-        ` : ''}
-        ${sharedNotes.length > 0 ? `
-          <div class="related-title mt-12">Shares 2+ notes</div>
-          <div class="related-chips">${sharedChips}</div>
-        ` : ''}
+  // The selected chord: a bar on phones (More opens a sheet), a full card
+  // with every action and the related chords from 600px.
+  const card = state.discoverMode ? '' : selectedChord ? `
+    <div class="hp-card">
+      <div class="hp-card-head">
+        <div class="hp-card-text">
+          <div class="hp-card-title">${escHtml(hpChordName(selectedChord))}</div>
+          <div class="hp-card-meta">${escHtml(hpNotesText(selectedChord.notes))}</div>
+          <div class="hp-card-meta hp-wide">${escHtml(selectedChord.type.category)} · ${selectedChord.noteCount} notes</div>
+        </div>
+        <div class="hp-card-actions">
+          ${hpHeartBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
+          ${canUpdateEntry ? saveVoicingBtn('hp-wide') : ''}
+          <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
+          <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
+          ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}
+        </div>
       </div>
-    `;
+      <div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>
+    </div>` : `
+    <div class="hp-card is-empty">
+      <span class="hp-card-hint">Tap a chord to see it on the pan</span>
+      <button type="button" class="btn btn-secondary" data-action="play-scale">${icon('play')} Scale</button>
+    </div>`;
+
+  const nowPlaying = autoplayPl ? `
+    <div class="hp-now">
+      <div class="hp-now-top">
+        ${icon('list-music')}
+        <span class="hp-now-name">${escHtml(autoplayPl.name)}</span>
+        ${autoplayPos >= 0 ? `<span class="hp-now-pos num">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
+        <button type="button" class="btn btn-ghost btn-sm" data-action="hp-edit-playlist">Edit</button>
+        ${uiIconBtn('x', 'Show all chords', { action: 'hp-clear-playlist', cls: 'is-dense' })}
+      </div>
+      <div class="hp-now-ctl">
+        <button type="button" class="btn btn-primary" data-action="toggle-autoplay">
+          ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
+        </button>
+        <select class="select hp-secs" data-action="set-autoplay-seconds" aria-label="Seconds per chord" title="Seconds per chord">
+          ${AUTOPLAY_SECONDS.map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s} s</option>`).join('')}
+        </select>
+      </div>
+    </div>` : '';
+
+  const nFilters = hpFilterCount();
+  const browseHead = `
+    ${nowPlaying}
+    <div class="hp-filter-row">
+      <button type="button" class="btn btn-secondary hp-filter-btn" data-action="hp-filters-open" aria-haspopup="dialog">
+        ${icon('sliders-horizontal')} Filters${nFilters ? ` · ${nFilters}` : ''}
+      </button>
+      <div class="chips-scroll hp-roots" role="group" aria-label="Root note">
+        ${roots.map(r => `<button type="button" class="chip" aria-pressed="${chordFilter.root === r ? 'true' : 'false'}"
+          data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
+      </div>
+    </div>
+    <div class="hp-count">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</div>`;
+
+  const rows = filtered.length === 0
+    ? uiEmpty({
+      icon: 'sliders-horizontal', title: 'No chords match these filters',
+      action: '<button type="button" class="btn btn-secondary" data-action="hp-filters-clear" data-all="1">Clear filters</button>',
+    })
+    : `<div class="list chord-rows">${filtered.map(c => {
+      const favId = `${layoutId}-${c.id}`;
+      const inAny = isChordBookmarkedAnyVoicing(layoutId, c.id);
+      const isSel = selectedChord?.id === c.id;
+      return uiRow({
+        title: hpChordName(c), meta: escHtml(c.type.category),
+        action: 'select-chord', data: { id: c.id }, cls: `chord-row${isSel ? ' is-current' : ''}`,
+        trail: `
+          ${hpHeartBtn(inAny, { action: 'show-playlist-picker', data: { 'chord-id': c.id, 'chord-fav-id': favId } })}
+          ${canUpdateEntry && isSel ? saveVoicingBtn('') : ''}
+          <span class="chord-count">${c.noteCount}</span>`,
+      });
+    }).join('')}</div>`;
+
+  // Identify: notes tapped on the pan, and the chords they make.
+  const dn = state.discoverNotes;
+  let matches = '';
+  if (dn.length < 2) {
+    matches = `<p class="hp-hint">Select 2 or more notes to identify a chord.</p>`;
+  } else if (discoverMatches.length === 0) {
+    matches = `<div class="list">${uiRow({
+      title: 'Custom combination',
+      meta: `Not a recognized chord type · ${dn.length} notes: ${escHtml(dn.map(n => displayNote(n, uf, us)).join(', '))}`,
+      trail: `${hpHeartBtn(false, { action: 'discover-bookmark-custom' })}${uiIconBtn('play', 'Play chord', { action: 'discover-play-custom' })}`,
+    })}</div>`;
+  } else {
+    matches = `<div class="list">${discoverMatches.map((m, idx) => uiRow({
+      title: hpChordName(m),
+      meta: `${escHtml(m.type.category)} · ${m.noteCount} notes: ${escHtml(m.notes.map(n => displayNote(n, uf, us)).join(', '))}`,
+      trail: `${hpHeartBtn(isChordBookmarkedAnyVoicing(layoutId, m.id), { action: 'discover-bookmark', data: { 'match-idx': idx } })}${uiIconBtn('play', 'Play chord', { action: 'discover-play', data: { 'match-idx': idx } })}`,
+    })).join('')}</div>`;
   }
+  const identify = `
+    <div class="hp-identify">
+      <p class="hp-hint">Tap notes on the pan to build a chord. Tap again to remove one.</p>
+      ${dn.length ? `
+        <div class="hp-identify-notes">
+          <div class="chips">${dn.map(n => `<span class="chip is-selected hp-note-chip">${escHtml(displayNote(n, uf, us))}</span>`).join('')}</div>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="discover-clear">Clear</button>
+        </div>` : ''}
+      ${matches}
+    </div>`;
 
   return `
     ${handpanAppBar(handpanTabs('chords'))}
-    <div class="toolbar">
-      <div class="toolbar-btns">
-        <button class="btn btn-secondary btn-sm" data-action="toggle-discover-mode" aria-pressed="${state.discoverMode ? 'true' : 'false'}"
-          title="Click note fields on the pan to identify what chord they form">${icon('search')} Discover</button>
+    <div class="hp-chords${state.discoverMode ? ' is-identify' : ''}">
+      <div class="hp-stage">
+        <div class="pan-wrap hp-pan">${panRotateBtn()}${panSvg}</div>
+        ${card}
       </div>
-    </div>
-
-    <div class="explorer-layout">
-      ${state.discoverMode ? `
-      <div class="chord-list">
-        <div class="discover-panel">
-          <div class="discover-hint">Click note fields on the pan to build a chord — click again to remove one.</div>
-          ${state.discoverNotes.length > 0 ? `
-            <div class="pills discover-selected">
-              ${state.discoverNotes.map(n => `<span class="pill active">${displayNote(n, uf, us)}</span>`).join('')}
-            </div>
-            <button class="btn btn-secondary btn-sm" data-action="discover-clear">Clear</button>
-          ` : ''}
+      <section class="hp-list chord-list" aria-label="Chords">
+        <div class="hp-list-head">
+          ${uiSeg([{ value: 'browse', label: 'Browse' }, { value: 'identify', label: 'Identify' }],
+            state.discoverMode ? 'identify' : 'browse', { action: 'toggle-discover-mode', label: 'Find chords by' })}
+          ${state.discoverMode ? '' : browseHead}
         </div>
-      </div>
-
-      <div class="chord-panel">
-        ${(() => {
-          if (state.discoverNotes.length < 2) {
-            return `<div class="chord-panel-empty"><span class="hint">Select 2 or more note fields to identify a chord</span></div>`;
-          }
-          if (discoverMatches.length === 0) {
-            return `
-              <div class="chord-panel-header">
-                <div>
-                  <div class="chord-panel-title">Custom combination</div>
-                  <div class="chord-panel-sub">Not a recognized chord type · ${state.discoverNotes.length} notes: ${state.discoverNotes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-                </div>
-                <div class="chord-play-btns">
-                  <button class="fav-btn panel-fav" data-action="discover-bookmark-custom" title="Bookmark this combination">${icon('heart')}</button>
-                  <button class="btn btn-primary btn-sm" data-action="discover-play-custom">${icon('play')} Chord</button>
-                </div>
-              </div>
-            `;
-          }
-          return discoverMatches.map((m, idx) => {
-            const favId = favIdForChord(layoutId, m, chords);
-            const inAny = isChordBookmarkedAnyVoicing(layoutId, m.id);
-            return `
-              <div class="chord-panel-header">
-                <div>
-                  <div class="chord-panel-title">${displayNote(m.rootName, uf, us)} ${m.type.name}</div>
-                  <div class="chord-panel-sub">${m.type.category} · ${m.noteCount} notes: ${m.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-                </div>
-                <div class="chord-play-btns">
-                  <button class="fav-btn panel-fav ${inAny ? 'active' : ''}"
-                    data-action="discover-bookmark" data-match-idx="${idx}" title="Bookmark this voicing">${icon('heart')}</button>
-                  <button class="btn btn-primary btn-sm" data-action="discover-play" data-match-idx="${idx}">${icon('play')} Chord</button>
-                </div>
-              </div>
-            `;
-          }).join('');
-        })()}
-      </div>
-      ` : `
-      <div class="chord-list">
-        <div class="chord-list-header">
-          <div class="chord-filter-dropdowns">
-            <div class="count-pills">
-              ${['2','3','4','5+'].map(n => `<button class="pill count-pill ${state.chordCountSet.has(n) ? 'active' : ''}" data-action="toggle-note-count" data-count="${n}">${n}</button>`).join('')}
-            </div>
-            <select class="select-input" data-action="filter-category">
-              <option value="All" ${chordFilter.category === 'All' ? 'selected' : ''}>All types</option>
-              ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `
-                <option value="${cat}" ${chordFilter.category === cat ? 'selected' : ''}>${cat}</option>
-              `).join('')}
-            </select>
-            <select class="select-input" data-action="select-playlist-filter">
-              <option value="All" ${chordFilter.playlist === 'All' ? 'selected' : ''}>All lists</option>
-              ${state.playlists.map(pl => `<option value="${escHtml(pl.id)}" ${chordFilter.playlist === pl.id ? 'selected' : ''}>${escHtml(pl.name)}</option>`).join('')}
-              ${chordFilter.playlist !== 'All' ? `<option value="__edit__">Edit playlist</option>` : ''}
-            </select>
-          </div>
-          ${autoplayPl ? `
-            <div class="autoplay-bar">
-              <button class="btn btn-sm ${state.autoplayOn ? 'btn-primary' : 'btn-secondary'}" data-action="toggle-autoplay">
-                ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
-              </button>
-              <select class="select-input select-sm" data-action="set-autoplay-seconds" title="Seconds per chord">
-                ${[3, 4, 5, 6, 8, 10].map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s}s</option>`).join('')}
-              </select>
-              ${autoplayPos >= 0 ? `<span class="hint">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
-            </div>
-          ` : ''}
-          <div class="pills" style="margin-bottom:4px">
-            ${roots.map(r => `<button class="pill ${chordFilter.root === r ? 'active' : ''}"
-              data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : displayNote(r, uf, us)}</button>`).join('')}
-          </div>
-          <div style="margin-bottom:4px">
-            <span class="hint">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
-        ${(() => {
-          return filtered.length === 0
-            ? '<div class="empty-state">No chords match these filters</div>'
-            : filtered.map(c => {
-              const favId = `${layoutId}-${c.id}`;
-              const inAny = isChordBookmarkedAnyVoicing(layoutId, c.id);
-              return `<div class="chord-item ${selectedChord?.id === c.id ? 'selected' : ''}"
-                data-action="select-chord" data-id="${c.id}">
-                <div>
-                  <div class="chord-item-name">${displayNote(c.rootName, uf, us)} ${c.type.name}</div>
-                  <div class="chord-item-type">${c.type.category}</div>
-                </div>
-                <div class="chord-item-right">
-                  <button class="fav-btn ${inAny ? 'active' : ''}"
-                    data-action="show-playlist-picker" data-chord-id="${c.id}" data-chord-fav-id="${escHtml(favId)}" title="Add to playlist">${icon('heart')}</button>
-                  ${canUpdateEntry && selectedChord?.id === c.id ? `
-                    <button class="btn-icon row-save" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">${icon('save')}</button>
-                  ` : ''}
-                  <span class="chord-count">${c.noteCount}</span>
-                </div>
-              </div>`;
-            }).join('');
-        })()}
-      </div>
-
-      <div class="chord-panel">
-        ${selectedChord ? `
-          <div class="chord-panel-header">
-            <div>
-              <div class="chord-panel-title">${displayNote(selectedChord.rootName, uf, us)} ${selectedChord.type.name}</div>
-              <div class="chord-panel-sub">${selectedChord.type.category} · ${selectedChord.noteCount} notes: ${selectedChord.notes.map(n => displayNote(n, uf, us)).join(', ')}</div>
-            </div>
-            <div class="chord-play-btns">
-              <button class="fav-btn panel-fav ${selectedInAny ? 'active' : ''}"
-                data-action="show-playlist-picker" data-chord-id="${selectedChord.id}"
-                data-chord-fav-id="${escHtml(selectedFavId)}" title="Add to playlist">${icon('heart')}</button>
-              ${canUpdateEntry ? `
-                <button class="btn-icon" data-action="update-playlist-entry" title="Save this voicing to ${escHtml(sourcePl.name)}">${icon('save')}</button>
-              ` : ''}
-              <button class="btn btn-primary btn-sm" data-action="play-chord">${icon('play')} Chord</button>
-              <button class="btn btn-secondary btn-sm" data-action="play-scale">${icon('play')} Scale</button>
-            </div>
-          </div>
-          ${relatedHtml}
-        ` : `
-          <div class="chord-panel-empty">
-            <span class="hint">Select a chord to see it on the pan</span>
-            <button class="btn btn-secondary btn-sm" data-action="play-scale">${icon('play')} Scale</button>
-          </div>
-        `}
-      </div>
-      `}
-
-      <div class="pan-col">
-        <div class="pan-wrap">
-          ${panRotateBtn()}${panSvg}
-        </div>
-      </div>
+        ${state.discoverMode ? identify : rows}
+      </section>
     </div>
   `;
+}
+
+// Filters sheet: note counts, chord type and playlist (§6.7).
+function hpFiltersSheet() {
+  const f = state.chordFilter;
+  const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
+  const body = `
+    <div class="hp-sheet-form">
+      <div class="field">
+        <span class="field-label">Notes in chord</span>
+        <div class="chips" role="group" aria-label="Notes in chord">
+          ${['2', '3', '4', '5+'].map(n => `<button type="button" class="chip" aria-pressed="${state.chordCountSet.has(n) ? 'true' : 'false'}"
+            data-action="toggle-note-count" data-count="${n}">${n}</button>`).join('')}
+        </div>
+      </div>
+      ${uiField({ label: 'Type', control: `
+        <select class="select" data-action="filter-category" aria-label="Chord type">
+          <option value="All" ${f.category === 'All' ? 'selected' : ''}>All types</option>
+          ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${f.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+        </select>` })}
+      ${uiField({ label: 'Playlist', control: `
+        <select class="select" data-action="select-playlist-filter" aria-label="Playlist">
+          <option value="All" ${f.playlist === 'All' ? 'selected' : ''}>All chords</option>
+          ${state.playlists.map(p => `<option value="${escHtml(p.id)}" ${f.playlist === p.id ? 'selected' : ''}>${escHtml(p.name)}</option>`).join('')}
+        </select>` })}
+      ${pl ? `<div class="list">${uiRow({ lead: 'pencil', title: 'Edit playlist', meta: escHtml(pl.name), chevron: true, action: 'hp-edit-playlist' })}</div>` : ''}
+    </div>`;
+  return uiSheet({
+    key: 'hp-filters', title: 'Filters', close: 'hp-filters-close', body,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="hp-filters-clear">Clear all</button>
+      <button type="button" class="btn btn-primary" data-action="hp-filters-close">Done</button>`,
+  });
+}
+
+// More sheet of the selected chord on phones: what the desktop card shows inline.
+function hpMoreSheet() {
+  const chord = state.selectedChord;
+  const { pl, canUpdate } = hpSourceEntry();
+  const rows = [
+    uiRow({ lead: 'play', title: 'Play scale', action: 'play-scale' }),
+    canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',
+    uiRow({ lead: 'link', title: 'Copy link to this chord', action: 'copy-url' }),
+  ].join('');
+  return uiSheet({
+    key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
+    body: `<div class="list">${rows}</div><div class="hp-related">${hpRelatedHtml(chord)}</div>`,
+  });
 }
 
 // Rotate button overlaid on the pan drawing (Chords and Pan).
@@ -6590,6 +6624,8 @@ function sheetHtml() {
   if (state.menu) return menuSheet();
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && (state.view === 'chords' || state.view === 'instrument')) return renderPlaylistPicker();
+  if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
+  if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
   if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
   if (state.clayEdit && state.view === 'clay') return clayEditSheet();
@@ -7185,6 +7221,7 @@ document.addEventListener('click', e => {
   if (action === 'menu-close') { state.menu = false; render(); return; }
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
+  if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
   if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
   if (action === 'confirm-ok') {
     const c = state.confirm;
@@ -8055,6 +8092,36 @@ document.addEventListener('click', e => {
   }
 
   // ── Chord explorer ─────────────────────────────────────────────────────────
+  if (action === 'hp-filters-open') { state.hpFilters = true; render(); return; }
+  if (action === 'hp-filters-close') { state.hpFilters = false; render(); return; }
+  if (action === 'hp-more-open') { state.hpMore = true; render(); return; }
+  if (action === 'hp-more-close') { state.hpMore = false; render(); return; }
+  if (action === 'hp-filters-clear') {
+    // The sheet's filters; the empty list's "Clear filters" also clears the root.
+    state.chordCountSet.clear();
+    state.chordFilter.category = 'All';
+    if (state.autoplayOn && state.autoplayPlaylistId !== 'All') stopAutoplay();
+    state.chordFilter.playlist = 'All';
+    if (el.dataset.all) state.chordFilter.root = 'All';
+    render();
+    return;
+  }
+  if (action === 'hp-clear-playlist') {
+    if (state.autoplayOn) stopAutoplay();
+    state.chordFilter.playlist = 'All';
+    render();
+    return;
+  }
+  if (action === 'hp-edit-playlist') {
+    // Same as the old "Edit playlist" option of the playlist select.
+    stopAutoplay();
+    state.hpFilters = false;
+    state.activePlaylistId = state.chordFilter.playlist;
+    state.view = 'playlist';
+    navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
+    render();
+    return;
+  }
   if (action === 'toggle-note-count') {
     const count = el.dataset.count;
     if (state.chordCountSet.has(count)) state.chordCountSet.delete(count);
@@ -8132,6 +8199,8 @@ document.addEventListener('click', e => {
 
   // ── Discover mode ────────────────────────────────────────────────────────
   if (action === 'toggle-discover-mode') {
+    // From the Browse | Identify segment: only a change of mode toggles.
+    if (el.dataset.value && (el.dataset.value === 'identify') === state.discoverMode) return;
     stopAutoplay();
     state.discoverMode = !state.discoverMode;
     state.discoverNotes = [];
@@ -8371,6 +8440,8 @@ document.addEventListener('input', e => {
     state.layout.name = e.target.value;
     const barName = document.querySelector('.appbar-switcher-name');
     if (barName) barName.textContent = e.target.value;
+    const actions = document.querySelector('.ed-actions');
+    if (actions) actions.innerHTML = edActionsHtml();
   }
   if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
     renamePlaylist(state.activePlaylistId, e.target.value);
