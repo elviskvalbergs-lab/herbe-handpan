@@ -27,6 +27,15 @@ for f in js_files:
 
 js_bundle = '\n\n'.join(js_parts)
 
+# Preview builds can point at a separate Supabase test project (see
+# supabase/README.md). Only set these for Vercel's Preview environment.
+_supa_url = os.environ.get('HP_SUPABASE_URL')
+_supa_key = os.environ.get('HP_SUPABASE_KEY')
+if _supa_url and _supa_key:
+    js_bundle = re.sub(r"const _SUPA_URL = '[^']*';", f"const _SUPA_URL = '{_supa_url}';", js_bundle)
+    js_bundle = re.sub(r"const _SUPA_KEY = '[^']*';", f"const _SUPA_KEY = '{_supa_key}';", js_bundle)
+    print('Using Supabase project from HP_SUPABASE_URL')
+
 html = f'''<!DOCTYPE html>
 <html lang="en">
 <head>

@@ -30,7 +30,8 @@ import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
   createScaleOcarina, createCustomOcarina, instrumentStatus, midiToNoteName,
-  getClayBodies, saveClayBodies,
+  getClayBodies, saveClayBodies, getInstrumentsRaw, writeInstrumentsRaw,
+  newPublicId, mergeInstruments, copySharedInstrument,
 } from './instruments.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -40,6 +41,9 @@ const state = {
   currentInstrumentId: null, // instrument being played; null = browsing the catalogue
   wizard: null,            // add-instrument wizard state, see viewWizard()
   tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
+  shared: null,            // instrument opened from a share link (#p/<code>), read-only
+  sharedStatus: null,      // 'loading' | 'missing' while a share link loads
+  shareModal: null,        // { code, url, qr } while the share dialog is open
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
@@ -86,6 +90,7 @@ function render() {
   else if (state.view === 'editor') app.innerHTML = viewEditor();
   else if (state.view === 'chords') app.innerHTML = viewChords();
   else if (state.view === 'playlist') app.innerHTML = viewPlaylist();
+  if (state.shareModal) app.insertAdjacentHTML('beforeend', shareModalHtml());
   if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
 }
 
@@ -457,6 +462,7 @@ function scalePitchClasses(scaleId) {
 function ocTabs(inst) {
   const tabs = [];
   if (playableMidis(inst).length > 0) tabs.push(['notes', 'Notes'], ['chords', 'Chords']);
+  if (inst.id === SHARED_ID) return tabs;
   if (inst.kind === 'scale') tabs.push(['builder', 'Builder']);
   if (inst.kind === 'custom') tabs.push(['setup', 'Set up']);
   return tabs;
@@ -464,12 +470,19 @@ function ocTabs(inst) {
 
 function ocHeader(inst, view) {
   const tabs = ocTabs(inst);
+  const shared = inst.id === SHARED_ID;
   return `
+    ${shared ? `
+      <div class="shared-bar">
+        <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
+        <button class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
+      </div>` : ''}
     <div class="app-header">
       <div class="breadcrumb">
         <a data-action="back-home">← My instruments</a>
         <span>/</span>
         <span>${escHtml(inst.name)}</span>
+        ${shared ? '' : `<button class="btn-icon" data-action="share-instrument" title="Share: code, link and QR code">${inst.publicId ? escHtml(inst.publicId) : 'Share'}</button>`}
       </div>
       ${tabs.length > 1 ? `
         <div class="pills oc-tabs">
@@ -695,7 +708,12 @@ function handLegendModal() {
 
 // An ocarina or flute: the Notes view (fingering chart).
 function viewInstrument() {
-  const inst = getInstrument(state.currentInstrumentId);
+  if (state.currentInstrumentId === SHARED_ID && !state.shared) {
+    return `
+      <div class="app-header"><div class="breadcrumb"><a data-action="back-home">← My instruments</a></div></div>
+      <div class="empty-state">${state.sharedStatus === 'loading' ? 'Opening the shared instrument…' : 'No shared instrument has that code. Check it and try again.'}</div>`;
+  }
+  const inst = currentInstrument();
   if (!inst) return viewHome();
   const uf = state.useFlats, us = state.useSolfege;
   const midis = playableMidis(inst);
@@ -782,7 +800,7 @@ function ocCardData(inst, key) {
 }
 
 function playPracticeStep() {
-  const inst = getInstrument(state.currentInstrumentId);
+  const inst = currentInstrument();
   const pl = state.playlists.find(p => p.id === state.oc.practice?.playlistId);
   if (!inst || !pl) return;
   const steps = practiceSteps(inst, pl);
@@ -796,6 +814,122 @@ function openPlaylistEntryOnInstrument(pl, entry) {
   history.replaceState(null, '', `#i/${entry.instrumentId}/chords`);
   return true;
 }
+
+// ── Sharing ──────────────────────────────────────────────────────────────────
+// A shared instrument (#p/<code>) opens read-only under this id.
+const SHARED_ID = '__shared__';
+
+function currentInstrument() {
+  return state.currentInstrumentId === SHARED_ID ? state.shared : getInstrument(state.currentInstrumentId);
+}
+
+function openSharedLink(code) {
+  stopAutoplay();
+  Object.assign(state, {
+    view: 'instrument', layout: null, currentInstrumentId: SHARED_ID,
+    shared: null, sharedStatus: 'loading', oc: newOcState(),
+  });
+  // Supabase is initialised just after the first render, so fetch next tick.
+  setTimeout(async () => {
+    const data = await fetchSharedInstrument(code);
+    if (state.currentInstrumentId !== SHARED_ID) return;
+    state.shared = data ? { ...data, id: SHARED_ID, publicId: code.toUpperCase() } : null;
+    state.sharedStatus = data ? null : 'missing';
+    render();
+  }, 0);
+}
+
+let _qrLib = null;
+function loadQrLib() {
+  if (_qrLib) return _qrLib;
+  _qrLib = new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    sc.onload = () => resolve(window.qrcode);
+    sc.onerror = () => { _qrLib = null; reject(new Error('QR library unavailable')); };
+    document.head.appendChild(sc);
+  });
+  return _qrLib;
+}
+
+async function shareInstrument() {
+  const inst = currentInstrument();
+  if (!inst || inst.id === SHARED_ID) return;
+  if (!isLoggedIn()) { showToast('Sign in with Sync on My instruments to share'); return; }
+  if (!inst.publicId) {
+    let ok = false;
+    for (let attempt = 0; attempt < 3 && ok !== true; attempt++) {
+      inst.publicId = newPublicId();
+      saveInstrument(inst);
+      ok = await saveCloudInstruments([getInstrument(inst.id)]);
+      if (ok !== '23505') break; // anything but a public-ID clash: stop retrying
+    }
+    if (ok !== true) {
+      delete inst.publicId;
+      saveInstrument(inst);
+      showToast('Sharing isn\'t available on the server yet');
+      return;
+    }
+  }
+  const url = `${location.origin}${location.pathname}#p/${inst.publicId}`;
+  state.shareModal = { code: inst.publicId, url, qr: null };
+  render();
+  try {
+    const qrcode = await loadQrLib();
+    const qr = qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    if (state.shareModal?.code === inst.publicId) { state.shareModal.qr = qr.createSvgTag({ cellSize: 5, margin: 2, scalable: true }); render(); }
+  } catch { /* the link and code still work without the QR image */ }
+}
+
+function shareModalHtml() {
+  const m = state.shareModal;
+  if (!m) return '';
+  return `
+    <div class="modal-overlay" data-action="share-close">
+      <div class="modal share-modal">
+        <div class="modal-title">Share this instrument</div>
+        <div class="modal-sub">Anyone with the code, link or QR code sees its fingering chart and chords, read-only, and can add it to their own instruments. Stamp the code into the clay or tie the QR code to it.</div>
+        <div class="share-code">${escHtml(m.code)}</div>
+        <div class="share-qr">${m.qr ?? '<span class="hint">QR code loading…</span>'}</div>
+        <input class="name-input share-url" readonly value="${escHtml(m.url)}">
+        <div class="modal-actions">
+          <button class="btn btn-primary btn-sm" data-action="share-copy">Copy link</button>
+          <button class="btn btn-secondary btn-sm" data-action="share-close">Close</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Instruments sync ─────────────────────────────────────────────────────────
+// Two-way sync of ocarinas (not handpans, which come from the synced
+// layouts) through the instruments table. Quietly does nothing until the
+// migration has been run.
+
+let _instrSyncTimer = null;
+let _instrSyncing = false;
+
+async function syncInstrumentsNow() {
+  if (!isLoggedIn() || _instrSyncing) return;
+  _instrSyncing = true;
+  try {
+    const rows = await loadCloudInstruments();
+    if (!rows) return;
+    const { local, toPush, changed } = mergeInstruments(getInstrumentsRaw(), rows);
+    if (changed) writeInstrumentsRaw(local);
+    if (toPush.length) await saveCloudInstruments(toPush);
+    if (changed) { refreshInstruments(); render(); }
+  } finally {
+    _instrSyncing = false;
+  }
+}
+
+window.addEventListener('hp-instruments-changed', () => {
+  if (_instrSyncing || !isLoggedIn()) return;
+  clearTimeout(_instrSyncTimer);
+  _instrSyncTimer = setTimeout(syncInstrumentsNow, 2000);
+});
 
 // ── Builder ──────────────────────────────────────────────────────────────────
 // A step-by-step project per scale-built ocarina. Each instrument remembers
@@ -1121,7 +1255,7 @@ function tunerButton() {
 // The note the player should be playing right now, if any.
 function tunerTarget() {
   if (state.view !== 'instrument') return null;
-  const inst = getInstrument(state.currentInstrumentId);
+  const inst = currentInstrument();
   if (!inst) return null;
   const oc = state.oc;
   if (oc.practice) {
@@ -1174,7 +1308,7 @@ function onTunerReading(reading) {
   if (pr && target != null && reading.stable && reading.since > state.tuner.lastAdvance
       && Math.abs(reading.midi - target) < 0.4) {
     state.tuner.lastAdvance = performance.now();
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     const pl = state.playlists.find(p => p.id === pr.playlistId);
     if (inst && pl) {
       pr.idx = (pr.idx + 1) % practiceSteps(inst, pl).length;
@@ -1806,7 +1940,7 @@ function playlistEntryFor(chord, favId) {
     typeName: chord.type.name, category: chord.type.category,
     notes: chord.notes, noteCount: chord.noteCount,
   };
-  const inst = state.view === 'instrument' ? getInstrument(state.currentInstrumentId) : null;
+  const inst = state.view === 'instrument' ? currentInstrument() : null;
   if (inst) {
     return { ...common, layoutId: ocLayoutId(inst), layoutData: null, scaleName: inst.name, family: inst.family, instrumentId: inst.id };
   }
@@ -1922,6 +2056,7 @@ function loadFromHash() {
   let chordId = null;
 
   if (hash === '#scales') { state.view = 'selector'; return; }
+  if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
   if (hash.startsWith('#i/')) {
     const [id, tab] = hash.slice(3).split('/');
     if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'builder', 'setup'].includes(tab)) {
@@ -2095,6 +2230,7 @@ async function checkForUpdates() {
   if (!isLoggedIn()) return;
   const cloud = await loadCloudData();
   if (mergeCloudData(cloud)) render();
+  syncInstrumentsNow();
 }
 
 let _syncPoll = null;
@@ -2113,6 +2249,7 @@ async function handleLogin(event, session) {
   const cloud = await loadCloudData();
   mergeCloudData(cloud);
   scheduleSave(); // always push local on login — ensures cloud has our data
+  syncInstrumentsNow();
   startSyncPoll();
   render();
 }
@@ -2217,7 +2354,7 @@ document.addEventListener('click', e => {
     Object.assign(state, {
       view: 'home', layout: null, selectedChord: null, pendingSlot: null,
       sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
-      wizard: null, discoverMode: false, discoverNotes: [],
+      wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
     });
     refreshInstruments();
     history.pushState(null, '', location.pathname);
@@ -2254,7 +2391,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'oc-play-scale') {
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst) return;
     const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
     const notes = playableMidis(inst).filter(m => !pcs || pcs.has(((m % 12) + 12) % 12)).map(midiToNoteName);
@@ -2283,13 +2420,33 @@ document.addEventListener('click', e => {
 
 
   if (action === 'tuner-toggle') { toggleTuner(); return; }
+  if (action === 'share-instrument') { shareInstrument(); return; }
+  if (action === 'share-close') {
+    if (e.target.closest('.modal') && !e.target.closest('.btn')) return;
+    state.shareModal = null; render(); return;
+  }
+  if (action === 'share-copy') {
+    navigator.clipboard?.writeText(state.shareModal?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
+    return;
+  }
+  if (action === 'shared-add') {
+    if (!state.shared) return;
+    const copy = copySharedInstrument(state.shared);
+    saveInstrument(copy);
+    refreshInstruments();
+    state.shared = null;
+    openInstrument(copy.id);
+    showToast(`${copy.name} added to My instruments`);
+    render();
+    return;
+  }
 
   // ── Builder and set-up ────────────────────────────────────────────────────
   if (action === 'b-record') {
     const r = state.tuner.reading;
     if (!state.tuner.on) { toggleTuner(); showToast('Tuner on: blow the note, then tap 🎤 again'); return; }
     if (!r?.stable || !r.hz) { showToast('No steady note yet: keep blowing'); return; }
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst) return;
     setReading(inst, el.dataset.path, Math.round(r.hz * 10) / 10);
     saveInstrument(inst);
@@ -2297,7 +2454,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'b-stage' || action === 'b-next' || action === 'b-unglazed') {
-    let inst = getInstrument(state.currentInstrumentId);
+    let inst = currentInstrument();
     if (!inst) return;
     const target = action === 'b-stage' ? el.dataset.stage
       : action === 'b-unglazed' ? 'done' : nextStage(inst.build.stage);
@@ -2310,7 +2467,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'b-design') {
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst || el.tagName === 'SELECT' || el.tagName === 'INPUT') return; // handled on change
     inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
     const key = el.dataset.key, v = parseInt(el.dataset.value, 10);
@@ -2326,7 +2483,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'b-hole-done') {
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst) return;
     const ci = parseInt(el.dataset.ci, 10), idx = parseInt(el.dataset.index, 10);
     const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
@@ -2337,7 +2494,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'b-window' && el.tagName === 'BUTTON') {
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst) return;
     const ci = parseInt(el.dataset.ci, 10);
     const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
@@ -2347,7 +2504,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 's-calibrate') {
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst?.setup) return;
     const ch = calibrateChamber(inst.setup.holes, inst.setup.f0, inst.setup.singles);
     if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each hole raises the pitch'); return; }
@@ -2378,7 +2535,7 @@ document.addEventListener('click', e => {
   }
   if (['oc-play-arp', 'oc-voicing', 'oc-show-playlist-picker'].includes(action)) {
     e.stopPropagation();
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     if (!inst) return;
     const key = el.dataset.key;
     const card = ocCardData(inst, key);
@@ -2430,7 +2587,7 @@ document.addEventListener('click', e => {
   }
   if (action === 'oc-practice-stop') { state.oc.practice = null; render(); return; }
   if (action === 'oc-practice-next' || action === 'oc-practice-prev') {
-    const inst = getInstrument(state.currentInstrumentId);
+    const inst = currentInstrument();
     const pl = state.playlists.find(p => p.id === state.oc.practice?.playlistId);
     if (!inst || !pl) return;
     const n = practiceSteps(inst, pl).length;
@@ -3143,7 +3300,7 @@ document.addEventListener('change', e => {
   if (action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')
       || action === 'b-clay' || action === 'b-from' || action === 's-finger'
       || (action === 'b-design' && (el.tagName === 'SELECT' || el.tagName === 'INPUT'))) {
-    let inst = getInstrument(state.currentInstrumentId);
+    let inst = currentInstrument();
     if (!inst) return;
     const num = parseFloat(el.value);
     if (action === 'b-input') setReading(inst, el.dataset.path, num > 0 ? num : null);

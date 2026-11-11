@@ -159,7 +159,13 @@ function getAllInstrumentsRaw() {
 
 function writeInstruments(list) {
   localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(list));
+  // Lets the app schedule a cloud sync without every caller remembering to.
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-instruments-changed'));
 }
+
+// Raw list including soft deletes, for sync.
+export function getInstrumentsRaw() { return getAllInstrumentsRaw(); }
+export function writeInstrumentsRaw(list) { writeInstruments(list); }
 
 export function getInstruments() {
   return sortInstruments(getAllInstrumentsRaw().filter(i => !i.deletedAt));
@@ -216,4 +222,59 @@ export function getClayBodies() {
 
 export function saveClayBodies(list) {
   localStorage.setItem(CLAY_KEY, JSON.stringify(list));
+}
+
+// ── Sharing and sync ─────────────────────────────────────────────────────────
+
+// 6-character public ID without look-alike characters (no 0/O, 1/I/L).
+const PUBLIC_ID_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export function newPublicId(random = Math.random) {
+  let id = '';
+  for (let i = 0; i < 6; i++) id += PUBLIC_ID_CHARS[Math.floor(random() * PUBLIC_ID_CHARS.length)];
+  return id;
+}
+
+// Instruments that sync through the instruments table: everything except
+// handpans, which are rebuilt from the saved layouts (synced already).
+export function syncableInstruments(list) {
+  return list.filter(i => i.family !== 'handpan');
+}
+
+// Two-way merge of local instruments with cloud rows ({ id, data,
+// updated_at, deleted_at }): newest updatedAt wins per instrument, deletes
+// included. Pure. Returns { local, toPush, changed } where toPush lists the
+// local instruments the cloud lacks or has older.
+export function mergeInstruments(localList, rows) {
+  const local = localList.map(i => ({ ...i }));
+  let changed = false;
+  const cloudById = new Map(rows.map(r => [r.id, r]));
+  for (const row of rows) {
+    const remote = { ...row.data, deletedAt: row.deleted_at ?? row.data?.deletedAt ?? undefined };
+    if (!remote.deletedAt) delete remote.deletedAt;
+    const idx = local.findIndex(i => i.id === row.id);
+    if (idx < 0) { local.push(remote); changed = true; continue; }
+    if ((remote.updatedAt || '') > (local[idx].updatedAt || '')) {
+      local[idx] = { ...remote, lastPlayedAt: local[idx].lastPlayedAt ?? remote.lastPlayedAt };
+      changed = true;
+    }
+  }
+  const toPush = syncableInstruments(local).filter(i => {
+    const row = cloudById.get(i.id);
+    return !row || (i.updatedAt || '') > (row.data?.updatedAt || '');
+  });
+  return { local, toPush, changed };
+}
+
+// A shared instrument opened from a link or QR code, ready to add to My
+// instruments: a fresh id, no public ID (that belongs to the owner's copy),
+// no build readings.
+export function copySharedInstrument(shared, now = nowIso()) {
+  const { publicId, build, setup, deletedAt, ...rest } = shared;
+  return {
+    ...rest,
+    id: (shared.family === 'handpan' ? 'hp-' : 'oc-') + Math.random().toString(36).slice(2, 10),
+    copiedFrom: publicId ?? null,
+    build: build ? { ...build, stage: 'done', perChamber: [] } : undefined,
+    createdAt: now, updatedAt: now, lastPlayedAt: now,
+  };
 }
