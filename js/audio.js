@@ -164,3 +164,16 @@ export function playScale(noteNames, onNote) {
     });
   });
 }
+
+// Notes one after another in the order given, no final chord: an arpeggio
+// on an instrument that sounds one note at a time (ocarina, flute).
+export function playSequence(noteNames, onNote, interval = 0.4) {
+  initAudio();
+  whenRunning(() => {
+    const now = ctx.currentTime + START_OFFSET;
+    noteNames.forEach((n, i) => {
+      playFreq(noteToFreq(n), now + i * interval);
+      if (onNote) setTimeout(() => onNote(n, i), Math.round(i * interval * 1000));
+    });
+  });
+}

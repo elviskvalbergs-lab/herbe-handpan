@@ -6,7 +6,7 @@
 // above it (fingeringFor, fingeringMoves, describeFingering) are pure and unit
 // tested in Node.
 
-import { displayNote } from './data.js';
+import { displayNote, noteToMidi } from './data.js';
 import { relativeHoleSizes, midiToHz } from './ocarina.js';
 import { midiToNoteName } from './instruments.js';
 
@@ -105,6 +105,60 @@ export function relativeSizes(chamber, a4 = 440) {
   return chamber.holes.map(() => 1);
 }
 
+// ── Chords ───────────────────────────────────────────────────────────────────
+
+// The layout shape findAllChords() expects, from an ocarina's playable notes:
+// lowest note as the "ding", the rest as ring notes. With a pitch-class set
+// (a scale filter), only notes in it are kept.
+export function ocarinaToLayout(inst, pcs = null) {
+  const names = playableMidis(inst)
+    .filter(m => !pcs || pcs.has(((m % 12) + 12) % 12))
+    .map(midiToNoteName);
+  return {
+    id: 'oc:' + inst.id,
+    name: inst.name,
+    isCustom: true,
+    top: { ding: names[0] ?? null, slots: names.slice(1).map(note => ({ note })), capacity: Math.max(0, names.length - 1) },
+    bottom: { slots: [], capacity: 0 },
+  };
+}
+
+// A chord's notes in arpeggio order: the root first, then upward, then the
+// notes below the root (still ascending). Returns MIDI numbers.
+export function arpeggioOrder(noteNames, rootNote) {
+  const midis = noteNames.map(noteToMidi).sort((a, b) => a - b);
+  const root = rootNote ? noteToMidi(rootNote) : midis[0];
+  const rootIdx = Math.max(0, midis.indexOf(root));
+  return [...midis.slice(rootIdx), ...midis.slice(0, rootIdx)];
+}
+
+// Fits a chord (note names, e.g. from a handpan scale) onto the instrument:
+// each note as written if playable, else the nearest octave of the same
+// pitch class that is. Returns { midis, missing } where missing lists the
+// note names with no playable octave at all.
+export function fitChordToInstrument(inst, noteNames) {
+  const playable = playableMidis(inst);
+  const midis = [], missing = [];
+  for (const n of noteNames) {
+    const m = noteToMidi(n);
+    if (playable.includes(m)) { midis.push(m); continue; }
+    const same = playable.filter(p => ((p - m) % 12 + 12) % 12 === 0 && !midis.includes(p));
+    if (same.length) midis.push(same.sort((a, b) => Math.abs(a - m) - Math.abs(b - m))[0]);
+    else missing.push(n);
+  }
+  return { midis: midis.sort((a, b) => a - b), missing };
+}
+
+// Voicing swap: moves chord note `midi` to the next higher octave of the same
+// pitch class the instrument has (wrapping to the lowest), skipping octaves
+// the chord already uses. Returns the new ascending MIDI list.
+export function nextVoicing(inst, midis, midi) {
+  const options = playableMidis(inst).filter(p => ((p - midi) % 12 + 12) % 12 === 0 && (p === midi || !midis.includes(p)));
+  if (options.length < 2) return [...midis];
+  const next = options[(options.indexOf(midi) + 1) % options.length];
+  return midis.map(m => (m === midi ? next : m)).sort((a, b) => a - b);
+}
+
 // ── Geometry ─────────────────────────────────────────────────────────────────
 // Diagram coordinates (viewBox units). Seen from above, mouthpiece at the
 // top, left hand on the left with the index finger nearest the middle.
@@ -162,13 +216,16 @@ function fgArrow(x, y, r, dir) {
 export function renderFingering(inst, midi, opts = {}) {
   const {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
-    useFlats = false, useSolfege = false, blowBoth = null, a4 = 440,
+    useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null,
   } = opts;
   const geo = fgIsPendant(inst) ? FG_PENDANT : FG_TRANSVERSE;
   const chambers = inst.chambers ?? [];
   const main = fingeringFor(inst, midi);
   const second = blowBoth != null ? fingeringFor(inst, blowBoth) : null;
-  const moves = previousMidi != null && previousMidi !== midi ? fingeringMoves(inst, previousMidi, midi) : null;
+  // Arrows show either how this note was reached (previousMidi) or, in
+  // practice mode, what to change next (nextMidi).
+  const moves = nextMidi != null && nextMidi !== midi ? fingeringMoves(inst, midi, nextMidi)
+    : previousMidi != null && previousMidi !== midi ? fingeringMoves(inst, previousMidi, midi) : null;
   const label = displayNote(midiToNoteName(midi), useFlats, useSolfege);
   const aria = describeFingering(inst, midi, label);
   const hasThumbs = chambers.some(c => c.holes.some(h => h.side === 'bottom'));

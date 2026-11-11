@@ -68,3 +68,37 @@ test('renderFingering: SVG with label, states and moves', () => {
   assert.doesNotMatch(mini, /fg-arrow|>R4</);
   assert.match(renderHandLegend(), /L1.*L4|LT/s);
 });
+
+// ── Chords ───────────────────────────────────────────────────────────────────
+import { ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing } from '../js/ocarina-ui.js';
+import { findAllChords } from '../js/chords.js';
+
+test('ocarinaToLayout feeds findAllChords', () => {
+  const layout = ocarinaToLayout({ id: 'x', name: 'DK', ...dKurd });
+  assert.equal(layout.top.ding, 'D3');
+  assert.equal(layout.top.slots.length, 8);
+  const chords = findAllChords(layout);
+  assert.ok(chords.some(c => c.id === 'D-min'));
+  // Scale filter: only the pitch classes of D minor triad.
+  const dm = ocarinaToLayout({ id: 'x', ...dKurd }, new Set([2, 5, 9]));
+  assert.deepEqual([dm.top.ding, ...dm.top.slots.map(s => s.note)], ['D3', 'A3', 'D4', 'F4', 'A4']);
+});
+
+test('arpeggio order: root first, then up, then the notes below', () => {
+  assert.deepEqual(arpeggioOrder(['D3', 'F4', 'A3'], 'D3'), [m('D3'), m('A3'), m('F4')]);
+  assert.deepEqual(arpeggioOrder(['A3', 'C4', 'F4'], 'F4'), [m('F4'), m('A3'), m('C4')]);
+});
+
+test('fitting a chord: octave moves, then missing notes', () => {
+  // G3 isn't on the D Kurd ocarina but G4 is; B is nowhere.
+  assert.deepEqual(fitChordToInstrument(dKurd, ['G3', 'Bb3', 'D4']), { midis: [m('Bb3'), m('D4'), m('G4')], missing: [] });
+  assert.deepEqual(fitChordToInstrument(dKurd, ['G3', 'B3', 'D4']).missing, ['B3']);
+});
+
+test('voicing swap cycles a note through its octaves', () => {
+  const d = [m('D3'), m('F4'), m('A3')].sort((a, b) => a - b);
+  assert.deepEqual(nextVoicing(dKurd, d, m('A3')), [m('D3'), m('F4'), m('A4')]);
+  assert.deepEqual(nextVoicing(dKurd, [m('D3'), m('F4'), m('A4')], m('A4')), [m('D3'), m('A3'), m('F4')]);
+  // Only one F on the instrument: unchanged.
+  assert.deepEqual(nextVoicing(dKurd, d, m('F4')), d);
+});
