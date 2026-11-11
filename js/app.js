@@ -122,6 +122,7 @@ function render() {
   else if (state.view === 'chords') html = viewChords();
   else if (state.view === 'hp-playlists') html = viewHandpanPlaylists();
   else if (state.view === 'playlist') html = viewPlaylist();
+  else if (state.view === 'progression') html = viewProgression();
   else if (state.view === 'settings') html = viewSettings();
   else if (state.view === 'clay') html = viewClayBodies();
   // Everything after the app bar goes into <main>, the page's content column.
@@ -706,6 +707,7 @@ function viewHome() {
       </section>
       <section class="home-side" aria-label="Playlists">
         ${state.playlists.length ? `<h2 class="list-title">Playlists</h2><div class="list">${playlists}</div>` : ''}
+        ${state.progressions.length ? `<h2 class="list-title">Progressions</h2><div class="list">${progressionRowsHtml(null, { home: true })}</div>` : ''}
         ${tip}
       </section>
     </div>`;
@@ -1037,6 +1039,21 @@ function handpanTabs(current) {
 // chords belong to this instrument. A row opens the playlist; on a handpan
 // Play opens it in Chords and auto-plays it, on an ocarina Practice starts.
 function playlistsTabHtml(inst) {
+  return `
+    <section class="pl-section" aria-labelledby="pl-sec-playlists">
+      <h2 class="list-title" id="pl-sec-playlists">Playlists</h2>
+      ${playlistsListHtml(inst)}
+    </section>
+    <section class="pl-section" aria-labelledby="pl-sec-progressions">
+      <h2 class="list-title" id="pl-sec-progressions">Progressions</h2>
+      ${state.progressions.length
+        ? `<div class="list">${progressionRowsHtml(inst)}</div>`
+        : '<p class="pl-section-hint">Chords in order, and the same chord as often as you like (Am – Dm – Am). Start one here, from any chord\'s ♡, or copy a playlist.</p>'}
+      <button type="button" class="btn btn-ghost pl-new" data-action="prog-new-open">${icon('plus')} New progression</button>
+    </section>`;
+}
+
+function playlistsListHtml(inst) {
   const newBtn = `<button type="button" class="btn btn-ghost pl-new" data-action="pl-new-open">${icon('plus')} New playlist</button>`;
   if (state.playlists.length === 0) {
     return uiEmpty({
@@ -2860,6 +2877,7 @@ function sheetHtml() {
   if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
   if (state.plName) return plNameSheet();
   if (state.plRowMenu != null && state.view === 'playlist') return plRowMenuSheet();
+  if (state.progRowMenu != null && state.view === 'progression') return progRowMenuSheet();
   if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
   if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
@@ -2869,8 +2887,29 @@ function sheetHtml() {
   return '';
 }
 
-// Add to playlist: tick playlists, or start a new one.
+// Add to playlist: tick playlists, or start a new one. Its Progression
+// segment appends the chord as a step instead (repeats allowed).
 function renderPlaylistPicker() {
+  const seg = `<div class="picker-mode">${uiSeg([{ value: 'playlist', label: 'Playlist' }, { value: 'progression', label: 'Progression' }],
+    state.pickerMode, { action: 'picker-mode', label: 'Add to' })}</div>`;
+  if (state.pickerMode === 'progression') {
+    const rows = state.progressions.map(p => uiRow({
+      lead: `<span class="row-check">${icon('plus')}</span>`, title: p.name,
+      meta: p.steps.length ? escHtml(p.steps.slice(-3).map(progStepTitle).join(' · ')) : 'No steps yet',
+      trail: `<span class="chord-count">${p.steps.length}</span>`,
+      action: 'add-to-progression', data: { 'prog-id': p.id },
+    })).join('');
+    const create = state.pickerNewProgression
+      ? `<div class="picker-new-row">
+           <input class="input" id="new-progression-input" placeholder="Progression name" aria-label="New progression name">
+           <button class="btn btn-primary" data-action="confirm-new-progression">Create</button>
+         </div>`
+      : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New progression', action: 'show-new-progression-input' });
+    return uiSheet({
+      key: 'picker', title: 'Add to progression', close: 'close-playlist-picker',
+      body: `${seg}<p class="picker-hint">Adds the chord as the next step. The same chord can go in more than once.</p><div class="list">${rows}${create}</div>`,
+    });
+  }
   const favId = state.pickerChordFavId;
   const rows = state.playlists.map(pl => {
     const inPl = pl.chords.some(c => c.id === favId);
@@ -2888,7 +2927,7 @@ function renderPlaylistPicker() {
     : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New playlist', action: 'show-new-playlist-input' });
   return uiSheet({
     key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
-    body: `<div class="list">${rows}${create}</div>`,
+    body: `${seg}<div class="list">${rows}${create}</div>`,
   });
 }
 
@@ -2901,7 +2940,15 @@ function menuSheet() {
     const pl = state.playlists.find(p => p.id === state.activePlaylistId);
     title = pl?.name ?? title;
     if (pl) rows.push(uiRow({ lead: 'pencil', title: 'Rename', action: 'pl-rename-open' }));
+    if (pl && pl.chords.length) rows.push(uiRow({ lead: 'list-ordered', title: 'Copy as progression', meta: 'Same chords in order, then repeat any of them', action: 'pl-copy-progression' }));
     if (pl && pl.id !== 'favorites') rows.push(uiRow({ lead: 'trash-2', title: 'Delete playlist', action: 'delete-playlist', cls: 'is-danger' }));
+  } else if (state.view === 'progression') {
+    const prog = progFind();
+    title = prog?.name ?? title;
+    if (prog) {
+      rows.push(uiRow({ lead: 'pencil', title: 'Rename', action: 'prog-rename-open' }));
+      rows.push(uiRow({ lead: 'trash-2', title: 'Delete progression', action: 'prog-delete', cls: 'is-danger' }));
+    }
   } else if (state.view === 'instrument') {
     const inst = currentInstrument();
     const shared = inst?.id === SHARED_ID;
@@ -3034,12 +3081,13 @@ function plRowMenuSheet() {
 // New playlist / Rename playlist: one name field.
 function plNameSheet() {
   const n = state.plName;
-  const isNew = n.mode === 'new';
+  const isNew = n.mode === 'new' || n.mode === 'prog-new';
+  const what = n.mode.startsWith('prog-') ? 'progression' : 'playlist';
   return uiSheet({
-    key: 'pl-name', title: isNew ? 'New playlist' : 'Rename playlist', close: 'pl-name-cancel',
+    key: 'pl-name', title: `${isNew ? 'New' : 'Rename'} ${what}`, close: 'pl-name-cancel',
     body: `<div class="hp-sheet-form">${uiField({
       label: 'Name', id: 'pl-name-input', error: n.error ? 'Give it a name' : '',
-      control: `<input class="input" id="pl-name-input" value="${escHtml(n.value)}" placeholder="Playlist name" autocomplete="off">`,
+      control: `<input class="input" id="pl-name-input" value="${escHtml(n.value)}" placeholder="${what === 'playlist' ? 'Playlist' : 'Progression'} name" autocomplete="off">`,
     })}</div>`,
     footer: `
       <button type="button" class="btn btn-ghost" data-action="pl-name-cancel">Cancel</button>
@@ -3058,6 +3106,322 @@ function hpPlayPlaylist(pl) {
   state.view = 'chords';
   navPush(stateToHash());
   startAutoplay(pl);
+}
+
+// ── View 5: Progression ──────────────────────────────────────────────────────
+// Progression detail (#prog/<id>): chords in order with repeats, a tempo,
+// beats per bar and bars per step (docs/ocarina-mode.md, "Progressions").
+// On a handpan Play runs the steps in time and shows each one on the pan;
+// on an ocarina or flute Practice walks each step's arpeggio. Steps of other
+// instruments are listed with their instrument's name and skipped.
+
+function progFind(id = state.activeProgressionId) {
+  return state.progressions.find(p => p.id === id) ?? null;
+}
+
+function progStepTitle(s) {
+  return `${displayNote(s.rootName, state.useFlats, state.useSolfege)} ${s.typeName}`;
+}
+
+// The layout a handpan step was saved on (a copy), or null when it's gone.
+function progStepLayout(s) {
+  if (s.layoutData) return JSON.parse(JSON.stringify(s.layoutData));
+  const saved = state.savedLayouts.find(l => l.id === s.layoutId);
+  if (saved) return JSON.parse(JSON.stringify(saved.layout));
+  const scale = SCALES.find(sc => sc.id === s.layoutId);
+  return scale ? createLayoutFromScale(scale) : null;
+}
+
+function progOcContext(inst) {
+  return { kind: 'oc', inst, name: inst.name, isHere: s => s.instrumentId === inst.id };
+}
+function progHpContext(layoutId, name) {
+  return { kind: 'hp', layoutId, name, isHere: s => !s.instrumentId && s.layoutId === layoutId };
+}
+
+// Where the progression plays: the instrument it was opened from, else the
+// instrument of its first step that still exists (load / open: that
+// handpan or ocarina is put on screen first). null when there is none.
+function progContext(prog) {
+  const cur = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
+  if (cur && cur.family !== 'handpan') return progOcContext(cur);
+  const layoutId = hpCurrentLayoutId();
+  if (layoutId) return progHpContext(layoutId, state.layout.name);
+  const first = prog?.steps.find(s => (s.instrumentId ? !!getInstrument(s.instrumentId) : !!progStepLayout(s)));
+  if (!first) return null;
+  if (first.instrumentId) return { ...progOcContext(getInstrument(first.instrumentId)), open: true };
+  return { ...progHpContext(first.layoutId, first.scaleName), load: first };
+}
+
+// Puts a step's handpan on screen (as that instrument when it's saved).
+function progLoadHandpan(s) {
+  const owned = getInstrument(handpanInstrumentId(s.layoutId));
+  const saved = owned && state.savedLayouts.find(l => l.id === s.layoutId);
+  const layout = saved ? JSON.parse(JSON.stringify(saved.layout)) : progStepLayout(s);
+  if (!layout) return false;
+  state.layout = layout;
+  state.chords = findAllChords(layout);
+  state.currentInstrumentId = saved ? owned.id : null;
+  return true;
+}
+
+// ── Playing on the handpan: one timer tick per beat, the chord on beat 1 ──
+let _progTimer = null;
+
+function progBeatMs(prog) { return progressionStepMs(prog.bpm, prog.beatsPerBar, 1) / prog.beatsPerBar; }
+
+function progStop() {
+  if (_progTimer) { clearInterval(_progTimer); _progTimer = null; }
+  if (state.progPlay) state.progPlay.playing = false;
+}
+
+// The step on the pan: the one playing, or the last one tapped.
+function progCurrentIdx(prog) {
+  const pp = state.progPlay;
+  if (!pp || pp.id !== prog.id) return -1;
+  const idx = prog.steps.findIndex(s => s.stepId === pp.stepId);
+  return idx >= 0 ? idx : -1;
+}
+
+function progStrike(s) {
+  initAudio();
+  for (const n of s.notes) playNote(n);
+  updatePanPlaying(s.notes);
+}
+
+function progStart(prog, fromIdx = null) {
+  progStop();
+  let ctx = progContext(prog);
+  if (ctx?.load) {
+    if (!progLoadHandpan(ctx.load)) { showToast('Scale not found'); return; }
+    ctx = progContext(prog);
+  }
+  if (!ctx || ctx.kind !== 'hp') return;
+  const idx = fromIdx != null && ctx.isHere(prog.steps[fromIdx]) ? fromIdx : nextProgressionStep(prog.steps, -1, ctx.isHere);
+  if (idx < 0) { showToast(`No steps on ${ctx.name}`); return; }
+  state.progPlay = { id: prog.id, stepId: prog.steps[idx].stepId, beat: 0, playing: true };
+  render();
+  progStrike(prog.steps[idx]);
+  _progTimer = setInterval(progTick, progBeatMs(prog));
+}
+
+// A new tempo or time signature takes effect from the next beat.
+function progRetime(prog) {
+  if (!_progTimer || state.progPlay?.id !== prog.id) return;
+  clearInterval(_progTimer);
+  _progTimer = setInterval(progTick, progBeatMs(prog));
+}
+
+function progTick() {
+  const pp = state.progPlay;
+  const prog = pp?.playing ? progFind(pp.id) : null;
+  const ctx = prog && state.view === 'progression' && state.activeProgressionId === prog.id ? progContext(prog) : null;
+  if (!ctx || ctx.kind !== 'hp' || ctx.load) { progStop(); if (state.view === 'progression') render(); return; }
+  let idx = progCurrentIdx(prog);
+  const step = prog.steps[idx];
+  pp.beat += 1;
+  if (step && pp.beat < step.bars * prog.beatsPerBar) { progBeatUpdate(prog, step); return; }
+  idx = nextProgressionStep(prog.steps, idx, ctx.isHere);
+  if (idx < 0) { progStop(); render(); return; }
+  Object.assign(pp, { stepId: prog.steps[idx].stepId, beat: 0 });
+  render();
+  progStrike(prog.steps[idx]);
+}
+
+// Bar and beat of the step playing, updated in place between steps.
+function progBeatHtml(prog, s) {
+  const beat = state.progPlay?.beat ?? 0;
+  const bar = Math.floor(beat / prog.beatsPerBar);
+  const inBar = beat % prog.beatsPerBar;
+  return `
+    <span class="prog-beat-dots" aria-hidden="true">${Array.from({ length: prog.beatsPerBar }, (_, i) => `<span class="${i === inBar ? 'is-on' : ''}"></span>`).join('')}</span>
+    <span class="prog-beat-text">Bar ${bar + 1} of ${s.bars}</span>`;
+}
+function progBeatUpdate(prog, s) {
+  const el = document.querySelector('.prog-beat');
+  if (el) el.innerHTML = progBeatHtml(prog, s);
+}
+
+// ── The screen ──
+function progStepRow(s, idx, { here, current, last }) {
+  const uf = state.useFlats, us = state.useSolfege;
+  const no = idx + 1;
+  return `
+    <div class="row prog-step${current ? ' is-current' : ''}${here ? '' : ' is-other'}" role="button" tabindex="0" data-action="prog-step-tap" data-idx="${idx}">
+      <span class="row-lead tile prog-num"><span class="sr-only">Step </span>${no}</span>
+      <span class="row-title prog-step-title">${escHtml(progStepTitle(s))}</span>
+      <span class="prog-step-meta">
+        <span class="row-meta">${escHtml(s.notes.map(n => displayNote(n, uf, us)).join(' · '))}</span>
+        ${here ? '' : `<span class="row-meta">${escHtml(s.scaleName ?? '')} · skipped here</span>`}
+      </span>
+      <span class="prog-bars" role="group" aria-label="Bars for step ${no}">
+        ${uiIconBtn('minus', `Fewer bars (step ${no})`, { action: 'prog-step-bars', data: { idx, delta: -1 }, cls: 'tonal', disabled: s.bars <= PROG_LIMITS.bars[0] })}
+        <span class="prog-bars-val">${s.bars} bar${s.bars !== 1 ? 's' : ''}</span>
+        ${uiIconBtn('plus', `More bars (step ${no})`, { action: 'prog-step-bars', data: { idx, delta: 1 }, cls: 'tonal', disabled: s.bars >= PROG_LIMITS.bars[1] })}
+      </span>
+      <span class="row-trail">${uiIconBtn('ellipsis', `Step ${no}: duplicate, move or remove`, { action: 'prog-row-menu', data: { idx }, attrs: 'aria-haspopup="dialog"' })}</span>
+    </div>`;
+}
+
+function progFmtLength(ms) {
+  const sec = Math.round(ms / 1000);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+function viewProgression() {
+  const prog = progFind();
+  if (!prog) return viewHome();
+  const uf = state.useFlats, us = state.useSolfege;
+  const ctx = progContext(prog);
+  const isHere = ctx ? ctx.isHere : () => false;
+  const nHere = prog.steps.filter(isHere).length;
+  const curIdx = progCurrentIdx(prog);
+  const cur = curIdx >= 0 ? prog.steps[curIdx] : null;
+  const playing = !!(state.progPlay?.playing && state.progPlay.id === prog.id);
+  const order = state.progMode === 'order';
+  const last = prog.steps.length - 1;
+  const tot = progressionTotals(prog, ctx && nHere ? isHere : undefined);
+
+  // Player: the pan with the step on it (handpan), or Practice (ocarina).
+  let player = '';
+  if (prog.steps.length === 0) {
+    player = ''; // the empty state below says how to add steps
+  } else if (ctx && !nHere) {
+    player = `<p class="prog-now-hint">None of these steps is on ${escHtml(ctx.name)}. Each one plays on its own instrument.</p>`;
+  } else if (ctx?.kind === 'hp' && !ctx.load) {
+    const pan = renderPan(state.layout, {
+      shellMode: 'both', highlightNotes: cur && isHere(cur) ? cur.notes : [], altHighlightNotes: [],
+      rotated: state.ringRotated, useFlats: uf, useSolfege: us,
+    });
+    player = `
+      <div class="prog-player">
+        <div class="pan-wrap prog-pan">${panRotateBtn()}${pan}</div>
+        <div class="prog-now" aria-live="polite">
+          ${cur && isHere(cur) ? `
+            <div class="prog-now-text">
+              <div class="prog-now-title">${escHtml(progStepTitle(cur))}</div>
+              <div class="prog-now-meta">Step ${curIdx + 1} of ${prog.steps.length} · ${escHtml(cur.notes.map(n => displayNote(n, uf, us)).join(' · '))}</div>
+            </div>
+            ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
+          : '<div class="prog-now-hint">Play runs the steps in order, in time. Tap a step to hear it.</div>'}
+        </div>
+        ${playing
+          ? `<button type="button" class="btn btn-secondary btn-lg btn-block" data-action="prog-stop">${icon('square')} Stop</button>`
+          : `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play" ${nHere ? '' : 'disabled'}>${icon('play')} Play</button>`}
+      </div>`;
+  } else if (ctx?.kind === 'hp') {
+    player = `<div class="prog-player"><button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play">${icon('play')} Play on ${escHtml(ctx.name)}</button></div>`;
+  } else if (ctx?.kind === 'oc') {
+    const can = nHere > 0 && playableMidis(ctx.inst).length > 0;
+    player = `<div class="prog-player">${can
+      ? `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-practice">${icon('play')} Practice on ${escHtml(ctx.name)}</button>`
+      : `<p class="prog-now-hint">No steps on ${escHtml(ctx.name)} yet.</p>`}</div>`;
+  }
+
+  const timing = `
+    <div class="list prog-timing">
+      ${uiSetRow({ label: 'Tempo', help: 'Beats per minute', control: uiStepper({
+        value: prog.bpm, label: 'Tempo', action: 'prog-bpm',
+        min: prog.bpm <= PROG_LIMITS.bpm[0], max: prog.bpm >= PROG_LIMITS.bpm[1],
+      }) })}
+      ${uiSetRow({ label: 'Beats per bar', help: 'Time signature', control: uiStepper({
+        value: `${prog.beatsPerBar}/4`, label: 'Beats per bar', action: 'prog-beats',
+        min: prog.beatsPerBar <= PROG_LIMITS.beatsPerBar[0], max: prog.beatsPerBar >= PROG_LIMITS.beatsPerBar[1],
+      }) })}
+    </div>
+    <p class="prog-summary">${tot.steps} step${tot.steps !== 1 ? 's' : ''}${ctx && nHere ? ` on ${escHtml(ctx.name)}` : ''} · ${tot.bars} bar${tot.bars !== 1 ? 's' : ''} · ${progFmtLength(tot.ms)} at ${prog.bpm} BPM</p>`;
+
+  let steps;
+  if (prog.steps.length === 0) {
+    steps = uiEmpty({
+      icon: 'list-ordered', title: 'No steps yet',
+      body: 'Tap ♡ on any chord, choose Progression and pick this one. The same chord can go in more than once.',
+      action: ctx && !ctx.load && !ctx.open ? '<button type="button" class="btn btn-secondary" data-action="pl-go-chords">Go to Chords</button>' : '',
+    });
+  } else if (order) {
+    steps = `<div class="list">${prog.steps.map((s, idx) => uiRow({
+      lead: `<span class="tile prog-num"><span class="sr-only">Step </span>${idx + 1}</span>`, title: progStepTitle(s), cls: 'pl-order-row',
+      meta: escHtml(isHere(s) ? s.notes.map(n => displayNote(n, uf, us)).join(' · ') : `${s.scaleName ?? ''} · skipped here`),
+      trail: `
+        ${uiIconBtn('chevron-up', `Move step ${idx + 1} up`, { action: 'prog-step-up', data: { idx }, disabled: idx === 0 })}
+        ${uiIconBtn('chevron-down', `Move step ${idx + 1} down`, { action: 'prog-step-down', data: { idx }, disabled: idx === last })}
+        ${uiIconBtn('x', `Remove step ${idx + 1}`, { action: 'prog-step-remove', data: { idx } })}`,
+    })).join('')}</div>`;
+  } else {
+    steps = `<div class="list prog-steps">${prog.steps.map((s, idx) => progStepRow(s, idx, { here: isHere(s), current: idx === curIdx, last })).join('')}</div>`;
+  }
+
+  return `
+    ${backAppBar(prog.name, { actions: [tunerAppBtn(), menuAppBtn()] })}
+    <div class="prog-view${player.includes('prog-pan') ? ' has-pan' : ''}">
+      <div class="prog-side">${player}</div>
+      <div class="prog-main">
+        ${timing}
+        ${prog.steps.length > 1 ? uiSeg([{ value: 'steps', label: 'Steps' }, { value: 'order', label: 'Order' }], state.progMode, { action: 'prog-mode', label: 'Show' }) : ''}
+        ${steps}
+      </div>
+    </div>`;
+}
+
+// ⋯ of a step: Duplicate, Move up, Move down, Remove.
+function progRowMenuSheet() {
+  const prog = progFind();
+  const idx = state.progRowMenu;
+  const s = prog?.steps[idx];
+  if (!s) return '';
+  const rows = [
+    uiRow({ lead: 'copy', title: 'Duplicate step', meta: 'A copy right after this one', action: 'prog-step-dup', data: { idx } }),
+    uiRow({ lead: 'chevron-up', title: 'Move up', action: 'prog-step-up', data: { idx }, cls: idx === 0 ? 'is-disabled' : '' }),
+    uiRow({ lead: 'chevron-down', title: 'Move down', action: 'prog-step-down', data: { idx }, cls: idx === prog.steps.length - 1 ? 'is-disabled' : '' }),
+    uiRow({ lead: 'trash-2', title: 'Remove step', action: 'prog-step-remove', data: { idx }, cls: 'is-danger' }),
+  ].join('');
+  return uiSheet({ key: 'prog-row', variant: 'progrow', title: `Step ${idx + 1} · ${progStepTitle(s)}`, close: 'prog-row-close', body: `<div class="list">${rows}</div>` });
+}
+
+// Progressions on the Playlists tab (and Home): a row opens one; on a
+// handpan Play opens it and plays, on an ocarina Practice starts.
+function progressionRowsHtml(inst, { home = false } = {}) {
+  const layoutId = !inst && !home ? hpCurrentLayoutId() : null;
+  return state.progressions.map(p => {
+    const n = p.steps.length;
+    if (home) {
+      return uiRow({
+        lead: 'list-ordered', title: p.name, chevron: true, action: 'open-progression', data: { id: p.id },
+        meta: `${n} step${n !== 1 ? 's' : ''} · ${p.bpm} BPM`,
+      });
+    }
+    const here = p.steps.filter(s => (inst ? s.instrumentId === inst.id : !s.instrumentId && s.layoutId === layoutId)).length;
+    const trail = inst
+      ? `<button type="button" class="btn btn-primary btn-sm" data-action="prog-practice" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
+      : `<button type="button" class="btn btn-primary btn-sm" data-action="prog-play" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
+    return uiRow({
+      lead: 'list-ordered', title: p.name, chevron: true, action: 'open-progression', data: { id: p.id }, trail,
+      meta: `${here} step${here !== 1 ? 's' : ''} here · ${n} in total · ${p.bpm} BPM`,
+    });
+  }).join('');
+}
+
+function openProgression(id, { push = true } = {}) {
+  stopAutoplay();
+  progStop();
+  Object.assign(state, { view: 'progression', activeProgressionId: id, progMode: 'steps', progRowMenu: null, menu: false });
+  if (state.progPlay?.id !== id) state.progPlay = null;
+  if (push) navPush(`#prog/${encodeURIComponent(id)}`);
+  render();
+}
+
+function removeProgression(id) {
+  deleteProgression(id);
+  state.progressions = getProgressions();
+  if (state.view === 'progression' && state.activeProgressionId === id) {
+    progStop();
+    state.progPlay = null;
+    if (history.state?.hp) { history.back(); return; }
+    state.view = 'home';
+    state.activeProgressionId = null;
+    navPush(location.pathname);
+  }
+  render();
 }
 
 // ── Playlist chord navigation (shared by manual open + autoplay) ────────────
@@ -3233,6 +3597,11 @@ function loadFromHash() {
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
     if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; }
+    return;
+  }
+  if (hash.startsWith('#prog/')) {
+    const id = decodeURIComponent(hash.slice(6));
+    if (state.progressions.some(p => p.id === id)) { state.activeProgressionId = id; state.view = 'progression'; state.progMode = 'steps'; }
     return;
   }
   if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
@@ -3550,12 +3919,14 @@ document.addEventListener('click', e => {
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
   if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
   if (state.plRowMenu != null && el.closest('.sheet-plrow') && action !== 'pl-row-close') { state.plRowMenu = null; render(); }
+  if (state.progRowMenu != null && el.closest('.sheet-progrow') && action !== 'prog-row-close') { state.progRowMenu = null; render(); }
   if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
   if (action === 'confirm-ok') {
     const c = state.confirm;
     state.confirm = null;
     if (c?.kind === 'instrument') removeInstrument(c.id);
     else if (c?.kind === 'playlist') removePlaylist(c.id);
+    else if (c?.kind === 'progression') removeProgression(c.id);
     else render();
     return;
   }
@@ -4105,6 +4476,7 @@ document.addEventListener('click', e => {
     state.pickerChordFavId = null;
     state.pickerChordObj = null;
     state.pickerNewPlaylist = false;
+    state.pickerNewProgression = false;
     render();
     return;
   }
@@ -4220,12 +4592,171 @@ document.addEventListener('click', e => {
     if (!n) return;
     const name = (document.getElementById('pl-name-input')?.value ?? n.value).trim();
     if (!name) { n.error = true; render(); document.getElementById('pl-name-input')?.focus(); return; }
+    if (n.mode === 'prog-new' || n.mode === 'prog-rename') {
+      const id = n.mode === 'prog-new' ? addProgression(name) : n.id;
+      if (n.mode === 'prog-rename') renameProgression(id, name);
+      state.progressions = getProgressions();
+      state.plName = null;
+      if (n.mode === 'prog-new') showToast('Progression created', { action: { label: 'Open', run: () => openProgression(id) } });
+      render();
+      return;
+    }
     if (n.mode === 'new') addPlaylist(name);
     else renamePlaylist(n.id, name);
     state.playlists = getPlaylists();
     state.plName = null;
     scheduleSave();
     if (n.mode === 'new') showToast('Playlist created');
+    render();
+    return;
+  }
+
+  // ── Progressions ──────────────────────────────────────────────────────────
+  if (action === 'picker-mode') {
+    state.pickerMode = el.dataset.value === 'progression' ? 'progression' : 'playlist';
+    state.pickerNewPlaylist = false;
+    state.pickerNewProgression = false;
+    render();
+    return;
+  }
+  if (action === 'add-to-progression') {
+    const chord = state.pickerChordObj;
+    const prog = progFind(el.dataset.progId);
+    if (!chord || !prog) return;
+    const no = addStepToProgression(prog.id, playlistEntryFor(chord, state.pickerChordFavId));
+    if (!no) return;
+    state.progressions = getProgressions();
+    // The sheet closes so the toast doesn't cover it; ♡ opens it again on
+    // Progression for the next chord.
+    Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
+    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${prog.name} (step ${no})`);
+    render();
+    return;
+  }
+  if (action === 'show-new-progression-input') {
+    state.pickerNewProgression = true;
+    render();
+    setTimeout(() => document.getElementById('new-progression-input')?.focus(), 0);
+    return;
+  }
+  if (action === 'confirm-new-progression') {
+    const name = (document.getElementById('new-progression-input')?.value || '').trim();
+    const chord = state.pickerChordObj;
+    if (!name || !chord) return;
+    const id = addProgression(name, [newProgressionStep(playlistEntryFor(chord, state.pickerChordFavId))]);
+    state.progressions = getProgressions();
+    Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
+    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${name} (step 1)`);
+    render();
+    return;
+  }
+  if (action === 'prog-new-open' || action === 'prog-rename-open') {
+    const prog = progFind();
+    state.plName = action === 'prog-new-open' ? { mode: 'prog-new', value: '' } : { mode: 'prog-rename', id: prog?.id, value: prog?.name ?? '' };
+    render();
+    setTimeout(() => document.getElementById('pl-name-input')?.focus(), 0);
+    return;
+  }
+  if (action === 'open-progression') {
+    if (e.target.closest('.row-trail button')) return;
+    openProgression(el.dataset.id);
+    return;
+  }
+  if (action === 'pl-copy-progression') {
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl || !pl.chords.length) return;
+    const id = addProgression(pl.name, pl.chords.map(c => newProgressionStep(c)));
+    state.progressions = getProgressions();
+    showToast(`Copied ${pl.name} as a progression`, { action: { label: 'Open', run: () => openProgression(id) } });
+    render();
+    return;
+  }
+  if (action === 'prog-delete') {
+    const prog = progFind();
+    if (!prog) return;
+    state.confirm = {
+      kind: 'progression', id: prog.id, ok: 'Delete', title: `Delete ${prog.name}?`,
+      body: 'The progression is removed on this device and from sync. The chords stay on your instruments.',
+    };
+    render();
+    return;
+  }
+  if (action === 'prog-mode') { state.progMode = el.dataset.value === 'order' ? 'order' : 'steps'; render(); return; }
+  if (action === 'prog-row-menu') { e.stopPropagation(); state.progRowMenu = parseInt(el.dataset.idx, 10); render(); return; }
+  if (action === 'prog-row-close') { state.progRowMenu = null; render(); return; }
+  if (['prog-step-up', 'prog-step-down', 'prog-step-remove', 'prog-step-dup', 'prog-step-bars'].includes(action)) {
+    const prog = progFind();
+    const idx = parseInt(el.dataset.idx, 10);
+    if (!prog || !prog.steps[idx]) return;
+    if (action === 'prog-step-up') moveProgressionStep(prog.id, idx, idx - 1);
+    if (action === 'prog-step-down') moveProgressionStep(prog.id, idx, idx + 1);
+    if (action === 'prog-step-remove') removeProgressionStep(prog.id, idx);
+    if (action === 'prog-step-dup') duplicateProgressionStep(prog.id, idx);
+    if (action === 'prog-step-bars') setProgressionStepBars(prog.id, idx, prog.steps[idx].bars + parseInt(el.dataset.delta, 10));
+    state.progressions = getProgressions();
+    render();
+    return;
+  }
+  if (action === 'prog-bpm' || action === 'prog-beats') {
+    const prog = progFind();
+    if (!prog) return;
+    const d = parseInt(el.dataset.delta, 10);
+    setProgressionTiming(prog.id, action === 'prog-bpm' ? { bpm: prog.bpm + d * 5 } : { beatsPerBar: prog.beatsPerBar + d });
+    state.progressions = getProgressions();
+    progRetime(progFind());
+    render();
+    return;
+  }
+  if (action === 'prog-step-tap') {
+    if (e.target.closest('.row-trail button, .prog-bars button')) return;
+    const prog = progFind();
+    const idx = parseInt(el.dataset.idx, 10);
+    const s = prog?.steps[idx];
+    if (!s) return;
+    let ctx = progContext(prog);
+    if (!ctx || !ctx.isHere(s)) { showToast(`This step plays on ${s.scaleName ?? 'another instrument'}`); return; }
+    if (ctx.kind === 'oc') {
+      initAudio();
+      const rootName = s.notes.find(n => notePC(n) === notePC(s.rootName + '4')) ?? s.notes[0];
+      playSequence(arpeggioOrder(s.notes, rootName).map(midiToNoteName));
+      return;
+    }
+    if (ctx.load) {
+      if (!progLoadHandpan(ctx.load)) { showToast('Scale not found'); return; }
+      ctx = progContext(prog);
+    }
+    if (state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, idx); return; }
+    state.progPlay = { id: prog.id, stepId: s.stepId, beat: 0, playing: false };
+    render();
+    progStrike(s);
+    return;
+  }
+  if (action === 'prog-play') {
+    const prog = progFind(el.dataset.id || state.activeProgressionId);
+    if (!prog) return;
+    if (state.view !== 'progression') {
+      // From the Playlists tab: the player lives on the progression's screen.
+      stopAutoplay();
+      Object.assign(state, { view: 'progression', activeProgressionId: prog.id, progMode: 'steps', progRowMenu: null });
+      navPush(`#prog/${encodeURIComponent(prog.id)}`);
+    }
+    progStart(prog);
+    return;
+  }
+  if (action === 'prog-stop') { progStop(); render(); return; }
+  if (action === 'prog-practice') {
+    const prog = progFind(el.dataset.id || state.activeProgressionId);
+    if (!prog) return;
+    const ctx = state.view === 'instrument' ? progOcContext(currentInstrument()) : progContext(prog);
+    if (!ctx || ctx.kind !== 'oc') return;
+    if (!(state.view === 'instrument' && state.currentInstrumentId === ctx.inst.id)) {
+      if (ctx.open && !openInstrument(ctx.inst.id, { push: false })) { showToast('That ocarina is no longer in My instruments'); return; }
+      state.view = 'instrument';
+      state.oc.tab = 'playlists';
+      navPush(`#i/${ctx.inst.id}/playlists`);
+    }
+    state.oc.practice = { progressionId: prog.id, idx: 0 };
+    playPracticeStep();
     render();
     return;
   }
@@ -4850,6 +5381,10 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     document.querySelector(`[data-action="${enterAction}"]`)?.click();
     return;
+  }
+  if (e.key === 'Enter' && e.target.id === 'new-progression-input') {
+    e.preventDefault();
+    document.querySelector('[data-action="confirm-new-progression"]')?.click();
   }
   if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {
     // preventDefault: focus moves back to the heart button as the sheet
