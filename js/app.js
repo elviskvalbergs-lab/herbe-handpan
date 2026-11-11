@@ -791,7 +791,7 @@ function viewInstrument() {
         ${tunerButton()}
         <button class="btn ${state.showFingers ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-fingers" title="Show finger names in the holes">R4 L1</button>
         <button class="btn ${state.showSizes ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-sizes" title="Show hole sizes in mm">mm</button>
-        <button class="btn btn-secondary btn-sm" data-action="oc-hand-open" title="Which finger is which">✋ Fingers</button>
+        <button class="btn btn-secondary btn-sm" data-action="oc-hand-open" title="Which finger is which">${icon('hand')} Fingers</button>
         <button class="btn ${uf ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="toggle-flats">♭ Flats</button>
       </div>
       ${state.ocLegendSeen ? '' : `
@@ -983,7 +983,7 @@ function hzField(path, value, placeholder = 'Hz') {
   return `<span class="b-field">
     <input class="b-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
       value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${placeholder}">
-    <button class="btn btn-secondary btn-sm" data-action="b-record" data-path="${path}" title="Fill in from the tuner">🎤</button>
+    <button class="btn btn-secondary btn-sm" data-action="b-record" data-path="${path}" title="Fill in from the tuner" aria-label="Fill in from the tuner">${icon('mic')}</button>
   </span>`;
 }
 
@@ -1217,7 +1217,7 @@ function viewSetup(inst) {
   return `${ocHeader(inst, 'setup')}
     <div class="instrument-view">
       <div class="oc-toolbar">${tunerButton()}</div>
-      <div class="hint">The ocarina charts itself: turn on the tuner, then blow each line below and tap 🎤 while the note sounds. Blow steadily at a medium breath.</div>
+      <div class="hint">The ocarina charts itself: turn on the tuner, then blow each line below and tap its microphone button while the note sounds. Blow steadily at a medium breath.</div>
       <div class="b-section">
         <div class="editor-section-title">Holes and fingers</div>
         <div class="hint">Check which finger covers each hole. The order should be the order the holes open going up the scale.</div>
@@ -1293,7 +1293,7 @@ function finishInstrumentBuild(inst) {
 let _tunerStop = null;
 
 function tunerButton() {
-  return `<button class="btn ${state.tuner.on ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="tuner-toggle" title="Listen through the microphone">🎤 Tuner</button>`;
+  return `<button class="btn ${state.tuner.on ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="tuner-toggle" title="Listen through the microphone">${icon('mic')} Tuner</button>`;
 }
 
 // The note the player should be playing right now, if any.
@@ -2488,7 +2488,7 @@ document.addEventListener('click', e => {
   // ── Builder and set-up ────────────────────────────────────────────────────
   if (action === 'b-record') {
     const r = state.tuner.reading;
-    if (!state.tuner.on) { toggleTuner(); showToast('Tuner on: blow the note, then tap 🎤 again'); return; }
+    if (!state.tuner.on) { toggleTuner(); showToast('Tuner on: blow the note, then tap the microphone again'); return; }
     if (!r?.stable || !r.hz) { showToast('No steady note yet: keep blowing'); return; }
     const inst = currentInstrument();
     if (!inst) return;
