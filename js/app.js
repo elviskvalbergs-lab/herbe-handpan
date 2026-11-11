@@ -84,15 +84,86 @@ const state = {
 // ── Render ───────────────────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
-  if (state.view === 'home') app.innerHTML = viewHome();
-  else if (state.view === 'wizard') app.innerHTML = viewWizard();
-  else if (state.view === 'instrument') app.innerHTML = viewInstrument();
-  else if (state.view === 'selector') app.innerHTML = viewSelector();
-  else if (state.view === 'editor') app.innerHTML = viewEditor();
-  else if (state.view === 'chords') app.innerHTML = viewChords();
-  else if (state.view === 'playlist') app.innerHTML = viewPlaylist();
+  let html = '';
+  if (state.view === 'home') html = viewHome();
+  else if (state.view === 'wizard') html = viewWizard();
+  else if (state.view === 'instrument') html = viewInstrument();
+  else if (state.view === 'selector') html = viewSelector();
+  else if (state.view === 'editor') html = viewEditor();
+  else if (state.view === 'chords') html = viewChords();
+  else if (state.view === 'playlist') html = viewPlaylist();
+  else if (state.view === 'settings') html = viewSettings();
+  // Everything after the app bar goes into <main>, the page's content column.
+  const cut = html.indexOf('<!--appbar-end-->');
+  app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
+    : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
   if (state.shareModal) app.insertAdjacentHTML('beforeend', shareModalHtml());
   if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
+  document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
+  document.body.classList.toggle('tuner-on', state.tuner.on);
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+// Entries the app pushes carry { hp: 1 }, so the app bar's back button knows
+// it can step back through the browser history; without one (a deep link)
+// it goes to the screen's logical parent instead.
+function navPush(url) { history.pushState({ hp: 1 }, '', url); }
+function navReplace(url) { history.replaceState(history.state, '', url); }
+
+function goHome() {
+  stopAutoplay();
+  Object.assign(state, {
+    view: 'home', layout: null, selectedChord: null, pendingSlot: null,
+    sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
+    wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
+  });
+  refreshInstruments();
+  navPush(location.pathname);
+  render();
+}
+
+function goSelector() {
+  stopAutoplay();
+  state.view = 'selector';
+  state.layout = null;
+  state.selectedChord = null;
+  state.pendingSlot = null;
+  state.sourcePlaylistId = null;
+  state.sourceEntryId = null;
+  state.currentInstrumentId = null;
+  navPush('#scales');
+  render();
+}
+
+// App-bar buttons shared by many screens.
+function tunerAppBtn() {
+  return uiIconBtn('mic', state.tuner.on ? 'Stop the tuner' : 'Tuner', { action: 'tuner-toggle', pressed: state.tuner.on });
+}
+function settingsAppBtn() { return uiIconBtn('settings', 'Settings', { action: 'open-settings' }); }
+
+// App bar of a deeper screen: back (history, else the logical parent) + title.
+function backAppBar(title, { fallback = 'home', actions = [] } = {}) {
+  return uiAppBar({ title, back: { action: 'nav-back', data: { fallback }, label: 'Back' }, actions });
+}
+
+// App bar of a handpan (Chords, Pan): the switcher shows its name. An unsaved
+// one (from Try a scale) switches back to the catalogue and says it isn't saved.
+function handpanAppBar(tabs = '') {
+  const saved = !!state.currentInstrumentId;
+  return uiAppBar({
+    switcher: saved
+      ? { name: state.layout.name, action: 'back-home', title: 'My instruments' }
+      : { name: state.layout.name, action: 'back-selector', title: 'Other scales' },
+    badge: saved ? '' : uiBadge('Not saved'),
+    actions: [tunerAppBtn()],
+    tabs,
+  });
+}
+
+// Settings (#settings). A later step fills it; for now it is the route.
+function viewSettings() {
+  return `${backAppBar('Settings')}
+    ${uiEmpty({ icon: 'settings', title: 'Settings are on the way', body: 'Note names, ring orientation and the diagram options are still on each screen for now.' })}`;
 }
 
 // ── UI primitives ────────────────────────────────────────────────────────────
@@ -263,14 +334,8 @@ function viewSelector() {
   `;
 
   return `
-    <div class="app-header">
-      <div class="breadcrumb">
-        <a data-action="back-home">← My instruments</a>
-        <span>/</span>
-        <span>Other instrument</span>
-      </div>
-    </div>
-    <div class="hint" style="margin:-12px 0 16px">Try any handpan scale without saving it. Save a layout to add it to My instruments.</div>
+    ${backAppBar('Try a scale', { actions: [tunerAppBtn()] })}
+    <div class="hint" style="margin-bottom:16px">Try any handpan scale without saving it. Save a layout to add it to My instruments.</div>
     <div class="selector-controls">
       <input class="scale-search" id="scale-search-input" type="text"
         placeholder="Search scales by name or family…"
@@ -356,14 +421,6 @@ function playlistsSectionHtml() {
 
 // ── My instruments ───────────────────────────────────────────────────────────
 
-// First breadcrumb on the handpan views: back to My instruments when playing
-// one of them, back to the scale catalogue when just browsing.
-function backCrumb() {
-  return state.currentInstrumentId
-    ? `<a data-action="back-home">← My instruments</a>`
-    : `<a data-action="back-selector">← Scales</a>`;
-}
-
 function refreshInstruments() {
   syncHandpanInstruments(getSavedLayouts());
   state.instruments = getInstruments();
@@ -381,13 +438,10 @@ function viewHome() {
   `).join('');
 
   return `
-    <div class="app-header">
-      <div class="app-title">My instruments</div>
-      <div style="display:flex;gap:6px;margin-left:auto">
-        <button class="btn btn-primary btn-sm" data-action="add-instrument">${icon('plus')} Add instrument</button>
-        <button class="btn btn-secondary btn-sm" data-action="other-instrument">Other instrument</button>
-        ${tunerButton()}
-      </div>
+    ${uiAppBar({ title: 'My instruments', actions: [tunerAppBtn(), settingsAppBtn()] })}
+    <div class="home-actions">
+      <button class="btn btn-primary" data-action="add-instrument">${icon('plus')} Add instrument</button>
+      <button class="btn btn-secondary" data-action="other-instrument">Other instrument</button>
     </div>
     ${authBarHtml()}
     ${state.instruments.length === 0
@@ -419,7 +473,7 @@ function wizardNext() {
   state.wizard = null;
   refreshInstruments();
   state.view = 'home';
-  history.replaceState(null, '', location.pathname);
+  navReplace(location.pathname);
   render();
 }
 
@@ -456,12 +510,9 @@ function viewWizard() {
   const w = state.wizard;
   const uf = state.useFlats, us = state.useSolfege;
   const nn = m => displayNote(midiToNoteName(m), uf, us);
-  const header = `
-    <div class="app-header">
-      <div class="breadcrumb">
-        ${w.firstRun ? `<span>Welcome</span>` : `<a data-action="back-home">← My instruments</a><span>/</span><span>Add instrument</span>`}
-      </div>
-    </div>`;
+  const header = w.firstRun
+    ? uiAppBar({ title: 'Welcome' })
+    : uiAppBar({ title: 'Add instrument', back: { action: 'back-home', label: 'My instruments' } });
 
   if (w.step === 'families') {
     return `${header}
@@ -651,23 +702,20 @@ function ocHeader(inst, view) {
   const tabs = ocTabs(inst);
   const shared = inst.id === SHARED_ID;
   return `
+    ${uiAppBar({
+      switcher: { name: inst.name, action: 'back-home', title: 'My instruments' },
+      badge: shared ? uiBadge(inst.publicId) : '',
+      actions: [tunerAppBtn(), shared ? '' : uiIconBtn('share-2', 'Share: code, link and QR code', { action: 'share-instrument' })],
+    })}
     ${shared ? `
       <div class="shared-bar">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
         <button class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
       </div>` : ''}
-    <div class="app-header">
-      <div class="breadcrumb">
-        <a data-action="back-home">← My instruments</a>
-        <span>/</span>
-        <span>${escHtml(inst.name)}</span>
-        ${shared ? '' : `<button class="btn-icon" data-action="share-instrument" title="Share: code, link and QR code">${inst.publicId ? escHtml(inst.publicId) : 'Share'}</button>`}
-      </div>
-      ${tabs.length > 1 ? `
-        <div class="pills oc-tabs">
-          ${tabs.map(([id, name]) => `<button class="pill ${view === id ? 'active' : ''}" data-action="oc-tab" data-tab="${id}">${name}</button>`).join('')}
-        </div>` : ''}
-    </div>`;
+    ${tabs.length > 1 ? `
+      <div class="pills oc-tabs">
+        ${tabs.map(([id, name]) => `<button class="pill ${view === id ? 'active' : ''}" data-action="oc-tab" data-tab="${id}">${name}</button>`).join('')}
+      </div>` : ''}`;
 }
 
 // State of the ocarina / flute views; reset when switching instrument.
@@ -800,7 +848,6 @@ function viewOcarinaChords(inst) {
           ${playlists.map(p => `<option value="${escHtml(p.id)}" ${oc.playlistId === p.id ? 'selected' : ''}>${escHtml(p.name)}</option>`).join('')}
         </select>
         ${practiceable ? `<button class="btn btn-primary btn-sm" data-action="oc-practice-start">${icon('play')} Practice</button>` : ''}
-        ${tunerButton()}
       </div>
       <div class="hint">${pl ? '' : `${model.items.length} chord${model.items.length !== 1 ? 's' : ''} · `}Tap a chord to see its fingerings.</div>
       <div class="oc-chords">${cards}</div>
@@ -854,7 +901,7 @@ function viewOcarinaPractice(inst) {
           <div class="chord-panel-title">${displayNote(en.rootName, uf, us)} ${escHtml(en.typeName)}</div>
           <div class="chord-panel-sub">${escHtml(pl.name)} · chord ${chordNo} of ${entries.length}</div>
         </div>
-        <div style="display:flex;gap:6px">${tunerButton()}<button class="btn btn-secondary btn-sm" data-action="oc-practice-stop">Stop</button></div>
+        <div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" data-action="oc-practice-stop">Stop</button></div>
       </div>
       <div class="fg-large" data-action="oc-practice-next" title="Tap for the next note">
         ${renderFingering(inst, cur.midi, { ...opts, size: 'large', nextMidi: next.midi })}
@@ -889,7 +936,7 @@ function handLegendModal() {
 function viewInstrument() {
   if (state.currentInstrumentId === SHARED_ID && !state.shared) {
     return `
-      <div class="app-header"><div class="breadcrumb"><a data-action="back-home">← My instruments</a></div></div>
+      ${backAppBar('Shared instrument')}
       <div class="empty-state">${state.sharedStatus === 'loading' ? 'Opening the shared instrument…' : 'No shared instrument has that code. Check it and try again.'}</div>`;
   }
   const inst = currentInstrument();
@@ -923,7 +970,6 @@ function viewInstrument() {
           ${SCALES.map(sc => `<option value="${sc.id}" ${oc.scaleFilter === sc.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
         </select>
         <button class="btn btn-secondary btn-sm" data-action="oc-play-scale">${icon('play')} Scale</button>
-        ${tunerButton()}
         <button class="btn ${state.showFingers ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-fingers" title="Show finger names in the holes">R4 L1</button>
         <button class="btn ${state.showSizes ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="oc-toggle-sizes" title="Show hole sizes in mm">mm</button>
         <button class="btn btn-secondary btn-sm" data-action="oc-hand-open" title="Which finger is which">${icon('hand')} Fingers</button>
@@ -990,7 +1036,7 @@ function playPracticeStep() {
 function openPlaylistEntryOnInstrument(pl, entry) {
   if (!openInstrument(entry.instrumentId)) { showToast('That ocarina is no longer in My instruments'); return false; }
   Object.assign(state.oc, { tab: 'chords', playlistId: pl.id, expanded: 'e:' + entry.id });
-  history.replaceState(null, '', `#i/${entry.instrumentId}/chords`);
+  navReplace(`#i/${entry.instrumentId}/chords`);
   return true;
 }
 
@@ -1332,7 +1378,7 @@ function viewBuilder(inst) {
   const nextLabel = stage === 'final' ? 'Finish' : stage === 'done' ? '' : `Next: ${STAGE_TITLES[nextStage(stage)]} →`;
   return `${ocHeader(inst, 'builder')}
     <div class="instrument-view">
-      <div class="oc-toolbar">${tunerButton()}<span class="hint">${escHtml(instrumentStatus(inst))}</span></div>
+      <div class="hint">${escHtml(instrumentStatus(inst))}</div>
       ${stepper(stage)}
       <div class="wizard-title">${STAGE_TITLES[stage]}</div>
       ${body}
@@ -1351,8 +1397,7 @@ function viewSetup(inst) {
   const ready = setup.f0 > 0 && setup.holes.every((_, i) => setup.singles[i] > 0);
   return `${ocHeader(inst, 'setup')}
     <div class="instrument-view">
-      <div class="oc-toolbar">${tunerButton()}</div>
-      <div class="hint">The ocarina charts itself: turn on the tuner, then blow each line below and tap its microphone button while the note sounds. Blow steadily at a medium breath.</div>
+      <div class="hint">The ocarina charts itself: turn on the tuner with the microphone button at the top, then blow each line below and tap its microphone button while the note sounds. Blow steadily at a medium breath.</div>
       <div class="b-section">
         <div class="editor-section-title">Holes and fingers</div>
         <div class="hint">Check which finger covers each hole. The order should be the order the holes open going up the scale.</div>
@@ -1426,10 +1471,6 @@ function finishInstrumentBuild(inst) {
 // re-renders the page.
 
 let _tunerStop = null;
-
-function tunerButton() {
-  return `<button class="btn ${state.tuner.on ? 'btn-primary' : 'btn-secondary'} btn-sm" data-action="tuner-toggle" title="Listen through the microphone">${icon('mic')} Tuner</button>`;
-}
 
 // The note the player should be playing right now, if any.
 function tunerTarget() {
@@ -1536,13 +1577,13 @@ function openInstrument(id, { push = true } = {}) {
     state.shellMode = 'both';
     state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
-    if (push) history.pushState(null, '', stateToHash());
+    if (push) navPush(stateToHash());
   } else {
     state.layout = null;
     state.view = 'instrument';
     if (inst.kind === 'scale' && inst.build && inst.build.stage !== 'done') state.oc.tab = 'builder';
     if (inst.kind === 'custom' && !inst.calibration) state.oc.tab = 'setup';
-    if (push) history.pushState(null, '', `#i/${id}`);
+    if (push) navPush(`#i/${id}`);
   }
   return true;
 }
@@ -1576,17 +1617,7 @@ function viewEditor() {
   const bottomFilled = layout.bottom.slots.filter(s => s.note).length;
 
   return `
-    <div class="app-header">
-      <div class="breadcrumb">
-        ${backCrumb()}
-        <span>/</span>
-        ${isCustom
-          ? `<input class="name-input" id="custom-name-input"
-               value="${escHtml(layout.name)}" placeholder="Layout name">`
-          : `<span>${escHtml(layout.name)}</span>`
-        }
-      </div>
-    </div>
+    ${handpanAppBar()}
 
     <div class="editor-layout">
       <div>
@@ -1618,6 +1649,7 @@ function viewEditor() {
       </div>
 
       <div class="editor-sidebar">
+        ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
         <div class="editor-secondary-actions">
           ${!isCustom ? `
             <button class="btn btn-secondary btn-sm" data-action="clone-layout" style="flex:1">
@@ -1813,15 +1845,10 @@ function viewChords() {
   }
 
   return `
-    <div class="app-header">
-      <div class="breadcrumb">
-        ${backCrumb()}
-        <span>/</span>
-        <a data-action="back-editor">← ${escHtml(layout.name)}</a>
-        <span>/</span>
-        <span>Chords</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-left:auto;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+    ${handpanAppBar()}
+    <div class="toolbar">
+      <div class="toolbar-btns">
+        <button class="btn btn-ghost btn-sm" data-action="back-editor">${icon('circle-dot')} Pan layout</button>
         <button class="btn btn-secondary btn-sm" data-action="toggle-rotation"
           title="Rotate the ring so two lowest notes face you instead of one">
           ${icon('rotate')} ${state.ringRotated ? 'Standard' : 'Rotate'}
@@ -2028,13 +2055,7 @@ function viewPlaylist() {
   const us = state.useSolfege;
 
   return `
-    <div class="app-header">
-      <div class="breadcrumb">
-        ${backCrumb()}
-        <span>/</span>
-        <span>${escHtml(pl.name)}</span>
-      </div>
-    </div>
+    ${backAppBar(pl.name, { actions: [tunerAppBtn()] })}
 
     <div class="playlist-view">
       <div class="playlist-header">
@@ -2185,7 +2206,7 @@ function advanceAutoplay() {
   let nextIdx = (curIdx + 1) % pl.chords.length;
   for (let n = 0; n < pl.chords.length && pl.chords[nextIdx].instrumentId; n++) nextIdx = (nextIdx + 1) % pl.chords.length;
   if (!loadPlaylistChordAt(pl, nextIdx)) { stopAutoplay(); render(); return; }
-  history.replaceState(null, '', stateToHash());
+  navReplace(stateToHash());
   render();
   playSelectedChordSound();
 }
@@ -2200,7 +2221,7 @@ function startAutoplay(pl) {
   let startIdx = Math.max(0, pl.chords.findIndex(c => c.id === curFavId));
   for (let n = 0; n < pl.chords.length && pl.chords[startIdx].instrumentId; n++) startIdx = (startIdx + 1) % pl.chords.length;
   if (!loadPlaylistChordAt(pl, startIdx)) { stopAutoplay(); return; }
-  history.replaceState(null, '', stateToHash());
+  navReplace(stateToHash());
   render();
   playSelectedChordSound();
   _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
@@ -2235,6 +2256,12 @@ function loadFromHash() {
   let chordId = null;
 
   if (hash === '#scales') { state.view = 'selector'; return; }
+  if (hash === '#settings') { state.view = 'settings'; return; }
+  if (hash.startsWith('#pl/')) {
+    const id = decodeURIComponent(hash.slice(4));
+    if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; }
+    return;
+  }
   if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
   if (hash.startsWith('#i/')) {
     const [id, tab] = hash.slice(3).split('/');
@@ -2528,22 +2555,24 @@ document.addEventListener('click', e => {
     render();
     return;
   }
-  if (action === 'back-home') {
+  if (action === 'back-home') { goHome(); return; }
+  if (action === 'nav-back') {
+    if (history.state?.hp) history.back();
+    else if (el.dataset.fallback === 'selector') goSelector();
+    else goHome();
+    return;
+  }
+  if (action === 'open-settings') {
     stopAutoplay();
-    Object.assign(state, {
-      view: 'home', layout: null, selectedChord: null, pendingSlot: null,
-      sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
-      wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
-    });
-    refreshInstruments();
-    history.pushState(null, '', location.pathname);
+    state.view = 'settings';
+    navPush('#settings');
     render();
     return;
   }
   if (action === 'other-instrument') {
     state.currentInstrumentId = null;
     state.view = 'selector';
-    history.pushState(null, '', '#scales');
+    navPush('#scales');
     render();
     return;
   }
@@ -2702,7 +2731,7 @@ document.addEventListener('click', e => {
   if (action === 'oc-tab') {
     state.oc.tab = el.dataset.tab;
     state.oc.practice = null;
-    history.replaceState(null, '', `#i/${state.currentInstrumentId}/${state.oc.tab}`);
+    navReplace(`#i/${state.currentInstrumentId}/${state.oc.tab}`);
     render();
     return;
   }
@@ -2794,7 +2823,7 @@ document.addEventListener('click', e => {
     setOnboarded();
     state.wizard = null;
     state.view = 'selector';
-    history.replaceState(null, '', '#scales');
+    navReplace('#scales');
     render();
     return;
   }
@@ -2922,7 +2951,7 @@ document.addEventListener('click', e => {
     state.chordFilter = { category: 'All', root: 'All' };
     state.view = 'editor';
     state.currentInstrumentId = null;
-    history.pushState(null, '', stateToHash());
+    navPush(stateToHash());
     render();
     return;
   }
@@ -3076,7 +3105,7 @@ document.addEventListener('click', e => {
     if (!loadPlaylistChordAt(pl, 0)) { showToast('Scale not found'); return; }
     state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
     state.view = 'chords';
-    history.pushState(null, '', stateToHash());
+    navPush(stateToHash());
     render();
     return;
   }
@@ -3085,6 +3114,7 @@ document.addEventListener('click', e => {
     stopAutoplay();
     state.activePlaylistId = el.dataset.id;
     state.view = 'playlist';
+    navPush(`#pl/${encodeURIComponent(el.dataset.id)}`);
     render();
     return;
   }
@@ -3095,7 +3125,7 @@ document.addEventListener('click', e => {
     state.playlists = getPlaylists();
     state.view = 'home';
     state.activePlaylistId = null;
-    history.pushState(null, '', location.pathname);
+    navPush(location.pathname);
     scheduleSave();
     render();
     return;
@@ -3144,25 +3174,13 @@ document.addEventListener('click', e => {
     if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
     state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
-    history.pushState(null, '', stateToHash());
+    navPush(stateToHash());
     render();
     return;
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  if (action === 'back-selector') {
-    stopAutoplay();
-    state.view = 'selector';
-    state.layout = null;
-    state.selectedChord = null;
-    state.pendingSlot = null;
-    state.sourcePlaylistId = null;
-    state.sourceEntryId = null;
-    state.currentInstrumentId = null;
-    history.pushState(null, '', '#scales');
-    render();
-    return;
-  }
+  if (action === 'back-selector') { goSelector(); return; }
 
   if (action === 'back-editor') {
     stopAutoplay();
@@ -3170,7 +3188,7 @@ document.addEventListener('click', e => {
     state.selectedChord = null;
     state.sourcePlaylistId = null;
     state.sourceEntryId = null;
-    history.replaceState(null, '', stateToHash());
+    navReplace(stateToHash());
     render();
     return;
   }
@@ -3229,7 +3247,7 @@ document.addEventListener('click', e => {
     state.selectedChord = null;
     state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
     state.view = 'chords';
-    history.pushState(null, '', stateToHash());
+    navPush(stateToHash());
     render();
     return;
   }
@@ -3331,7 +3349,7 @@ document.addEventListener('click', e => {
       state.sourceEntryId = null;
     }
 
-    history.replaceState(null, '', stateToHash());
+    navReplace(stateToHash());
     // Preserve chord list scroll position across render
     const chordList = document.querySelector('.chord-list');
     const savedScroll = chordList?.scrollTop ?? 0;
@@ -3464,7 +3482,7 @@ document.addEventListener('click', e => {
   if (noteEl.classList.contains('alt-highlight') && state.selectedChord) {
     stopAutoplay();
     state.selectedChord = swapChordNoteVoicing(state.selectedChord, note);
-    history.replaceState(null, '', stateToHash());
+    navReplace(stateToHash());
     render();
     initAudio();
     playNote(note);
@@ -3481,6 +3499,7 @@ document.addEventListener('change', e => {
       stopAutoplay();
       state.activePlaylistId = state.chordFilter.playlist;
       state.view = 'playlist';
+      navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
     } else {
       if (state.autoplayOn && el.value !== state.autoplayPlaylistId) stopAutoplay();
       state.chordFilter.playlist = el.value;
@@ -3610,6 +3629,8 @@ document.addEventListener('input', e => {
   }
   if (e.target.id === 'custom-name-input' && state.layout) {
     state.layout.name = e.target.value;
+    const barName = document.querySelector('.appbar-switcher-name');
+    if (barName) barName.textContent = e.target.value;
   }
   if (e.target.id === 'playlist-name-input' && state.activePlaylistId) {
     renamePlaylist(state.activePlaylistId, e.target.value);

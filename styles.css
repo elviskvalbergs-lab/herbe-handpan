@@ -170,14 +170,44 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { border-color
 input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tuner-line,
 .share-code, .b-input, .b-result, .b-step-no, .scale-count, .num { font-variant-numeric: tabular-nums; }
 
-#app { max-width: 1100px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+#app { min-height: 100vh; }
+/* The content column under the app bar. */
+.main {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--space-4) var(--gutter) max(var(--space-6), env(safe-area-inset-bottom));
+}
 
-/* Header */
-.app-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
-.app-title { font-size: 20px; font-weight: 700; color: var(--heading); letter-spacing: -0.02em; }
-.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
-.breadcrumb a { color: var(--primary); text-decoration: none; cursor: pointer; }
-.breadcrumb a:hover { color: var(--primary-hover); text-decoration: underline; }
+/* App bar (§5.9) */
+.appbar {
+  position: sticky; top: 0; z-index: var(--z-appbar);
+  padding: env(safe-area-inset-top) 4px 0; background: var(--bg); border-bottom: 1px solid var(--border);
+}
+.appbar-inner {
+  max-width: var(--content-max); margin: 0 auto; height: var(--appbar-h);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-2);
+}
+.appbar-left { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.appbar-title {
+  min-width: 0; font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.appbar-title.no-back { padding-left: var(--space-3); }
+.appbar-switcher {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 100%;
+  height: var(--touch); padding: 0 var(--space-2) 0 var(--space-3); border: 0; border-radius: var(--r-sm);
+  background: transparent; color: var(--text-1); font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); cursor: pointer;
+}
+.appbar-switcher-name { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appbar-switcher .ico { width: 16px; height: 16px; color: var(--text-3); }
+@media (hover: hover) { .appbar-switcher:hover { background: var(--surface-2); } }
+.appbar-left .badge { margin-left: var(--space-1); }
+.appbar-mid { display: flex; justify-content: center; min-width: 0; }
+.appbar-right { display: flex; align-items: center; }
+
+/* Toolbars of existing controls under the app bar */
+.toolbar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.toolbar-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.home-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
 
 /* Icons — inline SVGs, herbe icon style (see herbe-calendar/menuIcons.tsx) */
 .ico { width: 14px; height: 14px; flex-shrink: 0; fill: none; }
@@ -471,7 +501,7 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 }
 @media (max-width: 720px) {
   body { min-height: 0; }
-  #app { padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); }
+  .main { padding-top: var(--space-3); }
   .editor-layout { grid-template-columns: 1fr; }
   .editor-sidebar { gap: 7px; }
   .editor-shells { gap: 7px; }
@@ -587,8 +617,7 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 
 /* Landscape (short viewport): force 3-column so pan isn't stacked under chord-panel */
 @media (max-height: 500px) and (min-width: 620px) {
-  #app { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); }
-  .app-header { margin-bottom: 8px; }
+  .main { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
   .explorer-layout {
     display: grid !important;
     grid-template-columns: 180px minmax(150px, 190px) 1fr !important;
@@ -958,7 +987,7 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 .hand-legend .hand-name { fill: var(--muted); font-size: 12px; text-anchor: middle; }
 
 /* Ocarina chords and practice */
-.oc-tabs { margin-left: auto; }
+.oc-tabs { margin-bottom: var(--space-3); }
 .oc-chords { display: flex; flex-direction: column; gap: 8px; }
 .oc-chord { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
 .oc-chord.expanded { border-color: var(--primary); }
@@ -993,7 +1022,7 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 .tuner-needle { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--primary); transition: left 0.08s; }
 .tuner-needle.ok { background: var(--chord-c2); }
 .tuner-needle.near { background: var(--chord-c1); }
-#app:has(.tuner-panel) { padding-bottom: 110px; }
+#app:has(.tuner-panel) .main { padding-bottom: 110px; }
 
 /* Builder */
 .b-stepper { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
@@ -1018,7 +1047,6 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 
 /* Sharing */
 .shared-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 12px; margin-bottom: 12px; background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius); font-size: 13px; color: var(--heading); }
-.breadcrumb .btn-icon { font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--primary); border: 1px solid var(--border); border-radius: 2px; padding: 2px 6px; margin-left: 4px; }
 .share-modal { max-width: 360px; }
 .share-code { font-size: 32px; font-weight: 700; letter-spacing: 0.18em; text-align: center; color: var(--heading); margin: 8px 0; }
 .share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--radius); padding: 8px; min-height: 60px; align-items: center; }
