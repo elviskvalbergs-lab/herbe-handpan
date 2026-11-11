@@ -5746,12 +5746,29 @@ function viewOcarinaChords(inst) {
     </div>`;
 }
 
-// Practice mode: autoplay on an ocarina playlist, one arpeggio note at a
-// time. The large diagram shows the current note with arrows for what to
-// lift or cover to reach the next one; tap to move on.
-function practiceSteps(inst, pl) {
+// Practice mode: autoplay on an ocarina playlist or progression, one
+// arpeggio note at a time. The large diagram shows the current note with
+// arrows for what to lift or cover to reach the next one; tap to move on.
+
+// What is being practised (state.oc.practice is { playlistId, idx } or
+// { progressionId, idx }): its name, what one entry is called, and the
+// entries for this instrument, each with an id (a progression step's id is
+// its stepId, so a repeated chord is still its own entry). null when gone.
+function practiceSource(inst, pr = state.oc.practice) {
+  if (!inst || !pr) return null;
+  if (pr.progressionId) {
+    const prog = state.progressions.find(p => p.id === pr.progressionId);
+    if (!prog) return null;
+    return { name: prog.name, unit: 'Step', entries: prog.steps.filter(s => s.instrumentId === inst.id).map(s => ({ ...s, id: s.stepId })) };
+  }
+  const pl = state.playlists.find(p => p.id === pr.playlistId);
+  if (!pl) return null;
+  return { name: pl.name, unit: 'Chord', entries: pl.chords.filter(c => c.instrumentId === inst.id) };
+}
+
+function practiceSteps(entries) {
   const steps = [];
-  for (const en of pl.chords.filter(c => c.instrumentId === inst.id)) {
+  for (const en of entries) {
     const rootName = en.notes.find(n => notePC(n) === notePC(en.rootName + '4')) ?? en.notes[0];
     for (const m of arpeggioOrder(en.notes, rootName)) steps.push({ entryId: en.id, midi: m });
   }
@@ -5763,13 +5780,13 @@ function practiceSteps(inst, pl) {
 // the bottom.
 function viewOcarinaPractice(inst) {
   const pr = state.oc.practice;
-  const pl = state.playlists.find(p => p.id === pr.playlistId);
-  const steps = pl ? practiceSteps(inst, pl) : [];
+  const src = practiceSource(inst, pr);
+  const steps = src ? practiceSteps(src.entries) : [];
   if (steps.length === 0) { state.oc.practice = null; return viewInstrument(); }
   const idx = Math.min(pr.idx, steps.length - 1);
   const cur = steps[idx];
   const next = steps[(idx + 1) % steps.length];
-  const entries = pl.chords.filter(c => c.instrumentId === inst.id);
+  const entries = src.entries;
   const en = entries.find(c => c.id === cur.entryId);
   const chordNo = entries.indexOf(en) + 1;
   const ofChord = steps.filter(s => s.entryId === cur.entryId);
@@ -5782,14 +5799,14 @@ function viewOcarinaPractice(inst) {
   const progress = Math.round(((idx + 1) / steps.length) * 100);
   return `
     ${uiAppBar({
-      title: `Practice · ${pl.name}`,
+      title: `Practice · ${src.name}`,
       back: { action: 'oc-practice-stop', label: 'Stop practice', icon: 'x' },
       actions: [tunerAppBtn()],
     })}
     <div class="practice">
       <div class="practice-head">
         <h2 class="practice-title">${displayNote(en.rootName, uf, us)} ${escHtml(en.typeName)}</h2>
-        <div class="practice-sub">Chord ${chordNo} of ${entries.length} · note ${noteNo} of ${ofChord.length}</div>
+        <div class="practice-sub">${src.unit} ${chordNo} of ${entries.length} · note ${noteNo} of ${ofChord.length}</div>
         <div class="practice-progress" role="progressbar" aria-label="Practice progress" aria-valuemin="1" aria-valuemax="${steps.length}" aria-valuenow="${idx + 1}">
           <span style="width:${progress}%"></span>
         </div>
@@ -5931,9 +5948,9 @@ function ocCardData(inst, key) {
 
 function playPracticeStep() {
   const inst = currentInstrument();
-  const pl = state.playlists.find(p => p.id === state.oc.practice?.playlistId);
-  if (!inst || !pl) return;
-  const steps = practiceSteps(inst, pl);
+  const src = practiceSource(inst);
+  if (!src) return;
+  const steps = practiceSteps(src.entries);
   const step = steps[state.oc.practice.idx % steps.length];
   if (step) { initAudio(); playNote(midiToNoteName(step.midi)); }
 }
@@ -6630,8 +6647,8 @@ function tunerTarget() {
   if (!inst) return null;
   const oc = state.oc;
   if (oc.practice) {
-    const pl = state.playlists.find(p => p.id === oc.practice.playlistId);
-    const steps = pl ? practiceSteps(inst, pl) : [];
+    const src = practiceSource(inst, oc.practice);
+    const steps = src ? practiceSteps(src.entries) : [];
     return steps.length ? steps[oc.practice.idx % steps.length].midi : null;
   }
   if (oc.tab === 'notes') return oc.selected;
@@ -6717,10 +6734,9 @@ function onTunerReading(reading) {
   if (pr && target != null && reading.stable && reading.since > state.tuner.lastAdvance
       && Math.abs(reading.midi - target) < 0.4) {
     state.tuner.lastAdvance = performance.now();
-    const inst = currentInstrument();
-    const pl = state.playlists.find(p => p.id === pr.playlistId);
-    if (inst && pl) {
-      pr.idx = (pr.idx + 1) % practiceSteps(inst, pl).length;
+    const src = practiceSource(currentInstrument(), pr);
+    if (src) {
+      pr.idx = (pr.idx + 1) % practiceSteps(src.entries).length;
       render();
       return;
     }
@@ -8270,10 +8286,9 @@ document.addEventListener('click', e => {
   }
   if (action === 'oc-practice-stop') { state.oc.practice = null; render(); return; }
   if (action === 'oc-practice-next' || action === 'oc-practice-prev') {
-    const inst = currentInstrument();
-    const pl = state.playlists.find(p => p.id === state.oc.practice?.playlistId);
-    if (!inst || !pl) return;
-    const n = practiceSteps(inst, pl).length;
+    const src = practiceSource(currentInstrument());
+    if (!src) return;
+    const n = practiceSteps(src.entries).length;
     state.oc.practice.idx = (state.oc.practice.idx + (action === 'oc-practice-next' ? 1 : n - 1)) % n;
     state.tuner.lastAdvance = performance.now();
     playPracticeStep();
