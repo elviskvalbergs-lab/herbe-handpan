@@ -563,117 +563,63 @@ function uiStepper({ value, label, action, data, min = false, max = false, help 
 }
 
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
-function viewSelector() {
-  const q = state.scaleSearch.trim().toLowerCase();
-  const filtered = SCALES.filter(s => {
+// Scales matching a search and a note-count filter ('all' | '9' | '10' | '11+').
+function filterScales(query, count, { inDesc = true } = {}) {
+  const q = query.trim().toLowerCase();
+  return SCALES.filter(s => {
     const total = 1 + s.top.notes.length + s.bottom.notes.length;
-    if (state.noteCountFilter === '9' && total !== 9) return false;
-    if (state.noteCountFilter === '10' && total !== 10) return false;
-    if (state.noteCountFilter === '11+' && total < 11) return false;
-    if (q && !s.name.toLowerCase().includes(q) && !s.family.toLowerCase().includes(q) && !s.desc.toLowerCase().includes(q)) return false;
+    if (count === '9' && total !== 9) return false;
+    if (count === '10' && total !== 10) return false;
+    if (count === '11+' && total < 11) return false;
+    if (q && !s.name.toLowerCase().includes(q) && !s.family.toLowerCase().includes(q)
+      && !(inDesc && s.desc.toLowerCase().includes(q))) return false;
     return true;
   });
+}
 
-  const { savedLayouts, favorites, useFlats } = state;
-
-  const authBar = authBarHtml();
-  const favsSection = playlistsSectionHtml();
-
-  const savedSection = savedLayouts.length === 0 ? '' : `
-    <div class="pwa-section">
-      <div class="pwa-section-title">My Layouts</div>
-      <div class="pwa-scroll">
-        ${savedLayouts.map(l => `
-          <div class="saved-card" data-action="load-saved" data-id="${escHtml(l.id)}">
-            <div class="saved-card-name">${escHtml(l.name)}</div>
-            <div class="saved-card-meta">${l.noteCount} notes</div>
-            <button class="saved-del" data-action="delete-saved" data-id="${escHtml(l.id)}" title="Remove">${icon('x')}</button>
-          </div>
-        `).join('')}
+// Search field and note-count chips, sticky under the app bar.
+function scaleToolsHtml({ inputId, value, placeholder, count, action }) {
+  return `
+    <div class="scale-tools">
+      <div class="search-field">
+        ${icon('search')}
+        <input class="input" id="${inputId}" type="search" placeholder="${escHtml(placeholder)}"
+          value="${escHtml(value)}" aria-label="${escHtml(placeholder)}" autocomplete="off">
       </div>
-    </div>
-  `;
+      <div class="chips-scroll" role="group" aria-label="Number of notes">
+        ${['all', '9', '10', '11+'].map(f => `
+          <button type="button" class="chip" data-action="${action}" data-val="${f}" aria-pressed="${count === f ? 'true' : 'false'}">
+            ${f === 'all' ? 'All' : f === '9' ? '9 notes' : f}</button>`).join('')}
+      </div>
+    </div>`;
+}
 
+// Scales grouped under their family (in SCALES order), one row each.
+function scaleGroupsHtml(scales, rowHtml) {
+  const groups = new Map();
+  for (const sc of scales) {
+    if (!groups.has(sc.family)) groups.set(sc.family, []);
+    groups.get(sc.family).push(sc);
+  }
+  return [...groups].map(([family, list]) => `
+    <h2 class="list-title">${escHtml(family)}</h2>
+    <div class="list scale-list">${list.map(rowHtml).join('')}</div>`).join('');
+}
+
+function viewSelector() {
+  const filtered = filterScales(state.scaleSearch, state.noteCountFilter);
+  const uf = state.useFlats, us = state.useSolfege;
   return `
     ${backAppBar('Try a scale', { actions: [tunerAppBtn()] })}
-    <div class="hint" style="margin-bottom:16px">Try any handpan scale without saving it. Save a layout to add it to My instruments.</div>
-    <div class="selector-controls">
-      <input class="scale-search" id="scale-search-input" type="text"
-        placeholder="Search scales by name or family…"
-        value="${escHtml(state.scaleSearch)}">
-      <div class="pills">
-        ${['all', '9', '10', '11+'].map(f => `
-          <button class="pill ${state.noteCountFilter === f ? 'active' : ''}"
-            data-action="filter-notes" data-val="${f}">
-            ${f === 'all' ? 'All' : f + ' notes'}
-          </button>
-        `).join('')}
-      </div>
-    </div>
-    ${authBar}
-    ${savedSection}${favsSection}
-    <div class="scale-grid">
-      ${filtered.length === 0
-        ? '<div class="empty-state">No scales match your search</div>'
-        : filtered.map(s => `
-          <div class="scale-card" data-action="select-scale" data-id="${s.id}">
-            <div class="family-badge">${s.family}</div>
-            <div class="scale-card-name">${s.name}</div>
-            <div class="scale-card-meta">${1 + s.top.notes.length} notes · ${displayNote(s.top.ding, useFlats)} ding</div>
-            <div class="scale-card-desc">${s.desc}</div>
-          </div>
-        `).join('')
-      }
-    </div>
-  `;
-}
-
-
-// Sync sign-in bar, shared by My instruments and the scale catalogue.
-function authBarHtml() {
-  return isLoggedIn()
-    ? `<div class="auth-bar">
-         <span class="hint auth-user">${escHtml(getUserEmail())}</span>
-         <button class="icon-btn tonal" data-action="auth-sync" title="Sync now" aria-label="Sync now">${icon('refresh')}</button>
-         <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
-       </div>`
-    : state.authLinkSent
-    ? `<div class="auth-bar auth-bar--code">
-         <span class="hint" style="color:var(--primary);font-size:12px">Code sent to ${escHtml(state.authEmail)}</span>
-         <div class="auth-code-row">
-           <input class="auth-code-input" id="auth-code-input" type="text"
-             inputmode="numeric" pattern="[0-9]*" maxlength="8"
-             placeholder="Code from email" value="${escHtml(state.authCode)}"
-             autocomplete="one-time-code">
-           <button class="btn btn-primary btn-sm" data-action="auth-verify">Verify</button>
-           <button class="icon-btn tonal" data-action="auth-cancel" title="Cancel" aria-label="Cancel">${icon('x')}</button>
-         </div>
-       </div>`
-    : `<div class="auth-bar">
-         <input class="auth-email-input" id="auth-email-input" type="email"
-           placeholder="Email to sync playlists across devices" value="${escHtml(state.authEmail)}">
-         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">${icon('refresh')} Sync</button>
-       </div>`;
-
-}
-
-// My Playlists strip, shared by My instruments and the scale catalogue.
-function playlistsSectionHtml() {
-  return state.playlists.length === 0 ? '' : `
-    <div class="pwa-section">
-      <div class="pwa-section-title">My Playlists</div>
-      <div class="pwa-scroll">
-        ${state.playlists.map(pl => `
-          <div class="playlist-card" data-action="open-playlist-chords" data-id="${escHtml(pl.id)}">
-            <div class="playlist-card-name">${escHtml(pl.name)}</div>
-            <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
-            <div class="playlist-card-edit" data-action="open-playlist" data-id="${escHtml(pl.id)}" title="Edit playlist">${icon('pencil')}</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
+    <p class="screen-intro">Try any handpan scale without saving it. Save it from the Pan tab to add it to My instruments.</p>
+    ${scaleToolsHtml({ inputId: 'scale-search-input', value: state.scaleSearch, placeholder: 'Search scales by name or family…', count: state.noteCountFilter, action: 'filter-notes' })}
+    ${filtered.length === 0
+      ? uiEmpty({ icon: 'search', title: 'No scales match your search', body: 'Try another name, or All.' })
+      : scaleGroupsHtml(filtered, s => uiRow({
+        title: s.name, chevron: true, action: 'select-scale', data: { id: s.id }, cls: 'scale-row',
+        meta: `${1 + s.top.notes.length} notes · ${escHtml(displayNote(s.top.ding, uf, us))} ding`,
+        meta2: escHtml(s.desc),
+      }))}`;
 }
 
 // ── My instruments ───────────────────────────────────────────────────────────
@@ -684,39 +630,94 @@ function refreshInstruments() {
   if (state.instruments.length > 0) setOnboarded();
 }
 
+const FAMILY_ICONS = { handpan: 'family-handpan', ocarina: 'family-ocarina', flute: 'family-flute' };
+function familyName(id) { return INSTRUMENT_FAMILIES.find(f => f.id === id)?.name ?? id; }
+
+// One instrument on Home: family glyph, name, what it is, and its ⋯ menu.
+function instrumentRowHtml(inst) {
+  let meta;
+  if (inst.family === 'handpan') {
+    const notes = state.savedLayouts.find(l => l.id === inst.layoutId)?.noteCount;
+    meta = escHtml([instrumentStatus(inst), notes ? `${notes} notes` : ''].filter(Boolean).join(' · '));
+  } else if (inst.kind === 'scale' && inst.build && inst.build.stage !== 'done') {
+    const idx = STAGE_ORDER.indexOf(inst.build.stage);
+    meta = `${uiBadge(`Building ${idx + 1}/${STAGE_ORDER.length}`, 'warning')} ${escHtml(`${STAGE_TITLES[inst.build.stage].split(' (')[0]} · ${inst.notes.length} notes`)}`;
+  } else {
+    meta = escHtml(`${familyName(inst.family)} · ${instrumentStatus(inst)}`);
+  }
+  return uiRow({
+    lead: FAMILY_ICONS[inst.family] ?? 'music', title: inst.name, meta,
+    action: 'open-instrument', data: { id: inst.id },
+    trail: uiIconBtn('ellipsis', `More: ${inst.name}`, { action: 'row-menu', data: { id: inst.id }, attrs: 'aria-haspopup="dialog"' }),
+  });
+}
+
 function viewHome() {
-  const cards = state.instruments.map(inst => `
-    <div class="scale-card instrument-card" data-action="open-instrument" data-id="${escHtml(inst.id)}">
-      <div class="family-badge">${escHtml(INSTRUMENT_FAMILIES.find(f => f.id === inst.family)?.name ?? inst.family)}</div>
-      <div class="scale-card-name">${escHtml(inst.name)}</div>
-      <div class="scale-card-meta">${escHtml(instrumentStatus(inst))}</div>
-      <button class="saved-del" data-action="delete-instrument" data-id="${escHtml(inst.id)}" title="Remove">${icon('x')}</button>
-    </div>
-  `).join('');
+  const insts = state.instruments;
+  const playlists = state.playlists.map(pl => {
+    const n = pl.chords.length;
+    const where = new Set(pl.chords.map(c => c.instrumentId || c.layoutId)).size;
+    return uiRow({
+      lead: 'list-music', title: pl.name, chevron: true, action: 'open-playlist', data: { id: pl.id },
+      meta: `${n} chord${n !== 1 ? 's' : ''}${n ? ` · ${where} instrument${where !== 1 ? 's' : ''}` : ''}`,
+      trail: n ? uiIconBtn('play', `Play ${pl.name}`, { action: 'open-playlist-chords', data: { id: pl.id } }) : '',
+    });
+  }).join('');
+  const hasData = insts.length > 0 || state.playlists.some(p => p.chords.length);
+  const tip = !isLoggedIn() && !state.syncTipHidden && hasData ? `
+    <div class="card tip-card">
+      <div class="tip-text"><div class="tip-title">Sync across devices</div><div class="tip-body">Keep your instruments and playlists on every device.</div></div>
+      <button type="button" class="btn btn-secondary btn-sm" data-action="open-settings">Set up</button>
+      ${uiIconBtn('x', 'Hide this tip', { action: 'hide-sync-tip', cls: 'is-dense' })}
+    </div>` : '';
 
   return `
     ${uiAppBar({ title: 'My instruments', actions: [tunerAppBtn(), settingsAppBtn()] })}
-    <div class="home-actions">
-      <button class="btn btn-primary" data-action="add-instrument">${icon('plus')} Add instrument</button>
-      <button class="btn btn-secondary" data-action="other-instrument">Other instrument</button>
-    </div>
-    ${authBarHtml()}
-    ${state.instruments.length === 0
-      ? `<div class="empty-state">No instruments yet. Add the ones you play, or open “Other instrument” to try any scale.</div>`
-      : `<div class="scale-grid">${cards}</div>`}
-    ${playlistsSectionHtml()}
-  `;
+    <div class="home">
+      <section class="home-main" aria-label="Instruments">
+        ${insts.length === 0
+          ? uiEmpty({
+            icon: 'family-handpan', title: 'Add the instruments you play',
+            body: 'Handpans by scale, ocarinas you bought or are making, and flutes.',
+            action: `<button type="button" class="btn btn-primary btn-lg" data-action="add-instrument">${icon('plus')} Add instrument</button>`,
+          })
+          : `<div class="list home-instruments">${insts.map(instrumentRowHtml).join('')}</div>
+             <button type="button" class="btn btn-secondary btn-block home-add" data-action="add-instrument">${icon('plus')} Add instrument</button>`}
+        <div class="list home-try">
+          ${uiRow({ lead: 'search', title: 'Try another scale', meta: 'Browse every scale without saving', chevron: true, action: 'other-instrument' })}
+        </div>
+      </section>
+      <section class="home-side" aria-label="Playlists">
+        ${state.playlists.length ? `<h2 class="list-title">Playlists</h2><div class="list">${playlists}</div>` : ''}
+        ${tip}
+      </section>
+    </div>`;
 }
 
-// The add-instrument wizard. First run asks which families the user plays,
-// then walks through one step per ticked family.
+// ⋯ menu of an instrument row on Home: Share… (ocarinas and flutes) and Remove.
+function rowMenuSheet(id) {
+  const inst = getInstrument(id);
+  if (!inst) return '';
+  const rows = [];
+  if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
+  rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
+  return uiSheet({ key: 'row-menu', variant: 'rowmenu', title: inst.name, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
+}
+
+// ── Add-instrument wizard ────────────────────────────────────────────────────
+// First run asks which families the user plays, then walks through one step
+// per ticked family. Instruments added on the way are toasted on Home.
 function newWizard(firstRun) {
   return {
     firstRun,
     step: 'families',
     families: [],
     queue: [],
+    history: [],       // steps behind this one, for Back
+    added: [],         // [{ id, name }] added in this wizard
+    notice: null,      // "D Kurd added." on the step after adding it
     search: '',
+    noteFilter: 'all',
     oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12, chartId: 'custom', keyId: null },
     fl: { chartId: chartsForFamily('flute')[0]?.id ?? null, keyId: null, name: '' },
   };
@@ -725,12 +726,28 @@ function newWizard(firstRun) {
 function wizardNext() {
   const w = state.wizard;
   const next = w.queue.shift();
-  if (next) { w.step = next; render(); return; }
+  w.notice = null;
+  if (next) { w.history.push(w.step); w.step = next; render(); return; }
   setOnboarded();
   state.wizard = null;
   refreshInstruments();
   state.view = 'home';
   navReplace(location.pathname);
+  render();
+  if (w.added.length) {
+    const names = w.added.map(a => a.name);
+    const msg = `${names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]} added`;
+    const only = w.added.length === 1 ? w.added[0] : null;
+    showToast(msg, only ? { action: { label: 'Open', run: () => { if (openInstrument(only.id)) render(); } } } : {});
+  }
+}
+
+// An instrument was added: remember it for Home, say so on the next step.
+function wizardAdded(id, name) {
+  const w = state.wizard;
+  w.added.push({ id, name });
+  wizardNext();
+  if (state.wizard) state.wizard.notice = `${name} added.`;
   render();
 }
 
@@ -763,180 +780,201 @@ function planOcarina(oc) {
   return { scale, all, needed, chambers, windows, notes, excluded };
 }
 
+// The wizard's frame: step count, question, content and the action bar.
+// bar = { left: markup, right: markup, help: text above the bar }.
+function wizardFrame(w, { title, sub = '', body, bar }) {
+  const order = INSTRUMENT_FAMILIES.map(f => f.id).filter(f => w.families.includes(f));
+  const total = 1 + order.length;
+  const at = w.step === 'families' ? 1 : order.indexOf(w.step) + 2;
+  const header = w.firstRun
+    ? uiAppBar({ title: 'Welcome' })
+    : uiAppBar({ title: 'Add instrument', back: { action: 'back-home', label: 'My instruments' } });
+  return `${header}
+    <div class="wizard">
+      ${w.notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(w.notice)}</p>` : ''}
+      <div class="wizard-count">Step ${Math.max(1, at)} of ${Math.max(total, at)}</div>
+      <h2 class="wizard-title">${escHtml(title)}</h2>
+      ${sub ? `<p class="wizard-sub">${sub}</p>` : ''}
+      ${body}
+      <div class="actionbar">
+        ${bar.help ? `<div class="actionbar-help">${escHtml(bar.help)}</div>` : ''}
+        <div class="actionbar-start">${bar.left ?? ''}</div>
+        <div class="actionbar-end">${bar.right ?? ''}</div>
+      </div>
+    </div>`;
+}
+
+const WIZARD_BACK = '<button type="button" class="btn btn-ghost" data-action="wizard-back">Back</button>';
+const WIZARD_SKIP = '<button type="button" class="btn btn-secondary" data-action="wizard-skip-step">Skip</button>';
+
 function viewWizard() {
   const w = state.wizard;
   const uf = state.useFlats, us = state.useSolfege;
   const nn = m => displayNote(midiToNoteName(m), uf, us);
-  const header = w.firstRun
-    ? uiAppBar({ title: 'Welcome' })
-    : uiAppBar({ title: 'Add instrument', back: { action: 'back-home', label: 'My instruments' } });
 
   if (w.step === 'families') {
-    return `${header}
-      <div class="wizard">
-        <div class="wizard-title">Which instruments do you play?</div>
-        <div class="pills">
-          ${INSTRUMENT_FAMILIES.map(f => {
-            const unavailable = f.id === 'flute' && chartsForFamily('flute').length === 0;
-            return `
-            <button class="pill ${w.families.includes(f.id) ? 'active' : ''}" data-action="wizard-family" data-family="${f.id}"
-              ${unavailable ? 'disabled title="Flute fingering charts are still being sourced"' : ''}>${f.name}${unavailable ? ' (soon)' : ''}</button>`;
-          }).join('')}
-        </div>
-        <div class="wizard-actions">
-          <button class="btn btn-primary" data-action="wizard-families-next" ${w.families.length ? '' : 'disabled'}>Next →</button>
-          ${w.firstRun ? `<button class="btn btn-secondary" data-action="wizard-skip">Skip, just browse scales</button>` : ''}
-        </div>
-      </div>`;
+    const meta = {
+      handpan: 'Pick yours by scale',
+      ocarina: 'Bought, or one you\'re making',
+      flute: 'Tin whistle or Native American flute',
+    };
+    const tiles = INSTRUMENT_FAMILIES.map(f => {
+      const unavailable = f.id === 'flute' && chartsForFamily('flute').length === 0;
+      const on = w.families.includes(f.id);
+      return `
+        <button type="button" class="row family-tile${on ? ' is-on' : ''}${unavailable ? ' is-disabled' : ''}" role="checkbox"
+          aria-checked="${on ? 'true' : 'false'}" data-action="wizard-family" data-family="${f.id}"
+          ${unavailable ? 'disabled title="Flute fingering charts are still being sourced"' : ''}>
+          <span class="row-lead tile">${icon(FAMILY_ICONS[f.id])}</span>
+          <span class="row-text"><span class="row-title">${escHtml(f.name)}</span><span class="row-meta">${unavailable ? 'Coming soon' : meta[f.id]}</span></span>
+          <span class="row-trail">${unavailable ? uiBadge('Soon') : `<span class="checkbox" aria-hidden="true">${on ? icon('check') : ''}</span>`}</span>
+        </button>`;
+    }).join('');
+    return wizardFrame(w, {
+      title: 'Which instruments do you play?',
+      sub: 'Pick all that apply. You can add more later.',
+      body: `<div class="list">${tiles}</div>`,
+      bar: {
+        help: w.families.length ? '' : 'Tick at least one',
+        left: w.firstRun ? '<button type="button" class="btn btn-ghost" data-action="wizard-skip">Just browse scales</button>' : '',
+        right: `<button type="button" class="btn btn-primary btn-lg" data-action="wizard-families-next" ${w.families.length ? '' : 'disabled'}>Next ${icon('chevron-right')}</button>`,
+      },
+    });
   }
 
   if (w.step === 'handpan') {
-    const q = w.search.trim().toLowerCase();
-    const list = SCALES.filter(sc => !q || sc.name.toLowerCase().includes(q) || sc.family.toLowerCase().includes(q));
-    return `${header}
-      <div class="wizard">
-        <div class="wizard-title">Which handpan do you have?</div>
-        <div class="hint">Pick its scale. For a custom layout, use Other instrument → Clone &amp; Customize, then Save.</div>
-        <input class="scale-search" id="wizard-search-input" type="text" placeholder="Search scales…" value="${escHtml(w.search)}">
-        <div class="scale-grid">
-          ${list.map(sc => `
-            <div class="scale-card" data-action="wizard-pick-handpan" data-id="${sc.id}">
-              <div class="family-badge">${sc.family}</div>
-              <div class="scale-card-name">${sc.name}</div>
-              <div class="scale-card-meta">${1 + sc.top.notes.length + sc.bottom.notes.length} notes · ${displayNote(sc.top.ding, uf, us)} ding</div>
-            </div>`).join('')}
-        </div>
-        <div class="wizard-actions"><button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button></div>
-      </div>`;
+    const list = filterScales(w.search, w.noteFilter, { inDesc: false });
+    return wizardFrame(w, {
+      title: 'Which handpan do you have?',
+      body: `
+        ${scaleToolsHtml({ inputId: 'wizard-search-input', value: w.search, placeholder: 'Search scales…', count: w.noteFilter, action: 'wizard-filter-notes' })}
+        ${list.length === 0 ? uiEmpty({ icon: 'search', title: 'No scales match your search' })
+          : scaleGroupsHtml(list, sc => uiRow({
+            title: sc.name, chevron: true, action: 'wizard-pick-handpan', data: { id: sc.id },
+            meta: `${1 + sc.top.notes.length + sc.bottom.notes.length} notes · ${escHtml(displayNote(sc.top.ding, uf, us))} ding`,
+          }))}
+        <p class="wizard-foot">Custom layout? Add it later from “Try another scale” → Pan → Clone &amp; Customize.</p>`,
+      bar: { left: w.history.length ? WIZARD_BACK : '', right: WIZARD_SKIP },
+    });
   }
 
   if (w.step === 'ocarina') {
     const oc = w.oc;
     if (!oc.path) {
-      return `${header}
-        <div class="wizard">
-          <div class="wizard-title">Add an ocarina</div>
-          <div class="wizard-choices">
-            <div class="scale-card" data-action="wizard-oc-path" data-path="have">
-              <div class="scale-card-name">I have one</div>
-              <div class="scale-card-desc">A bought ocarina. You'll set it up by playing it into the tuner, so the maker doesn't matter.</div>
-            </div>
-            <div class="scale-card" data-action="wizard-oc-path" data-path="make">
-              <div class="scale-card-name">I'm making one</div>
-              <div class="scale-card-desc">A clay ocarina tuned to a handpan scale.</div>
-            </div>
-          </div>
-          <div class="wizard-actions"><button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button></div>
-        </div>`;
+      return wizardFrame(w, {
+        title: 'Add an ocarina',
+        body: `<div class="list wizard-paths">
+          ${uiRow({ lead: 'family-ocarina', title: 'I have one', meta: 'A bought ocarina. You\'ll chart it with the tuner, so the maker doesn\'t matter.', chevron: true, action: 'wizard-oc-path', data: { path: 'have' } })}
+          ${uiRow({ lead: 'hammer', title: 'I\'m making one', meta: 'A clay ocarina tuned to a handpan scale.', chevron: true, action: 'wizard-oc-path', data: { path: 'make' } })}
+        </div>`,
+        bar: { left: w.history.length ? WIZARD_BACK : '', right: WIZARD_SKIP },
+      });
     }
+    const back = '<button type="button" class="btn btn-ghost" data-action="wizard-oc-path" data-path="">Back</button>';
     if (oc.path === 'have') {
-      return `${header}
-        <div class="wizard">
-          <div class="wizard-title">Your ocarina</div>
-          <label class="wizard-field">Name
-            <input class="name-input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="My ocarina">
-          </label>
-          ${chartsForFamily('ocarina').length ? `
-            <label class="wizard-field">Type
-              <select class="select-input" data-action="wizard-chart" data-fam="oc">
-                <option value="custom" ${oc.chartId === 'custom' ? 'selected' : ''}>Unknown or other: chart it with the tuner</option>
-                ${chartsForFamily('ocarina').map(c => `<option value="${c.id}" ${oc.chartId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
-              </select>
-            </label>` : ''}
-          ${oc.chartId !== 'custom' && getChart(oc.chartId) ? wizardKeySelect('oc', getChart(oc.chartId), oc.keyId) : `
-          <label class="wizard-field">Number of holes, thumb holes included
-            <select class="select-input" data-action="wizard-oc-holes">
-              ${[4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(n => `<option value="${n}" ${oc.holeCount === n ? 'selected' : ''}>${n}</option>`).join('')}
-            </select>
-          </label>
-          <div class="hint">Its fingering chart is worked out from the instrument itself: you blow it into the tuner with all holes closed and then each hole open on its own.</div>`}
-          <div class="wizard-actions">
-            <button class="btn btn-primary" data-action="wizard-oc-create">Add ocarina</button>
-            <button class="btn btn-secondary" data-action="wizard-oc-path" data-path="">Back</button>
-          </div>
-        </div>`;
+      const chart = oc.chartId !== 'custom' ? getChart(oc.chartId) : null;
+      return wizardFrame(w, {
+        title: 'Your ocarina',
+        body: `<div class="wizard-form">
+          ${uiField({ label: 'Name', id: 'wizard-oc-name', control: `<input class="input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="My ocarina">` })}
+          ${chartsForFamily('ocarina').length ? uiField({ label: 'Type', id: 'wizard-oc-chart', control: `
+            <select class="select" id="wizard-oc-chart" data-action="wizard-chart" data-fam="oc">
+              <option value="custom" ${oc.chartId === 'custom' ? 'selected' : ''}>Unknown or other: chart it with the tuner</option>
+              ${chartsForFamily('ocarina').map(c => `<option value="${c.id}" ${oc.chartId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+            </select>` }) : ''}
+          ${chart ? wizardKeySelect('oc', chart, oc.keyId) : uiField({
+            label: 'Holes, thumb holes included',
+            control: uiStepper({ value: oc.holeCount, label: 'Holes', action: 'wizard-oc-holes-step', min: oc.holeCount <= 4, max: oc.holeCount >= 13 }),
+            help: 'Its chart is worked out from the instrument: you blow it into the tuner with all holes closed, then with each hole open on its own.',
+          })}
+        </div>`,
+        bar: { left: back, right: '<button type="button" class="btn btn-primary btn-lg" data-action="wizard-oc-create">Add ocarina</button>' },
+      });
     }
     const plan = wizardOcarinaPlan();
     const hasGu = plan.scale.bottom.notes.length > 0;
-    return `${header}
-      <div class="wizard">
-        <div class="wizard-title">Design an ocarina</div>
-        <label class="wizard-field">Handpan scale
-          <select class="select-input" data-action="wizard-oc-scale">
-            ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === oc.scaleId ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
-          </select>
-        </label>
-        <div class="wizard-row">
-          <label class="wizard-field">Transpose
-            <select class="select-input" data-action="wizard-oc-transpose">
-              ${Array.from({ length: 13 }, (_, i) => i - 6).map(t => `<option value="${t}" ${t === oc.transpose ? 'selected' : ''}>${t > 0 ? '+' + t : t} semitones</option>`).join('')}
-            </select>
-          </label>
-          ${hasGu ? `<label class="wizard-check"><input type="checkbox" data-action="wizard-oc-gu" ${oc.includeGu ? 'checked' : ''}> Include gu notes</label>` : ''}
-        </div>
-        <div class="wizard-field">
-          <div>The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}. Build with:</div>
-          <div class="pills">
-            ${Array.from({ length: plan.needed }, (_, i) => i + 1).map(n => `
-              <button class="pill ${n === plan.chambers ? 'active' : ''}" data-action="wizard-oc-chambers" data-n="${n}">${n} chamber${n !== 1 ? 's' : ''}</button>`).join('')}
+    const chosenIdx = plan.windows.findIndex(win => win.chosen);
+    const prevWin = plan.windows[chosenIdx - 1], nextWin = plan.windows[chosenIdx + 1];
+    const dingWin = plan.windows.find(win => win.fromDing);
+    const holes = plan.notes.length - plan.chambers;
+    let preview = '';
+    try {
+      const draft = createScaleOcarina({ scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu, notes: plan.notes, name: 'Preview' });
+      preview = `<div class="wizard-preview" aria-hidden="true">${renderFingering(draft, draft.chambers[0].notes[0], { size: 'medium', useFlats: uf, useSolfege: us })}</div>`;
+    } catch { /* the preview is optional */ }
+    return wizardFrame(w, {
+      title: 'Design an ocarina',
+      body: `<div class="wizard-design">
+        <div class="wizard-form">
+          ${uiField({ label: 'Handpan scale', id: 'wizard-oc-scale', control: `
+            <select class="select" id="wizard-oc-scale" data-action="wizard-oc-scale">
+              ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === oc.scaleId ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
+            </select>` })}
+          <div class="list">
+            ${uiSetRow({ label: 'Transpose', control: uiStepper({
+              value: oc.transpose > 0 ? '+' + oc.transpose : String(oc.transpose), label: 'Transpose', action: 'wizard-oc-transpose-step',
+              min: oc.transpose <= -6, max: oc.transpose >= 6, help: 'semitones',
+            }) })}
+            ${hasGu ? uiSwitchRow({ label: 'Gu notes', help: 'Include the bottom-shell notes', on: oc.includeGu, action: 'wizard-oc-gu-toggle' }) : ''}
           </div>
+          <div class="field">
+            <div class="field-label">Chambers</div>
+            <p class="wizard-sub">The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}.</p>
+            ${uiSeg(Array.from({ length: plan.needed }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })), String(plan.chambers), { action: 'wizard-oc-chambers', key: 'n', label: 'Chambers' })}
+          </div>
+          ${plan.windows.length ? `
+            <div class="field">
+              <div class="field-label">Which notes?</div>
+              <p class="wizard-sub">${plan.chambers === 1 ? 'One chamber holds' : `${plan.chambers} chambers hold`} ${plan.notes.length}.</p>
+              <div class="chips note-strip">${plan.all.map(m => `<span class="chip ${plan.notes.includes(m) ? 'is-selected' : 'is-static'}">${nn(m)}</span>`).join('')}</div>
+              <div class="window-nav">
+                <button type="button" class="btn btn-secondary" data-action="wizard-oc-window" data-start="${prevWin?.start ?? ''}" ${prevWin ? '' : 'disabled'}>${icon('chevron-left')} Lower</button>
+                ${dingWin ? `<button type="button" class="chip" data-action="wizard-oc-window" data-start="${dingWin.start}" aria-pressed="${dingWin.chosen ? 'true' : 'false'}">Start on the ding</button>` : ''}
+                <button type="button" class="btn btn-secondary" data-action="wizard-oc-window" data-start="${nextWin?.start ?? ''}" ${nextWin ? '' : 'disabled'}>Higher ${icon('chevron-right')}</button>
+              </div>
+            </div>` : `<div class="chips note-strip">${plan.notes.map(m => `<span class="chip is-selected">${nn(m)}</span>`).join('')}</div>`}
+          <p class="wizard-summary">${plan.notes.length} notes · ${holes} hole${holes !== 1 ? 's' : ''} · ${plan.chambers} chamber${plan.chambers !== 1 ? 's' : ''}</p>
+          ${uiField({ label: 'Name', id: 'wizard-oc-name', control: `<input class="input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="${escHtml(plan.scale.name)} ocarina">` })}
         </div>
-        ${plan.windows.length ? `
-          <div class="wizard-field">
-            <div>Which notes? ${plan.chambers} chamber${plan.chambers !== 1 ? 's' : ''} hold${plan.chambers === 1 ? 's' : ''} part of the scale:</div>
-            <div class="pills">
-              ${plan.windows.map(win => `
-                <button class="pill ${win.chosen ? 'active' : ''}" data-action="wizard-oc-window" data-start="${win.start}">
-                  ${nn(win.notes[0])}–${nn(win.notes[win.notes.length - 1])} · ${win.notes.length} notes${win.fromDing ? ' · from the ding' : ''}
-                </button>`).join('')}
-            </div>
-          </div>` : ''}
-        <div class="wizard-notes">
-          ${plan.all.map(m => `<span class="pill ${plan.notes.includes(m) ? 'active' : ''}">${nn(m)}</span>`).join('')}
-        </div>
-        <div class="hint">${plan.notes.length} notes · ${plan.notes.length - plan.chambers} holes</div>
-        <label class="wizard-field">Name
-          <input class="name-input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="${escHtml(plan.scale.name)} ocarina">
-        </label>
-        <div class="wizard-actions">
-          <button class="btn btn-primary" data-action="wizard-oc-create">Start building</button>
-          <button class="btn btn-secondary" data-action="wizard-oc-path" data-path="">Back</button>
-        </div>
-      </div>`;
+        ${preview}
+      </div>`,
+      bar: { left: back, right: '<button type="button" class="btn btn-primary btn-lg" data-action="wizard-oc-create">Start building</button>' },
+    });
   }
+
   if (w.step === 'flute') {
     const fl = w.fl;
     const charts = chartsForFamily('flute');
     const chart = getChart(fl.chartId) ?? charts[0];
-    return `${header}
-      <div class="wizard">
-        <div class="wizard-title">Your flute</div>
-        <label class="wizard-field">Name
-          <input class="name-input" id="wizard-fl-name" value="${escHtml(fl.name)}" placeholder="${escHtml(chart ? chart.name : 'My flute')}">
-        </label>
-        <label class="wizard-field">Type
-          <select class="select-input" data-action="wizard-chart" data-fam="fl">
+    return wizardFrame(w, {
+      title: 'Your flute',
+      body: `<div class="wizard-form">
+        ${uiField({ label: 'Name', id: 'wizard-fl-name', control: `<input class="input" id="wizard-fl-name" value="${escHtml(fl.name)}" placeholder="${escHtml(chart ? chart.name : 'My flute')}">` })}
+        ${uiField({ label: 'Type', id: 'wizard-fl-chart', control: `
+          <select class="select" id="wizard-fl-chart" data-action="wizard-chart" data-fam="fl">
             ${charts.map(c => `<option value="${c.id}" ${chart?.id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
-          </select>
-        </label>
+          </select>` })}
         ${chart ? wizardKeySelect('fl', chart, fl.keyId) : ''}
-        <div class="wizard-actions">
-          <button class="btn btn-primary" data-action="wizard-fl-create" ${chart ? '' : 'disabled'}>Add flute</button>
-          <button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button>
-        </div>
-      </div>`;
+      </div>`,
+      bar: {
+        left: w.history.length ? WIZARD_BACK : '',
+        right: `<button type="button" class="btn btn-ghost" data-action="wizard-skip-step">Skip</button>
+          <button type="button" class="btn btn-primary btn-lg" data-action="wizard-fl-create" ${chart ? '' : 'disabled'}>Add flute</button>`,
+      },
+    });
   }
-  return header;
+  return wizardFrame(w, { title: '', body: '', bar: {} });
 }
 
 function wizardKeySelect(fam, chart, keyId) {
-  return `
-    <label class="wizard-field">Key
-      <select class="select-input" data-action="wizard-key" data-fam="${fam}">
+  return uiField({
+    label: 'Key', id: `wizard-${fam}-key`,
+    control: `
+      <select class="select" id="wizard-${fam}-key" data-action="wizard-key" data-fam="${fam}">
         ${chart.keys.map(k => `<option value="${k.id}" ${(keyId ?? chart.keys[0].id) === k.id ? 'selected' : ''}>${escHtml(k.name)}</option>`).join('')}
-      </select>
-    </label>
-    <div class="hint">Chart source: ${chart.source.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(new URL(u).hostname)}</a>`).join(', ')}</div>`;
+      </select>`,
+    help: `Chart source: ${chart.source.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(new URL(u).hostname)}</a>`).join(', ')}`,
+  });
 }
 
 // Pitch classes of a scale from data.js, for the Notes and Chords filter.
@@ -1245,7 +1283,7 @@ function viewInstrument() {
   if (midis.length === 0) {
     return `${ocHeader(inst, 'notes')}
       <div class="instrument-view">
-        <div class="scale-card-meta">${escHtml(instrumentStatus(inst))}</div>
+        <p class="screen-intro">${escHtml(instrumentStatus(inst))}</p>
         <div class="hint">This ocarina's fingering chart is worked out from the instrument itself: blow it with all holes closed, then with each hole open on its own, into the tuner. Setting it up arrives with the tuner update.</div>
       </div>`;
   }
@@ -1371,10 +1409,10 @@ function loadQrLib() {
   return _qrLib;
 }
 
-async function shareInstrument() {
-  const inst = currentInstrument();
+async function shareInstrument(id = null) {
+  const inst = id ? getInstrument(id) : currentInstrument();
   if (!inst || inst.id === SHARED_ID) return;
-  if (!isLoggedIn()) { showToast('Sign in with Sync on My instruments to share'); return; }
+  if (!isLoggedIn()) { showToast('Sign in under Settings › Sync to share', { action: { label: 'Settings', run: () => openSettings() } }); return; }
   if (!inst.publicId) {
     let ok = false;
     for (let attempt = 0; attempt < 3 && ok !== true; attempt++) {
@@ -2441,6 +2479,7 @@ function renderPlaylistPicker() {
 
 // The ⋯ menu of the instrument on screen.
 function menuSheet() {
+  if (state.menu?.id) return rowMenuSheet(state.menu.id);
   const rows = [];
   let title = 'Menu';
   if (state.view === 'instrument') {
@@ -2999,9 +3038,11 @@ document.addEventListener('click', e => {
 
   // ── Sheets: the ⋯ menu and confirm ────────────────────────────────────────
   if (action === 'menu-open') { state.menu = true; render(); return; }
+  if (action === 'row-menu') { e.stopPropagation(); state.menu = { id: el.dataset.id }; render(); return; }
+  if (action === 'hide-sync-tip') { state.syncTipHidden = true; savePrefs(); render(); return; }
   if (action === 'menu-close') { state.menu = false; render(); return; }
   // A menu row closes the menu, then does what it says.
-  if (state.menu && el.closest('.sheet-menu')) { state.menu = false; render(); }
+  if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
   if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
   if (action === 'confirm-ok') {
     const c = state.confirm;
@@ -3107,7 +3148,7 @@ document.addEventListener('click', e => {
 
 
   if (action === 'tuner-toggle') { toggleTuner(); return; }
-  if (action === 'share-instrument') { shareInstrument(); return; }
+  if (action === 'share-instrument') { shareInstrument(el.dataset.id); return; }
   if (action === 'share-close') { state.shareModal = null; render(); return; }
   if (action === 'share-copy') {
     navigator.clipboard?.writeText(state.shareModal?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
@@ -3293,7 +3334,9 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-families-next') {
+    if (!state.wizard.families.length) return;
     state.wizard.queue = INSTRUMENT_FAMILIES.map(f => f.id).filter(f => state.wizard.families.includes(f));
+    state.wizard.history = [];
     wizardNext();
     return;
   }
@@ -3313,8 +3356,7 @@ document.addEventListener('click', e => {
     const inst = instrumentFromChart(chart.id, fl.keyId ?? chart.keys[0].id, { name: fl.name.trim() });
     saveInstrument(inst);
     refreshInstruments();
-    showToast(`${inst.name} added`);
-    wizardNext();
+    wizardAdded(inst.id, inst.name);
     return;
   }
   if (action === 'wizard-pick-handpan') {
@@ -3329,9 +3371,8 @@ document.addEventListener('click', e => {
     state.savedLayouts = getSavedLayouts();
     scheduleSave();
     refreshInstruments();
-    showToast(`${scale.name} added`);
     state.wizard.search = '';
-    wizardNext();
+    wizardAdded(handpanInstrumentId(scale.id), scale.name);
     return;
   }
   if (action === 'wizard-oc-path') {
@@ -3362,9 +3403,33 @@ document.addEventListener('click', e => {
         }), { design: { scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu, chambers: oc.chambers, windowStart: oc.windowStart, excluded: [] } });
     saveInstrument(inst);
     refreshInstruments();
-    showToast(`${inst.name} added`);
     state.wizard.oc = newWizard(false).oc;
-    wizardNext();
+    wizardAdded(inst.id, inst.name);
+    return;
+  }
+  if (action === 'wizard-back') {
+    const w = state.wizard;
+    const prev = w.history.pop();
+    if (prev) { w.queue.unshift(w.step); w.step = prev; w.notice = null; }
+    render();
+    return;
+  }
+  if (action === 'wizard-filter-notes') { state.wizard.noteFilter = el.dataset.val; render(); return; }
+  if (action === 'wizard-oc-holes-step') {
+    const oc = state.wizard.oc;
+    oc.holeCount = Math.max(4, Math.min(13, oc.holeCount + parseInt(el.dataset.delta, 10)));
+    render();
+    return;
+  }
+  if (action === 'wizard-oc-transpose-step') {
+    const oc = state.wizard.oc;
+    Object.assign(oc, { transpose: Math.max(-6, Math.min(6, oc.transpose + parseInt(el.dataset.delta, 10))), windowStart: null });
+    render();
+    return;
+  }
+  if (action === 'wizard-oc-gu-toggle') {
+    Object.assign(state.wizard.oc, { includeGu: !state.wizard.oc.includeGu, chambers: null, windowStart: null });
+    render();
     return;
   }
 
