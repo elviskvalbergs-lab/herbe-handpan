@@ -836,6 +836,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .practice-progress { height: 4px; margin-top: var(--space-2); border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }
 .practice-progress > span { display: block; height: 100%; background: var(--text-1); transition: width var(--dur-2) var(--ease-out); }
 .fg-stage.is-practice .fingering { max-height: 52dvh; }
+/* With the tuner docked on a phone, shrink the diagram so "up next" stays in view. */
+@media (max-width: 1023px) { body.tuner-on .fg-stage.is-practice .fingering { max-height: calc(52dvh - var(--tuner-h)); } }
 .fg-stage.is-practice .fg-moves { font-size: var(--fs-20); line-height: var(--lh-20); }
 .practice-next { display: flex; align-items: center; gap: var(--space-3); color: var(--text-2); }
 .practice-bar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
