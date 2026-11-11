@@ -561,3 +561,16 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* My instruments and the add-instrument wizard */
+.instrument-card { position: relative; padding-right: 32px; }
+.wizard { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
+.wizard-title { font-size: 18px; font-weight: 600; color: var(--heading); }
+.wizard-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.wizard-field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text); }
+.wizard-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.wizard-check { display: flex; gap: 6px; align-items: center; font-size: 13px; padding-bottom: 8px; }
+.wizard-notes { display: flex; flex-wrap: wrap; gap: 4px; }
+.wizard-notes .pill { cursor: default; }
+.wizard-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.instrument-view { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }

@@ -13,10 +13,19 @@ import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
+import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
+import {
+  INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
+  touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
+  createScaleOcarina, createCustomOcarina, instrumentStatus, midiToNoteName,
+} from './instruments.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
-  view: 'selector',        // 'selector' | 'editor' | 'chords'
+  view: 'selector',        // 'home' | 'wizard' | 'instrument' | 'selector' | 'editor' | 'chords' | 'playlist'
+  instruments: [],         // My instruments (instruments.js), most recently played first
+  currentInstrumentId: null, // instrument being played; null = browsing the catalogue
+  wizard: null,            // add-instrument wizard state, see viewWizard()
   layout: null,            // current Layout object
   shellMode: 'both',       // 'top' | 'bottom' | 'both'
   ringRotated: false,      // false = standard; true = rotated half-slot
@@ -51,7 +60,10 @@ const state = {
 // ── Render ───────────────────────────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
-  if (state.view === 'selector') app.innerHTML = viewSelector();
+  if (state.view === 'home') app.innerHTML = viewHome();
+  else if (state.view === 'wizard') app.innerHTML = viewWizard();
+  else if (state.view === 'instrument') app.innerHTML = viewInstrument();
+  else if (state.view === 'selector') app.innerHTML = viewSelector();
   else if (state.view === 'editor') app.innerHTML = viewEditor();
   else if (state.view === 'chords') app.innerHTML = viewChords();
   else if (state.view === 'playlist') app.innerHTML = viewPlaylist();
@@ -71,29 +83,8 @@ function viewSelector() {
 
   const { savedLayouts, favorites, useFlats } = state;
 
-  const authBar = isLoggedIn()
-    ? `<div class="auth-bar">
-         <span class="hint auth-user">${escHtml(getUserEmail())}</span>
-         <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-sync" title="Sync now">${icon('refresh')}</button>
-         <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
-       </div>`
-    : state.authLinkSent
-    ? `<div class="auth-bar auth-bar--code">
-         <span class="hint" style="color:var(--primary);font-size:12px">Code sent to ${escHtml(state.authEmail)}</span>
-         <div class="auth-code-row">
-           <input class="auth-code-input" id="auth-code-input" type="text"
-             inputmode="numeric" pattern="[0-9]*" maxlength="8"
-             placeholder="Code from email" value="${escHtml(state.authCode)}"
-             autocomplete="one-time-code">
-           <button class="btn btn-primary btn-sm" data-action="auth-verify">Verify</button>
-           <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-cancel">${icon('x')}</button>
-         </div>
-       </div>`
-    : `<div class="auth-bar">
-         <input class="auth-email-input" id="auth-email-input" type="email"
-           placeholder="Email to sync playlists across devices" value="${escHtml(state.authEmail)}">
-         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">${icon('refresh')} Sync</button>
-       </div>`;
+  const authBar = authBarHtml();
+  const favsSection = playlistsSectionHtml();
 
   const savedSection = savedLayouts.length === 0 ? '' : `
     <div class="pwa-section">
@@ -110,25 +101,15 @@ function viewSelector() {
     </div>
   `;
 
-  const favsSection = state.playlists.length === 0 ? '' : `
-    <div class="pwa-section">
-      <div class="pwa-section-title">My Playlists</div>
-      <div class="pwa-scroll">
-        ${state.playlists.map(pl => `
-          <div class="playlist-card" data-action="open-playlist-chords" data-id="${escHtml(pl.id)}">
-            <div class="playlist-card-name">${escHtml(pl.name)}</div>
-            <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
-            <div class="playlist-card-edit" data-action="open-playlist" data-id="${escHtml(pl.id)}" title="Edit playlist">${icon('pencil')}</div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
   return `
     <div class="app-header">
-      <div class="app-title">Handpan Chords</div>
+      <div class="breadcrumb">
+        <a data-action="back-home">← My instruments</a>
+        <span>/</span>
+        <span>Other instrument</span>
+      </div>
     </div>
+    <div class="hint" style="margin:-12px 0 16px">Try any handpan scale without saving it. Save a layout to add it to My instruments.</div>
     <div class="selector-controls">
       <input class="scale-search" id="scale-search-input" type="text"
         placeholder="Search scales by name or family…"
@@ -164,6 +145,349 @@ function viewSelector() {
   `;
 }
 
+
+// Sync sign-in bar, shared by My instruments and the scale catalogue.
+function authBarHtml() {
+  return isLoggedIn()
+    ? `<div class="auth-bar">
+         <span class="hint auth-user">${escHtml(getUserEmail())}</span>
+         <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-sync" title="Sync now">${icon('refresh')}</button>
+         <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
+       </div>`
+    : state.authLinkSent
+    ? `<div class="auth-bar auth-bar--code">
+         <span class="hint" style="color:var(--primary);font-size:12px">Code sent to ${escHtml(state.authEmail)}</span>
+         <div class="auth-code-row">
+           <input class="auth-code-input" id="auth-code-input" type="text"
+             inputmode="numeric" pattern="[0-9]*" maxlength="8"
+             placeholder="Code from email" value="${escHtml(state.authCode)}"
+             autocomplete="one-time-code">
+           <button class="btn btn-primary btn-sm" data-action="auth-verify">Verify</button>
+           <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-cancel">${icon('x')}</button>
+         </div>
+       </div>`
+    : `<div class="auth-bar">
+         <input class="auth-email-input" id="auth-email-input" type="email"
+           placeholder="Email to sync playlists across devices" value="${escHtml(state.authEmail)}">
+         <button class="btn btn-secondary btn-sm" data-action="auth-send-link">${icon('refresh')} Sync</button>
+       </div>`;
+
+}
+
+// My Playlists strip, shared by My instruments and the scale catalogue.
+function playlistsSectionHtml() {
+  return state.playlists.length === 0 ? '' : `
+    <div class="pwa-section">
+      <div class="pwa-section-title">My Playlists</div>
+      <div class="pwa-scroll">
+        ${state.playlists.map(pl => `
+          <div class="playlist-card" data-action="open-playlist-chords" data-id="${escHtml(pl.id)}">
+            <div class="playlist-card-name">${escHtml(pl.name)}</div>
+            <div class="playlist-card-meta">${pl.chords.length} chord${pl.chords.length !== 1 ? 's' : ''}</div>
+            <div class="playlist-card-edit" data-action="open-playlist" data-id="${escHtml(pl.id)}" title="Edit playlist">${icon('pencil')}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+}
+
+// ── My instruments ───────────────────────────────────────────────────────────
+
+// First breadcrumb on the handpan views: back to My instruments when playing
+// one of them, back to the scale catalogue when just browsing.
+function backCrumb() {
+  return state.currentInstrumentId
+    ? `<a data-action="back-home">← My instruments</a>`
+    : `<a data-action="back-selector">← Scales</a>`;
+}
+
+function refreshInstruments() {
+  syncHandpanInstruments(getSavedLayouts());
+  state.instruments = getInstruments();
+  if (state.instruments.length > 0) setOnboarded();
+}
+
+function viewHome() {
+  const cards = state.instruments.map(inst => `
+    <div class="scale-card instrument-card" data-action="open-instrument" data-id="${escHtml(inst.id)}">
+      <div class="family-badge">${escHtml(INSTRUMENT_FAMILIES.find(f => f.id === inst.family)?.name ?? inst.family)}</div>
+      <div class="scale-card-name">${escHtml(inst.name)}</div>
+      <div class="scale-card-meta">${escHtml(instrumentStatus(inst))}</div>
+      <button class="saved-del" data-action="delete-instrument" data-id="${escHtml(inst.id)}" title="Remove">${icon('x')}</button>
+    </div>
+  `).join('');
+
+  return `
+    <div class="app-header">
+      <div class="app-title">My instruments</div>
+      <div style="display:flex;gap:6px;margin-left:auto">
+        <button class="btn btn-primary btn-sm" data-action="add-instrument">${icon('plus')} Add instrument</button>
+        <button class="btn btn-secondary btn-sm" data-action="other-instrument">Other instrument</button>
+      </div>
+    </div>
+    ${authBarHtml()}
+    ${state.instruments.length === 0
+      ? `<div class="empty-state">No instruments yet. Add the ones you play, or open “Other instrument” to try any scale.</div>`
+      : `<div class="scale-grid">${cards}</div>`}
+    ${playlistsSectionHtml()}
+  `;
+}
+
+// The add-instrument wizard. First run asks which families the user plays,
+// then walks through one step per ticked family.
+function newWizard(firstRun) {
+  return {
+    firstRun,
+    step: 'families',
+    families: [],
+    queue: [],
+    search: '',
+    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12 },
+  };
+}
+
+function wizardNext() {
+  const w = state.wizard;
+  const next = w.queue.shift();
+  if (next) { w.step = next; render(); return; }
+  setOnboarded();
+  state.wizard = null;
+  refreshInstruments();
+  state.view = 'home';
+  history.replaceState(null, '', location.pathname);
+  render();
+}
+
+// Notes for the ocarina being designed in the wizard, with the chamber and
+// note-window choice applied.
+function wizardOcarinaPlan() {
+  const oc = state.wizard.oc;
+  const scale = SCALES.find(sc => sc.id === oc.scaleId);
+  const all = scaleToMidis(scale, { transpose: oc.transpose, includeGu: oc.includeGu });
+  const needed = chambersNeeded(all);
+  const chambers = Math.min(oc.chambers ?? needed, needed);
+  let windows = [];
+  let notes = all;
+  if (chambers < needed) {
+    windows = noteWindows(all, chambers);
+    const ding = noteToMidi(scale.top.ding) + oc.transpose;
+    const chosen = windows.find(win => win.start === oc.windowStart)
+      ?? windows.find(win => win.start === ding)
+      ?? windows[0];
+    notes = chosen.notes;
+    windows = windows.map(win => ({ ...win, chosen: win === chosen, fromDing: win.start === ding }));
+  }
+  return { scale, all, needed, chambers, windows, notes };
+}
+
+function viewWizard() {
+  const w = state.wizard;
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const header = `
+    <div class="app-header">
+      <div class="breadcrumb">
+        ${w.firstRun ? `<span>Welcome</span>` : `<a data-action="back-home">← My instruments</a><span>/</span><span>Add instrument</span>`}
+      </div>
+    </div>`;
+
+  if (w.step === 'families') {
+    return `${header}
+      <div class="wizard">
+        <div class="wizard-title">Which instruments do you play?</div>
+        <div class="pills">
+          ${INSTRUMENT_FAMILIES.map(f => `
+            <button class="pill ${w.families.includes(f.id) ? 'active' : ''}" data-action="wizard-family" data-family="${f.id}"
+              ${f.unavailable ? `disabled title="${escHtml(f.unavailable)}"` : ''}>${f.name}${f.unavailable ? ' (soon)' : ''}</button>
+          `).join('')}
+        </div>
+        <div class="wizard-actions">
+          <button class="btn btn-primary" data-action="wizard-families-next" ${w.families.length ? '' : 'disabled'}>Next →</button>
+          ${w.firstRun ? `<button class="btn btn-secondary" data-action="wizard-skip">Skip, just browse scales</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  if (w.step === 'handpan') {
+    const q = w.search.trim().toLowerCase();
+    const list = SCALES.filter(sc => !q || sc.name.toLowerCase().includes(q) || sc.family.toLowerCase().includes(q));
+    return `${header}
+      <div class="wizard">
+        <div class="wizard-title">Which handpan do you have?</div>
+        <div class="hint">Pick its scale. For a custom layout, use Other instrument → Clone &amp; Customize, then Save.</div>
+        <input class="scale-search" id="wizard-search-input" type="text" placeholder="Search scales…" value="${escHtml(w.search)}">
+        <div class="scale-grid">
+          ${list.map(sc => `
+            <div class="scale-card" data-action="wizard-pick-handpan" data-id="${sc.id}">
+              <div class="family-badge">${sc.family}</div>
+              <div class="scale-card-name">${sc.name}</div>
+              <div class="scale-card-meta">${1 + sc.top.notes.length + sc.bottom.notes.length} notes · ${displayNote(sc.top.ding, uf, us)} ding</div>
+            </div>`).join('')}
+        </div>
+        <div class="wizard-actions"><button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button></div>
+      </div>`;
+  }
+
+  if (w.step === 'ocarina') {
+    const oc = w.oc;
+    if (!oc.path) {
+      return `${header}
+        <div class="wizard">
+          <div class="wizard-title">Add an ocarina</div>
+          <div class="wizard-choices">
+            <div class="scale-card" data-action="wizard-oc-path" data-path="have">
+              <div class="scale-card-name">I have one</div>
+              <div class="scale-card-desc">A bought ocarina. You'll set it up by playing it into the tuner, so the maker doesn't matter.</div>
+            </div>
+            <div class="scale-card" data-action="wizard-oc-path" data-path="make">
+              <div class="scale-card-name">I'm making one</div>
+              <div class="scale-card-desc">A clay ocarina tuned to a handpan scale.</div>
+            </div>
+          </div>
+          <div class="wizard-actions"><button class="btn btn-secondary" data-action="wizard-skip-step">Skip</button></div>
+        </div>`;
+    }
+    if (oc.path === 'have') {
+      return `${header}
+        <div class="wizard">
+          <div class="wizard-title">Your ocarina</div>
+          <label class="wizard-field">Name
+            <input class="name-input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="My ocarina">
+          </label>
+          <label class="wizard-field">Number of holes, thumb holes included
+            <select class="select-input" data-action="wizard-oc-holes">
+              ${[4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map(n => `<option value="${n}" ${oc.holeCount === n ? 'selected' : ''}>${n}</option>`).join('')}
+            </select>
+          </label>
+          <div class="hint">Its fingering chart is worked out from the instrument itself: once the tuner arrives, you blow it with all holes closed and then each hole open on its own.</div>
+          <div class="wizard-actions">
+            <button class="btn btn-primary" data-action="wizard-oc-create">Add ocarina</button>
+            <button class="btn btn-secondary" data-action="wizard-oc-path" data-path="">Back</button>
+          </div>
+        </div>`;
+    }
+    const plan = wizardOcarinaPlan();
+    const hasGu = plan.scale.bottom.notes.length > 0;
+    return `${header}
+      <div class="wizard">
+        <div class="wizard-title">Design an ocarina</div>
+        <label class="wizard-field">Handpan scale
+          <select class="select-input" data-action="wizard-oc-scale">
+            ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === oc.scaleId ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
+          </select>
+        </label>
+        <div class="wizard-row">
+          <label class="wizard-field">Transpose
+            <select class="select-input" data-action="wizard-oc-transpose">
+              ${Array.from({ length: 13 }, (_, i) => i - 6).map(t => `<option value="${t}" ${t === oc.transpose ? 'selected' : ''}>${t > 0 ? '+' + t : t} semitones</option>`).join('')}
+            </select>
+          </label>
+          ${hasGu ? `<label class="wizard-check"><input type="checkbox" data-action="wizard-oc-gu" ${oc.includeGu ? 'checked' : ''}> Include gu notes</label>` : ''}
+        </div>
+        <div class="wizard-field">
+          <div>The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}. Build with:</div>
+          <div class="pills">
+            ${Array.from({ length: plan.needed }, (_, i) => i + 1).map(n => `
+              <button class="pill ${n === plan.chambers ? 'active' : ''}" data-action="wizard-oc-chambers" data-n="${n}">${n} chamber${n !== 1 ? 's' : ''}</button>`).join('')}
+          </div>
+        </div>
+        ${plan.windows.length ? `
+          <div class="wizard-field">
+            <div>Which notes? ${plan.chambers} chamber${plan.chambers !== 1 ? 's' : ''} hold${plan.chambers === 1 ? 's' : ''} part of the scale:</div>
+            <div class="pills">
+              ${plan.windows.map(win => `
+                <button class="pill ${win.chosen ? 'active' : ''}" data-action="wizard-oc-window" data-start="${win.start}">
+                  ${nn(win.notes[0])}–${nn(win.notes[win.notes.length - 1])} · ${win.notes.length} notes${win.fromDing ? ' · from the ding' : ''}
+                </button>`).join('')}
+            </div>
+          </div>` : ''}
+        <div class="wizard-notes">
+          ${plan.all.map(m => `<span class="pill ${plan.notes.includes(m) ? 'active' : ''}">${nn(m)}</span>`).join('')}
+        </div>
+        <div class="hint">${plan.notes.length} notes · ${plan.notes.length - plan.chambers} holes</div>
+        <label class="wizard-field">Name
+          <input class="name-input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="${escHtml(plan.scale.name)} ocarina">
+        </label>
+        <div class="wizard-actions">
+          <button class="btn btn-primary" data-action="wizard-oc-create">Start building</button>
+          <button class="btn btn-secondary" data-action="wizard-oc-path" data-path="">Back</button>
+        </div>
+      </div>`;
+  }
+  return header;
+}
+
+// An ocarina or flute. Phase 2 shows what the instrument is; the fingering
+// views arrive with the fingering diagram.
+function viewInstrument() {
+  const inst = getInstrument(state.currentInstrumentId);
+  if (!inst) return viewHome();
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const body = inst.kind === 'scale'
+    ? inst.chambers.map((ch, i) => `
+        <div class="editor-section">
+          <div class="editor-section-title">Chamber ${i + 1}</div>
+          <div class="pills">${ch.notes.map(m => `<span class="pill">${nn(m)}</span>`).join('')}</div>
+          <div class="hint" style="margin-top:6px">${ch.holes.length} holes: ${ch.holes.map(h => h.finger).join(', ')}</div>
+        </div>`).join('')
+    : `<div class="hint">Set it up by playing it into the tuner: all holes closed, then each hole open on its own. This arrives with the tuner update.</div>`;
+  return `
+    <div class="app-header">
+      <div class="breadcrumb">
+        <a data-action="back-home">← My instruments</a>
+        <span>/</span>
+        <span>${escHtml(inst.name)}</span>
+      </div>
+    </div>
+    <div class="instrument-view">
+      <div class="scale-card-meta">${escHtml(instrumentStatus(inst))}</div>
+      ${body}
+      <div class="hint mt-16">Fingering charts and chords for ocarinas arrive in the next update.</div>
+    </div>
+  `;
+}
+
+function openInstrument(id, { push = true } = {}) {
+  const inst = getInstrument(id);
+  if (!inst) return false;
+  stopAutoplay();
+  touchInstrument(id);
+  state.currentInstrumentId = id;
+  state.selectedChord = null;
+  state.sourcePlaylistId = null;
+  state.sourceEntryId = null;
+  if (inst.family === 'handpan') {
+    const saved = state.savedLayouts.find(l => l.id === inst.layoutId);
+    if (!saved) return false;
+    state.layout = JSON.parse(JSON.stringify(saved.layout));
+    state.chords = findAllChords(state.layout);
+    state.shellMode = 'both';
+    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+    state.view = 'chords';
+    if (push) history.pushState(null, '', stateToHash());
+  } else {
+    state.layout = null;
+    state.view = 'instrument';
+    if (push) history.pushState(null, '', `#i/${id}`);
+  }
+  return true;
+}
+
+// Where the app opens with no URL hash: the wizard on first run, otherwise
+// My instruments — or straight into the only instrument there is.
+function openStartView() {
+  if (state.instruments.length === 0 && !isOnboarded()) {
+    state.wizard = newWizard(true);
+    state.view = 'wizard';
+    return;
+  }
+  state.view = 'home';
+  if (state.instruments.length === 1) openInstrument(state.instruments[0].id, { push: false });
+}
+
 // ── View 2: Layout Editor ────────────────────────────────────────────────────
 function viewEditor() {
   const layout = state.layout;
@@ -183,7 +507,7 @@ function viewEditor() {
   return `
     <div class="app-header">
       <div class="breadcrumb">
-        <a data-action="back-selector">← Scales</a>
+        ${backCrumb()}
         <span>/</span>
         ${isCustom
           ? `<input class="name-input" id="custom-name-input"
@@ -420,7 +744,7 @@ function viewChords() {
   return `
     <div class="app-header">
       <div class="breadcrumb">
-        <a data-action="back-selector">← Scales</a>
+        ${backCrumb()}
         <span>/</span>
         <a data-action="back-editor">← ${escHtml(layout.name)}</a>
         <span>/</span>
@@ -635,7 +959,7 @@ function viewPlaylist() {
   return `
     <div class="app-header">
       <div class="breadcrumb">
-        <a data-action="back-selector">← Scales</a>
+        ${backCrumb()}
         <span>/</span>
         <span>${escHtml(pl.name)}</span>
       </div>
@@ -706,6 +1030,8 @@ function loadPlaylistChordAt(pl, idx) {
     };
   }
   state.shellMode = 'both';
+  const owned = getInstrument(handpanInstrumentId(fav.layoutId));
+  state.currentInstrumentId = owned ? owned.id : null;
   // Remember where this chord came from so a later voicing swap can be
   // saved back into this exact entry instead of only adding a new one.
   state.sourcePlaylistId = pl.id;
@@ -813,13 +1139,24 @@ function loadFromHash() {
 
   let chordId = null;
 
+  if (hash === '#scales') { state.view = 'selector'; return; }
+  if (hash.startsWith('#i/')) {
+    const [id] = hash.slice(3).split('/');
+    openInstrument(decodeURIComponent(id), { push: false });
+    return;
+  }
+
   if (hash.startsWith('#scale=')) {
     const raw = hash.slice(7);
     const [scaleId, ...rest] = raw.split('&chord=');
     chordId = rest[0] || null;
     const scale = SCALES.find(s => s.id === scaleId);
     if (scale) {
-      state.layout = createLayoutFromScale(scale);
+      // Prefer the user's own saved copy, so it opens as that instrument.
+      const owned = getInstrument(handpanInstrumentId(scaleId));
+      const saved = owned && state.savedLayouts.find(l => l.id === scaleId);
+      state.layout = saved ? JSON.parse(JSON.stringify(saved.layout)) : createLayoutFromScale(scale);
+      state.currentInstrumentId = saved ? owned.id : null;
       state.chords = findAllChords(state.layout);
       state.view = chordId ? 'chords' : 'editor';
     }
@@ -942,6 +1279,7 @@ function mergeCloudData(cloud) {
   if (!layoutsSame) {
     localStorage.setItem('hp-layouts', JSON.stringify(mergedLayouts));
     state.savedLayouts = getSavedLayouts();
+    refreshInstruments();
   }
 
   if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
@@ -989,7 +1327,9 @@ async function handleLogin(event, session) {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 loadPrefs();
-loadFromHash();
+refreshInstruments();
+if (location.hash && location.hash !== '#') loadFromHash();
+else openStartView();
 render();
 
 // Pre-warm AudioContext on the very first user touch.
@@ -1056,6 +1396,126 @@ document.addEventListener('click', e => {
   if (!el) return;
   const action = el.dataset.action;
 
+  // ── My instruments ────────────────────────────────────────────────────────
+  if (action === 'open-instrument') {
+    if (e.target.closest('[data-action="delete-instrument"]')) return;
+    if (openInstrument(el.dataset.id)) render();
+    else showToast('Instrument not found');
+    return;
+  }
+  if (action === 'delete-instrument') {
+    e.stopPropagation();
+    const inst = getInstrument(el.dataset.id);
+    if (!inst || !confirm(`Remove ${inst.name} from My instruments?`)) return;
+    if (inst.family === 'handpan') {
+      // A handpan instrument is its saved layout: removing one removes both.
+      deleteLayout(inst.layoutId);
+      state.savedLayouts = getSavedLayouts();
+      scheduleSave();
+    } else {
+      deleteInstrument(inst.id);
+    }
+    refreshInstruments();
+    render();
+    return;
+  }
+  if (action === 'back-home') {
+    stopAutoplay();
+    Object.assign(state, {
+      view: 'home', layout: null, selectedChord: null, pendingSlot: null,
+      sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
+      wizard: null, discoverMode: false, discoverNotes: [],
+    });
+    refreshInstruments();
+    history.pushState(null, '', location.pathname);
+    render();
+    return;
+  }
+  if (action === 'other-instrument') {
+    state.currentInstrumentId = null;
+    state.view = 'selector';
+    history.pushState(null, '', '#scales');
+    render();
+    return;
+  }
+  if (action === 'add-instrument') {
+    state.wizard = newWizard(false);
+    state.view = 'wizard';
+    render();
+    return;
+  }
+
+  // ── Add-instrument wizard ─────────────────────────────────────────────────
+  if (action === 'wizard-family') {
+    const fams = state.wizard.families;
+    const f = el.dataset.family;
+    state.wizard.families = fams.includes(f) ? fams.filter(x => x !== f) : [...fams, f];
+    render();
+    return;
+  }
+  if (action === 'wizard-families-next') {
+    state.wizard.queue = INSTRUMENT_FAMILIES.map(f => f.id).filter(f => state.wizard.families.includes(f));
+    wizardNext();
+    return;
+  }
+  if (action === 'wizard-skip') {
+    setOnboarded();
+    state.wizard = null;
+    state.view = 'selector';
+    history.replaceState(null, '', '#scales');
+    render();
+    return;
+  }
+  if (action === 'wizard-skip-step') { wizardNext(); return; }
+  if (action === 'wizard-pick-handpan') {
+    const scale = SCALES.find(sc => sc.id === el.dataset.id);
+    if (!scale) return;
+    const layout = createLayoutFromScale(scale);
+    saveLayout({
+      id: scale.id, name: scale.name,
+      noteCount: 1 + scale.top.notes.length + scale.bottom.notes.length,
+      layout, savedAt: Date.now(),
+    });
+    state.savedLayouts = getSavedLayouts();
+    scheduleSave();
+    refreshInstruments();
+    showToast(`${scale.name} added`);
+    state.wizard.search = '';
+    wizardNext();
+    return;
+  }
+  if (action === 'wizard-oc-path') {
+    state.wizard.oc.path = el.dataset.path || null;
+    render();
+    return;
+  }
+  if (action === 'wizard-oc-chambers') {
+    state.wizard.oc.chambers = parseInt(el.dataset.n, 10);
+    state.wizard.oc.windowStart = null;
+    render();
+    return;
+  }
+  if (action === 'wizard-oc-window') {
+    state.wizard.oc.windowStart = parseInt(el.dataset.start, 10);
+    render();
+    return;
+  }
+  if (action === 'wizard-oc-create') {
+    const oc = state.wizard.oc;
+    const inst = oc.path === 'have'
+      ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
+      : createScaleOcarina({
+          scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu,
+          notes: wizardOcarinaPlan().notes, name: oc.name.trim(),
+        });
+    saveInstrument(inst);
+    refreshInstruments();
+    showToast(`${inst.name} added`);
+    state.wizard.oc = newWizard(false).oc;
+    wizardNext();
+    return;
+  }
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   if (action === 'auth-send-link') {
     const email = (document.getElementById('auth-email-input')?.value || '').trim();
@@ -1116,6 +1576,7 @@ document.addEventListener('click', e => {
     state.shellMode = 'both';
     state.chordFilter = { category: 'All', root: 'All' };
     state.view = 'editor';
+    state.currentInstrumentId = null;
     history.pushState(null, '', stateToHash());
     render();
     return;
@@ -1138,7 +1599,9 @@ document.addEventListener('click', e => {
     });
     state.savedLayouts = getSavedLayouts();
     scheduleSave();
-    showToast('Saved to My Layouts');
+    refreshInstruments();
+    state.currentInstrumentId = handpanInstrumentId(id);
+    showToast('Saved to My instruments');
     render();
     return;
   }
@@ -1152,6 +1615,8 @@ document.addEventListener('click', e => {
     state.shellMode = 'both';
     state.chordFilter = { category: 'All', root: 'All' };
     state.view = 'editor';
+    state.currentInstrumentId = handpanInstrumentId(saved.id);
+    touchInstrument(state.currentInstrumentId);
     render();
     return;
   }
@@ -1159,6 +1624,7 @@ document.addEventListener('click', e => {
   if (action === 'delete-saved') {
     deleteLayout(el.dataset.id);
     state.savedLayouts = getSavedLayouts();
+    refreshInstruments();
     scheduleSave();
     render();
     return;
@@ -1296,8 +1762,9 @@ document.addEventListener('click', e => {
     if (state.activePlaylistId === 'favorites') return;
     deletePlaylist(state.activePlaylistId);
     state.playlists = getPlaylists();
-    state.view = 'selector';
+    state.view = 'home';
     state.activePlaylistId = null;
+    history.pushState(null, '', location.pathname);
     scheduleSave();
     render();
     return;
@@ -1356,7 +1823,8 @@ document.addEventListener('click', e => {
     state.pendingSlot = null;
     state.sourcePlaylistId = null;
     state.sourceEntryId = null;
-    history.pushState(null, '', location.pathname);
+    state.currentInstrumentId = null;
+    history.pushState(null, '', '#scales');
     render();
     return;
   }
@@ -1402,6 +1870,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'clone-layout') {
+    state.currentInstrumentId = null;
     state.layout = {
       ...state.layout,
       isCustom: true,
@@ -1684,6 +2153,19 @@ document.addEventListener('change', e => {
     render();
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
+  if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }
+  if (action === 'wizard-oc-scale') {
+    Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
+    render();
+  }
+  if (action === 'wizard-oc-transpose') {
+    Object.assign(state.wizard.oc, { transpose: parseInt(el.value, 10), windowStart: null });
+    render();
+  }
+  if (action === 'wizard-oc-gu') {
+    Object.assign(state.wizard.oc, { includeGu: el.checked, chambers: null, windowStart: null });
+    render();
+  }
   if (action === 'set-autoplay-seconds') {
     state.autoplaySeconds = parseInt(el.value, 10);
     savePrefs();
@@ -1702,6 +2184,18 @@ document.addEventListener('input', e => {
     render();
     const input = document.getElementById('scale-search-input');
     if (input) { input.focus(); input.setSelectionRange(pos, pos); }
+    return;
+  }
+  if (e.target.id === 'wizard-search-input' && state.wizard) {
+    state.wizard.search = e.target.value;
+    const pos = e.target.selectionStart;
+    render();
+    const input = document.getElementById('wizard-search-input');
+    if (input) { input.focus(); input.setSelectionRange(pos, pos); }
+    return;
+  }
+  if (e.target.id === 'wizard-oc-name' && state.wizard) {
+    state.wizard.oc.name = e.target.value;
     return;
   }
   if (e.target.id === 'custom-name-input' && state.layout) {
@@ -1739,10 +2233,12 @@ document.addEventListener('keydown', e => {
 // ── Browser back/forward ──────────────────────────────────────────────────────
 window.addEventListener('popstate', () => {
   Object.assign(state, {
-    view: 'selector', layout: null, selectedChord: null,
+    view: 'home', layout: null, selectedChord: null,
     pendingSlot: null, chords: [], shellMode: 'both',
     chordFilter: { category: 'All', root: 'All', playlist: 'All' },
+    currentInstrumentId: null, wizard: null,
   });
+  refreshInstruments();
   loadFromHash();
   render();
 });
