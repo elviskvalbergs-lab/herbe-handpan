@@ -266,7 +266,15 @@ Popular songs need a licence before the app can publish them: their melodies and
 
 **The player.** Everyone sees the chord tabs and lyrics. Under them the instrument’s own view follows along: a handpan lights up its notes on the pan, an ocarina or flute shows the current fingering with the moves to the next note, and a strip shows what’s coming. Tempo runs from 25% upward, any section can loop, and in wait mode the tuner listens and moves on only when the right note is played, so the song goes at the player’s own speed.
 
-Suggested order once the ocarina phases are done: ABC and ChordPro import, then coverage scores, then the player, then MusicXML and MIDI import.
+Suggested order once the ocarina phases are done: progressions (below), then ABC and ChordPro import, then coverage scores, then the player, then MusicXML and MIDI import.
+
+**Progressions: the same chord more than once (owner request, Nov 2026).** Today a playlist is a set of chords: each chord, in each voicing, can be in a playlist only once (`addChordToPlaylist` refuses an entry whose id is already there, and the id is `layoutId-chordId`, plus the notes if the voicing differs). So a progression like **Am – Dm – Am – Bbm** can't be written down. Progressions are the first step towards songs: a song's chord track is a progression with timing. Plan:
+
+- **A progression is an ordered list of steps,** and the same chord can appear any number of times. Each step gets its own id (`stepId`) and points at the chord (`chordId`, `notes` for its voicing, `layoutId` or `instrumentId`). Nothing is matched by chord id any more, so removing or reordering one Am leaves the other alone.
+- **Keep playlists as they are** (a set of favourite chords: the heart means "in this list", and existing saved data and sync stay valid). Add progressions next to them: a playlist can be turned into a progression ("Copy as progression"), and a progression can hold repeats. This avoids migrating existing playlists, and the heart keeps its simple meaning. Stored and synced like playlists (soft deletes, `updatedAt`), additive only.
+- **Building one:** an "Add to progression" action on any chord appends a step (repeats allowed), a step list with drag/up-down reorder, duplicate step, remove step, and optional bars per step (default 1) and time signature (default 4/4), which is all a song's chord track needs later.
+- **Playing it:** autoplay steps through the progression in order, repeats included, with tempo in BPM and bars per step instead of seconds per chord; on ocarina and flute, practice mode walks each step's arpeggio as it does for playlists. The "From chord sheet to playing" levels (roots, arpeggio, groove) apply directly to a progression.
+- **Later, songs:** a song is a progression with a tempo, sections (verse, chorus) and optionally a melody; ChordPro import produces a progression.
 
 ## From chord sheet to playing
 
