@@ -8,6 +8,10 @@ import {
   getPlaylists, addPlaylist, renamePlaylist, deletePlaylist,
   addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
   isChordBookmarkedAnyVoicing, updatePlaylistChordVoicing,
+  PROG_DEFAULTS, PROG_LIMITS, newProgressionStep, progressionStepMs, progressionTotals,
+  nextProgressionStep, mergeProgressionLists, getProgressions, getProgressionsRaw, writeProgressionsRaw,
+  addProgression, renameProgression, deleteProgression, setProgressionTiming, addStepToProgression,
+  duplicateProgressionStep, moveProgressionStep, removeProgressionStep, setProgressionStepBars,
 } from './storage.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
@@ -90,7 +94,14 @@ const state = {
   pickerInstrumentId: null, // instrument of the ocarina card whose ♡ opened the picker
   plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
   plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
-  plName: null,            // { mode: 'new' | 'rename', id, value, error } while naming a playlist
+  plName: null,            // { mode: 'new' | 'rename' | 'prog-new' | 'prog-rename', id, value, error } while naming a playlist or progression
+  progressions: getProgressions(), // chord progressions (storage.js): ordered steps, repeats allowed
+  activeProgressionId: null, // progression detail (#prog/<id>)
+  progMode: 'steps',       // progression detail: 'steps' | 'order' (reorder rows)
+  progRowMenu: null,       // index of the step whose ⋯ menu is open
+  progPlay: null,          // { id, idx, beat } while a progression plays on the handpan
+  pickerMode: 'playlist',  // the ♡ sheet adds to a 'playlist' or a 'progression'
+  pickerNewProgression: false, // the ♡ sheet's "New progression" field is open
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -1602,6 +1613,39 @@ window.addEventListener('hp-instruments-changed', () => {
   if (_instrSyncing || !isLoggedIn()) return;
   clearTimeout(_instrSyncTimer);
   _instrSyncTimer = setTimeout(syncInstrumentsNow, 2000);
+});
+
+// ── Progressions sync ────────────────────────────────────────────────────────
+// Progressions travel in their own user_data column (see auth.js), merged
+// per progression by updatedAt like playlists. Each sync reads the cloud
+// first, so a device that has none never overwrites another's. Quietly does
+// nothing until the migration has been run.
+
+let _progSyncTimer = null;
+let _progSyncing = false;
+
+async function syncProgressionsNow() {
+  if (!isLoggedIn() || _progSyncing) return;
+  _progSyncing = true;
+  try {
+    const cloud = await loadCloudProgressions();
+    if (!cloud) return;
+    const { merged, changedLocal, needPush } = mergeProgressionLists(getProgressionsRaw(), cloud);
+    if (changedLocal) {
+      writeProgressionsRaw(merged); // its change event is ignored while syncing
+      state.progressions = getProgressions();
+    }
+    if (needPush) await saveCloudProgressions(merged);
+    if (changedLocal) render();
+  } finally {
+    _progSyncing = false;
+  }
+}
+
+window.addEventListener('hp-progressions-changed', () => {
+  if (_progSyncing || !isLoggedIn()) return;
+  clearTimeout(_progSyncTimer);
+  _progSyncTimer = setTimeout(syncProgressionsNow, 2000);
 });
 
 // ── Builder ──────────────────────────────────────────────────────────────────
@@ -3398,6 +3442,7 @@ async function checkForUpdates() {
   const cloud = await loadCloudData();
   if (mergeCloudData(cloud)) render();
   syncInstrumentsNow();
+  syncProgressionsNow();
 }
 
 let _syncPoll = null;
@@ -3417,6 +3462,7 @@ async function handleLogin(event, session) {
   mergeCloudData(cloud);
   scheduleSave(); // always push local on login — ensures cloud has our data
   syncInstrumentsNow();
+  syncProgressionsNow();
   startSyncPoll();
   render();
 }

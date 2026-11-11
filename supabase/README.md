@@ -12,10 +12,11 @@ never changes to existing ones.
 | File | What it adds |
 | --- | --- |
 | `20261111_instruments.sql` | `instruments` table (sync of ocarinas and other instruments, owner-only by row-level security) and `get_shared_instrument(public_id)` for read-only sharing by public ID |
+| `20261111_progressions.sql` | nullable `progressions` jsonb column on `user_data` (sync of chord progressions, read and written in requests of their own) |
 
 Until a migration is run, the features that need it fail quietly: the app
-keeps working, instruments just stay on the device and sharing says it
-isn't available.
+keeps working, instruments and progressions just stay on the device and
+sharing says it isn't available.
 
 ## Test project for preview builds
 

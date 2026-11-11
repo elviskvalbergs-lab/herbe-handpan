@@ -103,3 +103,22 @@ export async function fetchSharedInstrument(publicId) {
   if (error) { console.warn('Shared instrument unavailable:', error.message); return null; }
   return data;
 }
+
+// ── Progressions (needs supabase/migrations/20261111_progressions.sql) ───────
+// Kept in their own user_data column and their own requests, so the main
+// upsert above never names it: until the migration has been run these fail
+// soft (null / false) and nothing else in sync is affected.
+
+export async function loadCloudProgressions() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb.from('user_data').select('progressions').single();
+  if (error) { console.warn('Progressions sync unavailable:', error.message); return null; }
+  return Array.isArray(data?.progressions) ? data.progressions : [];
+}
+
+export async function saveCloudProgressions(list) {
+  if (!_sb || !_session) return false;
+  const { error } = await _sb.from('user_data').update({ progressions: list }).eq('user_id', _session.user.id);
+  if (error) { console.warn('Progressions sync error:', error.message); return false; }
+  return true;
+}

@@ -4507,6 +4507,25 @@ async function fetchSharedInstrument(publicId) {
   return data;
 }
 
+// ── Progressions (needs supabase/migrations/20261111_progressions.sql) ───────
+// Kept in their own user_data column and their own requests, so the main
+// upsert above never names it: until the migration has been run these fail
+// soft (null / false) and nothing else in sync is affected.
+
+async function loadCloudProgressions() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb.from('user_data').select('progressions').single();
+  if (error) { console.warn('Progressions sync unavailable:', error.message); return null; }
+  return Array.isArray(data?.progressions) ? data.progressions : [];
+}
+
+async function saveCloudProgressions(list) {
+  if (!_sb || !_session) return false;
+  const { error } = await _sb.from('user_data').update({ progressions: list }).eq('user_id', _session.user.id);
+  if (error) { console.warn('Progressions sync error:', error.message); return false; }
+  return true;
+}
+
 
 // ── js/app.js ──
 // ── State ────────────────────────────────────────────────────────────────────
@@ -4564,7 +4583,14 @@ const state = {
   pickerInstrumentId: null, // instrument of the ocarina card whose ♡ opened the picker
   plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
   plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
-  plName: null,            // { mode: 'new' | 'rename', id, value, error } while naming a playlist
+  plName: null,            // { mode: 'new' | 'rename' | 'prog-new' | 'prog-rename', id, value, error } while naming a playlist or progression
+  progressions: getProgressions(), // chord progressions (storage.js): ordered steps, repeats allowed
+  activeProgressionId: null, // progression detail (#prog/<id>)
+  progMode: 'steps',       // progression detail: 'steps' | 'order' (reorder rows)
+  progRowMenu: null,       // index of the step whose ⋯ menu is open
+  progPlay: null,          // { id, idx, beat } while a progression plays on the handpan
+  pickerMode: 'playlist',  // the ♡ sheet adds to a 'playlist' or a 'progression'
+  pickerNewProgression: false, // the ♡ sheet's "New progression" field is open
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -6076,6 +6102,39 @@ window.addEventListener('hp-instruments-changed', () => {
   if (_instrSyncing || !isLoggedIn()) return;
   clearTimeout(_instrSyncTimer);
   _instrSyncTimer = setTimeout(syncInstrumentsNow, 2000);
+});
+
+// ── Progressions sync ────────────────────────────────────────────────────────
+// Progressions travel in their own user_data column (see auth.js), merged
+// per progression by updatedAt like playlists. Each sync reads the cloud
+// first, so a device that has none never overwrites another's. Quietly does
+// nothing until the migration has been run.
+
+let _progSyncTimer = null;
+let _progSyncing = false;
+
+async function syncProgressionsNow() {
+  if (!isLoggedIn() || _progSyncing) return;
+  _progSyncing = true;
+  try {
+    const cloud = await loadCloudProgressions();
+    if (!cloud) return;
+    const { merged, changedLocal, needPush } = mergeProgressionLists(getProgressionsRaw(), cloud);
+    if (changedLocal) {
+      writeProgressionsRaw(merged); // its change event is ignored while syncing
+      state.progressions = getProgressions();
+    }
+    if (needPush) await saveCloudProgressions(merged);
+    if (changedLocal) render();
+  } finally {
+    _progSyncing = false;
+  }
+}
+
+window.addEventListener('hp-progressions-changed', () => {
+  if (_progSyncing || !isLoggedIn()) return;
+  clearTimeout(_progSyncTimer);
+  _progSyncTimer = setTimeout(syncProgressionsNow, 2000);
 });
 
 // ── Builder ──────────────────────────────────────────────────────────────────
@@ -7872,6 +7931,7 @@ async function checkForUpdates() {
   const cloud = await loadCloudData();
   if (mergeCloudData(cloud)) render();
   syncInstrumentsNow();
+  syncProgressionsNow();
 }
 
 let _syncPoll = null;
@@ -7891,6 +7951,7 @@ async function handleLogin(event, session) {
   mergeCloudData(cloud);
   scheduleSave(); // always push local on login — ensures cloud has our data
   syncInstrumentsNow();
+  syncProgressionsNow();
   startSyncPoll();
   render();
 }
