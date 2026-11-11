@@ -198,20 +198,228 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
 /* Icons — inline SVGs, herbe icon style (see herbe-calendar/menuIcons.tsx) */
 .ico { width: 14px; height: 14px; flex-shrink: 0; fill: none; }
 
-/* Buttons */
+/* ── Primitives (docs/design-system.md §5) ──────────────────────────────── */
+
+/* Button */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-  padding: 8px 16px; border-radius: var(--radius); border: none;
-  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.12s;
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--control-h); padding: 0 var(--space-4);
+  border-radius: var(--r-sm); border: 1px solid transparent;
+  font: var(--fw-semibold) var(--fs-15)/1.2 var(--font); color: var(--text-1);
+  background: transparent; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background var(--dur-1), border-color var(--dur-1), color var(--dur-1);
 }
-.btn-primary { background: var(--primary); color: var(--on-accent); }
-.btn-primary:hover { background: var(--primary-hover); }
-.btn-secondary {
-  background: var(--card); color: var(--text);
-  border: 1px solid var(--border);
+.btn .ico { width: 20px; height: 20px; }
+.btn-lg { min-height: 52px; padding: 0 var(--space-6); font-size: var(--fs-17); }
+.btn-sm { min-height: 36px; padding: 0 var(--space-3); font-size: var(--fs-13); }
+.btn-sm .ico { width: 16px; height: 16px; }
+.btn-sm::after { content: ''; position: absolute; inset: -4px 0; }
+.btn-block { display: flex; width: 100%; }
+.btn-primary { background: var(--accent-fill); color: var(--on-accent); }
+.btn-secondary { background: var(--surface-2); border-color: var(--border-strong); color: var(--text-1); }
+.btn-ghost { background: transparent; color: var(--text-2); }
+.btn-danger { background: transparent; border-color: var(--danger); color: var(--danger); }
+.btn-danger.is-filled { background: var(--danger); color: var(--on-accent); }
+@media (hover: hover) {
+  .btn-primary:hover { background: var(--accent-fill-hover); }
+  .btn-secondary:hover { background: var(--surface-3); }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--text-1); }
+  .btn-danger:hover { background: var(--danger-soft); }
+  .btn-danger.is-filled:hover { background: var(--danger); filter: brightness(1.08); }
 }
-.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
-.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-primary:active { background: var(--accent-fill-press); transform: translateY(1px); }
+.btn-secondary:active { background: var(--surface-3); border-color: var(--text-3); }
+.btn-ghost:active { background: var(--surface-3); }
+.btn:disabled, .btn[aria-disabled="true"] { cursor: not-allowed; color: var(--text-disabled); transform: none; }
+.btn-primary:disabled { background: var(--surface-3); }
+.btn-secondary:disabled { border-color: var(--border); background: var(--surface-2); }
+
+/* Icon button */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: var(--touch); height: var(--touch); min-height: 0; padding: 0;
+  border-radius: var(--r-sm); border: 1px solid transparent; background: transparent;
+  color: var(--text-2); cursor: pointer; transition: background var(--dur-1), color var(--dur-1);
+}
+.icon-btn .ico { width: 24px; height: 24px; }
+.icon-btn.is-dense .ico { width: 20px; height: 20px; }
+.icon-btn.tonal { background: var(--surface-2); border-color: var(--border); }
+@media (hover: hover) { .icon-btn:hover { background: var(--surface-2); color: var(--text-1); } }
+.icon-btn:active { background: var(--surface-3); }
+.icon-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-text); }
+.icon-btn:disabled { color: var(--text-disabled); cursor: not-allowed; background: transparent; }
+
+/* Chip */
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chips-scroll {
+  display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto;
+  scroll-snap-type: x proximity; scrollbar-width: none;
+  margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter);
+}
+.chips-scroll::-webkit-scrollbar { display: none; }
+.chips-scroll > * { scroll-snap-align: start; flex-shrink: 0; }
+.chip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 40px; padding: 0 14px; border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong); background: var(--surface-1); color: var(--text-2);
+  font: var(--fw-medium) 14px/1 var(--font); cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+@media (hover: hover) { .chip:hover { background: var(--surface-2); color: var(--text-1); } }
+.chip[aria-pressed="true"], .chip.is-selected {
+  background: var(--selected-bg); color: var(--on-selected); border-color: var(--selected-bg); font-weight: var(--fw-semibold);
+}
+.chip:disabled { color: var(--text-disabled); border-color: var(--border); cursor: not-allowed; background: var(--surface-1); }
+.chip.is-off { border-style: dashed; color: var(--text-3); text-decoration: line-through; }
+.chip.is-static { border-color: transparent; color: var(--text-3); cursor: default; background: transparent; }
+
+/* Segmented control */
+.seg {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px;
+  min-height: var(--control-h); padding: 2px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.seg-opt {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 38px; padding: 0 10px; border: 0; border-radius: 3px; background: transparent;
+  color: var(--text-2); font: var(--fw-semibold) 14px/1.1 var(--font); cursor: pointer; text-align: center;
+}
+.seg-opt[aria-checked="true"] { background: var(--selected-bg); color: var(--on-selected); }
+@media (hover: hover) { .seg-opt:not([aria-checked="true"]):hover { color: var(--text-1); } }
+
+/* Switch */
+.switch {
+  position: relative; flex-shrink: 0; width: 44px; height: 26px; padding: 0; cursor: pointer;
+  border-radius: var(--r-full); background: var(--surface-3); border: 1px solid var(--border-strong);
+  transition: background var(--dur-1);
+}
+.switch::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  border-radius: var(--r-full); background: var(--text-2); transition: transform var(--dur-1), background var(--dur-1);
+}
+.switch[aria-checked="true"] { background: var(--selected-bg); border-color: var(--selected-bg); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--on-selected); }
+
+/* Fields */
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field-label { font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-2); }
+.field-help { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.field-error { font: var(--fw-medium) var(--fs-13)/var(--lh-13) var(--font); color: var(--danger); }
+.field.has-error .input, .field.has-error .select { border-color: var(--danger); }
+.input, .select {
+  width: 100%; height: var(--field-h); padding: 0 12px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-1);
+  font: var(--fw-regular) 16px/1.2 var(--font);
+}
+.input::placeholder { color: var(--text-3); }
+@media (hover: hover) { .input:hover, .select:hover { border-color: var(--text-3); } }
+.input:focus, .select:focus { border-color: var(--focus); }
+.input:disabled, .select:disabled { background: var(--surface-1); color: var(--text-disabled); }
+.select {
+  appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238BA898' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+.input-unit { position: relative; display: block; min-width: 0; }
+.input-unit .input { padding-right: 40px; }
+.input-unit-label {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;
+  font-size: var(--fs-13); color: var(--text-3);
+}
+@media (min-width: 1024px) {
+  .input, .select { height: 44px; font-size: var(--fs-15); }
+}
+
+/* Number stepper */
+.stepper-num { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.stepper-num-row { display: inline-flex; align-items: center; gap: var(--space-2); }
+.stepper-num-val {
+  min-width: 56px; text-align: center; font: var(--fw-bold) var(--fs-20)/var(--lh-20) var(--font);
+  color: var(--text-1); font-variant-numeric: tabular-nums;
+}
+.stepper-num-help { font-size: var(--fs-13); color: var(--text-3); }
+
+/* Card */
+.card {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: var(--space-4);
+}
+.card.is-link { cursor: pointer; display: block; width: 100%; text-align: left; color: inherit; font: inherit; }
+@media (hover: hover) { .card.is-link:hover { border-color: var(--border-strong); } }
+.card.is-link:active { background: var(--surface-2); }
+.card-title { font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1); margin-bottom: var(--space-3); }
+.overline {
+  font: var(--fw-semibold) var(--fs-12)/var(--lh-12) var(--font); color: var(--text-3);
+  text-transform: uppercase; letter-spacing: var(--tracking-overline); margin-bottom: var(--space-3);
+}
+.divider { height: 1px; background: var(--border); margin: var(--space-4) 0; border: 0; }
+@media (min-width: 1024px) { .card { padding: var(--space-5); } }
+
+/* List and row */
+.list {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md);
+  overflow: hidden; list-style: none;
+}
+.list-title {
+  font: var(--fw-semibold) var(--fs-12)/var(--lh-12) var(--font); color: var(--text-3);
+  text-transform: uppercase; letter-spacing: var(--tracking-overline); margin: var(--space-6) 0 var(--space-2);
+}
+.list-title:first-child { margin-top: 0; }
+.row {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3); align-items: center; min-height: 56px; padding: 8px 8px 8px 16px;
+  width: 100%; text-align: left; background: transparent; border: 0; color: inherit; font: inherit;
+}
+.row.no-lead { grid-template-columns: minmax(0, 1fr) auto; }
+.list > .row + .row::before, .list > * + .row::before {
+  content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--border);
+}
+.row[data-action], button.row { cursor: pointer; }
+@media (hover: hover) { .row[data-action]:hover, button.row:hover { background: var(--surface-2); } }
+.row[data-action]:active, button.row:active { background: var(--surface-3); }
+.row.is-current { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.row.is-disabled { opacity: 0.5; pointer-events: none; }
+.row.is-danger, .row.is-danger .row-title, .row.is-danger .row-lead { color: var(--danger); }
+.row-lead {
+  display: inline-flex; align-items: center; justify-content: center; color: var(--text-2);
+}
+.row-lead.tile { width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--surface-2); }
+.row-lead .ico { width: 24px; height: 24px; }
+.row-text { min-width: 0; }
+.row-title {
+  display: block; font: var(--fw-semibold) var(--fs-15)/var(--lh-15) var(--font); color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.row-meta {
+  font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.row-trail { display: inline-flex; align-items: center; gap: 0; color: var(--text-3); }
+.row-trail > .ico { width: 20px; height: 20px; margin: 0 4px; }
+
+/* Badge */
+.badge {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: var(--r-xs);
+  font: var(--fw-semibold) var(--fs-12)/1 var(--font); text-transform: uppercase; letter-spacing: 0.04em;
+  background: var(--surface-3); color: var(--text-2); white-space: nowrap; flex-shrink: 0;
+}
+.badge-accent { background: var(--accent-soft); color: var(--accent-text); }
+.badge-success { background: var(--success-soft); color: var(--success); }
+.badge-warning { background: var(--warning-soft); color: var(--warning); }
+
+/* Empty state */
+.empty { max-width: 32ch; margin: 0 auto; padding-top: var(--space-12); text-align: center; }
+.empty > .ico { width: 40px; height: 40px; color: var(--text-3); margin-bottom: var(--space-3); }
+.empty-title { font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1); }
+.empty-body { margin-top: var(--space-2); color: var(--text-2); }
+.empty .btn { margin-top: var(--space-4); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
 .btn-icon {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 4px 10px; background: var(--card); border: 1px solid var(--border);
@@ -219,7 +427,7 @@ input[type="number"], .chord-count, .capacity-val, .picker-count, .tuner-hz, .tu
   font-family: inherit; font-size: 16px; line-height: 1.4;
 }
 .btn-icon:hover { border-color: var(--primary); color: var(--primary); }
-.btn-icon .ico, .icon-btn .ico { width: 15px; height: 15px; }
+.btn-icon .ico { width: 15px; height: 15px; }
 
 /* Filter chips — square-first (herbe design system) */
 .pills { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -3840,6 +4048,141 @@ function render() {
   if (state.tuner.on) app.insertAdjacentHTML('beforeend', `<div id="tuner-panel" class="tuner-panel">${tunerPanelInner()}</div>`);
 }
 
+// ── UI primitives ────────────────────────────────────────────────────────────
+// Render helpers for the design-system components (docs/design-system.md §5).
+// Like the views, they return HTML strings. `attrs` is pre-escaped markup.
+
+// data-* attributes from a plain object, escaped.
+function uiData(data = {}) {
+  return Object.entries(data)
+    .filter(([, v]) => v != null && v !== false)
+    .map(([k, v]) => ` data-${k}="${escHtml(v)}"`).join('');
+}
+
+// Icon-only button: 44×44, always labelled.
+function uiIconBtn(name, label, { action, data, pressed, cls = '', attrs = '', disabled = false } = {}) {
+  return `<button type="button" class="icon-btn ${cls}"${action ? ` data-action="${action}"` : ''}${uiData(data)}
+    aria-label="${escHtml(label)}" title="${escHtml(label)}"${pressed != null ? ` aria-pressed="${pressed ? 'true' : 'false'}"` : ''}
+    ${disabled ? 'disabled' : ''} ${attrs}>${icon(name)}</button>`;
+}
+
+function uiBadge(text, variant = '') {
+  return `<span class="badge ${variant ? 'badge-' + variant : ''}">${escHtml(text)}</span>`;
+}
+
+// The sticky app bar. Left slot: a back button and title, a plain title, or
+// the instrument switcher. Middle: the tab bar (moved to the bottom on
+// phones by CSS). Right: up to three icon buttons. The trailing comment
+// lets render() put everything after the bar into <main>.
+function uiAppBar({ title = '', back = null, switcher = null, badge = '', actions = [], tabs = '' } = {}) {
+  let left;
+  if (switcher) {
+    left = `
+      <button type="button" class="appbar-switcher" data-action="${switcher.action}"${uiData(switcher.data)}
+        title="${escHtml(switcher.title ?? 'My instruments')}">
+        <span class="appbar-switcher-name">${escHtml(switcher.name)}</span>${icon('chevron-down')}
+      </button>${badge}`;
+  } else {
+    left = `
+      ${back ? uiIconBtn('chevron-left', back.label ?? 'Back', { action: back.action, data: back.data }) : ''}
+      <h1 class="appbar-title${back ? '' : ' no-back'}">${escHtml(title)}</h1>${badge}`;
+  }
+  return `
+    <header class="appbar">
+      <div class="appbar-inner">
+        <div class="appbar-left">${left}</div>
+        <div class="appbar-mid">${tabs}</div>
+        <div class="appbar-right">${actions.join('')}</div>
+      </div>
+    </header><!--appbar-end-->`;
+}
+
+// Tabs of an instrument: [{ id, label, icon, action, data }], one selected.
+// Rendered inside the app bar; fixed to the bottom of the screen <1024px.
+function uiTabBar(tabs, current) {
+  if (tabs.length < 2) return '';
+  return `
+    <nav class="tabbar" role="tablist" aria-label="Instrument views">
+      ${tabs.map(t => `
+        <button type="button" class="tab" role="tab" aria-selected="${t.id === current ? 'true' : 'false'}"
+          data-action="${t.action}"${uiData(t.data)}>
+          ${icon(t.icon)}<span class="tab-label">${escHtml(t.label)}</span>
+        </button>`).join('')}
+    </nav>`;
+}
+
+// Bottom sheet (phone) / centred modal (≥600px). `close` is the action that
+// closes it (scrim, close button and Esc all use it). variant: '' | 'menu' | 'confirm'.
+function uiSheet({ key, title, body, footer = '', close, closeData, variant = '' }) {
+  const id = `sheet-${key}`;
+  return `
+    <div class="sheet-root${variant ? ' sheet-' + variant : ''}" data-sheet="${escHtml(key)}">
+      <div class="sheet-scrim" data-action="${close}"${uiData(closeData)}></div>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="${id}-title" tabindex="-1">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="sheet-head">
+          <h2 class="sheet-title" id="${id}-title">${escHtml(title)}</h2>
+          ${uiIconBtn('x', 'Close', { action: close, data: closeData, attrs: 'data-sheet-close' })}
+        </div>
+        <div class="sheet-body">${body}</div>
+        ${footer ? `<div class="sheet-foot">${footer}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+// A list row. `lead` is an icon name (shown in a tile) or markup; `trail`
+// markup; `chevron` adds the navigation chevron. With an action the row is a
+// <button>, unless it holds buttons of its own (then a div with role=button).
+function uiRow({ lead = '', title, meta = '', meta2 = '', trail = '', chevron = false, action = '', data, cls = '', titleHtml = false } = {}) {
+  const leadHtml = !lead ? '' : /^[a-z0-9-]+$/.test(lead)
+    ? `<span class="row-lead tile">${icon(lead)}</span>` : `<span class="row-lead">${lead}</span>`;
+  const inner = `
+    ${leadHtml}
+    <span class="row-text">
+      <span class="row-title">${titleHtml ? title : escHtml(title)}</span>
+      ${meta ? `<span class="row-meta">${meta}</span>` : ''}
+      ${meta2 ? `<span class="row-meta">${meta2}</span>` : ''}
+    </span>
+    <span class="row-trail">${trail}${chevron ? icon('chevron-right') : ''}</span>`;
+  const classes = `row ${lead ? '' : 'no-lead'} ${cls}`;
+  if (!action) return `<div class="${classes}">${inner}</div>`;
+  if (/<button/.test(trail)) {
+    return `<div class="${classes}" role="button" tabindex="0" data-action="${action}"${uiData(data)}>${inner}</div>`;
+  }
+  return `<button type="button" class="${classes}" data-action="${action}"${uiData(data)}>${inner}</button>`;
+}
+
+// Label + control + optional helper or error text.
+function uiField({ label, control, help = '', error = '', id = '' }) {
+  return `
+    <div class="field ${error ? 'has-error' : ''}">
+      ${label ? `<label class="field-label"${id ? ` for="${id}"` : ''}>${escHtml(label)}</label>` : ''}
+      ${control}
+      ${error ? `<div class="field-error">${escHtml(error)}</div>` : help ? `<div class="field-help">${help}</div>` : ''}
+    </div>`;
+}
+
+// Segmented control: options [{ value, label }], one checked.
+function uiSeg(options, value, { action, key = 'value', label = '' } = {}) {
+  return `
+    <div class="seg" role="radiogroup"${label ? ` aria-label="${escHtml(label)}"` : ''}>
+      ${options.map(o => `
+        <button type="button" class="seg-opt" role="radio" aria-checked="${o.value === value ? 'true' : 'false'}"
+          data-action="${action}" data-${key}="${escHtml(o.value)}">${o.label}</button>`).join('')}
+    </div>`;
+}
+
+// Empty state: icon, title, body and one optional button (markup).
+function uiEmpty({ icon: ico = 'info', title, body = '', action = '' }) {
+  return `
+    <div class="empty">
+      ${icon(ico)}
+      <div class="empty-title">${escHtml(title)}</div>
+      ${body ? `<div class="empty-body">${body}</div>` : ''}
+      ${action}
+    </div>`;
+}
+
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
 function viewSelector() {
   const q = state.scaleSearch.trim().toLowerCase();
@@ -3922,7 +4265,7 @@ function authBarHtml() {
   return isLoggedIn()
     ? `<div class="auth-bar">
          <span class="hint auth-user">${escHtml(getUserEmail())}</span>
-         <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-sync" title="Sync now">${icon('refresh')}</button>
+         <button class="icon-btn tonal" data-action="auth-sync" title="Sync now" aria-label="Sync now">${icon('refresh')}</button>
          <button class="btn btn-secondary btn-sm" data-action="auth-signout">Sign out</button>
        </div>`
     : state.authLinkSent
@@ -3934,7 +4277,7 @@ function authBarHtml() {
              placeholder="Code from email" value="${escHtml(state.authCode)}"
              autocomplete="one-time-code">
            <button class="btn btn-primary btn-sm" data-action="auth-verify">Verify</button>
-           <button class="btn btn-secondary btn-sm icon-btn" data-action="auth-cancel">${icon('x')}</button>
+           <button class="icon-btn tonal" data-action="auth-cancel" title="Cancel" aria-label="Cancel">${icon('x')}</button>
          </div>
        </div>`
     : `<div class="auth-bar">
@@ -7239,6 +7582,13 @@ document.addEventListener('input', e => {
 });
 
 document.addEventListener('keydown', e => {
+  // Rows that hold buttons of their own are divs with role=button: let the
+  // keyboard activate them like real buttons.
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('[role="button"][data-action]')) {
+    e.preventDefault();
+    e.target.click();
+    return;
+  }
   if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {
     document.querySelector('[data-action="confirm-new-playlist"]')?.click();
   }
