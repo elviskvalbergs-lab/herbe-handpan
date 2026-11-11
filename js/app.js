@@ -25,7 +25,7 @@ import {
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
   defaultCustomHoles, calibrateChamber,
 } from './builder.js';
-import { buildScaleChambers, OC_FINGER_ORDER } from './ocarina.js';
+import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart } from './charts.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
@@ -899,9 +899,6 @@ function viewWizard() {
     }
     const plan = wizardOcarinaPlan();
     const hasGu = plan.scale.bottom.notes.length > 0;
-    const chosenIdx = plan.windows.findIndex(win => win.chosen);
-    const prevWin = plan.windows[chosenIdx - 1], nextWin = plan.windows[chosenIdx + 1];
-    const dingWin = plan.windows.find(win => win.fromDing);
     const holes = plan.notes.length - plan.chambers;
     let preview = '';
     try {
@@ -932,12 +929,7 @@ function viewWizard() {
             <div class="field">
               <div class="field-label">Which notes?</div>
               <p class="wizard-sub">${plan.chambers === 1 ? 'One chamber holds' : `${plan.chambers} chambers hold`} ${plan.notes.length}.</p>
-              <div class="chips note-strip">${plan.all.map(m => `<span class="chip ${plan.notes.includes(m) ? 'is-selected' : 'is-static'}">${nn(m)}</span>`).join('')}</div>
-              <div class="window-nav">
-                <button type="button" class="btn btn-secondary" data-action="wizard-oc-window" data-start="${prevWin?.start ?? ''}" ${prevWin ? '' : 'disabled'}>${icon('chevron-left')} Lower</button>
-                ${dingWin ? `<button type="button" class="chip" data-action="wizard-oc-window" data-start="${dingWin.start}" aria-pressed="${dingWin.chosen ? 'true' : 'false'}">Start on the ding</button>` : ''}
-                <button type="button" class="btn btn-secondary" data-action="wizard-oc-window" data-start="${nextWin?.start ?? ''}" ${nextWin ? '' : 'disabled'}>Higher ${icon('chevron-right')}</button>
-              </div>
+              ${noteStripHtml(plan, nn, { win: start => `data-action="wizard-oc-window" data-start="${start}"` })}
             </div>` : `<div class="chips note-strip">${plan.notes.map(m => `<span class="chip is-selected">${nn(m)}</span>`).join('')}</div>`}
           <p class="wizard-summary">${plan.notes.length} notes · ${holes} hole${holes !== 1 ? 's' : ''} · ${plan.chambers} chamber${plan.chambers !== 1 ? 's' : ''}</p>
           ${uiField({ label: 'Name', id: 'wizard-oc-name', control: `<input class="input" id="wizard-oc-name" value="${escHtml(oc.name)}" placeholder="${escHtml(plan.scale.name)} ocarina">` })}
@@ -1623,26 +1615,168 @@ function uiHzField(path, value, { label = 'Reading in Hz' } = {}) {
     </div>`;
 }
 
-function stepper(stage) {
+// Stage name without its qualifier ("Voice and drill"), and the qualifier ("leather-hard").
+function stageName(st) { return STAGE_TITLES[st].split(' (')[0]; }
+function stageQualifier(st) { return STAGE_TITLES[st].match(/\(([^)]+)\)/)?.[1] ?? ''; }
+
+// The builder stepper (§5.11): seven numbered steps joined by lines, then
+// "Step 3 of 7" and the stage title. Every step can be tapped (b-stage).
+function bStepsHtml(stage) {
   const idx = STAGE_ORDER.indexOf(stage);
-  return `<div class="b-stepper">
-    ${STAGE_ORDER.map((st, i) => `
-      <button class="b-step ${i === idx ? 'current' : i < idx ? 'past' : ''}" data-action="b-stage" data-stage="${st}" title="${STAGE_TITLES[st]}">
-        <span class="b-step-no">${i + 1}</span><span class="b-step-name">${STAGE_TITLES[st].split(' (')[0]}</span>
-      </button>`).join('')}
-  </div>`;
+  return `
+    <ol class="bsteps" aria-label="Build steps">
+      ${STAGE_ORDER.map((st, i) => `
+        <li class="bstep${i < idx ? ' is-done' : i === idx ? ' is-current' : ''}">
+          <button type="button" class="bstep-btn" data-action="b-stage" data-stage="${st}"
+            aria-label="Step ${i + 1}: ${escHtml(stageName(st))}${i < idx ? ', done' : ''}"${i === idx ? ' aria-current="step"' : ''}>
+            <span class="bstep-dot" aria-hidden="true">${i < idx ? icon('check') : i + 1}</span>
+            <span class="bstep-label" aria-hidden="true">${escHtml(stageName(st))}</span>
+          </button>
+        </li>`).join('')}
+    </ol>
+    <div class="b-count">Step ${idx + 1} of ${STAGE_ORDER.length}</div>
+    <h2 class="b-title">${escHtml(stageName(stage))}${stageQualifier(stage) ? ` <span class="b-qual">${escHtml(stageQualifier(stage))}</span>` : ''}</h2>`;
 }
 
 function shapeIcon(shape) {
   const body = shape === 'round' ? '<circle cx="12" cy="12" r="7"/>'
     : shape === 'oval' ? '<ellipse cx="12" cy="12" rx="9" ry="6"/>'
     : '<rect x="3" y="7" width="18" height="10" rx="1"/>';
-  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${body}</svg>`;
+  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${body}</svg>`;
 }
 
 // Earlier builds with readings, offered as a starting point.
 function earlierBuilds(inst) {
   return state.instruments.filter(i => i.kind === 'scale' && i.id !== inst.id);
+}
+
+// The note strip of a design (§6.4): every note of the scale as a chip, the
+// notes in the chosen window selected and the rest static, then Lower /
+// Higher and "Start on the ding" to move the window. win(start) gives the
+// attributes of a button that picks the window starting at `start`.
+// toggle(m), when given, makes the window's notes buttons that leave a
+// note out (Build › Design); in the wizard they're plain chips.
+function noteStripHtml(plan, nn, { win, toggle = null }) {
+  const chosen = plan.windows.find(w => w.chosen);
+  const inWin = m => !chosen || chosen.notes.includes(m);
+  const chips = plan.all.map(m => {
+    if (!inWin(m)) return `<span class="chip is-static">${nn(m)}</span>`;
+    const on = plan.notes.includes(m);
+    if (!toggle) return `<span class="chip is-selected">${nn(m)}</span>`;
+    return `<button type="button" class="chip${on ? '' : ' is-off'}" aria-pressed="${on ? 'true' : 'false'}" ${toggle(m)}
+      aria-label="${nn(m)}${on ? '' : ', left out'}" title="${on ? 'Leave this note out' : 'Put this note back'}">${nn(m)}</button>`;
+  }).join('');
+  if (!chosen) return `<div class="chips note-strip">${chips}</div>`;
+  const i = plan.windows.indexOf(chosen);
+  const prev = plan.windows[i - 1], next = plan.windows[i + 1];
+  const ding = plan.windows.find(w => w.fromDing);
+  return `
+    <div class="chips note-strip">${chips}</div>
+    <div class="window-nav">
+      <button type="button" class="btn btn-secondary" ${prev ? win(prev.start) : 'disabled'}>${icon('chevron-left')} Lower</button>
+      ${ding ? `<button type="button" class="chip" ${win(ding.start)} aria-pressed="${ding.chosen ? 'true' : 'false'}">Start on the ding</button>` : ''}
+      <button type="button" class="btn btn-secondary" ${next ? win(next.start) : 'disabled'}>Higher ${icon('chevron-right')}</button>
+    </div>`;
+}
+
+// The chamber shown on the per-chamber steps (view state only).
+function bChamberIdx(inst) { return Math.max(0, Math.min(state.oc.buildChamber ?? 0, inst.chambers.length - 1)); }
+
+// ( Chamber 1 · D3 | Chamber 2 · E4 ) when an ocarina has two or more chambers.
+function bChamberSwitch(inst, nn) {
+  if (inst.chambers.length < 2) return '';
+  const short = inst.chambers.length > 2;
+  return uiSeg(inst.chambers.map((ch, i) => ({ value: String(i), label: `${short ? '' : 'Chamber '}${i + 1} · ${nn(ch.notes[0])}` })),
+    String(bChamberIdx(inst)), { action: 'b-chamber', key: 'ci', label: 'Chamber' });
+}
+
+// Has every hole and reading of a chamber been filled in at this stage?
+function bChamberComplete(inst, ci, stage) {
+  const ch = inst.chambers[ci];
+  const cb = chamberBuild(inst, ci);
+  const r = cb.readings[stage] ?? {};
+  if (stage === 'leather') {
+    const plan = leatherHolePlan(ch, { f0: r.f0, d: r.d ?? cb.testHoleMm, f1: r.f1 }, buildShrink(inst), inst.build.a4);
+    return !!plan && plan.holes.every(h => cb.holesDone.includes(h.index) && r.notes?.[ch.notes[h.index + 1]] > 0);
+  }
+  if (['boneDry', 'bisque', 'final'].includes(stage)) return ch.notes.every(m => r.notes?.[m] > 0);
+  return false;
+}
+
+// Once the chamber on screen is complete, move on to the next one.
+function bAdvanceChamber(inst) {
+  const ci = bChamberIdx(inst);
+  if (inst.chambers.length < 2 || ci >= inst.chambers.length - 1 || !bChamberComplete(inst, ci, inst.build.stage)) return;
+  state.oc.buildChamber = ci + 1;
+  showToast(`Chamber ${ci + 1} is done. Now chamber ${ci + 2}.`);
+}
+
+// "✓ in tune" / "12 cents flat: open it slightly" under a reading (§5.3).
+function recStatus(stage, adv, text = adv.text) {
+  const tone = adv.status === 'ok' ? 'is-ok' : adv.status === 'sharp' && stage !== 'leather' ? 'is-danger' : 'is-warning';
+  return `<div class="rec-status ${tone}">${adv.status === 'ok' ? icon('check') : ''}${escHtml(text)}</div>`;
+}
+
+// A number field with its unit at the right.
+function unitInput({ value, unit, label, attrs, step = '0.5', min = '1', max = '' }) {
+  return `<span class="input-unit"><input class="input" type="number" inputmode="decimal" step="${step}" min="${min}"${max ? ` max="${max}"` : ''}
+    value="${value}" aria-label="${escHtml(label)}" ${attrs}><span class="input-unit-label" aria-hidden="true">${unit}</span></span>`;
+}
+
+// The desktop preview panel: the chamber's diagram with hole sizes, as a
+// drilling map, and the step's summary.
+function bPreviewHtml(inst, stage, nn) {
+  const ci = stage === 'design' || stage === 'body' ? 0 : bChamberIdx(inst);
+  const ch = inst.chambers[ci];
+  // Until the build is finished, the sizes drawn are the leather-hard plan's.
+  const drawn = stage === 'done' ? inst : {
+    ...inst,
+    chambers: inst.chambers.map((c, i) => {
+      const cb = chamberBuild(inst, i);
+      const lr = cb.readings.leather ?? {};
+      const plan = leatherHolePlan(c, { ...lr, d: lr.d ?? cb.testHoleMm }, buildShrink(inst), inst.build.a4);
+      return plan ? applyHoleSizes(c, plan.holes.map(h => h.mm)) : c;
+    }),
+  };
+  let summary = '';
+  if (stage === 'design') {
+    summary = inst.chambers.map((c, i) => `Chamber ${i + 1}: ${c.notes.map(nn).join(' ')} · ${c.holes.length} holes`).join('<br>');
+  } else if (stage === 'body') {
+    summary = bodyPlan(inst).map((p, i) => `Chamber ${i + 1}: ${Math.round(p.volume)} ml · ball ${Math.round(p.ballDiameter)} mm`).join('<br>');
+  } else if (stage === 'leather') {
+    const cb = chamberBuild(inst, ci);
+    summary = `Holes drilled: ${cb.holesDone.length}/${ch.holes.length}`;
+  } else if (stage !== 'done') {
+    const r = chamberBuild(inst, ci).readings[stage]?.notes ?? {};
+    summary = `Notes recorded: ${ch.notes.filter(m => r[m] > 0).length}/${ch.notes.length}`;
+  }
+  return `
+    <aside class="b-aside" aria-label="Preview">
+      <div class="card">
+        <div class="overline">${inst.chambers.length > 1 ? `Chamber ${ci + 1} · ` : ''}drilling map</div>
+        ${renderFingering(drawn, ch.notes[0], { size: 'medium', showSizes: true, useFlats: state.useFlats, useSolfege: state.useSolfege })}
+        ${summary ? `<p class="b-aside-sum">${summary}</p>` : ''}
+      </div>
+    </aside>`;
+}
+
+// One reading block of the bone-dry, bisque and final checks: note and
+// target, the record field, its status and how it compares.
+function bNoteReading(inst, ci, stage, midi, targets, nn, from) {
+  const cb = chamberBuild(inst, ci);
+  const measured = cb.readings[stage]?.notes?.[midi];
+  const leather = cb.readings.leather?.notes ?? {};
+  const old = from?.build?.perChamber?.[ci]?.readings?.[stage]?.notes ?? {};
+  const adv = measured > 0 ? noteAdvice(stage, measured, targets[midi]) : null;
+  const rise = stage === 'boneDry' && measured > 0 && leather[midi] > 0 ? Math.round(centsBetween(measured, leather[midi])) : null;
+  return `
+    <div class="b-reading">
+      <div class="b-reading-head"><span class="b-note">${nn(midi)}</span><span class="b-target">${targets[midi].toFixed(1)} Hz</span></div>
+      ${uiHzField(`${ci}:${stage}:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
+      ${adv ? recStatus(stage, adv, adv.status === 'ok' ? 'in tune' : adv.text) : ''}
+      ${rise != null ? `<div class="b-meta">rose ${rise >= 0 ? '+' : ''}${rise} ¢ since leather-hard</div>` : ''}
+      ${old[midi] ? `<div class="b-meta">last build ${old[midi].toFixed(1)}</div>` : ''}
+    </div>`;
 }
 
 function viewBuilder(inst) {
@@ -1652,132 +1786,159 @@ function viewBuilder(inst) {
   const nn = m => displayNote(midiToNoteName(m), uf, us);
   const shrink = buildShrink(inst);
   const from = b.fromId ? getInstrument(b.fromId) : null;
+  const ci = bChamberIdx(inst);
+  const perChamber = ['leather', 'boneDry', 'bisque', 'final'].includes(stage);
   let body = '';
 
   if (stage === 'design') {
-    const plan = planOcarina(inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu });
-    const d = inst.design ?? {};
+    const d = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    const plan = planOcarina(d);
     const hasGu = plan.scale.bottom.notes.length > 0;
+    const transpose = d.transpose ?? 0;
     body = `
-      <div class="b-section">
-        <label class="wizard-field">Handpan scale
-          <select class="select-input" data-action="b-design" data-key="scaleId">
+      <div class="card b-card">
+        ${uiField({ label: 'Handpan scale', id: 'b-scale', control: `
+          <select class="select" id="b-scale" data-action="b-design" data-key="scaleId">
             ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === plan.scale.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
-          </select>
-        </label>
-        <div class="wizard-row">
-          <label class="wizard-field">Transpose
-            <select class="select-input" data-action="b-design" data-key="transpose">
-              ${Array.from({ length: 13 }, (_, i) => i - 6).map(t => `<option value="${t}" ${t === (d.transpose ?? inst.transpose) ? 'selected' : ''}>${t > 0 ? '+' + t : t} semitones</option>`).join('')}
-            </select>
-          </label>
-          ${hasGu ? `<label class="wizard-check"><input type="checkbox" data-action="b-design" data-key="includeGu" ${(d.includeGu ?? inst.includeGu) ? 'checked' : ''}> Include gu notes</label>` : ''}
+          </select>` })}
+        <div class="list b-inset">
+          ${uiSetRow({ label: 'Transpose', control: uiStepper({
+            value: transpose > 0 ? '+' + transpose : String(transpose), label: 'Transpose', action: 'b-design-transpose',
+            min: transpose <= -6, max: transpose >= 6, help: 'semitones',
+          }) })}
+          ${hasGu ? uiSwitchRow({ label: 'Gu notes', help: 'Include the bottom-shell notes', on: d.includeGu ?? true, action: 'b-design-gu' }) : ''}
         </div>
-        <div class="wizard-field">
-          <div>The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}. Build with:</div>
-          <div class="pills">${Array.from({ length: plan.needed }, (_, i) => i + 1).map(n => `
-            <button class="pill ${n === plan.chambers ? 'active' : ''}" data-action="b-design" data-key="chambers" data-value="${n}">${n} chamber${n !== 1 ? 's' : ''}</button>`).join('')}</div>
+        <div class="field">
+          <div class="field-label">Chambers</div>
+          <p class="b-text">The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}.</p>
+          ${uiSeg(Array.from({ length: plan.needed }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })), String(plan.chambers), { action: 'b-design-chambers', key: 'n', label: 'Chambers' })}
         </div>
-        ${plan.windows.length ? `<div class="wizard-field"><div>Which notes?</div><div class="pills">${plan.windows.map(win => `
-          <button class="pill ${win.chosen ? 'active' : ''}" data-action="b-design" data-key="windowStart" data-value="${win.start}">
-            ${nn(win.notes[0])}–${nn(win.notes[win.notes.length - 1])} · ${win.notes.length} notes${win.fromDing ? ' · from the ding' : ''}</button>`).join('')}</div></div>` : ''}
-        <div class="wizard-field"><div>Notes (tap one to leave it out)</div>
-          <div class="wizard-notes">${plan.all.map(m => {
-            const inWin = plan.windows.length === 0 || plan.windows.find(w => w.chosen).notes.includes(m);
-            if (!inWin) return `<span class="pill">${nn(m)}</span>`;
-            return `<button class="pill ${plan.notes.includes(m) ? 'active' : ''}" data-action="b-design" data-key="toggleNote" data-value="${m}">${nn(m)}</button>`;
-          }).join('')}</div>
+        <div class="field">
+          <div class="field-label">${plan.windows.length ? 'Which notes?' : 'Notes'}</div>
+          <p class="b-text">${plan.windows.length ? `${plan.chambers === 1 ? 'One chamber holds' : `${plan.chambers} chambers hold`} ${plan.windows.find(w => w.chosen).notes.length}. ` : ''}Tap a note to leave it out.</p>
+          ${noteStripHtml(plan, nn, {
+            win: start => `data-action="b-design" data-key="windowStart" data-value="${start}"`,
+            toggle: m => `data-action="b-design" data-key="toggleNote" data-value="${m}"`,
+          })}
         </div>
-        <div class="hint">${inst.chambers.map((ch, i) => `Chamber ${i + 1}: ${ch.notes.map(nn).join(' ')} · ${ch.holes.length} holes`).join('<br>')}</div>
-        <div class="b-preview">${renderFingering(inst, inst.chambers[0].notes[0], { size: 'medium', useFlats: uf, useSolfege: us })}</div>
-        ${earlierBuilds(inst).length ? `
-          <label class="wizard-field">Start from an earlier build
-            <select class="select-input" data-action="b-from">
-              <option value="">—</option>
+        <p class="b-meta">${inst.chambers.map((ch, i) => `Chamber ${i + 1}: ${ch.notes.map(nn).join(' ')} · ${ch.holes.length} hole${ch.holes.length !== 1 ? 's' : ''}`).join('<br>')}</p>
+        <div class="b-preview" aria-hidden="true">${renderFingering(inst, inst.chambers[0].notes[0], { size: 'medium', useFlats: uf, useSolfege: us })}</div>
+      </div>
+      ${earlierBuilds(inst).length ? `
+        <details class="b-details" ${b.fromId ? 'open' : ''}>
+          <summary>${icon('chevron-right')} Start from an earlier build</summary>
+          ${uiField({ label: 'Earlier build', id: 'b-from', help: 'Copies its design, clay body, window and test hole, and shows its readings beside yours.', control: `
+            <select class="select" id="b-from" data-action="b-from">
+              <option value="">None</option>
               ${earlierBuilds(inst).map(i => `<option value="${escHtml(i.id)}" ${b.fromId === i.id ? 'selected' : ''}>${escHtml(i.name)}</option>`).join('')}
-            </select>
-          </label>` : ''}
-      </div>`;
+            </select>` })}
+        </details>` : ''}`;
   }
 
   if (stage === 'body') {
     const clays = getClayBodies();
+    const clay = clays.find(c => c.id === b.clayBody);
     const plans = bodyPlan(inst);
     body = `
-      <div class="b-section">
-        <label class="wizard-field">Clay body
-          <select class="select-input" data-action="b-clay">
-            ${clays.map(c => `<option value="${escHtml(c.id)}" ${b.clayBody === c.id ? 'selected' : ''}>${escHtml(c.name)} · ${c.shrinkPct}%${c.builds ? ` (learned from ${c.builds} build${c.builds !== 1 ? 's' : ''})` : ''}</option>`).join('')}
+      <div class="card b-card">
+        ${uiField({ label: 'Clay body', id: 'b-clay', help: `${clay?.builds ? `Learned from ${clay.builds} build${clay.builds !== 1 ? 's' : ''}. ` : clay ? '' : 'Choose one, so a finished build teaches it its shrinkage. '}<button type="button" class="link-btn" data-action="open-clay-bodies">Manage clay bodies in Settings</button>`, control: `
+          <select class="select" id="b-clay" data-action="b-clay">
+            ${clay ? '' : `<option value="" selected disabled>Not chosen · ${b.shrinkPct}%</option>`}
+            ${clays.map(c => `<option value="${escHtml(c.id)}" ${b.clayBody === c.id ? 'selected' : ''}>${escHtml(c.name)} · ${c.shrinkPct}%</option>`).join('')}
             <option value="__new__">Add a clay body…</option>
-          </select>
-        </label>
-        <details class="b-advanced"><summary>Advanced</summary>
-          <label class="wizard-field">Shrinkage for this build, %
-            <input class="b-input" type="number" step="0.1" min="0" max="30" data-action="b-shrink" value="${b.shrinkPct}">
-          </label>
+          </select>` })}
+        <details class="b-details">
+          <summary>${icon('chevron-right')} Advanced</summary>
+          ${uiField({ label: 'Shrinkage for this build', control: unitInput({ value: b.shrinkPct, unit: '%', label: 'Shrinkage for this build, %', attrs: 'data-action="b-shrink"', step: '0.1', min: '0', max: '30' }) })}
         </details>
       </div>
-      ${inst.chambers.map((ch, ci) => {
-        const win = plans[ci].window;
-        const p = plans[ci];
+      ${inst.chambers.map((ch, i) => {
+        const p = plans[i];
+        const win = p.window;
+        const round = win.shape === 'round';
+        const shapes = [['rect', 'Rectangle'], ['round', 'Round'], ['oval', 'Oval']];
         return `
-        <div class="b-section">
-          <div class="editor-section-title">Chamber ${ci + 1} · closed note ${nn(ch.notes[0])}</div>
-          <div class="pills">${['rect', 'round', 'oval'].map(sh => `
-            <button class="pill ${win.shape === sh ? 'active' : ''}" data-action="b-window" data-ci="${ci}" data-key="shape" data-value="${sh}">${shapeIcon(sh)} ${sh === 'rect' ? 'Rectangle' : sh === 'round' ? 'Round' : 'Oval'}</button>`).join('')}</div>
-          <div class="wizard-row">
-            <label class="wizard-field">${win.shape === 'round' ? 'Diameter' : 'Width'}, mm<input class="b-input" type="number" step="0.5" min="1" data-action="b-window" data-ci="${ci}" data-key="w" value="${win.w}"></label>
-            ${win.shape === 'round' ? '' : `<label class="wizard-field">Length, mm<input class="b-input" type="number" step="0.5" min="1" data-action="b-window" data-ci="${ci}" data-key="l" value="${win.l}"></label>`}
-            <label class="wizard-field">Wall, mm<input class="b-input" type="number" step="0.5" min="1" data-action="b-window" data-ci="${ci}" data-key="t" value="${win.t}"></label>
+        <div class="overline b-overline">Chamber ${i + 1} · closed note ${nn(ch.notes[0])}</div>
+        <div class="card b-card">
+          <div class="field">
+            <div class="field-label" id="b-shape-${i}">Window shape</div>
+            <div class="seg" role="radiogroup" aria-labelledby="b-shape-${i}">
+              ${shapes.map(([sh, label]) => `<button type="button" class="seg-opt" role="radio" aria-checked="${win.shape === sh ? 'true' : 'false'}"
+                data-action="b-window" data-ci="${i}" data-key="shape" data-value="${sh}">${shapeIcon(sh)} ${label}</button>`).join('')}
+            </div>
           </div>
-          <div class="b-result">Inside volume <b>${Math.round(p.volume)} ml</b> · form around a ball <b>${Math.round(p.ballDiameter)} mm</b> across · about ${Math.round(p.firedVolume)} ml after firing</div>
-          <div class="hint">A starting point: the finished pitch can land a couple of semitones away, which the next step corrects.</div>
+          <div class="b-dims${round ? ' is-round' : ''}">
+            ${uiField({ label: round ? 'Diameter' : 'Width', control: unitInput({ value: win.w, unit: 'mm', label: `${round ? 'Diameter' : 'Width'}, mm`, attrs: `data-action="b-window" data-ci="${i}" data-key="w"` }) })}
+            ${round ? '' : uiField({ label: 'Length', control: unitInput({ value: win.l, unit: 'mm', label: 'Length, mm', attrs: `data-action="b-window" data-ci="${i}" data-key="l"` }) })}
+            ${uiField({ label: 'Wall', control: unitInput({ value: win.t, unit: 'mm', label: 'Wall, mm', attrs: `data-action="b-window" data-ci="${i}" data-key="t"` }) })}
+          </div>
+          <dl class="b-result">
+            <div><dt>Inside volume</dt><dd>${Math.round(p.volume)} ml</dd></div>
+            <div><dt>Form around a ball</dt><dd>${Math.round(p.ballDiameter)} mm</dd></div>
+            <div><dt>After firing</dt><dd>~${Math.round(p.firedVolume)} ml</dd></div>
+          </dl>
+          <p class="b-meta">A starting point: the finished pitch can land a couple of semitones away, which the next step corrects.</p>
         </div>`;
       }).join('')}`;
   }
 
   if (stage === 'leather') {
-    body = inst.chambers.map((ch, ci) => {
-      const cb = chamberBuild(inst, ci);
-      const r = cb.readings.leather ?? {};
-      const targets = stageTargets(ch, 'leather', shrink, b.a4);
-      const plan = leatherHolePlan(ch, { f0: r.f0, d: r.d ?? cb.testHoleMm, f1: r.f1 }, shrink, b.a4);
-      const old = from?.build?.perChamber?.[ci]?.readings?.leather;
-      return `
-        <div class="b-section">
-          <div class="editor-section-title">Chamber ${ci + 1}</div>
-          <div class="b-row"><span>1. Closed pitch (all holes covered), target ${nn(ch.notes[0])} ≈ ${targets[ch.notes[0]].toFixed(1)} Hz</span>${uiHzField(`${ci}:leather:f0`, r.f0, { label: 'Closed pitch, Hz' })}${old?.f0 ? `<span class="hint">last build ${old.f0.toFixed(1)}</span>` : ''}</div>
-          ${r.f0 > 0 ? (() => {
-            const a = noteAdvice('leather', r.f0, targets[ch.notes[0]]);
-            const text = a.status === 'ok' ? '✓ closed note in tune'
-              : a.status === 'flat' ? `${Math.abs(a.cents)} cents flat: open the window slightly`
-              : `${a.cents} cents sharp: the chamber is a little small for this note`;
-            return `<div class="b-row"><span class="b-adv ${a.status}">${text}</span></div>`;
-          })() : ''}
-          <div class="b-row"><span>2. Drill a test hole of</span>
-            <span class="b-field"><input class="b-input" type="number" step="0.5" min="1" data-action="b-input" data-path="${ci}:leather:d" value="${r.d ?? cb.testHoleMm}"> mm</span>
-            <span>where ${ch.holes[0].finger} goes, then blow with only it open</span>${uiHzField(`${ci}:leather:f1`, r.f1, { label: 'Test hole pitch, Hz' })}</div>
-          ${plan ? `
-            <div class="b-holes">
-              <div class="hint">Drill in this order. Hole sizes are at leather-hard; targets are already lowered by ${(shrink * 100).toFixed(1)}% for shrinkage.</div>
-              ${plan.holes.map(h => {
-                const midi = ch.notes[h.index + 1];
-                const done = cb.holesDone.includes(h.index);
-                const measured = r.notes?.[midi];
-                const adv = measured > 0 ? noteAdvice('leather', measured, targets[midi]) : null;
-                return `
-                <div class="b-hole ${done ? 'done' : ''}">
-                  <label class="wizard-check"><input type="checkbox" data-action="b-hole-done" data-ci="${ci}" data-index="${h.index}" ${done ? 'checked' : ''}>
-                    <b>${h.finger}</b> ${h.parts.length > 1 ? `${['', '', 'two', 'three', 'four'][h.parts.length] ?? h.parts.length} holes of ${h.parts[0].toFixed(1)} mm` : `${h.mm.toFixed(1)} mm`}
-                    ${h.index === plan.testHoleIndex ? '<span class="oc-badge">your test hole: enlarge it</span>' : ''}</label>
-                  <span class="hint">${nn(midi)} → ${targets[midi].toFixed(1)} Hz</span>
+    const ch = inst.chambers[ci];
+    const cb = chamberBuild(inst, ci);
+    const r = cb.readings.leather ?? {};
+    const targets = stageTargets(ch, 'leather', shrink, b.a4);
+    const plan = leatherHolePlan(ch, { f0: r.f0, d: r.d ?? cb.testHoleMm, f1: r.f1 }, shrink, b.a4);
+    const old = from?.build?.perChamber?.[ci]?.readings?.leather;
+    const closedAdv = r.f0 > 0 ? noteAdvice('leather', r.f0, targets[ch.notes[0]]) : null;
+    const done = plan ? plan.holes.filter(h => cb.holesDone.includes(h.index)).length : 0;
+    body = `
+      <div class="card b-card">
+        <h3 class="b-card-title">1 · Closed pitch</h3>
+        <p class="b-text">Cover all holes and blow.</p>
+        <p class="b-target-line">Target ${nn(ch.notes[0])} · ${targets[ch.notes[0]].toFixed(1)} Hz</p>
+        ${uiHzField(`${ci}:leather:f0`, r.f0, { label: 'Closed pitch, Hz' })}
+        ${closedAdv ? recStatus('leather', closedAdv, closedAdv.status === 'ok' ? 'Closed note in tune'
+          : closedAdv.status === 'flat' ? `${Math.abs(closedAdv.cents)} cents flat: open the window slightly`
+          : `${closedAdv.cents} cents sharp: the chamber is a little small for this note`) : ''}
+        ${old?.f0 ? `<div class="b-meta">last build ${old.f0.toFixed(1)}</div>` : ''}
+      </div>
+      <div class="card b-card">
+        <h3 class="b-card-title">2 · Test hole</h3>
+        <p class="b-text">Drill a test hole where ${escHtml(ch.holes[0].finger)} goes.</p>
+        ${uiField({ label: 'Diameter', control: unitInput({ value: r.d ?? cb.testHoleMm, unit: 'mm', label: 'Test hole diameter, mm', attrs: `data-action="b-input" data-path="${ci}:leather:d"` }) })}
+        <p class="b-text">Blow with only that hole open:</p>
+        ${uiHzField(`${ci}:leather:f1`, r.f1, { label: 'Test hole pitch, Hz' })}
+      </div>
+      <div class="card b-card">
+        <h3 class="b-card-title">3 · Drill the holes${plan ? ` <span class="b-card-count">${done}/${plan.holes.length}</span>` : ''}</h3>
+        ${plan ? `
+          <p class="b-text">In this order. Sizes are at leather-hard; targets are ${(shrink * 100).toFixed(1)}% lower for shrinkage.</p>
+          <div class="b-holes">
+            ${plan.holes.map(h => {
+              const midi = ch.notes[h.index + 1];
+              const isDone = cb.holesDone.includes(h.index);
+              const measured = r.notes?.[midi];
+              const adv = measured > 0 ? noteAdvice('leather', measured, targets[midi]) : null;
+              const size = h.parts.length > 1 ? `${h.parts.length} × ${h.parts[0].toFixed(1)} mm` : `${h.mm.toFixed(1)} mm`;
+              return `
+              <div class="b-hole${isDone ? ' is-done' : ''}">
+                <button type="button" class="b-check" role="checkbox" aria-checked="${isDone ? 'true' : 'false'}"
+                  data-action="b-hole-done" data-ci="${ci}" data-index="${h.index}" aria-label="${escHtml(h.finger)} drilled">
+                  <span class="checkbox" aria-hidden="true">${isDone ? icon('check') : ''}</span>
+                </button>
+                <div class="b-hole-main">
+                  <div class="b-hole-head">
+                    <span class="b-finger">${escHtml(h.finger)}</span><span class="b-size">${size}</span>
+                    ${h.index === plan.testHoleIndex ? uiBadge('Your test hole', 'accent') : ''}
+                  </div>
+                  <div class="b-meta">${nn(midi)} → ${targets[midi].toFixed(1)} Hz</div>
                   ${uiHzField(`${ci}:leather:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
-                  ${adv ? `<span class="b-adv ${adv.status}">${escHtml(`${nn(midi)} is ${adv.text}`).replace(`${nn(midi)} is in tune`, `${nn(midi)} ✓ in tune`)}</span>` : ''}
-                </div>`;
-              }).join('')}
-            </div>` : `<div class="hint">Record the closed pitch and the test-hole pitch to see every hole's size.</div>`}
-        </div>`;
-    }).join('');
+                  ${adv ? recStatus('leather', adv, adv.status === 'ok' ? `${nn(midi)} in tune` : `${nn(midi)} is ${adv.text}`) : ''}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>` : `<div class="b-empty">${icon('info')}<span>Record the closed pitch and the test-hole pitch to see every hole's size.</span></div>`}
+      </div>`;
   }
 
   if (['boneDry', 'bisque', 'final'].includes(stage)) {
@@ -1786,94 +1947,149 @@ function viewBuilder(inst) {
       bisque: 'After the first firing the targets are concert pitch. Flat notes can be filed larger; sharp ones can\'t be lowered.',
       final: 'After the glaze firing, a last pass records the finished tuning.',
     }[stage];
-    body = `<div class="hint">${intro}</div>` + inst.chambers.map((ch, ci) => {
-      const cb = chamberBuild(inst, ci);
-      const r = cb.readings[stage] ?? {};
-      const leather = cb.readings.leather?.notes ?? {};
-      const targets = stageTargets(ch, stage, shrink, b.a4);
-      const old = from?.build?.perChamber?.[ci]?.readings?.[stage]?.notes ?? {};
-      return `
-        <div class="b-section">
-          <div class="editor-section-title">Chamber ${ci + 1}</div>
-          ${ch.notes.map(midi => {
-            const measured = r.notes?.[midi];
-            const adv = measured > 0 ? noteAdvice(stage, measured, targets[midi]) : null;
-            const rise = stage === 'boneDry' && measured > 0 && leather[midi] > 0 ? Math.round(centsBetween(measured, leather[midi])) : null;
-            return `
-              <div class="b-hole">
-                <span><b>${nn(midi)}</b> <span class="hint">${targets[midi].toFixed(1)} Hz</span></span>
-                ${uiHzField(`${ci}:${stage}:n:${midi}`, measured, { label: `${nn(midi)}, Hz` })}
-                ${rise != null ? `<span class="hint">rose ${rise >= 0 ? '+' : ''}${rise} cents since leather-hard</span>` : ''}
-                ${old[midi] ? `<span class="hint">last build ${old[midi].toFixed(1)}</span>` : ''}
-                ${adv ? `<span class="b-adv ${adv.status}">${adv.status === 'ok' ? '✓ in tune' : escHtml(adv.text)}</span>` : ''}
-              </div>`;
-          }).join('')}
-        </div>`;
-    }).join('');
+    const ch = inst.chambers[ci];
+    const targets = stageTargets(ch, stage, shrink, b.a4);
+    body = `
+      <p class="b-intro">${intro}</p>
+      <div class="card b-card b-readings">
+        ${ch.notes.map(midi => bNoteReading(inst, ci, stage, midi, targets, nn, from)).join('')}
+      </div>`;
   }
 
   if (stage === 'done') {
     const learned = b.learnedShrink;
+    const clayName = getClayBodies().find(c => c.id === b.clayBody)?.name ?? 'this clay';
     body = `
-      <div class="b-section">
-        <div class="wizard-title">${escHtml(inst.name)} is finished</div>
-        <div class="hint">It's playable from the Notes and Chords tabs, with its hole sizes and measured pitches stored.</div>
-        ${learned != null ? `<div class="b-result">This clay shrank <b>${(learned * 100).toFixed(1)}%</b> from leather-hard to fired; that's now the default for ${escHtml(getClayBodies().find(c => c.id === b.clayBody)?.name ?? 'this clay')}.</div>` : ''}
-        ${inst.chambers.map((ch, ci) => {
+      <div class="card b-card">
+        <h3 class="b-done-title">${icon('check')} ${escHtml(inst.name)} is finished</h3>
+        <p class="b-text">It's playable from the Notes and Chords tabs, with its hole sizes and measured pitches stored.</p>
+        ${learned != null ? `
+          <dl class="b-result">
+            <div><dt>Shrinkage, leather-hard to fired</dt><dd>${(learned * 100).toFixed(1)}%</dd></div>
+          </dl>
+          <p class="b-meta">That's now the default for ${escHtml(clayName)}.</p>` : ''}
+        ${inst.chambers.map((ch, i) => {
           const byFinger = [];
           ch.holes.forEach(h => {
             const last = byFinger[byFinger.length - 1];
             if (last && last.finger === h.finger) last.n++; else byFinger.push({ finger: h.finger, n: 1, mm: h.sizeMm });
           });
-          return `<div class="hint">Chamber ${ci + 1}: ${byFinger.map(g => `${g.finger} ${g.mm ? (g.n > 1 ? g.n + ' × ' : '') + g.mm.toFixed(1) + ' mm' : '—'}`).join(' · ')}</div>`;
+          return `
+            <table class="b-table">
+              <caption>${inst.chambers.length > 1 ? `Chamber ${i + 1} · ` : ''}hole sizes</caption>
+              <thead><tr><th scope="col">Finger</th><th scope="col">Size</th></tr></thead>
+              <tbody>${byFinger.map(g => `<tr><td>${escHtml(g.finger)}</td><td>${g.mm ? (g.n > 1 ? g.n + ' × ' : '') + g.mm.toFixed(1) + ' mm' : '—'}</td></tr>`).join('')}</tbody>
+            </table>`;
         }).join('')}
+      </div>
+      <div class="b-actions">
+        <button type="button" class="btn btn-primary" data-action="oc-tab" data-tab="notes">Open Notes</button>
+        <button type="button" class="btn btn-secondary" data-action="share-instrument">${icon('share-2')} Share…</button>
       </div>`;
   }
 
-  const nextLabel = stage === 'final' ? 'Finish' : stage === 'done' ? '' : `Next: ${STAGE_TITLES[nextStage(stage)]} →`;
+  const nextLabel = stage === 'final' ? 'Finish' : stage === 'done' ? '' : `Next: ${stageName(nextStage(stage))}`;
   return `${ocHeader(inst, 'builder')}
-    <div class="instrument-view">
-      <div class="hint">${escHtml(instrumentStatus(inst))}</div>
-      ${stepper(stage)}
-      <div class="wizard-title">${STAGE_TITLES[stage]}</div>
-      ${body}
-      <div class="wizard-actions">
-        ${nextLabel ? `<button class="btn btn-primary" data-action="b-next">${nextLabel}</button>` : ''}
-        ${stage === 'bisque' ? `<button class="btn btn-secondary" data-action="b-unglazed">Unglazed: finish now</button>` : ''}
+    <div class="b-layout">
+      <div class="b-main">
+        ${bStepsHtml(stage)}
+        ${perChamber ? bChamberSwitch(inst, nn) : ''}
+        ${body}
+        ${nextLabel || stage === 'bisque' ? `
+          <div class="b-actions">
+            ${nextLabel ? `<button type="button" class="btn btn-primary b-next" data-action="b-next">${escHtml(nextLabel)}${stage === 'final' ? '' : ` ${icon('chevron-right')}`}</button>` : ''}
+            ${stage === 'bisque' ? '<button type="button" class="btn btn-ghost b-next" data-action="b-unglazed">Unglazed: finish now</button>' : ''}
+          </div>` : ''}
+      </div>
+      ${bPreviewHtml(inst, stage, nn)}
+    </div>`;
+}
+
+// Set-up for a bought ocarina (§6.17): which finger covers each hole
+// (folded into a sheet), then one reading with all holes closed and one per
+// hole open on its own. A capture arms the next empty reading by itself.
+function setupOf(inst) {
+  return inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+}
+
+function viewSetup(inst) {
+  const setup = setupOf(inst);
+  const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
+  const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
+  const filled = paths.filter(p => value(p) > 0).length;
+  const left = paths.length - filled;
+  const next = paths.find(p => !(value(p) > 0));
+  const standard = defaultCustomHoles(setup.holes.length).every((h, i) => h.finger === setup.holes[i].finger);
+  const subs = setup.holes.filter(h => h.sub).length;
+  const label = (p, i) => (p === 's:f0' ? 'All holes closed'
+    : `Only hole ${i + 1} open · ${escHtml(setup.holes[i].finger)}${setup.holes[i].sub ? ' sub-hole' : ''}`);
+  return `${ocHeader(inst, 'setup')}
+    <div class="b-layout is-single">
+      <div class="b-main">
+        <h2 class="b-title">Set up</h2>
+        <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}, blow, and it fills itself in.</p>
+        <p class="b-meta">Blow steadily at a medium breath.</p>
+        <div class="card b-card">
+          <div class="b-card-head">
+            <div class="b-card-head-text">
+              <h3 class="b-card-title">Holes and fingers</h3>
+              <p class="b-meta">${setup.holes.length} holes · ${standard ? 'standard order' : 'your order'}${subs ? ` · ${subs} sub-hole${subs !== 1 ? 's' : ''}` : ''}</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="s-fingers-open" aria-haspopup="dialog">${icon('pencil')} Edit</button>
+          </div>
+          <p class="b-fingers">${setup.holes.map(h => escHtml(h.finger)).join(' ')}</p>
+        </div>
+        <div class="card b-card">
+          <div class="b-card-head">
+            <h3 class="b-card-title">Readings</h3>
+            <span class="b-card-count">${filled} of ${paths.length}</span>
+          </div>
+          <div class="practice-progress" role="progressbar" aria-label="Readings recorded" aria-valuemin="0" aria-valuemax="${paths.length}" aria-valuenow="${filled}">
+            <span style="width:${Math.round((filled / paths.length) * 100)}%"></span>
+          </div>
+          <div class="s-readings">
+            ${paths.map((p, i) => {
+              const v = value(p);
+              const isNext = p === next;
+              return `
+                <div class="s-reading${isNext ? ' is-next' : ''}${v > 0 ? ' is-filled' : ''}">
+                  <div class="s-reading-head">
+                    <span class="s-reading-label">${label(p, i - 1)}</span>
+                    ${isNext ? uiBadge('Next', 'accent') : v > 0 ? `<span class="s-done" aria-label="Recorded">${icon('check')}</span>` : ''}
+                  </div>
+                  ${uiHzField(p, v, { label: `${p === 's:f0' ? 'All holes closed' : `Only hole ${i} open`}, Hz` })}
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="b-actions">
+          <button type="button" class="btn btn-primary b-next" data-action="s-calibrate" ${left ? 'disabled' : ''}>Work out the fingering chart</button>
+        </div>
+        <p class="b-meta">${left ? `${left} reading${left !== 1 ? 's' : ''} to go` : 'Every reading is in.'}</p>
+        ${inst.calibration ? `<p class="b-meta">Current chart: ${playableMidis(inst).length} notes. Predicted fingerings are within 20 cents; check them with the tuner.</p>` : ''}
       </div>
     </div>`;
 }
 
-// Set-up for a bought ocarina: say which finger covers each hole, then
-// record all-closed and each-hole-open pitches; the chart is worked out.
-function viewSetup(inst) {
-  const setup = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
-  const fingers = OC_FINGER_ORDER;
-  const ready = setup.f0 > 0 && setup.holes.every((_, i) => setup.singles[i] > 0);
-  return `${ocHeader(inst, 'setup')}
-    <div class="instrument-view">
-      <div class="hint">The ocarina charts itself: tap the microphone on a line and blow, and it fills itself in, then the next line listens. Blow steadily at a medium breath.</div>
-      <div class="b-section">
-        <div class="editor-section-title">Holes and fingers</div>
-        <div class="hint">Check which finger covers each hole. The order should be the order the holes open going up the scale.</div>
-        ${setup.holes.map((h, i) => `
-          <div class="b-row">
-            <span>Hole ${i + 1}${h.sub ? ' (small sub-hole)' : ''}</span>
-            <select class="select-input" data-action="s-finger" data-index="${i}">
-              ${fingers.map(f => `<option value="${f}" ${h.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
-            </select>
-          </div>`).join('')}
-      </div>
-      <div class="b-section">
-        <div class="editor-section-title">Readings</div>
-        <div class="b-row"><span>All holes closed</span>${uiHzField('s:f0', setup.f0, { label: 'All holes closed, Hz' })}</div>
-        ${setup.holes.map((h, i) => `<div class="b-row"><span>Only hole ${i + 1} (${h.finger}) open</span>${uiHzField(`s:${i}`, setup.singles[i], { label: `Only hole ${i + 1} open, Hz` })}</div>`).join('')}
-      </div>
-      <div class="wizard-actions">
-        <button class="btn btn-primary" data-action="s-calibrate" ${ready ? '' : 'disabled'}>Work out the fingering chart</button>
-      </div>
-      ${inst.calibration ? `<div class="hint">Current chart: ${playableMidis(inst).length} notes. Predicted fingerings are within 20 cents; check them with the tuner.</div>` : ''}
-    </div>`;
+// Hole fingers: which finger covers each hole, in opening order.
+function setupFingersSheet() {
+  const inst = currentInstrument();
+  if (!inst || inst.kind !== 'custom') return '';
+  const setup = setupOf(inst);
+  return uiSheet({
+    key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
+    body: `
+      <p class="sheet-text">Check which finger covers each hole. The order is the order the holes open going up the scale.</p>
+      <div class="s-fingers">
+        ${setup.holes.map((h, i) => uiField({
+          label: `Hole ${i + 1}${h.sub ? ' (sub-hole)' : ''}`, id: `s-finger-${i}`,
+          control: `<select class="select" id="s-finger-${i}" data-action="s-finger" data-index="${i}">
+            ${OC_FINGER_ORDER.map(f => `<option value="${f}" ${h.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>`,
+        })).join('')}
+      </div>`,
+    footer: '<button type="button" class="btn btn-primary" data-action="s-fingers-close">Done</button>',
+  });
 }
 
 // Writes a reading into an instrument. Paths: "ci:stage:f0|d|f1",
@@ -2095,6 +2311,7 @@ function captureReading(hz) {
   if (!inst || inst.id === SHARED_ID) { render(); return; }
   setReading(inst, path, Math.round(hz * 10) / 10);
   saveInstrument(inst);
+  if (!path.startsWith('s:')) bAdvanceChamber(inst);
   state.rec.captured = path;
   const next = path.startsWith('s:') ? nextEmptySetupPath(inst, path) : null;
   if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
@@ -2587,6 +2804,7 @@ function sheetHtml() {
   if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
   if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
+  if (state.oc.fingersSheet && state.view === 'instrument' && state.oc.tab === 'setup') return setupFingersSheet();
   if (state.clayEdit && state.view === 'clay') return clayEditSheet();
   return '';
 }
@@ -3413,6 +3631,7 @@ document.addEventListener('click', e => {
       : action === 'b-unglazed' ? 'done' : nextStage(inst.build.stage);
     if (target === 'done' && inst.build.stage !== 'done') inst = finishInstrumentBuild(inst);
     else inst.build.stage = target;
+    state.oc.buildChamber = 0;
     saveInstrument(inst);
     refreshInstruments();
     window.scrollTo(0, 0);
@@ -3435,6 +3654,28 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'b-design-transpose' || action === 'b-design-gu' || action === 'b-design-chambers') {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    if (action === 'b-design-transpose') {
+      Object.assign(d, { transpose: Math.max(-6, Math.min(6, (d.transpose ?? 0) + parseInt(el.dataset.delta, 10))), windowStart: null, excluded: [] });
+    }
+    if (action === 'b-design-gu') Object.assign(d, { includeGu: !(d.includeGu ?? true), chambers: null, windowStart: null, excluded: [] });
+    if (action === 'b-design-chambers') Object.assign(d, { chambers: parseInt(el.dataset.n, 10), windowStart: null, excluded: [] });
+    applyDesign(inst);
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+    return;
+  }
+  if (action === 'b-chamber') {
+    state.oc.buildChamber = parseInt(el.dataset.ci, 10) || 0;
+    render();
+    return;
+  }
+  if (action === 's-fingers-open') { state.oc.fingersSheet = true; render(); return; }
+  if (action === 's-fingers-close') { state.oc.fingersSheet = false; render(); return; }
   if (action === 'b-hole-done') {
     const inst = currentInstrument();
     if (!inst) return;
@@ -3443,6 +3684,7 @@ document.addEventListener('click', e => {
     const done = per.holesDone ?? [];
     per.holesDone = done.includes(idx) ? done.filter(x => x !== idx) : [...done, idx];
     saveInstrument(inst);
+    bAdvanceChamber(inst);
     render();
     return;
   }
@@ -4453,13 +4695,14 @@ document.addEventListener('change', e => {
       inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
       const key = el.dataset.key;
       if (key === 'scaleId') Object.assign(inst.design, { scaleId: el.value, chambers: null, windowStart: null, excluded: [] });
-      if (key === 'transpose') Object.assign(inst.design, { transpose: parseInt(el.value, 10), windowStart: null, excluded: [] });
-      if (key === 'includeGu') Object.assign(inst.design, { includeGu: el.checked, chambers: null, windowStart: null, excluded: [] });
       applyDesign(inst);
       if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${SCALES.find(sc => sc.id === inst.scaleId).name} ocarina`;
     }
     saveInstrument(inst);
     refreshInstruments();
+    if (action === 'b-input') bAdvanceChamber(inst);
+    // The Hole fingers sheet stays as it is (and keeps focus) while it's open.
+    if (action === 's-finger' && state.oc.fingersSheet) return;
     render();
   }
 
