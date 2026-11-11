@@ -138,6 +138,7 @@ test('relative hole sizes before readings', () => {
 test('holes over 12 mm split in two, sharing finger and state', () => {
   assert.deepEqual(splitHole(12), [12]);
   assert.deepEqual(splitHole(14), [7, 7]);
+  assert.deepEqual(splitHole(30), [10, 10, 10]); // halves would still be over 12 mm
   const ch = applyHoleSizes(buildChamber(ms('C4 D4 E4')), [8, 14]);
   assert.deepEqual(ch.holes.map(h => [h.id, h.finger, h.sizeMm]), [['R4', 'R4', 8], ['R3a', 'R3', 7], ['R3b', 'R3', 7]]);
   assert.deepEqual(ch.fingerings[m('C4')], ['c', 'c', 'c']);

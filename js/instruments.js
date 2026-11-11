@@ -199,3 +199,21 @@ export function syncHandpanInstruments(savedLayouts) {
 
 export function isOnboarded() { return localStorage.getItem(ONBOARDED_KEY) === '1'; }
 export function setOnboarded() { localStorage.setItem(ONBOARDED_KEY, '1'); }
+
+// ── Clay bodies ──────────────────────────────────────────────────────────────
+// The named list of clays a user builds with, each carrying the shrinkage
+// learned from finished builds. Local only for now.
+
+const CLAY_KEY = 'hp-clay-bodies';
+
+export function getClayBodies() {
+  try {
+    const list = JSON.parse(localStorage.getItem(CLAY_KEY) || 'null');
+    if (Array.isArray(list) && list.length) return list;
+  } catch { /* fall through */ }
+  return [{ id: 'generic', name: 'Generic clay', shrinkPct: 11, builds: 0 }];
+}
+
+export function saveClayBodies(list) {
+  localStorage.setItem(CLAY_KEY, JSON.stringify(list));
+}

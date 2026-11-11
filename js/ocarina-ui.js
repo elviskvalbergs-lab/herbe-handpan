@@ -93,6 +93,7 @@ export function describeFingering(inst, midi, noteLabel = midiToNoteName(midi)) 
 // Uses measured sizes when the builder has stored them, otherwise the
 // proportions from the target notes, otherwise all the same.
 export function relativeSizes(chamber, a4 = 440) {
+  if (chamber.holes.length && chamber.holes.every(h => h.rel > 0)) return chamber.holes.map(h => h.rel);
   const mm = chamber.holes.map(h => h.sizeMm);
   if (mm.every(x => x > 0)) {
     const max = Math.max(...mm);
@@ -273,8 +274,9 @@ export function renderFingering(inst, midi, opts = {}) {
         y += y0;
       }
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
-      if (split) y += k === 0 ? -8 : 8;
-      const r = Math.max(4, (split ? 9 : 13) * rel[i]);
+      const count = ch.holes.filter(x => x.finger === h.finger).length;
+      if (split) y += (k - (count - 1) / 2) * (16 / Math.max(1, count - 1));
+      const r = Math.max(4, (split ? 18 / count : 13) * rel[i]);
       const changed = moves && (moves.lift.includes(h.finger) || moves.cover.includes(h.finger)) && f;
       const cls = `${changed ? 'fg-changed' : ''}`;
       g.push(fgHoleShape(x, y, r, states[i], cls));

@@ -164,14 +164,17 @@ export function relativeHoleSizes(closedHz, targets) {
   return holes.map(h => h / max);
 }
 
-// A hole over 12 mm becomes two holes of half the diameter, opened together.
-// Returns an array of 1 or 2 diameters.
+// A hole over 12 mm becomes two holes of half the diameter, opened together
+// (the brief's rule). A hole over 24 mm would still leave halves over 12 mm,
+// so it becomes as many equal holes as it takes to stay at or under 12 mm.
+// Returns the diameters.
 export function splitHole(diameter, maxMm = OC_MAX_HOLE_MM) {
-  return diameter > maxMm ? [diameter / 2, diameter / 2] : [diameter];
+  const n = Math.ceil(diameter / maxMm);
+  return n <= 1 ? [diameter] : Array.from({ length: n }, () => diameter / n);
 }
 
 // Applies diameters (one per hole, opening order) to a chamber from
-// buildChamber, splitting holes over 12 mm into two holes ('R4a', 'R4b')
+// buildChamber, splitting holes over 12 mm into holes 'R4a', 'R4b', …
 // that share the finger and the state in every fingering.
 export function applyHoleSizes(chamber, diameters, maxMm = OC_MAX_HOLE_MM) {
   const holes = [];
@@ -179,7 +182,7 @@ export function applyHoleSizes(chamber, diameters, maxMm = OC_MAX_HOLE_MM) {
   chamber.holes.forEach((hole, i) => {
     const parts = splitHole(diameters[i], maxMm);
     parts.forEach((size, p) => {
-      holes.push({ ...hole, id: parts.length > 1 ? hole.id + 'ab'[p] : hole.id, sizeMm: size });
+      holes.push({ ...hole, id: parts.length > 1 ? hole.id + 'abcd'[p] : hole.id, sizeMm: size });
       source.push(i);
     });
   });

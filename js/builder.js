@@ -1,0 +1,175 @@
+// Builder logic: the seven stages of making a clay ocarina, clay bodies with
+// learned shrinkage, and calibrating a bought ocarina from tuner readings.
+// See docs/ocarina-mode.md, "Builder" and "Calibrated charts".
+//
+// Pure functions only (no DOM, no storage), unit tested in Node. The screens
+// are in app.js; the clay body list is stored by instruments.js.
+
+import {
+  midiToHz, centsBetween, holeSizes, splitHole, applyHoleSizes, defaultWindow, chamberVolume,
+  learnedShrinkage, solveHoleRatios, calibratedChart, fingersForHoleCount, OC_FINGER_ORDER,
+} from './ocarina.js';
+
+export const STAGE_ORDER = ['design', 'body', 'leather', 'boneDry', 'bisque', 'final', 'done'];
+export const STAGE_TITLES = {
+  design: 'Design', body: 'Body', leather: 'Voice and drill (leather-hard)',
+  boneDry: 'Bone-dry check', bisque: 'Bisque check', final: 'Final check', done: 'Done',
+};
+
+export const DEFAULT_CLAY_BODIES = [
+  { id: 'generic', name: 'Generic clay (11%)', shrinkPct: 11, builds: 0 },
+];
+
+// Shrinkage fraction for a build (from its clay body), e.g. 0.11.
+export function buildShrink(inst) {
+  return (inst.build?.shrinkPct ?? 11) / 100;
+}
+
+// Per-chamber build record, created on demand.
+export function chamberBuild(inst, ci) {
+  const per = inst.build.perChamber[ci] ?? {};
+  return {
+    window: per.window ?? defaultWindow(midiToHz(inst.chambers[ci].notes[0], inst.build.a4 ?? 440)),
+    readings: per.readings ?? {},
+    holesDone: per.holesDone ?? [],
+    testHoleMm: per.testHoleMm ?? 6,
+  };
+}
+
+// Target frequency of every note of a chamber at a stage. Leather-hard
+// targets are lowered for shrinkage (f × (1 − s)); bone-dry is compared
+// with the leather-hard readings; bisque and final use concert pitch.
+export function stageTargets(chamber, stage, shrink, a4 = 440) {
+  const out = {};
+  for (const m of chamber.notes) {
+    const concert = midiToHz(m, a4);
+    out[m] = stage === 'leather' ? concert * (1 - shrink) : concert;
+  }
+  return out;
+}
+
+// What to do about a note measured at a stage. Returns { cents, status, text }
+// with status 'ok' | 'flat' | 'sharp'. In tune means within ±10 cents.
+export function noteAdvice(stage, measuredHz, targetHz) {
+  const cents = Math.round(centsBetween(measuredHz, targetHz));
+  if (Math.abs(cents) <= 10) return { cents, status: 'ok', text: 'in tune' };
+  const flat = cents < 0;
+  const amount = `${Math.abs(cents)} cents ${flat ? 'flat' : 'sharp'}`;
+  if (stage === 'leather') {
+    return { cents, status: flat ? 'flat' : 'sharp', text: flat ? `${amount}: open it slightly` : `${amount}: make the hole a little smaller with clay` };
+  }
+  if (stage === 'boneDry') {
+    return { cents, status: flat ? 'flat' : 'sharp', text: flat ? `${amount}: file this hole carefully` : `${amount}: leave it, it can't be lowered now` };
+  }
+  return { cents, status: flat ? 'flat' : 'sharp', text: flat ? `${amount}: file this hole a little larger` : `${amount}: can't be lowered by filing` };
+}
+
+// Hole diameters at leather-hard from the tuner readings, in drilling order
+// (the opening order). Returns null until f0, d and f1 are all recorded.
+// Each hole: { index, finger, mm, parts } where parts is [mm] or two halves
+// or several equal ones for a hole over 12 mm; testHoleIndex is the hole the test hole becomes.
+export function leatherHolePlan(chamber, reading, shrink, a4 = 440) {
+  if (!(reading?.f0 > 0 && reading?.d > 0 && reading?.f1 > reading?.f0)) return null;
+  const targets = stageTargets(chamber, 'leather', shrink, a4);
+  const { W, holes, testHoleIndex } = holeSizes({
+    f0: reading.f0, d: reading.d, f1: reading.f1,
+    targets: chamber.notes.slice(1).map(m => targets[m]),
+  });
+  return {
+    W,
+    testHoleIndex,
+    holes: holes.map((mm, i) => ({
+      index: i, finger: chamber.holes[i].finger, mm,
+      parts: splitHole(mm),
+    })),
+  };
+}
+
+// Inside volume and ball size for each chamber's window (leather-hard target).
+export function bodyPlan(inst) {
+  const shrink = buildShrink(inst);
+  return inst.chambers.map((ch, ci) => {
+    const win = chamberBuild(inst, ci).window;
+    return { window: win, ...chamberVolume(win, midiToHz(ch.notes[0], inst.build.a4 ?? 440), shrink) };
+  });
+}
+
+export function nextStage(stage, { unglazed = false } = {}) {
+  const i = STAGE_ORDER.indexOf(stage);
+  const next = STAGE_ORDER[Math.min(i + 1, STAGE_ORDER.length - 1)];
+  return next === 'final' && unglazed ? 'done' : next;
+}
+
+// Finishes a build: stores the drilled hole sizes on the chambers, the
+// measured pitches, and the shrinkage learned from leather-hard vs final
+// (or bisque, if unglazed) readings. Returns { inst, learned } where learned
+// is the shrinkage fraction (null if no note was measured at both stages).
+export function finishBuild(inst) {
+  const shrink = buildShrink(inst);
+  const a4 = inst.build.a4 ?? 440;
+  const leatherAll = {}, finalAll = {};
+  const chambers = inst.chambers.map((ch, ci) => {
+    const b = chamberBuild(inst, ci);
+    const lr = b.readings.leather ?? {};
+    Object.assign(leatherAll, lr.notes ?? {});
+    Object.assign(finalAll, (b.readings.final ?? b.readings.bisque ?? {}).notes ?? {});
+    const plan = leatherHolePlan(ch, { ...lr, d: lr.d ?? b.testHoleMm }, shrink, a4);
+    return plan ? applyHoleSizes(ch, plan.holes.map(h => h.mm)) : ch;
+  });
+  const learned = learnedShrinkage(leatherAll, finalAll);
+  return {
+    inst: {
+      ...inst,
+      chambers,
+      measured: finalAll,
+      build: { ...inst.build, stage: 'done', learnedShrink: learned },
+    },
+    learned,
+  };
+}
+
+// Folds a new learned shrinkage into a clay body: the average over the
+// builds made with it so far.
+export function updateClayBody(body, learned) {
+  if (learned == null) return body;
+  const n = body.builds ?? 0;
+  const pct = ((body.shrinkPct * n) + learned * 100) / (n + 1);
+  return { ...body, shrinkPct: Math.round(pct * 10) / 10, builds: n + 1 };
+}
+
+// ── Bought ocarinas: calibration ─────────────────────────────────────────────
+
+// Default finger for each hole of an ocarina with `count` holes: the
+// standard opening order, thumbs underneath above 8 holes; holes beyond 10
+// are sub-holes (on a 12-hole ocarina, small holes next to a finger hole).
+// The user checks and changes these.
+export function defaultCustomHoles(count) {
+  const main = fingersForHoleCount(Math.min(count, OC_FINGER_ORDER.length));
+  const holes = main.map(f => ({ id: f, finger: f, side: f.endsWith('T') ? 'bottom' : 'top' }));
+  const subFingers = ['R4', 'L4', 'R3'];
+  for (let i = 0; holes.length < count; i++) {
+    const f = subFingers[i % subFingers.length];
+    holes.push({ id: f + 's' + (i + 1), finger: f, side: 'top', sub: true });
+  }
+  return holes;
+}
+
+// A playable chamber from calibration readings: f0 with every hole closed,
+// singles[i] with only hole i open. Returns { notes, holes, fingerings,
+// calibration } or null until every reading is in.
+export function calibrateChamber(holes, f0, singles, { a4 = 440, toleranceCents = 20 } = {}) {
+  if (!(f0 > 0) || singles.length !== holes.length || !singles.every(hz => hz > f0)) return null;
+  const measurements = singles.map((hz, i) => ({ states: holes.map((_, j) => (j === i ? 'o' : 'c')), hz }));
+  const ratios = solveHoleRatios(f0, measurements);
+  const chart = calibratedChart(f0, ratios, { a4, toleranceCents });
+  const max = Math.max(...ratios);
+  const notes = Object.keys(chart).map(Number).sort((a, b) => a - b);
+  const fingerings = {};
+  for (const m of notes) fingerings[m] = chart[m].states;
+  return {
+    notes,
+    holes: holes.map((h, i) => ({ ...h, rel: ratios[i] / max })),
+    fingerings,
+    calibration: { f0, singles, ratios, cents: Object.fromEntries(notes.map(m => [m, Math.round(chart[m].cents)])) },
+  };
+}

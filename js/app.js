@@ -21,9 +21,16 @@ import {
 import { playablePairs, centsBetween, midiToHz } from './ocarina.js';
 import { startTuner } from './tuner.js';
 import {
+  STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
+  leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
+  defaultCustomHoles, calibrateChamber,
+} from './builder.js';
+import { buildScaleChambers, OC_FINGER_ORDER } from './ocarina.js';
+import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
   createScaleOcarina, createCustomOcarina, instrumentStatus, midiToNoteName,
+  getClayBodies, saveClayBodies,
 } from './instruments.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -276,8 +283,12 @@ function wizardNext() {
 
 // Notes for the ocarina being designed in the wizard, with the chamber and
 // note-window choice applied.
-function wizardOcarinaPlan() {
-  const oc = state.wizard.oc;
+function wizardOcarinaPlan() { return planOcarina(state.wizard.oc); }
+
+// Notes of a scale-built ocarina from its design choices: scale, transpose,
+// gu notes, chamber count (with the note window when fewer chambers than
+// the full scale needs) and single notes switched off.
+function planOcarina(oc) {
   const scale = SCALES.find(sc => sc.id === oc.scaleId);
   const all = scaleToMidis(scale, { transpose: oc.transpose, includeGu: oc.includeGu });
   const needed = chambersNeeded(all);
@@ -293,7 +304,10 @@ function wizardOcarinaPlan() {
     notes = chosen.notes;
     windows = windows.map(win => ({ ...win, chosen: win === chosen, fromDing: win.start === ding }));
   }
-  return { scale, all, needed, chambers, windows, notes };
+  const excluded = oc.excluded ?? [];
+  const kept = notes.filter(m => !excluded.includes(m));
+  if (kept.length >= 2) notes = kept;
+  return { scale, all, needed, chambers, windows, notes, excluded };
 }
 
 function viewWizard() {
@@ -440,8 +454,16 @@ function scalePitchClasses(scaleId) {
   return new Set(scaleToMidis(scale).map(m => ((m % 12) + 12) % 12));
 }
 
+function ocTabs(inst) {
+  const tabs = [];
+  if (playableMidis(inst).length > 0) tabs.push(['notes', 'Notes'], ['chords', 'Chords']);
+  if (inst.kind === 'scale') tabs.push(['builder', 'Builder']);
+  if (inst.kind === 'custom') tabs.push(['setup', 'Set up']);
+  return tabs;
+}
+
 function ocHeader(inst, view) {
-  const hasNotes = playableMidis(inst).length > 0;
+  const tabs = ocTabs(inst);
   return `
     <div class="app-header">
       <div class="breadcrumb">
@@ -449,10 +471,9 @@ function ocHeader(inst, view) {
         <span>/</span>
         <span>${escHtml(inst.name)}</span>
       </div>
-      ${hasNotes ? `
+      ${tabs.length > 1 ? `
         <div class="pills oc-tabs">
-          <button class="pill ${view === 'notes' ? 'active' : ''}" data-action="oc-tab" data-tab="notes">Notes</button>
-          <button class="pill ${view === 'chords' ? 'active' : ''}" data-action="oc-tab" data-tab="chords">Chords</button>
+          ${tabs.map(([id, name]) => `<button class="pill ${view === id ? 'active' : ''}" data-action="oc-tab" data-tab="${id}">${name}</button>`).join('')}
         </div>` : ''}
     </div>`;
 }
@@ -678,6 +699,8 @@ function viewInstrument() {
   if (!inst) return viewHome();
   const uf = state.useFlats, us = state.useSolfege;
   const midis = playableMidis(inst);
+  if (state.oc.tab === 'builder' && inst.kind === 'scale') return viewBuilder(inst);
+  if (state.oc.tab === 'setup' || (inst.kind === 'custom' && midis.length === 0)) return viewSetup(inst);
 
   if (midis.length === 0) {
     return `${ocHeader(inst, 'notes')}
@@ -772,6 +795,316 @@ function openPlaylistEntryOnInstrument(pl, entry) {
   Object.assign(state.oc, { tab: 'chords', playlistId: pl.id, expanded: 'e:' + entry.id });
   history.replaceState(null, '', `#i/${entry.instrumentId}/chords`);
   return true;
+}
+
+// ── Builder ──────────────────────────────────────────────────────────────────
+// A step-by-step project per scale-built ocarina. Each instrument remembers
+// its stage; readings are kept per stage, so going back loses nothing.
+
+function hzField(path, value, placeholder = 'Hz') {
+  return `<span class="b-field">
+    <input class="b-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
+      value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${placeholder}">
+    <button class="btn btn-secondary btn-sm" data-action="b-record" data-path="${path}" title="Fill in from the tuner">🎤</button>
+  </span>`;
+}
+
+function stepper(stage) {
+  const idx = STAGE_ORDER.indexOf(stage);
+  return `<div class="b-stepper">
+    ${STAGE_ORDER.map((st, i) => `
+      <button class="b-step ${i === idx ? 'current' : i < idx ? 'past' : ''}" data-action="b-stage" data-stage="${st}" title="${STAGE_TITLES[st]}">
+        <span class="b-step-no">${i + 1}</span><span class="b-step-name">${STAGE_TITLES[st].split(' (')[0]}</span>
+      </button>`).join('')}
+  </div>`;
+}
+
+function shapeIcon(shape) {
+  const body = shape === 'round' ? '<circle cx="12" cy="12" r="7"/>'
+    : shape === 'oval' ? '<ellipse cx="12" cy="12" rx="9" ry="6"/>'
+    : '<rect x="3" y="7" width="18" height="10" rx="1"/>';
+  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${body}</svg>`;
+}
+
+// Earlier builds with readings, offered as a starting point.
+function earlierBuilds(inst) {
+  return state.instruments.filter(i => i.kind === 'scale' && i.id !== inst.id);
+}
+
+function viewBuilder(inst) {
+  const b = inst.build;
+  const stage = b.stage;
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const shrink = buildShrink(inst);
+  const from = b.fromId ? getInstrument(b.fromId) : null;
+  let body = '';
+
+  if (stage === 'design') {
+    const plan = planOcarina(inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu });
+    const d = inst.design ?? {};
+    const hasGu = plan.scale.bottom.notes.length > 0;
+    body = `
+      <div class="b-section">
+        <label class="wizard-field">Handpan scale
+          <select class="select-input" data-action="b-design" data-key="scaleId">
+            ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === plan.scale.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
+          </select>
+        </label>
+        <div class="wizard-row">
+          <label class="wizard-field">Transpose
+            <select class="select-input" data-action="b-design" data-key="transpose">
+              ${Array.from({ length: 13 }, (_, i) => i - 6).map(t => `<option value="${t}" ${t === (d.transpose ?? inst.transpose) ? 'selected' : ''}>${t > 0 ? '+' + t : t} semitones</option>`).join('')}
+            </select>
+          </label>
+          ${hasGu ? `<label class="wizard-check"><input type="checkbox" data-action="b-design" data-key="includeGu" ${(d.includeGu ?? inst.includeGu) ? 'checked' : ''}> Include gu notes</label>` : ''}
+        </div>
+        <div class="wizard-field">
+          <div>The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}. Build with:</div>
+          <div class="pills">${Array.from({ length: plan.needed }, (_, i) => i + 1).map(n => `
+            <button class="pill ${n === plan.chambers ? 'active' : ''}" data-action="b-design" data-key="chambers" data-value="${n}">${n} chamber${n !== 1 ? 's' : ''}</button>`).join('')}</div>
+        </div>
+        ${plan.windows.length ? `<div class="wizard-field"><div>Which notes?</div><div class="pills">${plan.windows.map(win => `
+          <button class="pill ${win.chosen ? 'active' : ''}" data-action="b-design" data-key="windowStart" data-value="${win.start}">
+            ${nn(win.notes[0])}–${nn(win.notes[win.notes.length - 1])} · ${win.notes.length} notes${win.fromDing ? ' · from the ding' : ''}</button>`).join('')}</div></div>` : ''}
+        <div class="wizard-field"><div>Notes (tap one to leave it out)</div>
+          <div class="wizard-notes">${plan.all.map(m => {
+            const inWin = plan.windows.length === 0 || plan.windows.find(w => w.chosen).notes.includes(m);
+            if (!inWin) return `<span class="pill">${nn(m)}</span>`;
+            return `<button class="pill ${plan.notes.includes(m) ? 'active' : ''}" data-action="b-design" data-key="toggleNote" data-value="${m}">${nn(m)}</button>`;
+          }).join('')}</div>
+        </div>
+        <div class="hint">${inst.chambers.map((ch, i) => `Chamber ${i + 1}: ${ch.notes.map(nn).join(' ')} · ${ch.holes.length} holes`).join('<br>')}</div>
+        <div class="b-preview">${renderFingering(inst, inst.chambers[0].notes[0], { size: 'medium', useFlats: uf, useSolfege: us })}</div>
+        ${earlierBuilds(inst).length ? `
+          <label class="wizard-field">Start from an earlier build
+            <select class="select-input" data-action="b-from">
+              <option value="">—</option>
+              ${earlierBuilds(inst).map(i => `<option value="${escHtml(i.id)}" ${b.fromId === i.id ? 'selected' : ''}>${escHtml(i.name)}</option>`).join('')}
+            </select>
+          </label>` : ''}
+      </div>`;
+  }
+
+  if (stage === 'body') {
+    const clays = getClayBodies();
+    const plans = bodyPlan(inst);
+    body = `
+      <div class="b-section">
+        <label class="wizard-field">Clay body
+          <select class="select-input" data-action="b-clay">
+            ${clays.map(c => `<option value="${escHtml(c.id)}" ${b.clayBody === c.id ? 'selected' : ''}>${escHtml(c.name)} · ${c.shrinkPct}%${c.builds ? ` (learned from ${c.builds} build${c.builds !== 1 ? 's' : ''})` : ''}</option>`).join('')}
+            <option value="__new__">Add a clay body…</option>
+          </select>
+        </label>
+        <details class="b-advanced"><summary>Advanced</summary>
+          <label class="wizard-field">Shrinkage for this build, %
+            <input class="b-input" type="number" step="0.1" min="0" max="30" data-action="b-shrink" value="${b.shrinkPct}">
+          </label>
+        </details>
+      </div>
+      ${inst.chambers.map((ch, ci) => {
+        const win = plans[ci].window;
+        const p = plans[ci];
+        return `
+        <div class="b-section">
+          <div class="editor-section-title">Chamber ${ci + 1} · closed note ${nn(ch.notes[0])}</div>
+          <div class="pills">${['rect', 'round', 'oval'].map(sh => `
+            <button class="pill ${win.shape === sh ? 'active' : ''}" data-action="b-window" data-ci="${ci}" data-key="shape" data-value="${sh}">${shapeIcon(sh)} ${sh === 'rect' ? 'Rectangle' : sh === 'round' ? 'Round' : 'Oval'}</button>`).join('')}</div>
+          <div class="wizard-row">
+            <label class="wizard-field">${win.shape === 'round' ? 'Diameter' : 'Width'}, mm<input class="b-input" type="number" step="0.5" min="1" data-action="b-window" data-ci="${ci}" data-key="w" value="${win.w}"></label>
+            ${win.shape === 'round' ? '' : `<label class="wizard-field">Length, mm<input class="b-input" type="number" step="0.5" min="1" data-action="b-window" data-ci="${ci}" data-key="l" value="${win.l}"></label>`}
+            <label class="wizard-field">Wall, mm<input class="b-input" type="number" step="0.5" min="1" data-action="b-window" data-ci="${ci}" data-key="t" value="${win.t}"></label>
+          </div>
+          <div class="b-result">Inside volume <b>${Math.round(p.volume)} ml</b> · form around a ball <b>${Math.round(p.ballDiameter)} mm</b> across · about ${Math.round(p.firedVolume)} ml after firing</div>
+          <div class="hint">A starting point: the finished pitch can land a couple of semitones away, which the next step corrects.</div>
+        </div>`;
+      }).join('')}`;
+  }
+
+  if (stage === 'leather') {
+    body = inst.chambers.map((ch, ci) => {
+      const cb = chamberBuild(inst, ci);
+      const r = cb.readings.leather ?? {};
+      const targets = stageTargets(ch, 'leather', shrink, b.a4);
+      const plan = leatherHolePlan(ch, { f0: r.f0, d: r.d ?? cb.testHoleMm, f1: r.f1 }, shrink, b.a4);
+      const old = from?.build?.perChamber?.[ci]?.readings?.leather;
+      return `
+        <div class="b-section">
+          <div class="editor-section-title">Chamber ${ci + 1}</div>
+          <div class="b-row"><span>1. Closed pitch (all holes covered), target ${nn(ch.notes[0])} ≈ ${targets[ch.notes[0]].toFixed(1)} Hz</span>${hzField(`${ci}:leather:f0`, r.f0)}${old?.f0 ? `<span class="hint">last build ${old.f0.toFixed(1)}</span>` : ''}</div>
+          ${r.f0 > 0 ? (() => {
+            const a = noteAdvice('leather', r.f0, targets[ch.notes[0]]);
+            const text = a.status === 'ok' ? '✓ closed note in tune'
+              : a.status === 'flat' ? `${Math.abs(a.cents)} cents flat: open the window slightly`
+              : `${a.cents} cents sharp: the chamber is a little small for this note`;
+            return `<div class="b-row"><span class="b-adv ${a.status}">${text}</span></div>`;
+          })() : ''}
+          <div class="b-row"><span>2. Drill a test hole of</span>
+            <span class="b-field"><input class="b-input" type="number" step="0.5" min="1" data-action="b-input" data-path="${ci}:leather:d" value="${r.d ?? cb.testHoleMm}"> mm</span>
+            <span>where ${ch.holes[0].finger} goes, then blow with only it open</span>${hzField(`${ci}:leather:f1`, r.f1)}</div>
+          ${plan ? `
+            <div class="b-holes">
+              <div class="hint">Drill in this order. Hole sizes are at leather-hard; targets are already lowered by ${(shrink * 100).toFixed(1)}% for shrinkage.</div>
+              ${plan.holes.map(h => {
+                const midi = ch.notes[h.index + 1];
+                const done = cb.holesDone.includes(h.index);
+                const measured = r.notes?.[midi];
+                const adv = measured > 0 ? noteAdvice('leather', measured, targets[midi]) : null;
+                return `
+                <div class="b-hole ${done ? 'done' : ''}">
+                  <label class="wizard-check"><input type="checkbox" data-action="b-hole-done" data-ci="${ci}" data-index="${h.index}" ${done ? 'checked' : ''}>
+                    <b>${h.finger}</b> ${h.parts.length > 1 ? `${['', '', 'two', 'three', 'four'][h.parts.length] ?? h.parts.length} holes of ${h.parts[0].toFixed(1)} mm` : `${h.mm.toFixed(1)} mm`}
+                    ${h.index === plan.testHoleIndex ? '<span class="oc-badge">your test hole: enlarge it</span>' : ''}</label>
+                  <span class="hint">${nn(midi)} → ${targets[midi].toFixed(1)} Hz</span>
+                  ${hzField(`${ci}:leather:n:${midi}`, measured)}
+                  ${adv ? `<span class="b-adv ${adv.status}">${escHtml(`${nn(midi)} is ${adv.text}`).replace(`${nn(midi)} is in tune`, `${nn(midi)} ✓ in tune`)}</span>` : ''}
+                </div>`;
+              }).join('')}
+            </div>` : `<div class="hint">Record the closed pitch and the test-hole pitch to see every hole's size.</div>`}
+        </div>`;
+    }).join('');
+  }
+
+  if (['boneDry', 'bisque', 'final'].includes(stage)) {
+    const intro = {
+      boneDry: 'Blow every note once more. Pitch rises while the clay dries; small corrections are still possible with careful filing.',
+      bisque: 'After the first firing the targets are concert pitch. Flat notes can be filed larger; sharp ones can\'t be lowered.',
+      final: 'After the glaze firing, a last pass records the finished tuning.',
+    }[stage];
+    body = `<div class="hint">${intro}</div>` + inst.chambers.map((ch, ci) => {
+      const cb = chamberBuild(inst, ci);
+      const r = cb.readings[stage] ?? {};
+      const leather = cb.readings.leather?.notes ?? {};
+      const targets = stageTargets(ch, stage, shrink, b.a4);
+      const old = from?.build?.perChamber?.[ci]?.readings?.[stage]?.notes ?? {};
+      return `
+        <div class="b-section">
+          <div class="editor-section-title">Chamber ${ci + 1}</div>
+          ${ch.notes.map(midi => {
+            const measured = r.notes?.[midi];
+            const adv = measured > 0 ? noteAdvice(stage, measured, targets[midi]) : null;
+            const rise = stage === 'boneDry' && measured > 0 && leather[midi] > 0 ? Math.round(centsBetween(measured, leather[midi])) : null;
+            return `
+              <div class="b-hole">
+                <span><b>${nn(midi)}</b> <span class="hint">${targets[midi].toFixed(1)} Hz</span></span>
+                ${hzField(`${ci}:${stage}:n:${midi}`, measured)}
+                ${rise != null ? `<span class="hint">rose ${rise >= 0 ? '+' : ''}${rise} cents since leather-hard</span>` : ''}
+                ${old[midi] ? `<span class="hint">last build ${old[midi].toFixed(1)}</span>` : ''}
+                ${adv ? `<span class="b-adv ${adv.status}">${adv.status === 'ok' ? '✓ in tune' : escHtml(adv.text)}</span>` : ''}
+              </div>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+  }
+
+  if (stage === 'done') {
+    const learned = b.learnedShrink;
+    body = `
+      <div class="b-section">
+        <div class="wizard-title">${escHtml(inst.name)} is finished</div>
+        <div class="hint">It's playable from the Notes and Chords tabs, with its hole sizes and measured pitches stored.</div>
+        ${learned != null ? `<div class="b-result">This clay shrank <b>${(learned * 100).toFixed(1)}%</b> from leather-hard to fired; that's now the default for ${escHtml(getClayBodies().find(c => c.id === b.clayBody)?.name ?? 'this clay')}.</div>` : ''}
+        ${inst.chambers.map((ch, ci) => {
+          const byFinger = [];
+          ch.holes.forEach(h => {
+            const last = byFinger[byFinger.length - 1];
+            if (last && last.finger === h.finger) last.n++; else byFinger.push({ finger: h.finger, n: 1, mm: h.sizeMm });
+          });
+          return `<div class="hint">Chamber ${ci + 1}: ${byFinger.map(g => `${g.finger} ${g.mm ? (g.n > 1 ? g.n + ' × ' : '') + g.mm.toFixed(1) + ' mm' : '—'}`).join(' · ')}</div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  const nextLabel = stage === 'final' ? 'Finish' : stage === 'done' ? '' : `Next: ${STAGE_TITLES[nextStage(stage)]} →`;
+  return `${ocHeader(inst, 'builder')}
+    <div class="instrument-view">
+      <div class="oc-toolbar">${tunerButton()}<span class="hint">${escHtml(instrumentStatus(inst))}</span></div>
+      ${stepper(stage)}
+      <div class="wizard-title">${STAGE_TITLES[stage]}</div>
+      ${body}
+      <div class="wizard-actions">
+        ${nextLabel ? `<button class="btn btn-primary" data-action="b-next">${nextLabel}</button>` : ''}
+        ${stage === 'bisque' ? `<button class="btn btn-secondary" data-action="b-unglazed">Unglazed: finish now</button>` : ''}
+      </div>
+    </div>`;
+}
+
+// Set-up for a bought ocarina: say which finger covers each hole, then
+// record all-closed and each-hole-open pitches; the chart is worked out.
+function viewSetup(inst) {
+  const setup = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+  const fingers = OC_FINGER_ORDER;
+  const ready = setup.f0 > 0 && setup.holes.every((_, i) => setup.singles[i] > 0);
+  return `${ocHeader(inst, 'setup')}
+    <div class="instrument-view">
+      <div class="oc-toolbar">${tunerButton()}</div>
+      <div class="hint">The ocarina charts itself: turn on the tuner, then blow each line below and tap 🎤 while the note sounds. Blow steadily at a medium breath.</div>
+      <div class="b-section">
+        <div class="editor-section-title">Holes and fingers</div>
+        <div class="hint">Check which finger covers each hole. The order should be the order the holes open going up the scale.</div>
+        ${setup.holes.map((h, i) => `
+          <div class="b-row">
+            <span>Hole ${i + 1}${h.sub ? ' (small sub-hole)' : ''}</span>
+            <select class="select-input" data-action="s-finger" data-index="${i}">
+              ${fingers.map(f => `<option value="${f}" ${h.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
+            </select>
+          </div>`).join('')}
+      </div>
+      <div class="b-section">
+        <div class="editor-section-title">Readings</div>
+        <div class="b-row"><span>All holes closed</span>${hzField('s:f0', setup.f0)}</div>
+        ${setup.holes.map((h, i) => `<div class="b-row"><span>Only hole ${i + 1} (${h.finger}) open</span>${hzField(`s:${i}`, setup.singles[i])}</div>`).join('')}
+      </div>
+      <div class="wizard-actions">
+        <button class="btn btn-primary" data-action="s-calibrate" ${ready ? '' : 'disabled'}>Work out the fingering chart</button>
+      </div>
+      ${inst.calibration ? `<div class="hint">Current chart: ${playableMidis(inst).length} notes. Predicted fingerings are within 20 cents; check them with the tuner.</div>` : ''}
+    </div>`;
+}
+
+// Writes a reading into an instrument. Paths: "ci:stage:f0|d|f1",
+// "ci:stage:n:<midi>", "s:f0", "s:<holeIndex>".
+function setReading(inst, path, value) {
+  const parts = path.split(':');
+  if (parts[0] === 's') {
+    const setup = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+    if (parts[1] === 'f0') setup.f0 = value; else setup.singles[parseInt(parts[1], 10)] = value;
+    inst.setup = setup;
+    return;
+  }
+  const ci = parseInt(parts[0], 10);
+  const stage = parts[1];
+  const per = inst.build.perChamber;
+  per[ci] = per[ci] ?? {};
+  per[ci].readings = per[ci].readings ?? {};
+  const r = per[ci].readings[stage] = per[ci].readings[stage] ?? {};
+  if (parts[2] === 'n') {
+    r.notes = r.notes ?? {};
+    r.notes[parts[3]] = value;
+  } else {
+    r[parts[2]] = value;
+    // The closed pitch is also the reading of the chamber's lowest note.
+    if (parts[2] === 'f0') { r.notes = r.notes ?? {}; r.notes[inst.chambers[ci].notes[0]] = value; }
+  }
+}
+
+function applyDesign(inst) {
+  const plan = planOcarina(inst.design);
+  inst.scaleId = plan.scale.id;
+  inst.transpose = inst.design.transpose ?? 0;
+  inst.includeGu = inst.design.includeGu ?? true;
+  inst.notes = plan.notes;
+  inst.chambers = buildScaleChambers(plan.notes);
+  inst.fullChambers = plan.needed;
+}
+
+function finishInstrumentBuild(inst) {
+  const { inst: done, learned } = finishBuild(inst);
+  if (learned != null && done.build.clayBody) {
+    saveClayBodies(getClayBodies().map(c => (c.id === done.build.clayBody ? updateClayBody(c, learned) : c)));
+  }
+  return done;
 }
 
 // ── Tuner ────────────────────────────────────────────────────────────────────
@@ -894,6 +1227,8 @@ function openInstrument(id, { push = true } = {}) {
   } else {
     state.layout = null;
     state.view = 'instrument';
+    if (inst.kind === 'scale' && inst.build && inst.build.stage !== 'done') state.oc.tab = 'builder';
+    if (inst.kind === 'custom' && !inst.calibration) state.oc.tab = 'setup';
     if (push) history.pushState(null, '', `#i/${id}`);
   }
   return true;
@@ -1589,7 +1924,7 @@ function loadFromHash() {
   if (hash === '#scales') { state.view = 'selector'; return; }
   if (hash.startsWith('#i/')) {
     const [id, tab] = hash.slice(3).split('/');
-    if (openInstrument(decodeURIComponent(id), { push: false }) && (tab === 'chords' || tab === 'notes')) {
+    if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'builder', 'setup'].includes(tab)) {
       state.oc.tab = tab;
     }
     return;
@@ -1949,6 +2284,84 @@ document.addEventListener('click', e => {
 
   if (action === 'tuner-toggle') { toggleTuner(); return; }
 
+  // ── Builder and set-up ────────────────────────────────────────────────────
+  if (action === 'b-record') {
+    const r = state.tuner.reading;
+    if (!state.tuner.on) { toggleTuner(); showToast('Tuner on: blow the note, then tap 🎤 again'); return; }
+    if (!r?.stable || !r.hz) { showToast('No steady note yet: keep blowing'); return; }
+    const inst = getInstrument(state.currentInstrumentId);
+    if (!inst) return;
+    setReading(inst, el.dataset.path, Math.round(r.hz * 10) / 10);
+    saveInstrument(inst);
+    render();
+    return;
+  }
+  if (action === 'b-stage' || action === 'b-next' || action === 'b-unglazed') {
+    let inst = getInstrument(state.currentInstrumentId);
+    if (!inst) return;
+    const target = action === 'b-stage' ? el.dataset.stage
+      : action === 'b-unglazed' ? 'done' : nextStage(inst.build.stage);
+    if (target === 'done' && inst.build.stage !== 'done') inst = finishInstrumentBuild(inst);
+    else inst.build.stage = target;
+    saveInstrument(inst);
+    refreshInstruments();
+    window.scrollTo(0, 0);
+    render();
+    return;
+  }
+  if (action === 'b-design') {
+    const inst = getInstrument(state.currentInstrumentId);
+    if (!inst || el.tagName === 'SELECT' || el.tagName === 'INPUT') return; // handled on change
+    inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    const key = el.dataset.key, v = parseInt(el.dataset.value, 10);
+    if (key === 'chambers') Object.assign(inst.design, { chambers: v, windowStart: null, excluded: [] });
+    if (key === 'windowStart') Object.assign(inst.design, { windowStart: v, excluded: [] });
+    if (key === 'toggleNote') {
+      const ex = inst.design.excluded ?? [];
+      inst.design.excluded = ex.includes(v) ? ex.filter(x => x !== v) : [...ex, v];
+    }
+    applyDesign(inst);
+    saveInstrument(inst);
+    render();
+    return;
+  }
+  if (action === 'b-hole-done') {
+    const inst = getInstrument(state.currentInstrumentId);
+    if (!inst) return;
+    const ci = parseInt(el.dataset.ci, 10), idx = parseInt(el.dataset.index, 10);
+    const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
+    const done = per.holesDone ?? [];
+    per.holesDone = done.includes(idx) ? done.filter(x => x !== idx) : [...done, idx];
+    saveInstrument(inst);
+    render();
+    return;
+  }
+  if (action === 'b-window' && el.tagName === 'BUTTON') {
+    const inst = getInstrument(state.currentInstrumentId);
+    if (!inst) return;
+    const ci = parseInt(el.dataset.ci, 10);
+    const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
+    per.window = { ...chamberBuild(inst, ci).window, shape: el.dataset.value };
+    saveInstrument(inst);
+    render();
+    return;
+  }
+  if (action === 's-calibrate') {
+    const inst = getInstrument(state.currentInstrumentId);
+    if (!inst?.setup) return;
+    const ch = calibrateChamber(inst.setup.holes, inst.setup.f0, inst.setup.singles);
+    if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each hole raises the pitch'); return; }
+    inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
+    inst.calibration = ch.calibration;
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.tab = 'notes';
+    showToast(`Chart ready: ${ch.notes.length} notes`);
+    render();
+    return;
+  }
+
+
   // ── Ocarina Chords view and practice ──────────────────────────────────────
   if (action === 'oc-tab') {
     state.oc.tab = el.dataset.tab;
@@ -2087,10 +2500,10 @@ document.addEventListener('click', e => {
     const oc = state.wizard.oc;
     const inst = oc.path === 'have'
       ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
-      : createScaleOcarina({
+      : Object.assign(createScaleOcarina({
           scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu,
           notes: wizardOcarinaPlan().notes, name: oc.name.trim(),
-        });
+        }), { design: { scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu, chambers: oc.chambers, windowStart: oc.windowStart, excluded: [] } });
     saveInstrument(inst);
     refreshInstruments();
     showToast(`${inst.name} added`);
@@ -2727,6 +3140,67 @@ document.addEventListener('change', e => {
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
   if (action === 'oc-scale-filter') { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); }
+  if (action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')
+      || action === 'b-clay' || action === 'b-from' || action === 's-finger'
+      || (action === 'b-design' && (el.tagName === 'SELECT' || el.tagName === 'INPUT'))) {
+    let inst = getInstrument(state.currentInstrumentId);
+    if (!inst) return;
+    const num = parseFloat(el.value);
+    if (action === 'b-input') setReading(inst, el.dataset.path, num > 0 ? num : null);
+    if (action === 'b-shrink' && num >= 0) inst.build.shrinkPct = num;
+    if (action === 'b-window') {
+      const ci = parseInt(el.dataset.ci, 10);
+      const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
+      if (num > 0) per.window = { ...chamberBuild(inst, ci).window, [el.dataset.key]: num };
+    }
+    if (action === 'b-clay') {
+      if (el.value === '__new__') {
+        const name = (prompt('Name of the clay body') || '').trim();
+        if (!name) { render(); return; }
+        const pct = parseFloat(prompt('Its shrinkage in %, if known', '11')) || 11;
+        const clay = { id: 'clay-' + Date.now().toString(36), name, shrinkPct: pct, builds: 0 };
+        saveClayBodies([...getClayBodies(), clay]);
+        inst.build.clayBody = clay.id;
+        inst.build.shrinkPct = pct;
+      } else {
+        const clay = getClayBodies().find(c => c.id === el.value);
+        inst.build.clayBody = el.value;
+        if (clay) inst.build.shrinkPct = clay.shrinkPct;
+      }
+    }
+    if (action === 'b-from') {
+      const src = getInstrument(el.value);
+      inst.build.fromId = src ? src.id : null;
+      if (src) {
+        inst.design = { ...(src.design ?? { scaleId: src.scaleId, transpose: src.transpose, includeGu: src.includeGu }) };
+        applyDesign(inst);
+        inst.build.clayBody = src.build.clayBody;
+        const clay = getClayBodies().find(c => c.id === src.build.clayBody);
+        inst.build.shrinkPct = clay ? clay.shrinkPct : src.build.shrinkPct;
+        inst.build.perChamber = (src.build.perChamber ?? []).map(p => ({ window: p?.window, testHoleMm: p?.readings?.leather?.d }));
+      }
+    }
+    if (action === 's-finger') {
+      const setup = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+      const h = setup.holes[parseInt(el.dataset.index, 10)];
+      h.finger = el.value;
+      h.side = el.value.endsWith('T') ? 'bottom' : 'top';
+      inst.setup = setup;
+    }
+    if (action === 'b-design') {
+      inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+      const key = el.dataset.key;
+      if (key === 'scaleId') Object.assign(inst.design, { scaleId: el.value, chambers: null, windowStart: null, excluded: [] });
+      if (key === 'transpose') Object.assign(inst.design, { transpose: parseInt(el.value, 10), windowStart: null, excluded: [] });
+      if (key === 'includeGu') Object.assign(inst.design, { includeGu: el.checked, chambers: null, windowStart: null, excluded: [] });
+      applyDesign(inst);
+      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${SCALES.find(sc => sc.id === inst.scaleId).name} ocarina`;
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+  }
+
   if (action === 'oc-category') { state.oc.category = el.value; render(); }
   if (action === 'oc-playlist') { state.oc.playlistId = el.value; state.oc.expanded = null; render(); }
   if (action === 'wizard-oc-holes') { state.wizard.oc.holeCount = parseInt(el.value, 10); }

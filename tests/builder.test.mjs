@@ -1,0 +1,93 @@
+// Unit tests for js/builder.js. Run with: node --test
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { noteToMidi } from '../js/data.js';
+import { midiToHz, predictFingeringHz, buildChamber } from '../js/ocarina.js';
+import { createScaleOcarina } from '../js/instruments.js';
+import {
+  stageTargets, noteAdvice, leatherHolePlan, bodyPlan, nextStage, finishBuild,
+  updateClayBody, defaultCustomHoles, calibrateChamber, chamberBuild,
+} from '../js/builder.js';
+
+const m = n => noteToMidi(n);
+const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} ≠ ${b}`);
+
+test('stage targets: leather-hard lowered by shrinkage, later stages at concert pitch', () => {
+  const ch = buildChamber([m('D4'), m('E4')]);
+  close(stageTargets(ch, 'leather', 0.11)[m('D4')], midiToHz(m('D4')) * 0.89);
+  close(stageTargets(ch, 'bisque', 0.11)[m('E4')], midiToHz(m('E4')));
+});
+
+test('advice per stage', () => {
+  const t = 300;
+  const flat12 = t * 2 ** (-12 / 1200);
+  assert.deepEqual(noteAdvice('leather', flat12, t), { cents: -12, status: 'flat', text: '12 cents flat: open it slightly' });
+  assert.equal(noteAdvice('bisque', flat12, t).text, '12 cents flat: file this hole a little larger');
+  assert.equal(noteAdvice('bisque', t * 2 ** (20 / 1200), t).text, "20 cents sharp: can't be lowered by filing");
+  assert.equal(noteAdvice('final', t * 2 ** (5 / 1200), t).status, 'ok');
+});
+
+test('leather-hole plan matches holeSizes with lowered targets', () => {
+  const ch = buildChamber([m('D4'), m('E4'), m('F4')]);
+  assert.equal(leatherHolePlan(ch, { f0: 260 }, 0.11), null);
+  const plan = leatherHolePlan(ch, { f0: 260, d: 6, f1: 280 }, 0.11);
+  const W = 6 / ((280 / 260) ** 2 - 1);
+  const tE = midiToHz(m('E4')) * 0.89, tF = midiToHz(m('F4')) * 0.89;
+  close(plan.W, W, 1e-9);
+  close(plan.holes[0].mm, W * ((tE / 260) ** 2 - 1), 1e-9);
+  close(plan.holes[1].mm, W * ((tF / 260) ** 2 - 1) - plan.holes[0].mm, 1e-9);
+  assert.equal(plan.holes[0].finger, 'R4');
+});
+
+test('body plan and stages', () => {
+  const oc = createScaleOcarina({ scaleId: 'D-Kurd' });
+  const plan = bodyPlan(oc);
+  assert.equal(plan.length, 2);
+  assert.ok(plan[0].volume > plan[1].volume); // lower chamber is bigger
+  assert.deepEqual(chamberBuild(oc, 0).window, { shape: 'rect', w: 13, l: 9.75, t: 4 });
+  assert.equal(nextStage('design'), 'body');
+  assert.equal(nextStage('bisque'), 'final');
+  assert.equal(nextStage('bisque', { unglazed: true }), 'done');
+});
+
+test('finishing a build stores sizes and learns shrinkage', () => {
+  const oc = createScaleOcarina({ scaleId: 'D-Kurd' });
+  const [c0] = oc.chambers;
+  oc.build.perChamber[0] = { readings: {
+    leather: { f0: 130, d: 6, f1: 150, notes: { [c0.notes[0]]: 130, [c0.notes[1]]: 196 } },
+    final: { notes: { [c0.notes[0]]: 146, [c0.notes[1]]: 220 } },
+  } };
+  const { inst, learned } = finishBuild(oc);
+  close(learned, ((1 - 130 / 146) + (1 - 196 / 220)) / 2, 1e-12);
+  assert.equal(inst.build.stage, 'done');
+  assert.ok(inst.chambers[0].holes.every(h => h.sizeMm > 0));
+  assert.equal(inst.chambers[1].holes[0].sizeMm, null); // no readings for chamber 2
+  // The default 6 mm test hole counts when no size was typed in.
+  const oc2 = createScaleOcarina({ scaleId: 'D-Kurd' });
+  oc2.build.perChamber[0] = { readings: { leather: { f0: 130, f1: 150 } } };
+  assert.ok(finishBuild(oc2).inst.chambers[0].holes.every(h => h.sizeMm > 0));
+  const body = updateClayBody({ id: 'b', shrinkPct: 11, builds: 1 }, 0.13);
+  assert.deepEqual(body, { id: 'b', shrinkPct: 12, builds: 2 });
+});
+
+test('custom ocarina: default holes and calibration', () => {
+  assert.deepEqual(defaultCustomHoles(4).map(h => h.finger), ['R4', 'R3', 'R2', 'R1']);
+  const twelve = defaultCustomHoles(12);
+  assert.equal(twelve.length, 12);
+  assert.deepEqual(twelve.slice(8, 10).map(h => [h.finger, h.side]), [['LT', 'bottom'], ['RT', 'bottom']]);
+  assert.ok(twelve.slice(10).every(h => h.sub));
+
+  // A 4-hole ocarina whose holes give a C major pentachord, cumulatively.
+  const holes = defaultCustomHoles(4);
+  const f0 = midiToHz(60);
+  const totals = [62, 64, 65, 67].map(x => (midiToHz(x) / f0) ** 2 - 1);
+  const ratios = totals.map((t, i) => t - (i ? totals[i - 1] : 0));
+  const singles = ratios.map((_, i) => predictFingeringHz(f0, ratios, ratios.map((__, j) => (j === i ? 'o' : 'c'))));
+  assert.equal(calibrateChamber(holes, f0, singles.slice(0, 3)), null);
+  const ch = calibrateChamber(holes, f0, singles);
+  assert.deepEqual(ch.fingerings[64], ['o', 'o', 'c', 'c']);
+  assert.deepEqual(ch.fingerings[67], ['o', 'o', 'o', 'o']);
+  assert.ok(ch.notes.includes(61) && ch.notes.includes(63)); // chromatic notes found too
+  assert.equal(Math.max(...ch.holes.map(h => h.rel)), 1);
+});
