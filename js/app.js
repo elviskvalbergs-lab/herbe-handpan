@@ -29,6 +29,7 @@ import {
 } from './ocarina-ui.js';
 import { playablePairs, centsBetween, midiToHz, hzToMidi } from './ocarina.js';
 import { startTuner } from './tuner.js';
+import { rankScalesByNotes, addHeardNote } from './scalefinder.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -108,6 +109,7 @@ const state = {
   pickerMode: 'playlist',  // the ♡ sheet adds to a 'playlist' or a 'progression'
   pickerNewProgression: false, // the ♡ sheet's "New progression" field is open
   chordSheet: null,        // the "Paste a chord sheet" sheet: { step: 'paste' | 'fit', text, target, semis, name, progId, error }
+  listen: null,            // Listen (find a scale by ear): { where: 'selector' | 'wizard', listening, notes: [midi], lastSince, startedTuner, error, stopped }
 };
 
 // ── Render ───────────────────────────────────────────────────────────────────
@@ -143,6 +145,17 @@ function render() {
   // A record field stays armed only while it is on screen.
   if (state.rec.armed && !app.querySelector('.rec-field.is-armed')) disarmRecord();
   // So does a wizard key detection.
+  // Listen stops when its screen goes; the wizard's notes go with it, and
+  // Try a scale's when the user is back on Home.
+  if (state.listen && listenScreen() !== state.listen.where) {
+    const L = state.listen;
+    if (state.view === 'home' || L.where === 'wizard' || state.view === 'wizard') state.listen = null;
+    if (L.listening) {
+      clearTimeout(_listenTimer);
+      L.listening = false;
+      if (L.startedTuner && state.tuner.on && !state.tuner.error) { L.startedTuner = false; toggleTuner(); return; }
+    }
+  }
   const det = _chartDetecting;
   if (det?.t.detect?.listening && (wizardChartTarget(det.fam) !== det.t || !chartDetectOnScreen(det.fam))) {
     stopFluteDetect(null, det.fam);
@@ -643,13 +656,140 @@ function viewSelector() {
     ${uiAppBar({ title: 'Try a scale', back: { action: 'back-home', label: 'My instruments' }, actions: [tunerAppBtn()] })}
     <p class="screen-intro">Try any handpan scale without saving it. Save it from the Pan tab to add it to My instruments.</p>
     ${scaleToolsHtml({ inputId: 'scale-search-input', value: state.scaleSearch, placeholder: 'Search scales by name or family…', count: state.noteCountFilter, action: 'filter-notes' })}
-    ${filtered.length === 0
+    ${listenPanelHtml('selector')}
+    ${listenHasNotes('selector') ? listenMatchesHtml(filtered, 'select-scale')
+      : filtered.length === 0
       ? uiEmpty({ icon: 'search', title: 'No scales match your search', body: 'Try another name, or All.' })
       : scaleGroupsHtml(filtered, s => uiRow({
         title: s.name, chevron: true, action: 'select-scale', data: { id: s.id }, cls: 'scale-row',
         meta: `${1 + s.top.notes.length} notes · ${escHtml(displayNote(s.top.ding, uf, us))} ding`,
         meta2: escHtml(s.desc),
       }))}`;
+}
+
+// ── Listen: find a handpan scale by ear ──────────────────────────────────────
+// On Try a scale and the wizard's handpan step. The player strikes the ding,
+// then the other notes; each new steady note from the tuner is collected
+// (scalefinder.js) and the scales are ranked live. Listening stops on Stop,
+// on picking a scale, on leaving the screen, or after 60 s without a new
+// note; the tuner goes back to how it was.
+const LISTEN_IDLE_MS = 60000;
+let _listenTimer = null;
+
+// Which Listen screen is showing: 'selector', 'wizard' or null.
+function listenScreen() {
+  if (state.view === 'selector') return 'selector';
+  if (state.view === 'wizard' && state.wizard?.step === 'handpan') return 'wizard';
+  return null;
+}
+
+function listenHasNotes(where) {
+  return state.listen?.where === where && state.listen.notes.length > 0;
+}
+
+function startListen() {
+  const where = listenScreen();
+  if (!where) return;
+  const notes = state.listen?.where === where ? state.listen.notes : [];
+  state.listen = { where, listening: true, notes, lastSince: null, startedTuner: !state.tuner.on || !!state.tuner.error, error: null, stopped: '' };
+  armListenIdle();
+  if (state.listen.startedTuner) {
+    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    toggleTuner().then(() => {
+      if (state.tuner.error && state.listen?.listening) stopListen({ error: state.tuner.error });
+    });
+    return;
+  }
+  render();
+}
+
+function armListenIdle() {
+  clearTimeout(_listenTimer);
+  _listenTimer = setTimeout(() => {
+    if (state.listen?.listening) stopListen({ stopped: 'Stopped: no new note for a minute.' });
+  }, LISTEN_IDLE_MS);
+}
+
+// Stops listening (the notes stay) and turns the tuner off if Listen
+// turned it on.
+function stopListen(extra = {}) {
+  clearTimeout(_listenTimer);
+  const L = state.listen;
+  if (!L?.listening) return;
+  const startedTuner = L.startedTuner;
+  Object.assign(L, { listening: false, startedTuner: false }, extra);
+  if (startedTuner && state.tuner.on && !state.tuner.error) { toggleTuner(); return; }
+  render();
+}
+
+// A tuner reading while listening: a steady note that began after the last
+// one collected and isn't one already collected (a ringing note heard again)
+// is added.
+function onListenReading(reading) {
+  const L = state.listen;
+  if (!reading.stable || !(reading.hz > 0) || reading.since === L.lastSince) return false;
+  L.lastSince = reading.since;
+  const next = addHeardNote(L.notes, reading.midi);
+  if (!next) return false;
+  L.notes = next;
+  armListenIdle();
+  render();
+  return true;
+}
+
+// The Listen button, or while Listen is in use: status, Stop / Listen again,
+// the notes heard as removable chips, Clear and the tip.
+function listenPanelHtml(where) {
+  const L = state.listen?.where === where ? state.listen : null;
+  if (!L) {
+    return `
+      <div class="listen is-idle">
+        <button type="button" class="btn btn-secondary" data-action="listen-start">${icon('mic')} Listen</button>
+        <p class="listen-hint">Play your handpan to find its scale: strike the ding first.</p>
+      </div>`;
+  }
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const status = L.error ? `<span class="is-danger">${escHtml(L.error)}</span>`
+    : L.listening ? (L.notes.length ? 'Listening… keep playing, one note at a time' : 'Listening… strike the ding')
+    : L.stopped ? escHtml(L.stopped) : 'Stopped listening.';
+  const chips = L.notes.map((m, i) => `
+    <button type="button" class="chip listen-chip" data-action="listen-remove" data-midi="${m}" aria-label="Remove ${escHtml(nn(m))}" title="Remove ${escHtml(nn(m))}">
+      ${escHtml(nn(m))}${i === 0 ? '<span class="listen-ding">ding</span>' : ''}${icon('x')}</button>`).join('');
+  return `
+    <section class="listen card${L.listening ? ' is-listening' : ''}" aria-label="Listen">
+      <div class="listen-head">
+        <p class="listen-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${status}</p>
+        <div class="listen-actions">
+          ${L.notes.length ? '<button type="button" class="btn btn-ghost" data-action="listen-clear">Clear</button>' : ''}
+          ${L.listening
+            ? `<button type="button" class="btn btn-secondary" data-action="listen-stop">${icon('square')} Stop</button>`
+            : `<button type="button" class="btn btn-secondary" data-action="listen-start">${icon('mic')} ${L.notes.length ? 'Listen again' : 'Listen'}</button>`}
+        </div>
+      </div>
+      ${chips ? `<div class="chips listen-notes" aria-label="Notes heard">${chips}</div>` : ''}
+      <p class="listen-hint">Most reliable: damp each note with your palm before playing the next one.</p>
+    </section>`;
+}
+
+// Scales ranked by the notes heard, among those the search and note-count
+// chips leave. One note heard: every scale with that ding, then those with
+// the ding an octave away. More: the best few, with why.
+function listenMatchesHtml(scales, action) {
+  const L = state.listen;
+  const uf = state.useFlats, us = state.useSolfege;
+  const name = m => displayNote(midiToNoteName(m), uf, us);
+  const ranked = rankScalesByNotes(L.notes, scales, { name });
+  const shown = L.notes.length === 1 ? ranked.filter(r => r.ding !== 'none') : ranked.slice(0, 6);
+  const rows = shown.map(r => uiRow({
+    title: r.scale.name, chevron: true, action, data: { id: r.scale.id }, cls: 'scale-row listen-match',
+    meta: escHtml(`${r.total} notes · ${displayNote(r.scale.top.ding, uf, us)} ding`),
+    meta2: escHtml(r.reasons.join(' · ')),
+  })).join('');
+  const title = L.notes.length === 1 ? `Scales with a ${name(L.notes[0])} ding` : 'Best matches';
+  return shown.length
+    ? `<h2 class="list-title">${escHtml(title)}</h2><div class="list listen-list">${rows}</div>`
+    : uiEmpty({ icon: 'search', title: `No scale here has a ${name(L.notes[0])} ding`, body: 'Keep playing, or Clear and strike the ding first.' });
 }
 
 // ── My instruments ───────────────────────────────────────────────────────────
@@ -879,7 +1019,9 @@ function viewWizard() {
       title: 'Which handpan do you have?',
       body: `
         ${scaleToolsHtml({ inputId: 'wizard-search-input', value: w.search, placeholder: 'Search scales…', count: w.noteFilter, action: 'wizard-filter-notes' })}
-        ${list.length === 0 ? uiEmpty({ icon: 'search', title: 'No scales match your search' })
+        ${listenPanelHtml('wizard')}
+        ${listenHasNotes('wizard') ? listenMatchesHtml(list, 'wizard-pick-handpan')
+          : list.length === 0 ? uiEmpty({ icon: 'search', title: 'No scales match your search' })
           : scaleGroupsHtml(list, sc => uiRow({
             title: sc.name, chevron: true, action: 'wizard-pick-handpan', data: { id: sc.id },
             meta: `${1 + sc.top.notes.length + sc.bottom.notes.length} notes · ${escHtml(displayNote(sc.top.ding, uf, us))} ding`,
@@ -2593,6 +2735,7 @@ function onTunerReading(reading) {
     onFluteDetectReading(reading.hz, 'oc');
     return;
   }
+  if (state.listen?.listening && onListenReading(reading)) return;
   const rec = state.rec;
   if (rec.armed && reading.stable && reading.hz > 0 && (!rec.auto || reading.since > rec.armedAt)) {
     captureReading(reading.hz);
@@ -4989,6 +5132,22 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-fl-detect') { startFluteDetect(); return; }
+  if (action === 'listen-start') { startListen(); return; }
+  if (action === 'listen-stop') { stopListen(); return; }
+  if (action === 'listen-clear') {
+    if (!state.listen) return;
+    if (state.listen.listening) { state.listen.notes = []; state.listen.lastSince = null; } else state.listen = null;
+    render();
+    return;
+  }
+  if (action === 'listen-remove') {
+    if (!state.listen) return;
+    const m = parseInt(el.dataset.midi, 10);
+    state.listen.notes = state.listen.notes.filter(n => n !== m);
+    if (!state.listen.notes.length && !state.listen.listening) state.listen = null;
+    render();
+    return;
+  }
   if (action === 'wizard-oc-detect') {
     if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
     else startFluteDetect('oc');
