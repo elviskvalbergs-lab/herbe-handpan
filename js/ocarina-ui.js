@@ -249,20 +249,61 @@ const FG_PENDANT = {
   },
 };
 const FG_THUMB_X = { LT: 100, RT: 200 };
-// Flutes: a tube seen from above, mouthpiece on the left, holes evenly
-// along it in the order the chart lists them (mouthpiece first), with a
-// gap between the two hands.
+// Flutes, seen from above with the mouth end on the left, the holes in the
+// order the chart lists them (mouth end first) and a gap between the hands.
+//
+// Native American flute, after the High Spirits Flutes booklet's drawings
+// ("Functional Parts of the Flute", p.11, and the flute on p.24): mouth end,
+// the long plain slow air chamber, the fetish (the carved block) tied on
+// with leather over the sound hole, then the finger holes in the lower half
+// towards the open foot end. Tin whistle: a tapered mouthpiece with its
+// sound window, then a plain tube with six holes.
 const FG_TUBE = { bodyH: 70, pos: {} };
+const FG_TUBE_CY = 40;   // tube centre line within the chamber block
+const FG_TUBE_R = 14;    // tube half-height
 
-function fgTubePositions(holes, y0) {
+function fgFluteStyle(inst) {
+  return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'naf';
+}
+
+function fgTubePositions(holes, y0, style = 'naf') {
   const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
+  const [from, to] = style === 'whistle' ? [118, 272] : [150, 282];
   const xs = {};
+  const gap = 12;
+  const n = top.length;
+  const step = n > 1 ? (to - from - (top.some(x => x.h.finger.startsWith('R')) ? gap : 0)) / (n - 1) : 0;
   top.forEach((x, k) => {
-    const t = top.length === 1 ? 0.5 : k / (top.length - 1);
-    const handGap = x.h.finger.startsWith('R') ? 14 : 0;
-    xs[x.i] = [96 + t * 150 + handGap, y0 + 40];
+    const handGap = x.h.finger.startsWith('R') && top.some(t => t.h.finger.startsWith('L')) ? gap : 0;
+    xs[x.i] = [n === 1 ? (from + to) / 2 : from + k * step + handGap, y0 + FG_TUBE_CY];
   });
   return xs;
+}
+
+function fgFluteBody(style, y0, blown) {
+  const cy = y0 + FG_TUBE_CY, r = FG_TUBE_R;
+  const g = [];
+  if (style === 'whistle') {
+    // Body tube, then the mouthpiece over its end: tapered to the lip,
+    // with the sound window (the opening with the cut edge) on top.
+    g.push(`<rect class="fg-body" x="86" y="${cy - r}" width="${FG_W - 92}" height="${r * 2}" rx="3"/>`);
+    g.push(`<path class="fg-head" d="M 8 ${cy - 6} Q 6 ${cy}, 8 ${cy + 6} L 64 ${cy + r + 1} L 94 ${cy + r + 1} L 94 ${cy - r - 1} L 64 ${cy - r - 1} Z"/>`);
+    g.push(`<rect class="fg-bore" x="70" y="${cy - 5}" width="13" height="10" rx="1.5"/>`);
+    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 8 ${cy - 6} Q 6 ${cy}, 8 ${cy + 6}"/>`);
+  } else {
+    // Tube with a little grain, the mouth end, the open foot end.
+    g.push(`<rect class="fg-body" x="8" y="${cy - r}" width="${FG_W - 14}" height="${r * 2}" rx="${r}"/>`);
+    g.push(`<path class="fg-grain" d="M 26 ${cy - 5} L ${FG_W - 22} ${cy - 5} M 40 ${cy + 6} L ${FG_W - 30} ${cy + 6}"/>`);
+    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 14 ${cy - r + 2} Q 6 ${cy}, 14 ${cy + r - 2}"/>`);
+    g.push(`<ellipse class="fg-bore" cx="${FG_W - 8}" cy="${cy}" rx="3.5" ry="${r - 3}"/>`);
+    // Fetish: a carved block over the sound hole, tied on with leather.
+    g.push(`<path class="fg-tie-end" d="M 84 ${cy + r} q 4 10, -2 20 M 88 ${cy + r} q 6 9, 4 18 M 128 ${cy + r} q 4 11, 0 22 M 132 ${cy + r} q 7 8, 6 16"/>`);
+    g.push(`<path class="fg-block" d="M 88 ${cy - 10} L 114 ${cy - 10} C 120 ${cy - 21}, 134 ${cy - 21}, 136 ${cy - 11} C 137 ${cy - 5}, 130 ${cy - 4}, 124 ${cy - 4} L 124 ${cy + 10} L 88 ${cy + 10} Z"/>`);
+    g.push(`<rect class="fg-tie" x="82" y="${cy - r - 2}" width="8" height="${r * 2 + 4}" rx="2"/>`);
+    g.push(`<rect class="fg-tie" x="124" y="${cy - r - 2}" width="8" height="${r * 2 + 4}" rx="2"/>`);
+    g.push(`<rect class="fg-bore" x="138" y="${cy - 4}" width="7" height="8" rx="1"/>`);
+  }
+  return g.join('');
 }
 const FG_STRIP_H = 34;
 
@@ -451,10 +492,10 @@ function fgFlatParts(ctx, tube) {
     const { blown, f, states } = fgChamberState(ctx, ci);
     const rel = relativeSizes(ch, ctx.a4, { fromNotes: inst.kind === 'scale' });
     const g = [];
-    const tubeXY = tube ? fgTubePositions(ch.holes, y0) : null;
+    const style = tube ? fgFluteStyle(inst) : null;
+    const tubeXY = tube ? fgTubePositions(ch.holes, y0, style) : null;
     if (tube) {
-      g.push(`<rect class="fg-body" x="38" y="${y0 + 22}" width="${FG_W - 52}" height="36" rx="18"/>`);
-      g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
+      g.push(fgFluteBody(style, y0, blown));
     } else {
       g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
       g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
@@ -476,7 +517,9 @@ function fgFlatParts(ctx, tube) {
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
       if (split) y += (sameFinger.indexOf(h) - (sameFinger.length - 1) / 2) * (16 / Math.max(1, sameFinger.length - 1));
       if (h.sub) { x += 13; y += 15; }
-      const r = Math.max(4, (split ? 18 / sameFinger.length : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1));
+      const r0 = Math.max(4, (split ? 18 / sameFinger.length : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1));
+      // Flute holes sit inside the tube's width.
+      const r = tube ? Math.min(r0, FG_TUBE_R - 5) : r0;
       fgHoleParts(g, { x, y, r, state: states[i], hole: h, moves: ctx.moves, changedOk: !!f, size,
         showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: nth === 0 });
     });
