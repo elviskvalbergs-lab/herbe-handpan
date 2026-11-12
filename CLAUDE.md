@@ -17,7 +17,7 @@ Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starti
 - If anything in the brief conflicts with the code, stop and ask rather than guessing.
 
 ## Data and database
-- Database changes are additive only: new tables or columns, never altering or dropping existing ones. Write them as SQL files under `supabase/migrations/` for the user to run. Never ask for or use Supabase secret keys.
+- Database changes are additive only: new tables, columns, functions or policies, never altering or dropping existing ones. Write them as new SQL files under `supabase/migrations/` (`YYYYMMDD_short_name.sql`); the build applies them automatically (`supabase/migrate.py`, see `supabase/README.md`). Never edit a migration file after it has been merged: add a new one. Never ask for, print or commit the database connection string or any Supabase secret key; it lives only in Vercel's environment variables.
 - Fingering charts and instrument ranges must come from a published source (maker or manufacturer chart), with the source URL noted in the data file. Never fill them in from memory. If no reliable source is found, leave a clearly marked TODO with the data structure in place.
 
 ## Build
