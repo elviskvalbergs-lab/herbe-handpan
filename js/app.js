@@ -634,7 +634,7 @@ function viewSelector() {
   const filtered = filterScales(state.scaleSearch, state.noteCountFilter);
   const uf = state.useFlats, us = state.useSolfege;
   return `
-    ${backAppBar('Try a scale', { actions: [tunerAppBtn()] })}
+    ${uiAppBar({ title: 'Try a scale', back: { action: 'back-home', label: 'My instruments' }, actions: [tunerAppBtn()] })}
     <p class="screen-intro">Try any handpan scale without saving it. Save it from the Pan tab to add it to My instruments.</p>
     ${scaleToolsHtml({ inputId: 'scale-search-input', value: state.scaleSearch, placeholder: 'Search scales by name or family…', count: state.noteCountFilter, action: 'filter-notes' })}
     ${filtered.length === 0
