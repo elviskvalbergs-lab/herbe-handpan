@@ -1,6 +1,6 @@
 -- Ocarina mode, phase 7: instruments sync and public sharing.
 -- Additive only: a new table and a new function. Nothing existing changes.
--- Applied automatically by the build (supabase/migrate.py) when HP_DATABASE_URL is set.
+-- Applied automatically by the build (supabase/migrate.py) when DATABASE_URL is set.
 
 create table if not exists public.instruments (
   owner_id   uuid        not null default auth.uid() references auth.users (id) on delete cascade,
