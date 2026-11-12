@@ -764,6 +764,9 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fingering .fg-blow-label { fill: var(--accent-text); font-size: 12px; font-weight: 600; dominant-baseline: central; }
 .fingering .fg-strip { fill: var(--surface-0); stroke: var(--border-strong); stroke-dasharray: 4 3; }
 .fingering .fg-row-label { fill: var(--text-3); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; stroke-linecap: round; }
+.fingering .fg-windway { fill: none; stroke: var(--border-strong); stroke-width: 7; stroke-linecap: round; }
+.fingering .fg-windway.fg-blow { stroke: var(--accent); }
 .fingering .fg-strip-label { fill: var(--text-3); font-size: 12px; text-anchor: middle; dominant-baseline: central; letter-spacing: 0.08em; }
 .fingering .fg-c { fill: var(--hole-covered); stroke: var(--hole-covered); stroke-width: 2; }
 .fingering .fg-o { fill: var(--hole-open); stroke: var(--hole-covered); stroke-width: 2; }
@@ -3905,66 +3908,77 @@ function nextVoicing(inst, midis, midi) {
 }
 
 // ── Geometry ─────────────────────────────────────────────────────────────────
-// Diagram coordinates (viewBox units). A transverse ocarina is drawn the way
-// printed charts show it: seen from above, lying on a diagonal with the head
-// (mouthpiece) at the top left and the tail at the bottom right. The holes
-// run in one line from head to tail: the left hand covers the head end, the
-// right hand the tail end. Thumb holes are underneath, so they are drawn as
-// dots outside the body: the left thumb's beside the head, the right
-// thumb's below the belly.
+// Diagram coordinates (viewBox units, 300 wide).
 //
-// Positions are in the body's own frame (x along the body from the head,
-// y across it), then turned by FG_TILT degrees onto the page.
+// Transverse ocarinas are traced from a published fingering chart (an alto C
+// 12-hole chart the owner supplied): the body outline, the two thin lines
+// on it, the windway (the beak at the lower left), and every hole's centre
+// and size. The left hand's four holes run along the upper edge from the
+// head; the right hand's four form the lower row towards the tail, where
+// the right pinky covers a pair of small holes. Sub-holes are small holes
+// beside a finger's main hole; thumb holes are drawn as dots outside the
+// body (left thumb left of the head, right thumb below the belly), as
+// printed charts do. Coordinates below are in the traced image's pixels;
+// fgVesselPage() maps them onto the diagram.
+//
+// Multi-chamber ocarinas are traced from the owner's drawing of one: a
+// single body, chamber 1 laid out like the transverse one, and each further
+// chamber a row of holes below it, in the columns of the right-hand fingers
+// that cover them.
 
 const FG_W = 300;
-const FG_TILT = 15;
-const FG_TRANSVERSE = {
-  bodyH: 186,
-  pos: {
-    L1: [48, -6], L2: [75, -6], L3: [101, -4], L4: [126, 6],
-    R1: [152, 2], R2: [178, 2], R3: [204, 3], R4: [229, 2],
-  },
-  thumbs: { LT: [-22, 72], RT: [96, 80] },
+
+const FG_OC_SINGLE = {
+  s: 1.4, ox: 6, oy: 1,
+  outline: [[33, 12], [48, 16], [69, 20], [85, 27], [97, 35], [109, 44], [123, 55], [150, 79], [166, 93],
+    [182, 106], [204, 124], [212, 130], [214, 137], [207, 142], [200, 143], [179, 140], [167, 136], [147, 126],
+    [132, 119], [116, 113], [89, 102], [75, 103], [40, 120], [35, 114], [28, 99], [38, 94], [49, 85], [51, 72],
+    [46, 62], [38, 50], [29, 38], [24, 25], [26, 18]],
+  lines: [[[34, 41], [50, 37], [62, 30], [72, 27]], [[50, 100], [64, 86], [79, 77], [96, 74], [110, 76]],
+    [[186, 137], [192, 136], [198, 133]]],
+  windway: [[40, 120], [28, 99]],
+  holes: { L1: [67.8, 36.2, 7.5], L2: [84.1, 50.5, 9.2], L3: [104.2, 60.8, 8.5], L4: [125.3, 67.1, 8.5],
+    R1: [108.8, 89.6, 8.6], R2: [134.3, 96.4, 6.2], R3: [157.4, 104.7, 8.1], R4: [177.2, 118.6, 5.2] },
+  pair: { R4: [174.3, 130.7, 5.5] },          // where a finger's second hole goes
+  sub: { R2: [139.3, 82.8, 4.6], L2: [90, 68, 4.6] },
+  thumbs: { LT: [22.2, 71.3, 9.2], RT: [90, 128.3, 9.3] },
+  maxSlot: 9.2,                                // largest traced hole radius
+  top: 12, bottom: 143,
 };
 
-// Body outlines in the body's frame. Sweet potato for soprano to tenor;
-// bass chambers (closed note below C3) get the fatter, aubergine-like head.
-const FG_SWEET_POTATO = 'M -8 2 C -8 -52, 40 -64, 86 -52 C 142 -38, 214 -30, 258 -16 C 282 -8, 282 18, 258 24 C 208 38, 138 54, 86 60 C 34 66, -8 54, -8 2 Z';
-const FG_AUBERGINE = 'M -16 2 C -16 -76, 60 -80, 104 -54 C 140 -34, 212 -30, 258 -16 C 282 -8, 282 18, 258 24 C 214 34, 148 40, 112 62 C 64 90, -16 80, -16 2 Z';
+const FG_OC_MULTI = {
+  s: 0.625, ox: 12, oy: -22,
+  outline: [[46, 14], [134, 0], [178, 4], [228, 21], [464, 139], [472, 150], [470, 183], [465, 205], [461, 225],
+    [451, 249], [442, 265], [430, 277], [403, 293], [382, 298], [294, 304], [241, 311], [203, 320], [132, 343],
+    [79, 288], [56, 256], [33, 224], [24, 206], [45, 189], [76, 165], [88, 153], [97, 137], [94, 122],
+    [82, 103], [30, 46], [28, 37], [32, 25], [39, 16]],
+  lines: [],
+  beak: [[36, 232], [124, 336]],               // the windways' end, one mark per chamber
+  holes: { L1: [138.9, 41.6, 16.1], L2: [182.8, 68.1, 20.3], L3: [236.1, 76.5, 17.4], L4: [288.6, 76.5, 18.1],
+    R1: [240.6, 129.1, 15.7], R2: [291.3, 118.2, 10.7], R3: [336.3, 124.8, 13.4], R4: [379.5, 133.6, 9.6] },
+  sub: { R2: [312, 96, 7], L2: [205, 104, 7] },
+  thumbs: { LT: [45.2, 106.7, 18.5], RT: [330, 330, 16] },
+  // Further chambers: one row each, holes in these finger columns.
+  rows: [181, 230, 278],
+  col: { R1: [244.5, 14.6], R2: [289.5, 13.6], R3: [336, 10.6], R4: [379.5, 10.8],
+    L4: [198, 13], L3: [152, 13], L2: [110, 12], L1: [72, 12] },
+  maxSlot: 20.3,
+  lastRow: 278, bottom: 343,
+};
 
-function fgBodyPath(chamber) {
-  return (chamber.notes?.[0] ?? 60) < 48 ? FG_AUBERGINE : FG_SWEET_POTATO;
-}
-
-// Half the body's width at distance x from the head, so holes always fit.
-function fgHalfWidth(x) {
-  return x <= 80 ? 50 : Math.max(16, 50 - (x - 80) * (34 / 180));
-}
-
-// Multi-chamber transverse ocarinas are one body, drawn level (as printed
-// charts show them): chamber 1 is a normal transverse ocarina along the top,
-// and each further chamber is a row of holes below, in columns under the
-// fingers that cover them (mostly the right hand), with its own windway at
-// the head. Column x per finger, in the same frame as FG_TRANSVERSE.pos.
-const FG_MULTI_COL = { L4: 48, L3: 75, L2: 101, L1: 126, R1: 152, R2: 178, R3: 204, R4: 229 };
-const FG_MULTI_ROW = 32;   // distance between chamber rows
-const FG_MULTI_FIRST = 46; // chamber 1 line to chamber 2 row
-
-// The body's lower-left edge runs from the head's chin down to just left of
-// the leftmost hole in the lower rows (minX, page coordinates), so rows
-// that only use the right hand leave the cut-away shape of a real one.
-function fgMultiBody(y1, yn, minX) {
-  const left = Math.max(44, Math.min(168, minX - 22));
-  return `M 40 ${y1 - 2} C 40 ${y1 - 50}, 84 ${y1 - 62}, 126 ${y1 - 50} `
-    + `C 184 ${y1 - 36}, 252 ${y1 - 34}, 284 ${y1 - 16} C 300 ${y1 - 6}, 298 ${y1 + 12}, 294 ${y1 + 24} `
-    + `L 294 ${yn + 8} C 294 ${yn + 30}, 276 ${yn + 34}, 250 ${yn + 33} L ${left + 20} ${yn + 30} `
-    + `C ${left - 10} ${yn + 29}, ${left - 10} ${y1 + 48}, ${Math.min(78, left)} ${y1 + 34} C 52 ${y1 + 26}, 40 ${y1 + 16}, 40 ${y1 - 2} Z`;
-}
-
-// Body frame → page coordinates for a chamber whose block starts at y0.
-function fgToPage(lx, ly, y0) {
-  const t = FG_TILT * Math.PI / 180;
-  return [48 + lx * Math.cos(t) - ly * Math.sin(t), y0 + 70 + lx * Math.sin(t) + ly * Math.cos(t)];
+// Smooth closed (or open) path through points: Catmull-Rom as cubic Béziers.
+function fgSmoothPath(pts, closed = true) {
+  const n = pts.length;
+  const at = i => pts[closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i))];
+  const f = v => Math.round(v * 10) / 10;
+  let d = `M ${f(pts[0][0])} ${f(pts[0][1])}`;
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C ${f(c1[0])} ${f(c1[1])}, ${f(c2[0])} ${f(c2[1])}, ${f(p2[0])} ${f(p2[1])}`;
+  }
+  return closed ? d + ' Z' : d;
 }
 
 const FG_PENDANT = {
@@ -4033,7 +4047,7 @@ function renderFingering(inst, midi, opts = {}) {
     useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null,
   } = opts;
   const tube = inst.family === 'flute';
-  const geo = tube ? FG_TUBE : fgIsPendant(inst) ? FG_PENDANT : FG_TRANSVERSE;
+  const pendant = !tube && fgIsPendant(inst);
   const chambers = inst.chambers ?? [];
   const main = fingeringFor(inst, midi);
   const second = blowBoth != null ? fingeringFor(inst, blowBoth) : null;
@@ -4043,149 +4057,172 @@ function renderFingering(inst, midi, opts = {}) {
     : previousMidi != null && previousMidi !== midi ? fingeringMoves(inst, previousMidi, midi) : null;
   const label = displayNote(midiToNoteName(midi), useFlats, useSolfege);
   const aria = describeFingering(inst, midi, label);
-  const hasThumbs = chambers.some(c => c.holes.some(h => h.side === 'bottom'));
-  const pad = 22; // room for arrows and the mouthpiece
-  const transverse = geo === FG_TRANSVERSE;
-  const multi = transverse && chambers.length > 1;
-  const chamberH = geo.bodyH + (hasThumbs && !transverse ? FG_STRIP_H : 0) + 14;
   const labelH = size === 'mini' ? 26 : 30;
-  // Multi: chamber 1's line, then one row per further chamber, then thumbs.
-  const y1 = pad + 58;
-  const rowY = ci => y1 + FG_MULTI_FIRST + (ci - 1) * FG_MULTI_ROW;
-  const bodyBottom = multi ? rowY(chambers.length - 1) + 38 + (hasThumbs ? 22 : 0) : 0;
-  const H = multi ? bodyBottom + labelH : pad + chambers.length * chamberH + labelH;
+  const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4 };
 
+  const { parts, bodyBottom } = (tube || pendant) ? fgFlatParts(ctx, tube) : fgVesselParts(ctx);
+  const H = bodyBottom + labelH;
+  const noteY = bodyBottom + (size === 'mini' ? 14 : 16);
+  const overblow = main && main.chamber.overblow?.includes(midi);
+  parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
+
+  return `<svg class="fingering fingering-${size}" viewBox="0 0 ${FG_W} ${Math.round(H)}" role="img"
+    aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${parts.join('')}</svg>`;
+}
+
+// One hole with its state, change mark, arrow, finger label and size.
+function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled }) {
+  const hk = fgHoleName(hole);
+  const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk));
+  g.push(fgHoleShape(x, y, r, state, changed ? 'fg-changed' : ''));
+  if (changed && size !== 'mini' && labelled) g.push(fgArrow(x, y, r, moves.lift.includes(hk) ? 'up' : 'down'));
+  if (showFingers && size !== 'mini' && labelled) {
+    g.push(`<text class="fg-finger ${state === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${hole.sub ? '' : hole.finger}</text>`);
+  }
+  if (showSizes && size !== 'mini' && hole.sizeMm > 0) {
+    g.push(`<text class="fg-size" x="${x}" y="${y + r + 9}">${hole.sizeMm.toFixed(1)}</text>`);
+  }
+}
+
+// Which chamber is blown, and its hole states (all covered when not blown).
+function fgChamberState(ctx, ci) {
+  const { main, second } = ctx;
+  const f = main?.chamberIndex === ci ? main : second?.chamberIndex === ci ? second : null;
+  return { blown: !!f, f, states: f ? f.states : ctx.chambers[ci].holes.map(() => 'c') };
+}
+
+// Transverse ocarinas, one chamber or several, from the traced geometry.
+function fgVesselParts(ctx) {
+  const { chambers, size, inst } = ctx;
+  const multi = chambers.length > 1;
+  const G = multi ? FG_OC_MULTI : FG_OC_SINGLE;
+  // Multi: the traced drawing has 4 chambers. With fewer, the rows stay
+  // where they are and only the body below the last row used is pulled up,
+  // keeping the same depth of body under it as the drawing has.
+  const lastRow = multi ? G.rows[Math.min(chambers.length, 4) - 2] : 0;
+  const k = multi ? (G.bottom - G.lastRow) / (G.bottom - lastRow) : 1;
+  const fy = y => (multi && y > lastRow ? lastRow + (y - lastRow) * k : y);
+  const pageX = x => (x - G.ox) * G.s;
+  const pageY = y => (fy(y) - G.oy) * G.s;
+  const pt = ([x, y]) => [pageX(x), pageY(y)];
   const parts = [];
-  if (multi) {
-    const lowerXs = chambers.slice(1).flatMap(c => c.holes.filter(h => h.side !== 'bottom').map(h => 48 + (FG_MULTI_COL[h.finger] ?? 150)));
-    parts.push(`<path class="fg-body" d="${fgMultiBody(y1, rowY(chambers.length - 1), Math.min(...lowerXs, 200))}"/>`);
-    chambers.forEach((_, ci) => {
-      const blown = main?.chamberIndex === ci || second?.chamberIndex === ci;
-      // One windway per chamber at the head, top one for chamber 1.
-      parts.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="2" y="${y1 - 40 + ci * 14}" width="42" height="11" rx="4" transform="rotate(-12 44 ${y1 - 34 + ci * 14})"/>`);
-      if (size !== 'mini' && ci > 0) parts.push(`<text class="fg-row-label" x="282" y="${rowY(ci)}">${ci + 1}</text>`);
-    });
-    if (main || second) {
-      parts.push(`<text class="fg-blow-label" x="4" y="${y1 - 52}">${second ? 'blow both' : `blow ${(main ?? second).chamberIndex + 1}`}</text>`);
+
+  parts.push(`<path class="fg-body" d="${fgSmoothPath(G.outline.map(pt))}"/>`);
+  for (const line of G.lines) parts.push(`<path class="fg-line" d="${fgSmoothPath(line.map(pt), false)}"/>`);
+
+  // Windways: the beak's end, one mark per chamber, red where to blow.
+  const blownIdx = chambers.map((_, ci) => fgChamberState(ctx, ci).blown);
+  if (!multi) {
+    const [p, q] = G.windway.map(pt);
+    parts.push(`<path class="fg-windway ${blownIdx[0] ? 'fg-blow' : ''}" d="M ${p[0]} ${p[1]} L ${q[0]} ${q[1]}"/>`);
+  } else {
+    const [p, q] = G.beak.map(pt);
+    const n = chambers.length;
+    for (let i = 0; i < n; i++) {
+      const t0 = (i + 0.15) / n, t1 = (i + 0.85) / n;
+      const a = [p[0] + (q[0] - p[0]) * t0, p[1] + (q[1] - p[1]) * t0];
+      const b = [p[0] + (q[0] - p[0]) * t1, p[1] + (q[1] - p[1]) * t1];
+      parts.push(`<path class="fg-windway ${blownIdx[i] ? 'fg-blow' : ''}" d="M ${a[0]} ${a[1]} L ${b[0]} ${b[1]}"/>`);
     }
   }
+  const blowing = blownIdx.map((b, i) => (b ? i : -1)).filter(i => i >= 0);
+  if (blowing.length && multi && size !== 'mini') {
+    const text = blowing.length > 1 ? 'blow both' : `blow ${blowing[0] + 1}`;
+    const [bx, by] = pt(G.beak[1]);
+    parts.push(`<text class="fg-blow-label" x="${bx + 8}" y="${by + 4}">${text}</text>`);
+  }
+
   chambers.forEach((ch, ci) => {
-    const y0 = multi ? 0 : pad + ci * chamberH;
-    const blown = main?.chamberIndex === ci || second?.chamberIndex === ci;
-    const f = main?.chamberIndex === ci ? main : second?.chamberIndex === ci ? second : null;
-    const states = f ? f.states : ch.holes.map(() => 'c');
-    // Proportions from target notes only make sense for scale-built vessel
-    // ocarinas; charts (and flutes, where position sets pitch) draw equal holes.
-    const rel = relativeSizes(ch, a4, { fromNotes: inst.kind === 'scale' });
+    const { blown, f, states } = fgChamberState(ctx, ci);
+    const rel = relativeSizes(ch, ctx.a4, { fromNotes: inst.kind === 'scale' });
+    const sized = inst.kind === 'scale' || ch.holes.some(h => h.rel > 0 || h.sizeMm > 0);
     const g = [];
-    // Body
-    const tubeXY = tube ? fgTubePositions(ch.holes, y0) : null;
-    if (multi) {
-      // Body and windways are drawn once for all chambers, above.
-    } else if (tube) {
-      g.push(`<rect class="fg-body" x="38" y="${y0 + 22}" width="${FG_W - 52}" height="36" rx="18"/>`);
-    } else if (geo === FG_PENDANT) {
-      g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
-    } else {
-      g.push(`<g transform="translate(48 ${y0 + 70}) rotate(${FG_TILT})"><path class="fg-body" d="${fgBodyPath(ch)}"/>`
-        + `<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="-38" y="-46" width="42" height="22" rx="6" transform="rotate(-28 -17 -35)"/></g>`);
-    }
-    // Mouthpiece, marked when this chamber is blown
-    if (tube) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
-    else if (geo === FG_PENDANT) g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
-    // (Transverse mouthpiece is drawn with the body, at the head.)
-    if (blown && chambers.length > 1 && !multi) {
-      const lx = geo === FG_PENDANT ? FG_W / 2 + 22 : 64;
-      const ly = geo === FG_PENDANT ? y0 + 9 : y0 + 14;
-      g.push(`<text class="fg-blow-label" x="${lx}" y="${ly}">${second ? 'blow both' : 'blow'}</text>`);
-    }
-    // Underside strip for thumb holes (pendants; transverse draws them as dots)
-    if (hasThumbs && !transverse) {
-      const sy = y0 + geo.bodyH + 6;
-      g.push(`<rect class="fg-strip" x="60" y="${sy}" width="${FG_W - 120}" height="${FG_STRIP_H - 6}" rx="6"/>`);
-      if (size === 'large') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
-    }
-    // Holes
     const seen = {};
+    if (multi && ci > 0 && size !== 'mini') {
+      g.push(`<text class="fg-row-label" x="${pageX(424)}" y="${pageY(G.rows[Math.min(ci, 3) - 1])}">${ci + 1}</text>`);
+    }
     ch.holes.forEach((h, i) => {
-      // k numbers the holes under one finger; a sub-hole gets its own arrow.
-      const k = h.sub ? 0 : (seen[h.finger] = (seen[h.finger] ?? -1) + 1);
-      // Holes a finger shares because one was split (over 12 mm); a sub-hole
-      // is not a split, it sits on its own beside its main hole.
-      const sameFinger = ch.holes.filter(x => x.finger === h.finger && !x.sub);
-      const split = !h.sub && sameFinger.length > 1;
-      let x, y;
-      let maxR = Infinity;
-      if (multi) {
-        if (h.side === 'bottom') {
-          // Thumbs: left beside the head, right below the body.
-          [x, y] = h.finger === 'LT' ? [22, y1 + 14] : [132, bodyBottom - 10];
-        } else if (ci === 0) {
-          let [lx, ly] = geo.pos[h.finger] ?? [150, 0];
-          const n = sameFinger.length;
-          if (split) ly += (sameFinger.indexOf(h) - (n - 1) / 2) * (16 / Math.max(1, n - 1));
-          if (h.sub) { lx += 8; ly += 16; }
-          maxR = 12;
-          [x, y] = [48 + lx, y1 + ly];
-        } else {
-          let lx = FG_MULTI_COL[h.finger] ?? 150;
-          let ly = 0;
-          const n = sameFinger.length;
-          if (split) lx += (sameFinger.indexOf(h) - (n - 1) / 2) * 10;
-          if (h.sub) { lx += 8; ly += 10; }
-          maxR = 11;
-          [x, y] = [48 + lx, rowY(ci) + ly];
-        }
-      } else if (transverse) {
-        let [lx, ly] = h.side === 'bottom'
-          ? (FG_TRANSVERSE.thumbs[h.finger] ?? [100, 64])
-          : (geo.pos[h.finger] ?? [150, 0]);
-        const n = sameFinger.length;
-        if (split) ly += (sameFinger.indexOf(h) - (n - 1) / 2) * (16 / Math.max(1, n - 1));
-        if (h.sub) { lx += 8; ly += 16; }
-        if (h.side !== 'bottom') maxR = fgHalfWidth(lx) - Math.abs(ly) - 3;
-        [x, y] = fgToPage(lx, ly, y0);
-      } else if (h.side === 'bottom') {
-        x = FG_THUMB_X[h.finger] ?? FG_W / 2;
-        y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2;
-      } else if (tube) {
-        [x, y] = tubeXY[i];
+      const nth = h.sub ? 0 : (seen[h.finger] = (seen[h.finger] ?? -1) + 1);
+      const group = ch.holes.filter(x => x.finger === h.finger && !x.sub && x.side === h.side);
+      let x, y, slot;
+      if (h.side === 'bottom') {
+        [x, y, slot] = G.thumbs[h.finger] ?? G.thumbs.LT;
+      } else if (h.sub) {
+        [x, y, slot] = G.sub[h.finger] ?? (() => { const m = G.holes[h.finger] ?? G.holes.R1; return [m[0] + m[2] * 1.4, m[1] + m[2] * 1.2, m[2] * 0.5]; })();
+      } else if (multi && ci > 0) {
+        const c = G.col[h.finger] ?? G.col.R1;
+        [x, y, slot] = [c[0], G.rows[Math.min(ci, 3) - 1], c[1]];
       } else {
-        [x, y] = geo.pos[h.finger] ?? [FG_W / 2, y0 + geo.bodyH / 2];
-        y += y0;
+        [x, y, slot] = G.holes[h.finger] ?? G.holes.R1;
       }
-      if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
-      const count = sameFinger.length;
-      if (!transverse) {
-        if (split) y += (sameFinger.indexOf(h) - (count - 1) / 2) * (16 / Math.max(1, count - 1));
-        if (h.sub) { x += 13; y += 15; }
+      // A finger with several holes (a hole split because it was too big, or
+      // the pinky's pair on a chart): the traced pair spot if there is one,
+      // else a small cluster around the finger's place.
+      if (!h.sub && group.length > 1 && nth > 0) {
+        const pair = !multi && ci === 0 ? G.pair?.[h.finger] : null;
+        if (pair && nth === 1) [x, y, slot] = pair;
+        else { x += nth * slot * 1.3; y += nth * slot * 0.6; }
       }
-      // Transverse holes sit about 26 units apart, so 11 keeps a gap between them.
-      const base = transverse ? 11 : 13;
-      const r = Math.max(4, Math.min(maxR, (split ? 18 / count : base) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1)));
-      const hk = fgHoleName(h);
-      const changed = moves && (moves.lift.includes(hk) || moves.cover.includes(hk)) && f;
-      const cls = `${changed ? 'fg-changed' : ''}`;
-      g.push(fgHoleShape(x, y, r, states[i], cls));
-      if (changed && size !== 'mini' && k === 0) {
-        g.push(fgArrow(x, y, r, moves.lift.includes(hk) ? 'up' : 'down'));
-      }
-      if (showFingers && size !== 'mini' && k === 0) {
-        g.push(`<text class="fg-finger ${states[i] === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${h.finger}</text>`);
-      }
-      if (showSizes && size !== 'mini' && h.sizeMm > 0) {
-        g.push(`<text class="fg-size" x="${x}" y="${y + r + 9}">${h.sizeMm.toFixed(1)}</text>`);
-      }
+      let r = slot;
+      if (sized) r = Math.max(2.5, Math.min(slot * 1.35, G.maxSlot * (rel[i] ?? 1) / Math.sqrt(group.length || 1)));
+      fgHoleParts(g, {
+        x: pageX(x), y: pageY(y), r: r * G.s, state: states[i], hole: h,
+        moves: ctx.moves, changedOk: !!f, size, showFingers: ctx.showFingers, showSizes: ctx.showSizes,
+        labelled: nth === 0,
+      });
     });
     parts.push(`<g class="fg-chamber ${blown ? '' : 'fg-dim'}">${g.join('')}</g>`);
   });
 
-  const noteY = (multi ? bodyBottom : pad + chambers.length * chamberH) + (size === 'mini' ? 14 : 16);
-  const overblow = main && main.chamber.overblow?.includes(midi);
-  parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
+  const bottom = pageY(G.bottom);
+  return { parts, bodyBottom: bottom + 6 };
+}
 
-  return `<svg class="fingering fingering-${size}" viewBox="0 0 ${FG_W} ${H}" role="img"
-    aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${parts.join('')}</svg>`;
+// Pendants and flutes (tube): the simpler flat layouts.
+function fgFlatParts(ctx, tube) {
+  const { chambers, size, inst } = ctx;
+  const geo = tube ? FG_TUBE : FG_PENDANT;
+  const hasThumbs = chambers.some(c => c.holes.some(h => h.side === 'bottom'));
+  const pad = 22;
+  const chamberH = geo.bodyH + (hasThumbs ? FG_STRIP_H : 0) + 14;
+  const parts = [];
+  chambers.forEach((ch, ci) => {
+    const y0 = pad + ci * chamberH;
+    const { blown, f, states } = fgChamberState(ctx, ci);
+    const rel = relativeSizes(ch, ctx.a4, { fromNotes: inst.kind === 'scale' });
+    const g = [];
+    const tubeXY = tube ? fgTubePositions(ch.holes, y0) : null;
+    if (tube) {
+      g.push(`<rect class="fg-body" x="38" y="${y0 + 22}" width="${FG_W - 52}" height="36" rx="18"/>`);
+      g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="8" y="${y0 + 27}" width="34" height="26" rx="6"/>`);
+    } else {
+      g.push(`<ellipse class="fg-body" cx="${FG_W / 2}" cy="${y0 + geo.bodyH / 2}" rx="${FG_W / 2 - 60}" ry="${geo.bodyH / 2}"/>`);
+      g.push(`<rect class="fg-mouth ${blown ? 'fg-blow' : ''}" x="${FG_W / 2 - 13}" y="${y0 - 4}" width="26" height="18" rx="4"/>`);
+    }
+    if (hasThumbs) {
+      const sy = y0 + geo.bodyH + 6;
+      g.push(`<rect class="fg-strip" x="60" y="${sy}" width="${FG_W - 120}" height="${FG_STRIP_H - 6}" rx="6"/>`);
+      if (size === 'large') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
+    }
+    const seen = {};
+    ch.holes.forEach((h, i) => {
+      const nth = h.sub ? 0 : (seen[h.finger] = (seen[h.finger] ?? -1) + 1);
+      const sameFinger = ch.holes.filter(x => x.finger === h.finger && !x.sub);
+      const split = !h.sub && sameFinger.length > 1;
+      let x, y;
+      if (h.side === 'bottom') { x = FG_THUMB_X[h.finger] ?? FG_W / 2; y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2; }
+      else if (tube) [x, y] = tubeXY[i];
+      else { [x, y] = geo.pos[h.finger] ?? [FG_W / 2, geo.bodyH / 2]; y += y0; }
+      if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
+      if (split) y += (sameFinger.indexOf(h) - (sameFinger.length - 1) / 2) * (16 / Math.max(1, sameFinger.length - 1));
+      if (h.sub) { x += 13; y += 15; }
+      const r = Math.max(4, (split ? 18 / sameFinger.length : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1));
+      fgHoleParts(g, { x, y, r, state: states[i], hole: h, moves: ctx.moves, changedOk: !!f, size,
+        showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: nth === 0 });
+    });
+    parts.push(`<g class="fg-chamber ${blown ? '' : 'fg-dim'}">${g.join('')}</g>`);
+  });
+  return { parts, bodyBottom: pad + chambers.length * chamberH };
 }
 
 // Two hands as the player holds the instrument, each finger named.
