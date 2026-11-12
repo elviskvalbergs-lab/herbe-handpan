@@ -275,7 +275,8 @@ function fgFluteStyle(inst) {
 
 function fgTubePositions(holes, y0, style = 'naf') {
   const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
-  const [from, to] = style === 'whistle' ? [118, 272] : [176, 280];
+  // NAF: the holes end well before the foot, as on a real flute.
+  const [from, to] = style === 'whistle' ? [118, 272] : [172, 262];
   const xs = {};
   const gap = 12;
   const n = top.length;
@@ -379,7 +380,7 @@ export function renderFingering(inst, midi, opts = {}) {
   const overblow = main && main.chamber.overblow?.includes(midi);
   parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
 
-  return `<svg class="fingering fingering-${size}" viewBox="0 0 ${FG_W} ${Math.round(H)}" role="img"
+  return `<svg class="fingering fingering-${size}${tube ? ' is-flute' : ''}" viewBox="0 0 ${FG_W} ${Math.round(H)}" role="img"
     aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${parts.join('')}</svg>`;
 }
 

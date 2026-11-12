@@ -831,8 +831,9 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fingering .fg-mouth-lip.fg-blow { stroke: var(--accent); }
 .fingering .fg-wood { fill: var(--wood, #a8693a); stroke: var(--wood-edge, #6b3f1f); stroke-width: 2; }
 .fingering .fg-wood-grain { fill: none; stroke: var(--wood-edge, #6b3f1f); stroke-width: 1; opacity: 0.35; stroke-linecap: round; }
-.fingering .fg-on-wood.fg-o, .fingering .fg-on-wood .fg-o { fill: #2a170b; stroke: #2a170b; }
-.fingering .fg-on-wood.fg-c, .fingering .fg-on-wood .fg-c { fill: #f1dfc6; stroke: #6b3f1f; stroke-width: 1.5; }
+/* Same reading as the key and the ocarinas: covered dark, open light. */
+.fingering .fg-on-wood.fg-o, .fingering .fg-on-wood .fg-o { fill: #f6ead8; stroke: #2a170b; stroke-width: 1.5; }
+.fingering .fg-on-wood.fg-c, .fingering .fg-on-wood .fg-c { fill: #1e1208; stroke: #f1dfc6; stroke-width: 1.5; }
 .fingering .fg-on-wood.fg-changed { stroke: var(--accent); stroke-width: 3; }
 .fingering .fg-finger-below { fill: var(--text-2); font-size: 10px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
 .fingering .fg-metal { fill: #c3c9cc; stroke: #7d8589; stroke-width: 2; }
@@ -1586,3 +1587,9 @@ html { touch-action: manipulation; }
 .oc-step.is-playing .oc-step-fg { border-color: var(--accent); }
 .oc-step.is-playing .oc-step-note { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .oc-step { transition: none; } }
+/* A flute is long and thin: its chord steps put the picture full width, the words under it */
+.oc-step:has(.fingering.is-flute) { flex-direction: column; align-items: stretch; gap: var(--space-1); }
+.oc-step:has(.fingering.is-flute) .oc-step-fg { flex: none; max-width: none; }
+.oc-step:has(.fingering.is-flute) .oc-step-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2); padding: 0 var(--space-1); }
+.oc-step:has(.fingering.is-flute) .oc-step-num { order: 3; }
+.oc-step:has(.fingering.is-flute) .oc-step-move { flex-basis: 100%; margin-top: 0; }
