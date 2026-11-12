@@ -553,6 +553,18 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   .pan-note.playing { animation: none; }
 }
 
+/* Progression play levels: the next chord drawn faintly, and strike-order
+   badges (number + hand). The pan stays dark in both themes, so these are
+   fixed colours like the rest of the drawing. */
+.pan-note.faint circle { stroke: #7fd6d4; stroke-width: 1.5; stroke-dasharray: 2 4; }
+.pan-note.faint text { fill: #9fc9bb !important; }
+.pan-strike { pointer-events: none; }
+.pan-strike rect { stroke: #060f0c; stroke-width: 1.5; }
+.pan-strike-r rect { fill: #E4F2EA; }
+.pan-strike-r text { fill: #0B1A14; }
+.pan-strike-l rect { fill: #7FD6D4; }
+.pan-strike-l text { fill: #04211f; }
+
 .chord-count {
   min-width: 28px; padding: 0 4px; text-align: center; flex-shrink: 0;
   font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-3);

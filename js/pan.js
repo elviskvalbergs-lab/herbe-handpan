@@ -92,12 +92,45 @@ function ringNoteRadius(sortedIndex, total) {
 // Bottom notes now rendered as outer ring in unified renderPan — this function is kept
 // only for callers that may reference it directly (shellMode='bottom' handled inline).
 
+// Strike-order badges (opts.strikeMarks, from a progression's play level):
+// each note's strike numbers and hands, e.g. "2L 4L", in a tag at the
+// note's top right, coloured by the hand of its first strike.
+function strikeBadgesSvg(placed, strikeMarks) {
+  let out = '';
+  for (const { note, marks } of strikeMarks) {
+    const at = placed.find(p => p.note === note);
+    if (!at || !marks.length) continue;
+    const label = marks.map(m => `${m.n}${m.hand}`).join(' ');
+    const w = 10 + label.length * 8;
+    const h = 20;
+    const x = Math.min(500 - w - 2, Math.round(at.x + at.r * 0.55));
+    const y = Math.max(2, Math.round(at.y - at.r * 0.55 - h));
+    const hand = marks[0].hand === 'L' ? 'l' : 'r';
+    out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"/>
+  <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
+    font-family="system-ui,sans-serif" font-size="14" font-weight="700">${label}</text>
+</g>`;
+  }
+  return out;
+}
+
+// opts.faintNotes (optional) draws notes faintly (the next chord), and
+// opts.strikeMarks (optional) numbers notes in strike order with L/R; a pan
+// rendered without them is exactly as before.
 export function renderPan(layout, opts = {}) {
-  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false } = opts;
+  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false,
+    faintNotes = [], strikeMarks = [] } = opts;
 
   const cx = 250, cy = 250;
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
+  const faintSet = new Set(faintNotes);
+  const placed = []; // { x, y, r, note } of every note drawn, for strike badges
+  const place = (x, y, note, classes, id, r) => {
+    if (note) placed.push({ x, y, r, note });
+    return noteSlotSvg(x, y, note, classes, id, r, useFlats, useSolfege);
+  };
 
   // Assign each unique pitch class in the chord its own color (0-3, root first),
   // cycling for chords with more than 4 distinct pitch classes.
@@ -115,6 +148,7 @@ export function renderPan(layout, opts = {}) {
     if (!note) classes.push('empty');
     else if (hlSet.has(note)) classes.push(`highlight highlight-${pcColorIndex.get(notePC(note))}`);
     else if (altSet.has(note)) classes.push(`alt-highlight alt-highlight-${pcColorIndex.get(notePC(note))}`);
+    else if (faintSet.has(note)) classes.push('faint');
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -154,9 +188,10 @@ export function renderPan(layout, opts = {}) {
   const dingClass = [
     !dingNote ? 'empty' : '',
     dingHighlighted ? `highlight highlight-${pcColorIndex.get(notePC(dingNote))}` : '',
+    dingNote && !dingHighlighted && faintSet.has(dingNote) ? 'faint' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
-  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
+  svg += place(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36);
 
   if (hasInnerRing) {
     const outerSlots = OUTER_8_ORDER.map(i => layout.top.slots[i] ?? { note: null });
@@ -166,8 +201,8 @@ export function renderPan(layout, opts = {}) {
       const slot = outerSlots[i];
       const sortedIdx = OUTER_8_ORDER[i];
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
-      svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
-        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
+      svg += place(outerPos[i].x, outerPos[i].y, slot.note,
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r);
     }
     const innerCount = Math.min(5, totalRingSlots - 8);
     const innerPos = innerRingPositions(cx, cy, innerCount);
@@ -175,8 +210,8 @@ export function renderPan(layout, opts = {}) {
       const sortedIdx = 8 + i;
       const slot = layout.top.slots[sortedIdx] ?? { note: null };
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
-      svg += noteSlotSvg(innerPos[i].x, innerPos[i].y, slot.note,
-        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
+      svg += place(innerPos[i].x, innerPos[i].y, slot.note,
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r);
     }
   } else {
     const ringCount = Math.max(layout.top.capacity, totalRingSlots);
@@ -197,7 +232,7 @@ export function renderPan(layout, opts = {}) {
       const slot = ringSlots[i] ?? { note: null };
       const pos = ringPos[i];
       const r = sortedIndices ? ringNoteRadius(sortedIndices[i], totalRingSlots) : 22;
-      svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r, useFlats, useSolfege);
+      svg += place(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r);
     }
   }
 
@@ -206,11 +241,12 @@ export function renderPan(layout, opts = {}) {
     const guPos = circlePositions(guCount, cx, cy, 228, 0);
     for (let i = 0; i < guCount; i++) {
       const slot = layout.bottom.slots[i] ?? { note: null };
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note,
-        `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 16, useFlats, useSolfege);
+      svg += place(guPos[i].x, guPos[i].y, slot.note,
+        `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 16);
     }
   }
 
+  if (strikeMarks.length) svg += strikeBadgesSvg(placed, strikeMarks);
   svg += '</svg>';
   return svg;
 }

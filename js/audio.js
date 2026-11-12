@@ -177,3 +177,23 @@ export function playSequence(noteNames, onNote, interval = 0.4) {
     });
   });
 }
+
+// A short metronome click for a count-in: higher on the first beat.
+export function playClick(accent = false) {
+  initAudio();
+  whenRunning(() => {
+    const now = ctx.currentTime + START_OFFSET;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = accent ? 1760 : 1320;
+    env.gain.setValueAtTime(0, now);
+    env.gain.linearRampToValueAtTime(accent ? 0.22 : 0.14, now + 0.002);
+    env.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+    osc.connect(env);
+    env.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 0.08);
+    osc.onended = () => { osc.disconnect(); env.disconnect(); };
+  });
+}
