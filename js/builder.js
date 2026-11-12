@@ -164,6 +164,18 @@ export function calibrateChamber(holes, f0, singles, { a4 = 440, toleranceCents 
   const ratios = solveHoleRatios(f0, measurements);
   const chart = calibratedChart(f0, ratios, { a4, toleranceCents });
   const max = Math.max(...ratios);
+  // A note blown during set-up is a measurement, not a prediction: when a
+  // reading lands on a note, its fingering (all closed, or that one hole
+  // open) is the one shown for that note.
+  const measured = [{ states: holes.map(() => 'c'), hz: f0 }, ...measurements];
+  for (const { states, hz } of measured) {
+    const midi = Math.round(hzToMidi(hz, a4));
+    const cents = centsBetween(hz, midiToHz(midi, a4));
+    if (Math.abs(cents) > Math.max(toleranceCents, 30)) continue;
+    const prev = chart[midi];
+    if (prev?.measured && Math.abs(prev.cents) <= Math.abs(cents)) continue;
+    chart[midi] = { states, hz, cents, measured: true };
+  }
   const notes = Object.keys(chart).map(Number).sort((a, b) => a - b);
   const fingerings = {};
   for (const m of notes) fingerings[m] = chart[m].states;
@@ -267,4 +279,16 @@ export function usesHoleMap(inst) {
   if (inst.family !== 'ocarina' || inst.kind !== 'custom' || !inst.holeMap) return false;
   const holes = inst.setup?.holes ?? [];
   return holes.length > 0 && holes.every((h, i) => h.side === 'bottom' || inst.holeMap[i]);
+}
+
+// Fingerings the owner set by hand ({ midi: states }) on top of a worked-out
+// chart: they replace the predicted ones and add notes the chart missed.
+export function withFixedFingerings(chamber, fixed) {
+  if (!fixed || !Object.keys(fixed).length) return chamber;
+  const fingerings = { ...chamber.fingerings };
+  for (const [m, states] of Object.entries(fixed)) {
+    if (Array.isArray(states) && states.length === chamber.holes.length) fingerings[m] = states;
+  }
+  const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
+  return { ...chamber, notes, fingerings };
 }

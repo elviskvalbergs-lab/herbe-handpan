@@ -1567,3 +1567,12 @@ html { touch-action: manipulation; }
 .fingering .fg-finger-photo { fill: #fff; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central;
   paint-order: stroke; stroke: rgba(0, 0, 0, 0.8); stroke-width: 3px; }
 .fingering .fg-on-photo.fg-changed, .fingering .fg-on-photo.fg-changed circle { stroke: var(--accent); stroke-width: 4; }
+
+/* Changing a note's fingering by hand */
+.fingering .fg-edit-hole { cursor: pointer; }
+.fingering .fg-edit-target { fill: transparent; stroke: none; }
+.fg-stage.is-editing { padding: var(--space-3); border: 2px dashed var(--border-strong, var(--border)); border-radius: var(--r-md, 12px); }
+.fg-stage.is-editing .fingering { width: 100%; height: auto; }
+.fg-edit-help { font-size: var(--fs-13); color: var(--text-2); margin: var(--space-2) 0 0; }
+.fg-edit-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+.fg-edit-open { margin: var(--space-2) auto 0; display: flex; }

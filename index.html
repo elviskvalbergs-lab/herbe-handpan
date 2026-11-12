@@ -1588,6 +1588,15 @@ html { touch-action: manipulation; }
   paint-order: stroke; stroke: rgba(0, 0, 0, 0.8); stroke-width: 3px; }
 .fingering .fg-on-photo.fg-changed, .fingering .fg-on-photo.fg-changed circle { stroke: var(--accent); stroke-width: 4; }
 
+/* Changing a note's fingering by hand */
+.fingering .fg-edit-hole { cursor: pointer; }
+.fingering .fg-edit-target { fill: transparent; stroke: none; }
+.fg-stage.is-editing { padding: var(--space-3); border: 2px dashed var(--border-strong, var(--border)); border-radius: var(--r-md, 12px); }
+.fg-stage.is-editing .fingering { width: 100%; height: auto; }
+.fg-edit-help { font-size: var(--fs-13); color: var(--text-2); margin: var(--space-2) 0 0; }
+.fg-edit-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+.fg-edit-open { margin: var(--space-2) auto 0; display: flex; }
+
   </style>
 </head>
 <body>
@@ -4354,6 +4363,18 @@ function calibrateChamber(holes, f0, singles, { a4 = 440, toleranceCents = 20 } 
   const ratios = solveHoleRatios(f0, measurements);
   const chart = calibratedChart(f0, ratios, { a4, toleranceCents });
   const max = Math.max(...ratios);
+  // A note blown during set-up is a measurement, not a prediction: when a
+  // reading lands on a note, its fingering (all closed, or that one hole
+  // open) is the one shown for that note.
+  const measured = [{ states: holes.map(() => 'c'), hz: f0 }, ...measurements];
+  for (const { states, hz } of measured) {
+    const midi = Math.round(hzToMidi(hz, a4));
+    const cents = centsBetween(hz, midiToHz(midi, a4));
+    if (Math.abs(cents) > Math.max(toleranceCents, 30)) continue;
+    const prev = chart[midi];
+    if (prev?.measured && Math.abs(prev.cents) <= Math.abs(cents)) continue;
+    chart[midi] = { states, hz, cents, measured: true };
+  }
   const notes = Object.keys(chart).map(Number).sort((a, b) => a - b);
   const fingerings = {};
   for (const m of notes) fingerings[m] = chart[m].states;
@@ -4457,6 +4478,18 @@ function usesHoleMap(inst) {
   if (inst.family !== 'ocarina' || inst.kind !== 'custom' || !inst.holeMap) return false;
   const holes = inst.setup?.holes ?? [];
   return holes.length > 0 && holes.every((h, i) => h.side === 'bottom' || inst.holeMap[i]);
+}
+
+// Fingerings the owner set by hand ({ midi: states }) on top of a worked-out
+// chart: they replace the predicted ones and add notes the chart missed.
+function withFixedFingerings(chamber, fixed) {
+  if (!fixed || !Object.keys(fixed).length) return chamber;
+  const fingerings = { ...chamber.fingerings };
+  for (const [m, states] of Object.entries(fixed)) {
+    if (Array.isArray(states) && states.length === chamber.holes.length) fingerings[m] = states;
+  }
+  const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
+  return { ...chamber, notes, fingerings };
 }
 
 
@@ -5420,7 +5453,7 @@ function fgArrow(x, y, r, dir) {
 function renderFingering(inst, midi, opts = {}) {
   const {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
-    useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null,
+    useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null, editable = false,
   } = opts;
   const tube = inst.family === 'flute';
   const pendant = !tube && fgIsPendant(inst);
@@ -5434,7 +5467,7 @@ function renderFingering(inst, midi, opts = {}) {
   const label = displayNote(midiToNoteName(midi), useFlats, useSolfege);
   const aria = describeFingering(inst, midi, label);
   const labelH = size === 'mini' ? 26 : 30;
-  const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4 };
+  const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4, editable };
 
   const { parts, bodyBottom } = usesHoleMap(inst) && chambers.length === 1 ? fgPhotoParts(ctx)
     : (tube || pendant) ? fgFlatParts(ctx, tube) : fgVesselParts(ctx);
@@ -5448,7 +5481,17 @@ function renderFingering(inst, midi, opts = {}) {
 }
 
 // One hole with its state, change mark, arrow, finger label and size.
-function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false, photo = false }) {
+function fgHoleParts(g, opts) {
+  const start = g.length;
+  fgHolePartsInner(g, opts);
+  // Editing a fingering: each hole is a tap target that cycles its state.
+  if (opts.editable) {
+    const inner = g.splice(start).join('');
+    g.push(`<g class="fg-edit-hole" data-action="fg-edit-hole" data-index="${opts.index}"><circle class="fg-edit-target" cx="${opts.x}" cy="${opts.y}" r="${Math.max(opts.r + 4, 14)}"/>${inner}</g>`);
+  }
+}
+
+function fgHolePartsInner(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false, photo = false }) {
   const hk = fgHoleName(hole);
   const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk) || moves.half?.includes(hk));
   g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}${photo ? ' fg-on-photo' : ''}`));
@@ -5548,7 +5591,7 @@ function fgVesselParts(ctx) {
       let r = slot;
       if (sized) r = Math.max(2.5, Math.min(slot * 1.35, G.maxSlot * (rel[i] ?? 1) / Math.sqrt(group.length || 1)));
       fgHoleParts(g, {
-        x: pageX(x), y: pageY(y), r: r * G.s, state: states[i], hole: h,
+        x: pageX(x), y: pageY(y), r: r * G.s, state: states[i], hole: h, index: i, editable: ctx.editable,
         moves: ctx.moves, changedOk: !!f, size, showFingers: ctx.showFingers, showSizes: ctx.showSizes,
         labelled: nth === 0,
       });
@@ -5596,7 +5639,7 @@ function fgPhotoParts(ctx) {
       y = y0 + spot.y * h;
     }
     const r = Math.max(6, 13 * (rel[i] ?? 1));
-    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
+    fgHoleParts(g, { x, y, r, state: states[i], hole, index: i, editable: ctx.editable, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
       showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
   });
   return { parts: [`<g class="fg-chamber">${g.join('')}</g>`], bodyBottom: sy + (hasThumbs ? FG_STRIP_H : 0) };
@@ -5644,7 +5687,7 @@ function fgFlatParts(ctx, tube) {
       // Flute holes sit inside the tube's width.
       // On a real flute the finger holes are about a third of the tube's width.
       const r = tube ? Math.min(r0, 5.5) : r0;
-      fgHoleParts(g, { x, y, r, state: states[i], hole: h, moves: ctx.moves, changedOk: !!f, size, wood: tube,
+      fgHoleParts(g, { x, y, r, state: states[i], hole: h, index: i, editable: ctx.editable, moves: ctx.moves, changedOk: !!f, size, wood: tube,
         showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: nth === 0 });
     });
     parts.push(`<g class="fg-chamber ${blown ? '' : 'fg-dim'}">${g.join('')}</g>`);
@@ -7825,6 +7868,7 @@ function newOcState() {
     category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
     missingOpen: false, buildChamber: 0, fingersSheet: false,
     holeMap: null,         // { sel } while marking where the holes are on the photo
+    fgEdit: null,          // { midi, states } while changing a note's fingering by hand
   };
 }
 
@@ -8173,6 +8217,7 @@ function viewInstrument() {
           <button type="button" class="btn btn-secondary" data-action="oc-play-scale">${icon('play')} Scale</button>
         </div>
         <div class="fg-stage-wrap">
+          ${oc.fgEdit?.midi === oc.selected ? fgEditStageHtml(inst, opts) : `
           <div class="fg-stage">
             <button type="button" class="fg-stage-play" data-action="oc-play-selected" title="Play this note">
               ${renderFingering(inst, oc.selected, { ...opts, size: 'large', previousMidi: oc.previous })}
@@ -8182,7 +8227,8 @@ function viewInstrument() {
               <div class="fg-moves">${moves ? ocMovesHtml(moves) : ''}</div>
               ${state.showFingers ? uiIconBtn('hand', 'Which finger is which', { action: 'oc-hand-open' }) : '<span></span>'}
             </div>
-          </div>
+            ${fgEditable(inst) ? `<button type="button" class="btn btn-ghost btn-sm fg-edit-open" data-action="fg-edit-open">${icon('pencil')} Not how you play it? Change the fingering</button>` : ''}
+          </div>`}
         </div>
         ${recordedCentsHtml(inst, oc.selected)}
         ${state.ocLegendSeen ? '' : `
@@ -9142,6 +9188,40 @@ function hmFirstUnmarked(inst) {
   const holes = setupOf(inst).holes;
   const i = holes.findIndex((h, k) => h.side !== 'bottom' && !inst.holeMap?.[k]);
   return i >= 0 ? i : null;
+}
+
+// ── Changing a note's fingering by hand (bought ocarinas) ────────────────────
+
+function fgEditable(inst) {
+  return inst.kind === 'custom' && inst.family === 'ocarina' && inst.id !== SHARED_ID && inst.chambers?.length === 1;
+}
+
+// The selected note's fingering while it's being changed: tap a hole to go
+// covered → open → half; the calibration says roughly what it would sound.
+function fgEditStageHtml(inst, opts) {
+  const ed = state.oc.fgEdit;
+  const ch = inst.chambers[0];
+  const tmp = { ...inst, chambers: [{ ...ch, fingerings: { ...ch.fingerings, [ed.midi]: ed.states } }] };
+  const uf = state.useFlats, us = state.useSolfege;
+  const cal = inst.calibration;
+  let guess = '';
+  if (cal?.f0 > 0 && cal.ratios?.length === ed.states.length) {
+    const hz = predictFingeringHz(cal.f0, cal.ratios, ed.states);
+    const p = pitchLabel(hz, { useFlats: uf, useSolfege: us });
+    guess = `From your readings this fingering should sound about ${escHtml(p.text)}.`;
+  }
+  const fixed = inst.setup?.fixed?.[ed.midi];
+  return `
+    <div class="fg-stage is-editing">
+      ${renderFingering(tmp, ed.midi, { ...opts, size: 'large', showFingers: true, editable: true })}
+      <p class="fg-edit-help">Tap a hole: covered → open → half. Blow it with the tuner on to check.</p>
+      ${guess ? `<p class="fg-edit-help">${guess}</p>` : ''}
+      <div class="fg-edit-actions">
+        ${fixed ? '<button type="button" class="btn btn-ghost btn-sm" data-action="fg-edit-reset">Use the worked-out one</button>' : ''}
+        <button type="button" class="btn btn-secondary btn-sm" data-action="fg-edit-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="fg-edit-save">Save for ${escHtml(displayNote(midiToNoteName(ed.midi), uf, us))}</button>
+      </div>
+    </div>`;
 }
 
 function setupFingersSheet() {
@@ -11469,6 +11549,46 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'fg-edit-open') {
+    const inst = currentInstrument();
+    const f = inst && fingeringFor(inst, state.oc.selected);
+    if (!f) return;
+    state.oc.fgEdit = { midi: state.oc.selected, states: [...f.states] };
+    render();
+    return;
+  }
+  if (action === 'fg-edit-hole' && state.oc.fgEdit) {
+    const i = parseInt(el.dataset.index, 10);
+    const next = { c: 'o', o: 'h', h: 'c' };
+    state.oc.fgEdit.states[i] = next[state.oc.fgEdit.states[i]] ?? 'c';
+    render();
+    return;
+  }
+  if (action === 'fg-edit-cancel') { state.oc.fgEdit = null; render(); return; }
+  if (action === 'fg-edit-save' || action === 'fg-edit-reset') {
+    const inst = currentInstrument();
+    const ed = state.oc.fgEdit;
+    if (!inst || !ed) return;
+    inst.setup = inst.setup ?? setupOf(inst);
+    const fixed = { ...(inst.setup.fixed ?? {}) };
+    if (action === 'fg-edit-save') fixed[ed.midi] = ed.states;
+    else delete fixed[ed.midi];
+    inst.setup.fixed = fixed;
+    if (action === 'fg-edit-save') {
+      inst.chambers = [withFixedFingerings(inst.chambers[0], { [ed.midi]: ed.states })];
+    } else {
+      // Back to the chart worked out from the readings for this note.
+      const s = inst.setup;
+      const ch = calibrateChamber(s.holes, s.f0, s.singles);
+      if (ch?.fingerings[ed.midi]) inst.chambers[0] = { ...inst.chambers[0], fingerings: { ...inst.chambers[0].fingerings, [ed.midi]: ch.fingerings[ed.midi] } };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.fgEdit = null;
+    showToast(action === 'fg-edit-save' ? 'Fingering saved' : 'Back to the worked-out fingering');
+    render();
+    return;
+  }
   if (action === 'inst-edit-open') {
     state.instEdit = el.dataset.id || state.currentInstrumentId;
     state.menu = false;
@@ -11545,7 +11665,7 @@ document.addEventListener('click', e => {
     if (!inst?.setup || inst.family !== 'flute') return;
     const ch = fluteChamberFromReadings(inst.setup.holes, inst.setup.readings);
     if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each line is a different note'); return; }
-    inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
+    inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, inst.setup.fixed)];
     inst.calibration = ch.calibration;
     saveInstrument(inst);
     refreshInstruments();

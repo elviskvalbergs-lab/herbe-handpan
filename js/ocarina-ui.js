@@ -356,7 +356,7 @@ function fgArrow(x, y, r, dir) {
 export function renderFingering(inst, midi, opts = {}) {
   const {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
-    useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null,
+    useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null, editable = false,
   } = opts;
   const tube = inst.family === 'flute';
   const pendant = !tube && fgIsPendant(inst);
@@ -370,7 +370,7 @@ export function renderFingering(inst, midi, opts = {}) {
   const label = displayNote(midiToNoteName(midi), useFlats, useSolfege);
   const aria = describeFingering(inst, midi, label);
   const labelH = size === 'mini' ? 26 : 30;
-  const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4 };
+  const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4, editable };
 
   const { parts, bodyBottom } = usesHoleMap(inst) && chambers.length === 1 ? fgPhotoParts(ctx)
     : (tube || pendant) ? fgFlatParts(ctx, tube) : fgVesselParts(ctx);
@@ -384,7 +384,17 @@ export function renderFingering(inst, midi, opts = {}) {
 }
 
 // One hole with its state, change mark, arrow, finger label and size.
-function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false, photo = false }) {
+function fgHoleParts(g, opts) {
+  const start = g.length;
+  fgHolePartsInner(g, opts);
+  // Editing a fingering: each hole is a tap target that cycles its state.
+  if (opts.editable) {
+    const inner = g.splice(start).join('');
+    g.push(`<g class="fg-edit-hole" data-action="fg-edit-hole" data-index="${opts.index}"><circle class="fg-edit-target" cx="${opts.x}" cy="${opts.y}" r="${Math.max(opts.r + 4, 14)}"/>${inner}</g>`);
+  }
+}
+
+function fgHolePartsInner(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false, photo = false }) {
   const hk = fgHoleName(hole);
   const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk) || moves.half?.includes(hk));
   g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}${photo ? ' fg-on-photo' : ''}`));
@@ -484,7 +494,7 @@ function fgVesselParts(ctx) {
       let r = slot;
       if (sized) r = Math.max(2.5, Math.min(slot * 1.35, G.maxSlot * (rel[i] ?? 1) / Math.sqrt(group.length || 1)));
       fgHoleParts(g, {
-        x: pageX(x), y: pageY(y), r: r * G.s, state: states[i], hole: h,
+        x: pageX(x), y: pageY(y), r: r * G.s, state: states[i], hole: h, index: i, editable: ctx.editable,
         moves: ctx.moves, changedOk: !!f, size, showFingers: ctx.showFingers, showSizes: ctx.showSizes,
         labelled: nth === 0,
       });
@@ -532,7 +542,7 @@ function fgPhotoParts(ctx) {
       y = y0 + spot.y * h;
     }
     const r = Math.max(6, 13 * (rel[i] ?? 1));
-    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
+    fgHoleParts(g, { x, y, r, state: states[i], hole, index: i, editable: ctx.editable, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
       showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
   });
   return { parts: [`<g class="fg-chamber">${g.join('')}</g>`], bodyBottom: sy + (hasThumbs ? FG_STRIP_H : 0) };
@@ -580,7 +590,7 @@ function fgFlatParts(ctx, tube) {
       // Flute holes sit inside the tube's width.
       // On a real flute the finger holes are about a third of the tube's width.
       const r = tube ? Math.min(r0, 5.5) : r0;
-      fgHoleParts(g, { x, y, r, state: states[i], hole: h, moves: ctx.moves, changedOk: !!f, size, wood: tube,
+      fgHoleParts(g, { x, y, r, state: states[i], hole: h, index: i, editable: ctx.editable, moves: ctx.moves, changedOk: !!f, size, wood: tube,
         showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: nth === 0 });
     });
     parts.push(`<g class="fg-chamber ${blown ? '' : 'fg-dim'}">${g.join('')}</g>`);

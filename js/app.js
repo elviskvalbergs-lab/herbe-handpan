@@ -27,13 +27,13 @@ import {
   renderFingering, renderHandLegend, fingeringMoves, playableMidis, fingeringFor,
   ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
 } from './ocarina-ui.js';
-import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch } from './ocarina.js';
+import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch, predictFingeringHz } from './ocarina.js';
 import { startTuner } from './tuner.js';
 import { rankScalesByNotes, addHeardNote } from './scalefinder.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
-  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, fluteHoles, fluteStepStates, fluteChamberFromReadings,
+  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, withFixedFingerings, fluteHoles, fluteStepStates, fluteChamberFromReadings,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
@@ -1662,6 +1662,7 @@ function newOcState() {
     category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
     missingOpen: false, buildChamber: 0, fingersSheet: false,
     holeMap: null,         // { sel } while marking where the holes are on the photo
+    fgEdit: null,          // { midi, states } while changing a note's fingering by hand
   };
 }
 
@@ -2010,6 +2011,7 @@ function viewInstrument() {
           <button type="button" class="btn btn-secondary" data-action="oc-play-scale">${icon('play')} Scale</button>
         </div>
         <div class="fg-stage-wrap">
+          ${oc.fgEdit?.midi === oc.selected ? fgEditStageHtml(inst, opts) : `
           <div class="fg-stage">
             <button type="button" class="fg-stage-play" data-action="oc-play-selected" title="Play this note">
               ${renderFingering(inst, oc.selected, { ...opts, size: 'large', previousMidi: oc.previous })}
@@ -2019,7 +2021,8 @@ function viewInstrument() {
               <div class="fg-moves">${moves ? ocMovesHtml(moves) : ''}</div>
               ${state.showFingers ? uiIconBtn('hand', 'Which finger is which', { action: 'oc-hand-open' }) : '<span></span>'}
             </div>
-          </div>
+            ${fgEditable(inst) ? `<button type="button" class="btn btn-ghost btn-sm fg-edit-open" data-action="fg-edit-open">${icon('pencil')} Not how you play it? Change the fingering</button>` : ''}
+          </div>`}
         </div>
         ${recordedCentsHtml(inst, oc.selected)}
         ${state.ocLegendSeen ? '' : `
@@ -2979,6 +2982,40 @@ function hmFirstUnmarked(inst) {
   const holes = setupOf(inst).holes;
   const i = holes.findIndex((h, k) => h.side !== 'bottom' && !inst.holeMap?.[k]);
   return i >= 0 ? i : null;
+}
+
+// ── Changing a note's fingering by hand (bought ocarinas) ────────────────────
+
+function fgEditable(inst) {
+  return inst.kind === 'custom' && inst.family === 'ocarina' && inst.id !== SHARED_ID && inst.chambers?.length === 1;
+}
+
+// The selected note's fingering while it's being changed: tap a hole to go
+// covered → open → half; the calibration says roughly what it would sound.
+function fgEditStageHtml(inst, opts) {
+  const ed = state.oc.fgEdit;
+  const ch = inst.chambers[0];
+  const tmp = { ...inst, chambers: [{ ...ch, fingerings: { ...ch.fingerings, [ed.midi]: ed.states } }] };
+  const uf = state.useFlats, us = state.useSolfege;
+  const cal = inst.calibration;
+  let guess = '';
+  if (cal?.f0 > 0 && cal.ratios?.length === ed.states.length) {
+    const hz = predictFingeringHz(cal.f0, cal.ratios, ed.states);
+    const p = pitchLabel(hz, { useFlats: uf, useSolfege: us });
+    guess = `From your readings this fingering should sound about ${escHtml(p.text)}.`;
+  }
+  const fixed = inst.setup?.fixed?.[ed.midi];
+  return `
+    <div class="fg-stage is-editing">
+      ${renderFingering(tmp, ed.midi, { ...opts, size: 'large', showFingers: true, editable: true })}
+      <p class="fg-edit-help">Tap a hole: covered → open → half. Blow it with the tuner on to check.</p>
+      ${guess ? `<p class="fg-edit-help">${guess}</p>` : ''}
+      <div class="fg-edit-actions">
+        ${fixed ? '<button type="button" class="btn btn-ghost btn-sm" data-action="fg-edit-reset">Use the worked-out one</button>' : ''}
+        <button type="button" class="btn btn-secondary btn-sm" data-action="fg-edit-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="fg-edit-save">Save for ${escHtml(displayNote(midiToNoteName(ed.midi), uf, us))}</button>
+      </div>
+    </div>`;
 }
 
 function setupFingersSheet() {
@@ -5306,6 +5343,46 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'fg-edit-open') {
+    const inst = currentInstrument();
+    const f = inst && fingeringFor(inst, state.oc.selected);
+    if (!f) return;
+    state.oc.fgEdit = { midi: state.oc.selected, states: [...f.states] };
+    render();
+    return;
+  }
+  if (action === 'fg-edit-hole' && state.oc.fgEdit) {
+    const i = parseInt(el.dataset.index, 10);
+    const next = { c: 'o', o: 'h', h: 'c' };
+    state.oc.fgEdit.states[i] = next[state.oc.fgEdit.states[i]] ?? 'c';
+    render();
+    return;
+  }
+  if (action === 'fg-edit-cancel') { state.oc.fgEdit = null; render(); return; }
+  if (action === 'fg-edit-save' || action === 'fg-edit-reset') {
+    const inst = currentInstrument();
+    const ed = state.oc.fgEdit;
+    if (!inst || !ed) return;
+    inst.setup = inst.setup ?? setupOf(inst);
+    const fixed = { ...(inst.setup.fixed ?? {}) };
+    if (action === 'fg-edit-save') fixed[ed.midi] = ed.states;
+    else delete fixed[ed.midi];
+    inst.setup.fixed = fixed;
+    if (action === 'fg-edit-save') {
+      inst.chambers = [withFixedFingerings(inst.chambers[0], { [ed.midi]: ed.states })];
+    } else {
+      // Back to the chart worked out from the readings for this note.
+      const s = inst.setup;
+      const ch = calibrateChamber(s.holes, s.f0, s.singles);
+      if (ch?.fingerings[ed.midi]) inst.chambers[0] = { ...inst.chambers[0], fingerings: { ...inst.chambers[0].fingerings, [ed.midi]: ch.fingerings[ed.midi] } };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.fgEdit = null;
+    showToast(action === 'fg-edit-save' ? 'Fingering saved' : 'Back to the worked-out fingering');
+    render();
+    return;
+  }
   if (action === 'inst-edit-open') {
     state.instEdit = el.dataset.id || state.currentInstrumentId;
     state.menu = false;
@@ -5382,7 +5459,7 @@ document.addEventListener('click', e => {
     if (!inst?.setup || inst.family !== 'flute') return;
     const ch = fluteChamberFromReadings(inst.setup.holes, inst.setup.readings);
     if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each line is a different note'); return; }
-    inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
+    inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, inst.setup.fixed)];
     inst.calibration = ch.calibration;
     saveInstrument(inst);
     refreshInstruments();

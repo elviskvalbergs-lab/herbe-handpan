@@ -164,3 +164,28 @@ test('bought instruments: change the hole count, mark holes on the photo', async
   four.setup.holes[1].side = 'bottom';                     // a thumb hole: underneath, no spot
   assert.equal(holeSpot(four, 1), null);
 });
+
+test('calibration: a note blown at set-up keeps the fingering it was blown with', () => {
+  // Five holes; with only the third open the ocarina sounds C5, with only
+  // the first open G4 (as on the owner's ocarina). Holes 1 and 2 open
+  // together are predicted to give C5 too, and that fingering is "easier"
+  // (holes opening in order), but C5 was heard with hole 3 alone.
+  const holes = defaultCustomHoles(5);
+  const hz = n => midiToHz(noteToMidi(n));
+  const f0 = hz('C4');
+  const r1 = (hz('G4') / f0) ** 2 - 1;
+  const singles = [hz('G4'), f0 * Math.sqrt(1 + (3 - r1)), hz('C5'), hz('E4'), hz('F4')];
+  const ch = calibrateChamber(holes, f0, singles);
+  assert.deepEqual(ch.fingerings[noteToMidi('C5')], ['c', 'c', 'o', 'c', 'c']);
+  assert.deepEqual(ch.fingerings[noteToMidi('G4')], ['o', 'c', 'c', 'c', 'c']);
+  assert.deepEqual(ch.fingerings[noteToMidi('C4')], ['c', 'c', 'c', 'c', 'c']);
+});
+
+test('fingerings set by hand override the worked-out chart', async () => {
+  const { withFixedFingerings } = await import('../js/builder.js');
+  const ch = { notes: [60, 62], holes: [{}, {}], fingerings: { 60: ['c', 'c'], 62: ['o', 'c'] } };
+  const out = withFixedFingerings(ch, { 62: ['c', 'o'], 64: ['o', 'o'], 65: ['o'] });
+  assert.deepEqual(out.fingerings[62], ['c', 'o']);
+  assert.deepEqual(out.notes, [60, 62, 64]);              // 65 has the wrong hole count: ignored
+  assert.equal(withFixedFingerings(ch, {}), ch);
+});
