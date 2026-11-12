@@ -13,7 +13,7 @@ Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starti
 
 ## Scope
 - Don't change existing handpan behaviour unless the current phase says so.
-- The last two sections of the brief (songs, and from chord sheet to playing) are a later project. Keep them in mind when designing the instrument model, but don't build them.
+- Progressions, chord-sheet import and the play levels from the brief's last two sections are built (at the owner's request). The rest of the songs project (melody, MusicXML/MIDI import, a song catalogue) is still for later: don't build it unless asked.
 - If anything in the brief conflicts with the code, stop and ask rather than guessing.
 
 ## Data and database
