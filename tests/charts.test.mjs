@@ -137,3 +137,51 @@ test('detect the key of an any-key flute from its all-closed note', async () => 
   assert.equal(detectChartKey(0), null);
   assert.equal(detectChartKey(432, { a4: 432 }).root, 'A');
 });
+
+test('12-hole ocarina in any key: the C chart shifted, old key ids kept', async () => {
+  const { chartDefaultKey } = await import('../js/charts.js');
+  const c = getChart('ocarina-12-stl-c');
+  assert.equal(c.keys.length, 36);
+  assert.equal(chartDefaultKey(c), 'C-A4');
+  assert.match(c.notes, /Same fingerings as the C chart, shifted to this key\./);
+  const g = c.keys.find(k => k.id === 'G-E4');
+  assert.deepEqual(g, { id: 'G-E4', name: 'G (lowest E4)', lowest: 'E4', root: 'G', octave: 4 });
+  assert.equal(c.keys.find(k => k.lowest === 'D4').root, 'F');
+  // Old ids keep their lowest notes.
+  for (const [id, low] of [['C-A3', 'A3'], ['C-A4', 'A4']]) {
+    const o = instrumentFromChart('ocarina-12-stl-c', id);
+    assert.equal(o.key, id);
+    assert.equal(o.chambers[0].notes[0], noteToMidi(low));
+  }
+  const og = instrumentFromChart('ocarina-12-stl-c', 'G-E4');
+  assert.equal(og.chambers[0].notes[0], noteToMidi('E4'));
+  assert.equal(og.chambers[0].notes.at(-1), noteToMidi('E4') + 20);
+  assert.equal(og.name, '12-hole ocarina in G (STL chart, Asian top notes) (E4)');
+  // Same fingerings by offset as the C chart.
+  const oc = instrumentFromChart('ocarina-12-stl-c', 'C-A4').chambers[0];
+  oc.notes.forEach((m, i) => assert.deepEqual(og.chambers[0].fingerings[og.chambers[0].notes[i]], oc.fingerings[m]));
+  assert.equal(instrumentFromChart('ocarina-12-stl-c', 'F-D4').chambers[0].notes[0], noteToMidi('D4'));
+});
+
+test('detect the key of a 12-hole ocarina from its lowest note', async () => {
+  const { detectLowestKey } = await import('../js/charts.js');
+  const c = getChart('ocarina-12-stl-c');
+  const hz = n => 440 * 2 ** ((noteToMidi(n) - 69) / 12);
+  const e4 = detectLowestKey(c, hz('E4') * 2 ** (-5 / 1200));
+  assert.equal(e4.key.id, 'G-E4');
+  assert.equal(e4.cents, -5);
+  assert.equal(e4.outOfRange, false);
+  assert.equal(detectLowestKey(c, hz('A4')).key.id, 'C-A4');
+  assert.equal(detectLowestKey(c, hz('A3')).key.id, 'C-A3');
+  assert.equal(detectLowestKey(c, hz('D4')).key.id, 'F-D4');
+  assert.equal(detectLowestKey(c, hz('A#4')).key.id, 'C#-A#4');
+  const low = detectLowestKey(c, hz('E2'));
+  assert.equal(low.key.id, 'G-E3');
+  assert.equal(low.heardOctave, 2);
+  assert.ok(low.outOfRange);
+  assert.equal(detectLowestKey(c, hz('B6')).key.id, 'D-B5');
+  assert.equal(detectLowestKey(c, 0), null);
+  // Any-key flute charts: the key is the lowest note.
+  assert.equal(detectLowestKey(getChart('naf6-penta'), hz('G3')).key.id, 'G3');
+  assert.equal(detectLowestKey(getChart('tin-whistle-d'), hz('D4')), null);
+});

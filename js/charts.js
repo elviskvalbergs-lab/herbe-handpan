@@ -14,7 +14,12 @@
 //     fingerings: [{ offset, states: ['c'|'o'|'h', …], alt?: true, overblow?: true }],
 //     octaves?: [3, 4, 5],   // any-key charts: keys are every root × these octaves
 //     defaultKey?, shortName?,  // and the key picked first, and the name before " in G"
+//     writtenKey?, tonicOffset?, lowestOctaves?,  // transposing charts (below)
 //   }
+//
+// A transposing chart is published for one key (writtenKey) and serves every
+// key by shifting it: the key is named by its tonic, tonicOffset semitones
+// above the lowest note, and its id is `${tonic}-${lowest}` (e.g. 'G-E4').
 //
 // Charts with readings taken from images (High Spirits, STL) were read at
 // high resolution; their `notes` say so where something looked doubtful.
@@ -52,6 +57,13 @@ export const CHART_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A'
 const anyKey = (octs = [3, 4, 5]) => octs.flatMap(o => CHART_ROOTS.map(r => ({
   id: `${r}${o}`, name: `${r}, lowest note ${r}${o}`, lowest: `${r}${o}`, root: r, octave: o,
 })));
+
+// Every lowest note in these octaves, named by the tonic tonicOffset
+// semitones above it: tonicKeys(3, [4]) has { id: 'G-E4', name: 'G (lowest E4)' }.
+const tonicKeys = (tonicOffset, octs) => octs.flatMap(o => CHART_ROOTS.map((r, pc) => {
+  const tonic = CHART_ROOTS[(pc + tonicOffset) % 12];
+  return { id: `${tonic}-${r}${o}`, name: `${tonic} (lowest ${r}${o})`, lowest: `${r}${o}`, root: tonic, octave: o };
+}));
 
 export const TRADITIONAL_CHARTS = [
   {
@@ -180,7 +192,11 @@ export const TRADITIONAL_CHARTS = [
       'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/12_Hole_Ocarina_Instructions.pdf',
       'https://pureocarinas.com/ocarina-fingering-system',
     ],
-    notes: 'STL Ocarina "A Complete Fingering Chart for 12 Hole Tenor and Soprano Ocarinas", read from the scanned chart; written A3–F5. Sub-holes sit beside the middle-finger holes (STL guide, Pure Ocarinas). Top notes follow the Asian order (left thumb, then right thumb); on an Italian-system ocarina the last two notes swap which hole is lifted last. Thumb holes identified by position. Tenor sounds an octave above the written notes.',
+    notes: 'STL Ocarina "A Complete Fingering Chart for 12 Hole Tenor and Soprano Ocarinas", read from the scanned chart; written A3–F5. Sub-holes sit beside the middle-finger holes (STL guide, Pure Ocarinas). Top notes follow the Asian order (left thumb, then right thumb); on an Italian-system ocarina the last two notes swap which hole is lifted last. Thumb holes identified by position. Tenor sounds an octave above the written notes. The published chart is for C (lowest note A, the tonic C three semitones above it). Other keys use the same fingering chart shifted: 12-hole ocarinas in G, F etc. are made as transposing instruments of the C chart, so every other key here is "Same fingerings as the C chart, shifted to this key." Keys are named by their tonic (lowest E: key G; lowest D: key F); the ids C-A3 and C-A4 of the first version stay the same.',
+    writtenKey: 'C',
+    tonicOffset: 3,
+    lowestOctaves: [3, 4, 5],
+    defaultKey: 'C-A4',
     holes: [
       { id: 'L1', finger: 'L1', side: 'top' }, { id: 'L2', finger: 'L2', side: 'top' },
       { id: 'L3', finger: 'L3', side: 'top' }, { id: 'L4', finger: 'L4', side: 'top' },
@@ -190,10 +206,7 @@ export const TRADITIONAL_CHARTS = [
       { id: 'R2s', finger: 'R2', side: 'top', sub: true },
       { id: 'LT', finger: 'LT', side: 'bottom' }, { id: 'RT', finger: 'RT', side: 'bottom' },
     ],
-    keys: [
-      { id: 'C-A3', name: 'C, lowest note A3 (as written)', lowest: 'A3' },
-      { id: 'C-A4', name: 'C, lowest note A4 (an octave up, e.g. tenor)', lowest: 'A4' },
-    ],
+    keys: tonicKeys(3, [3, 4, 5]),
     fingerings: rows([
       [0, 'XXXXX|XXXXX|XX'], [1, 'XXXXX|XXXXO|XX'], [2, 'XXXXO|XXXXX|XX'], [3, 'XXXXO|XXXXO|XX'],
       [4, 'XXXXO|XXXOX|XX'], [5, 'XXXXO|XXXOO|XX'], [6, 'XXXXO|XXOOX|XX'], [7, 'XXXXO|XXOOO|XX'],
@@ -252,7 +265,8 @@ export function instrumentFromChart(chartId, keyId, { name, now = new Date().toI
     kind: 'traditional',
     type: chart.id,
     key: key.id,
-    name: name || (chart.octaves ? `${chart.shortName ?? chart.name} in ${key.root} (${key.lowest})`
+    name: name || (chart.tonicOffset != null ? `${chart.name.replace(` in ${chart.writtenKey}`, ` in ${key.root}`)} (${key.lowest})`
+      : chart.octaves ? `${chart.shortName ?? chart.name} in ${key.root} (${key.lowest})`
       : chart.keys.length > 1 ? `${chart.name} (${key.lowest})` : chart.name),
     chambers: [{ notes, holes: chart.holes.map(h => ({ ...h, x: null, y: null, sizeMm: null })), fingerings, alternates, overblow }],
     createdAt: now,
@@ -279,4 +293,19 @@ export function detectChartKey(hz, { octaves: octs = [3, 4, 5], a4 = 440 } = {})
     cents: Math.round((exact - midi) * 100),
     outOfRange: octave !== heardOctave,
   };
+}
+
+// The key of a chart whose lowest note is the one heard (every hole closed,
+// sub-holes too): the nearest note, moved to the nearest octave the chart
+// offers when it is outside them (outOfRange). Works for any-key charts
+// (key = lowest note) and transposing ones (key named by its tonic).
+// Returns detectChartKey's fields plus { key, lowest } or null.
+export function detectLowestKey(chart, hz, { a4 = 440 } = {}) {
+  const octs = chart?.lowestOctaves ?? chart?.octaves;
+  if (!octs) return null;
+  const r = detectChartKey(hz, { octaves: octs, a4 });
+  if (!r) return null;
+  const lowest = `${r.root}${r.octave}`;
+  const key = chart.keys.find(k => k.lowest === lowest) ?? null;
+  return key ? { ...r, lowest, key } : null;
 }

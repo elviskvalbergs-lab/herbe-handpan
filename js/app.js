@@ -35,7 +35,7 @@ import {
   defaultCustomHoles, calibrateChamber, fluteHoles, fluteStepStates, fluteChamberFromReadings,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
-import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, CHART_ROOTS } from './charts.js';
+import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
@@ -142,6 +142,12 @@ function render() {
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
   // A record field stays armed only while it is on screen.
   if (state.rec.armed && !app.querySelector('.rec-field.is-armed')) disarmRecord();
+  // So does a wizard key detection.
+  const det = _chartDetecting;
+  if (det?.t.detect?.listening && (wizardChartTarget(det.fam) !== det.t || !chartDetectOnScreen(det.fam))) {
+    stopFluteDetect(null, det.fam);
+    return;
+  }
   settleFocus(app, prevSheet, focusKey);
 }
 
@@ -743,7 +749,7 @@ function newWizard(firstRun) {
     notice: null,      // "D Kurd added." on the step after adding it
     search: '',
     noteFilter: 'all',
-    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12, chartId: 'custom', keyId: null },
+    oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12, chartId: 'custom', keyId: null, detect: null },
     fl: { chartId: chartsForFamily('flute')[0]?.id ?? null, keyId: null, name: '', holeCount: 6, detect: null },
   };
 }
@@ -907,7 +913,7 @@ function viewWizard() {
               <option value="custom" ${oc.chartId === 'custom' ? 'selected' : ''}>Unknown or other: chart it with the tuner</option>
               ${chartsForFamily('ocarina').map(c => `<option value="${c.id}" ${oc.chartId === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
             </select>` }) : ''}
-          ${chart ? wizardKeySelect('oc', chart, oc.keyId) : uiField({
+          ${chart ? (chart.tonicOffset != null ? wizardOcKeyHtml(chart, oc) : wizardKeySelect('oc', chart, oc.keyId)) : uiField({
             label: 'Holes, thumb holes included',
             control: uiStepper({ value: oc.holeCount, label: 'Holes', action: 'wizard-oc-holes-step', min: oc.holeCount <= 4, max: oc.holeCount >= 13 }),
             help: 'Its chart is worked out from the instrument: you blow it into the tuner with all holes closed, then with each hole open on its own.',
@@ -1008,10 +1014,6 @@ function wizardFluteKeyHtml(chart, fl) {
   const uf = state.useFlats, us = state.useSolfege;
   const key = chart.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart))) ?? chart.keys[0];
   const d = fl.detect;
-  const status = !d ? ''
-    : d.listening ? `<span>${icon('mic')} Cover all holes and blow a steady note</span>`
-    : d.error ? `<span class="is-warning">${escHtml(d.error)}</span>`
-    : `<span>${escHtml(d.text)}</span>${d.warn ? `<br><span class="is-warning">${escHtml(d.warn)}</span>` : ''}`;
   return `
     <div class="fl-key">
       ${uiField({
@@ -1025,31 +1027,33 @@ function wizardFluteKeyHtml(chart, fl) {
         ${uiSeg(chart.octaves.map(o => ({ value: String(o), label: FLUTE_OCTAVE_NAMES[o] ?? String(o) })), String(key.octave), { action: 'wizard-fl-octave', key: 'octave', label: 'Octave' })}
       </div>
     </div>
-    <div class="fl-detect">
-      <button type="button" class="btn btn-secondary btn-sm" data-action="wizard-fl-detect" aria-pressed="${d?.listening ? 'true' : 'false'}">
-        ${icon('mic')} ${d?.listening ? 'Listening…' : 'Detect with tuner'}</button>
-      <div class="fl-detect-status field-help" aria-live="polite">${status}</div>
-    </div>
+    ${chartDetectHtml('fl', d, 'Cover all holes and blow a steady note')}
     <p class="field-help">All holes closed sounds ${escHtml(displayNote(key.lowest, uf, us))}. Not sure which octave? Detect it, or check with the tuner.</p>
     ${chart.sourceName ? `<p class="field-help">Chart: ${escHtml(chart.sourceName)}</p>` : ''}`;
 }
 
-// Detect with tuner: the first steady reading sets the key and octave.
+// Detect with tuner: the first steady reading sets the key (and octave) of
+// the wizard's flute ('fl') or ocarina ('oc') chart. The tuner is turned on
+// if it is off, and off again afterwards if the detection turned it on.
 let _flDetectTimer = null;
-function startFluteDetect() {
-  const fl = state.wizard?.fl;
-  if (!fl) return;
+let _chartDetecting = null; // { fam, t }: the target listening, kept if the wizard closes
+function wizardChartTarget(fam) {
+  return (fam === 'oc' ? state.wizard?.oc : state.wizard?.fl) ?? (_chartDetecting?.fam === fam ? _chartDetecting.t : null);
+}
+function startFluteDetect(fam = 'fl') {
+  const t = wizardChartTarget(fam);
+  if (!t) return;
   clearTimeout(_flDetectTimer);
-  fl.detect = { listening: true, startedTuner: !state.tuner.on || !!state.tuner.error };
+  t.detect = { listening: true, startedTuner: !state.tuner.on || !!state.tuner.error };
+  _chartDetecting = { fam, t };
   _flDetectTimer = setTimeout(() => {
-    const f = state.wizard?.fl;
-    if (!f?.detect?.listening) return;
-    stopFluteDetect({ error: 'No steady note: blow a little longer' });
+    if (!wizardChartTarget(fam)?.detect?.listening) return;
+    stopFluteDetect({ error: 'No steady note: blow a little longer' }, fam);
   }, 10000);
-  if (fl.detect.startedTuner) {
+  if (t.detect.startedTuner) {
     if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
     toggleTuner().then(() => {
-      if (state.tuner.error && state.wizard?.fl.detect?.listening) stopFluteDetect({ error: state.tuner.error });
+      if (state.tuner.error && wizardChartTarget(fam)?.detect?.listening) stopFluteDetect({ error: state.tuner.error }, fam);
     });
     return;
   }
@@ -1058,17 +1062,25 @@ function startFluteDetect() {
 
 // Ends a detection with a result or an error; turns the tuner off again
 // if the detection turned it on.
-function stopFluteDetect(result) {
+function stopFluteDetect(result, fam = 'fl') {
   clearTimeout(_flDetectTimer);
-  const fl = state.wizard?.fl;
-  if (!fl?.detect) return;
-  const startedTuner = fl.detect.startedTuner;
-  fl.detect = result;
+  const t = wizardChartTarget(fam);
+  if (!t?.detect) return;
+  const startedTuner = t.detect.startedTuner;
+  t.detect = result;
+  if (_chartDetecting?.t === t) _chartDetecting = null;
   if (startedTuner && state.tuner.on && !state.tuner.error) { toggleTuner(); return; }
   render();
 }
 
-function onFluteDetectReading(hz) {
+// The wizard step a chart detection belongs to is still on screen.
+function chartDetectOnScreen(fam) {
+  const w = state.wizard;
+  return state.view === 'wizard' && !!w && (fam === 'oc' ? w.step === 'ocarina' && w.oc.path === 'have' : w.step === 'flute');
+}
+
+function onFluteDetectReading(hz, fam = 'fl') {
+  if (fam === 'oc') { onOcarinaDetectReading(hz); return; }
   const fl = state.wizard.fl;
   const chart = getChart(fl.chartId);
   if (!chart?.octaves) { stopFluteDetect(null); return; }
@@ -1083,12 +1095,65 @@ function onFluteDetectReading(hz) {
   stopFluteDetect({ text, warn: Math.abs(r.cents) > 30 ? 'This flute may not be tuned to A=440' : '' });
 }
 
+// Ocarina from a transposing chart: the note heard with every hole closed is
+// the chart's lowest note, which sets the key.
+function onOcarinaDetectReading(hz) {
+  const oc = state.wizard.oc;
+  const r = detectLowestKey(getChart(oc.chartId), hz);
+  if (!r) { stopFluteDetect(null, 'oc'); return; }
+  oc.keyId = r.key.id;
+  const uf = state.useFlats, us = state.useSolfege;
+  const heard = displayNote(r.root + r.heardOctave, uf, us);
+  const off = r.cents === 0 ? 'in tune' : `${Math.abs(r.cents)} ¢ ${r.cents > 0 ? 'sharp' : 'flat'}`;
+  let text = `Heard ${heard}, ${off}: key ${ocKeyLabel(r.key)}`;
+  if (r.outOfRange) text += ` (the nearest octave offered; your ocarina sounds ${r.heardOctave < r.octave ? 'lower' : 'higher'})`;
+  stopFluteDetect({ text, warn: Math.abs(r.cents) > 30 ? 'This ocarina may not be tuned to A=440' : '' }, 'oc');
+}
+
+// "G (lowest E4)" in the user's note spelling.
+function ocKeyLabel(key) {
+  const uf = state.useFlats, us = state.useSolfege;
+  return `${displayNote(key.root, uf, us)} (lowest ${displayNote(key.lowest, uf, us)})`;
+}
+
+// Detect with tuner: the button and its status line.
+function chartDetectHtml(fam, d, listeningText) {
+  const status = !d ? ''
+    : d.listening ? `<span>${icon('mic')} ${escHtml(listeningText)}</span>`
+    : d.error ? `<span class="is-warning">${escHtml(d.error)}</span>`
+    : `<span>${escHtml(d.text)}</span>${d.warn ? `<br><span class="is-warning">${escHtml(d.warn)}</span>` : ''}`;
+  return `
+    <div class="fl-detect">
+      <button type="button" class="btn btn-secondary btn-sm" data-action="wizard-${fam}-detect" aria-pressed="${d?.listening ? 'true' : 'false'}">
+        ${icon('mic')} ${d?.listening ? 'Listening…' : 'Detect with tuner'}</button>
+      <div class="fl-detect-status field-help" aria-live="polite">${status}</div>
+    </div>`;
+}
+
+// Key of a transposing ocarina chart (the 12-hole C chart in any key): a Key
+// select named by tonic and lowest note, and Detect with tuner.
+function wizardOcKeyHtml(chart, oc) {
+  const key = chart.keys.find(k => k.id === (oc.keyId ?? chartDefaultKey(chart))) ?? chart.keys[0];
+  return `
+    ${uiField({
+      label: 'Key', id: 'wizard-oc-key',
+      control: `<select class="select" id="wizard-oc-key" data-action="wizard-key" data-fam="oc">
+        ${chart.keys.map(k => `<option value="${k.id}" ${k.id === key.id ? 'selected' : ''}>${escHtml(ocKeyLabel(k))}</option>`).join('')}
+      </select>`,
+      help: key.root === chart.writtenKey ? `The published chart is for ${escHtml(chart.writtenKey)}.`
+        : `Same fingerings as the ${escHtml(chart.writtenKey)} chart, shifted to this key.`,
+    })}
+    ${chartDetectHtml('oc', oc.detect, 'Cover every hole, sub-holes too, and blow a steady note')}
+    <p class="field-help">Not sure of the key? Detect it: every hole closed sounds the lowest note, ${escHtml(displayNote(key.lowest, state.useFlats, state.useSolfege))} in this key.</p>
+    ${chart.sourceName ? `<p class="field-help">Chart: ${escHtml(chart.sourceName)}</p>` : ''}`;
+}
+
 function wizardKeySelect(fam, chart, keyId) {
   return uiField({
     label: 'Key', id: `wizard-${fam}-key`,
     control: `
       <select class="select" id="wizard-${fam}-key" data-action="wizard-key" data-fam="${fam}">
-        ${chart.keys.map(k => `<option value="${k.id}" ${(keyId ?? chart.keys[0].id) === k.id ? 'selected' : ''}>${escHtml(k.name)}</option>`).join('')}
+        ${chart.keys.map(k => `<option value="${k.id}" ${(keyId ?? chartDefaultKey(chart)) === k.id ? 'selected' : ''}>${escHtml(k.name)}</option>`).join('')}
       </select>`,
     help: chart.sourceName ? `Chart: ${escHtml(chart.sourceName)}` : '',
   });
@@ -2522,6 +2587,10 @@ function onTunerReading(reading) {
   // itself after a capture waits for a note that started after it.
   if (state.view === 'wizard' && state.wizard?.fl?.detect?.listening && reading.stable && reading.hz > 0) {
     onFluteDetectReading(reading.hz);
+    return;
+  }
+  if (state.view === 'wizard' && state.wizard?.oc?.detect?.listening && reading.stable && reading.hz > 0) {
+    onFluteDetectReading(reading.hz, 'oc');
     return;
   }
   const rec = state.rec;
@@ -4862,6 +4931,8 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-oc-path') {
+    if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
+    state.wizard.oc.detect = null;
     state.wizard.oc.path = el.dataset.path || null;
     render();
     return;
@@ -4879,8 +4950,9 @@ document.addEventListener('click', e => {
   }
   if (action === 'wizard-oc-create') {
     const oc = state.wizard.oc;
+    if (oc.detect?.listening) stopFluteDetect(null, 'oc');
     const inst = oc.path === 'have' && oc.chartId !== 'custom' && getChart(oc.chartId)
-      ? instrumentFromChart(oc.chartId, oc.keyId ?? getChart(oc.chartId).keys[0].id, { name: oc.name.trim() })
+      ? instrumentFromChart(oc.chartId, oc.keyId ?? chartDefaultKey(getChart(oc.chartId)), { name: oc.name.trim() })
       : oc.path === 'have'
       ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
       : Object.assign(createScaleOcarina({
@@ -4917,6 +4989,11 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-fl-detect') { startFluteDetect(); return; }
+  if (action === 'wizard-oc-detect') {
+    if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
+    else startFluteDetect('oc');
+    return;
+  }
   if (action === 'wizard-oc-holes-step') {
     const oc = state.wizard.oc;
     oc.holeCount = Math.max(4, Math.min(13, oc.holeCount + parseInt(el.dataset.delta, 10)));
@@ -5922,9 +5999,9 @@ document.addEventListener('change', e => {
   if (action === 'oc-category') { state.oc.category = el.value; render(); }
   if (action === 'wizard-chart') {
     const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
-    if (t === state.wizard.fl && t.detect?.listening) stopFluteDetect(null);
+    if (t.detect?.listening) stopFluteDetect(null, el.dataset.fam === 'oc' ? 'oc' : 'fl');
     t.chartId = el.value; t.keyId = null;
-    if (t === state.wizard.fl) t.detect = null;
+    t.detect = null;
     render();
   }
   if (action === 'wizard-fl-root') {
