@@ -9,6 +9,7 @@
 import { displayNote, noteToMidi } from './data.js';
 import { relativeHoleSizes, midiToHz } from './ocarina.js';
 import { midiToNoteName } from './instruments.js';
+import { usesHoleMap, holeSpot } from './builder.js';
 
 export const FINGER_NAMES = {
   L1: 'left index', L2: 'left middle', L3: 'left ring', L4: 'left pinky', LT: 'left thumb',
@@ -365,7 +366,8 @@ export function renderFingering(inst, midi, opts = {}) {
   const labelH = size === 'mini' ? 26 : 30;
   const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4 };
 
-  const { parts, bodyBottom } = (tube || pendant) ? fgFlatParts(ctx, tube) : fgVesselParts(ctx);
+  const { parts, bodyBottom } = usesHoleMap(inst) && chambers.length === 1 ? fgPhotoParts(ctx)
+    : (tube || pendant) ? fgFlatParts(ctx, tube) : fgVesselParts(ctx);
   const H = bodyBottom + labelH;
   const noteY = bodyBottom + (size === 'mini' ? 14 : 16);
   const overblow = main && main.chamber.overblow?.includes(midi);
@@ -484,6 +486,48 @@ function fgVesselParts(ctx) {
 
   const bottom = pageY(G.bottom);
   return { parts, bodyBottom: bottom + 6 };
+}
+
+// A bought ocarina drawn on its own photo: each hole where it was marked,
+// sized from its calibration, thumb holes in a strip underneath.
+function fgPhotoParts(ctx) {
+  const { chambers, size, inst } = ctx;
+  const ch = chambers[0];
+  const aspect = inst.photo?.aspect ?? 1.6;
+  const pad = 14;
+  let w = FG_W - 2 * pad, h = w / aspect;
+  if (h > 230) { h = 230; w = h * aspect; }
+  const x0 = (FG_W - w) / 2, y0 = pad;
+  const hasThumbs = ch.holes.some(hh => hh.side === 'bottom');
+  const { f, states } = fgChamberState(ctx, 0);
+  const rel = relativeSizes(ch, ctx.a4, { fromNotes: false });
+  const g = [];
+  g.push(inst.photo?.src
+    ? `<image class="fg-photo" href="${inst.photo.src}" x="${x0}" y="${y0}" width="${w}" height="${h}" preserveAspectRatio="none"/>`
+      + `<rect class="fg-photo-frame" x="${x0}" y="${y0}" width="${w}" height="${h}" rx="8"/>`
+    : `<rect class="fg-body" x="${x0}" y="${y0}" width="${w}" height="${h}" rx="24"/>`);
+  const sy = y0 + h + 8;
+  if (hasThumbs) {
+    g.push(`<rect class="fg-strip" x="60" y="${sy}" width="${FG_W - 120}" height="${FG_STRIP_H - 6}" rx="6"/>`);
+    if (size === 'large') g.push(`<text class="fg-strip-label" x="${FG_W / 2}" y="${sy + FG_STRIP_H / 2 - 2}">underside</text>`);
+  }
+  const under = ch.holes.filter(hh => hh.side === 'bottom');
+  ch.holes.forEach((hole, i) => {
+    let x, y;
+    const spot = holeSpot(inst, i);
+    if (hole.side === 'bottom' || !spot) {
+      const k = under.indexOf(hole);
+      x = FG_THUMB_X[hole.finger] ?? (FG_W / 2 + (k - (under.length - 1) / 2) * 40);
+      y = sy + (FG_STRIP_H - 6) / 2;
+    } else {
+      x = x0 + spot.x * w;
+      y = y0 + spot.y * h;
+    }
+    const r = Math.max(4.5, 11 * (rel[i] ?? 1));
+    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size,
+      showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
+  });
+  return { parts: [`<g class="fg-chamber">${g.join('')}</g>`], bodyBottom: sy + (hasThumbs ? FG_STRIP_H : 0) };
 }
 
 // Pendants and flutes (tube): the simpler flat layouts.

@@ -132,3 +132,35 @@ test('flute chamber from recorded notes: cumulative openings, cents kept, repeat
   // Readings are rounded against the given A4.
   assert.deepEqual(fluteChamberFromReadings(fluteHoles(3), [432, 485, 545, 577], { a4: 432 }).notes, [69, 71, 73, 74]);
 });
+
+test('bought instruments: change the hole count, mark holes on the photo', async () => {
+  const { withHoleCount, holeSpot, usesHoleMap } = await import('../js/builder.js');
+  const oc = { id: 'oc-x', family: 'ocarina', kind: 'custom', holeCount: 11, chambers: [{ notes: [60, 62] }], calibration: { a: 1 },
+    setup: { holes: defaultCustomHoles(11), f0: 300, singles: [310, 320, 330, 340, 350, 360] },
+    holeMap: [{ x: 0.1, y: 0.2 }, null, { x: 0.3, y: 0.4 }] };
+  oc.setup.holes[0].finger = 'L1';
+  const five = withHoleCount(oc, 5);
+  assert.equal(five.holeCount, 5);
+  assert.equal(five.setup.holes.length, 5);
+  assert.equal(five.setup.holes[0].finger, 'L1');          // kept
+  assert.deepEqual(five.setup.singles, [310, 320, 330, 340, 350]);
+  assert.equal(five.setup.f0, 300);
+  assert.deepEqual(five.chambers, []);                     // chart cleared
+  assert.equal(five.calibration, null);
+  assert.equal(five.holeMap.length, 5);
+  assert.equal(oc.holeCount, 11);                          // original untouched
+  assert.equal(withHoleCount(oc, 11), oc);
+
+  const fl = withHoleCount({ family: 'flute', kind: 'custom', holeCount: 6, setup: { readings: [1, 2] } }, 5);
+  assert.deepEqual(fl.setup.readings, []);
+  assert.equal(fl.setup.holes.length, 5);
+
+  const four = { family: 'ocarina', kind: 'custom', holeCount: 4, setup: { holes: defaultCustomHoles(4) },
+    holeMap: [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.1 }, { x: 0.3, y: 0.1 }, null] };
+  assert.equal(usesHoleMap(four), false);
+  four.holeMap[3] = { x: 0.4, y: 0.1 };
+  assert.equal(usesHoleMap(four), true);
+  assert.deepEqual(holeSpot(four, 1), { x: 0.2, y: 0.1 });
+  four.setup.holes[1].side = 'bottom';                     // a thumb hole: underneath, no spot
+  assert.equal(holeSpot(four, 1), null);
+});

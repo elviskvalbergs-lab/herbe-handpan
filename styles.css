@@ -1519,3 +1519,31 @@ html { touch-action: manipulation; }
 .fl-recorded { margin: var(--space-2) 0 0; text-align: center; }
 .fl-detect-status .is-warning, .fl-step .is-warning { color: var(--warning); }
 .rec-help .rec-hz { color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* ── Instrument photo and hole layout (bought ocarinas) ─────────────────── */
+.row-lead .row-avatar { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; display: block; }
+.ie-photo { display: flex; align-items: center; gap: var(--space-3); }
+.ie-photo-img, .ie-photo-empty { width: 88px; height: 88px; border-radius: 12px; object-fit: cover; flex: none;
+  background: var(--surface-2); display: grid; place-items: center; color: var(--text-3); }
+.ie-photo-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ie-photo-actions label { cursor: pointer; }
+.btn-link { background: none; border: 0; padding: 0; color: var(--text-1); text-decoration: underline; font: inherit; cursor: pointer; }
+.hm-svg { width: 100%; height: auto; display: block; border-radius: 12px; }
+.hm-svg .hm-blank { fill: var(--surface-2); stroke: var(--border); stroke-width: 4; }
+.hm-spot circle { fill: rgba(255, 255, 255, 0.18); stroke: #fff; stroke-width: 6; }
+.hm-spot.is-sel circle { stroke: var(--accent); stroke-width: 10; fill: rgba(205, 76, 56, 0.25); }
+.hm-spot.is-closed circle { fill: rgba(0, 0, 0, 0.75); stroke: #fff; stroke-width: 8; }
+.hm-spot.is-open circle { fill: #fff; stroke: var(--accent); stroke-width: 16; }
+.hm-num { fill: #fff; font-size: 30px; font-weight: 700; text-anchor: middle; dominant-baseline: central;
+  paint-order: stroke; stroke: rgba(0, 0, 0, 0.7); stroke-width: 6px; }
+.hm-under { fill: #fff; font-size: 34px; paint-order: stroke; stroke: rgba(0, 0, 0, 0.7); stroke-width: 6px; }
+.hm-stage { cursor: crosshair; margin: var(--space-3) 0; touch-action: manipulation; }
+.hm-preview { display: block; width: 100%; padding: 0; border: 0; background: none; margin-top: var(--space-3); cursor: pointer; }
+.hm-chips { margin: var(--space-2) 0; }
+.hm-chip svg { width: 14px; height: 14px; vertical-align: -2px; }
+.s-reading-map { width: 64px; flex: none; }
+.s-reading-map .hm-svg { border-radius: 6px; }
+.s-reading-head:has(.s-reading-map) .s-reading-label { flex: 1; }
+/* Fingering diagram drawn on the instrument's own photo */
+.fingering .fg-photo { opacity: 0.85; }
+.fingering .fg-photo-frame { fill: none; stroke: var(--border); stroke-width: 1; }

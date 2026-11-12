@@ -227,3 +227,44 @@ export function fluteChamberFromReadings(holes, readings, { a4 = 440 } = {}) {
     },
   };
 }
+
+// ── Editing a bought instrument ──────────────────────────────────────────────
+
+// A custom (bought) ocarina or flute with a different number of holes, as a
+// new object. An ocarina keeps the fingers and the single-hole readings of
+// the holes it still has and the spots marked on its photo; a flute's
+// readings depend on the count, so they start again. Either way the chart
+// is cleared: it came from readings that no longer match.
+export function withHoleCount(inst, count) {
+  const flute = inst.family === 'flute';
+  const n = flute ? Math.max(3, Math.min(8, count)) : Math.max(1, Math.min(13, count));
+  if (n === inst.holeCount) return inst;
+  const out = { ...inst, holeCount: n, chambers: [], calibration: null };
+  if (flute) {
+    out.setup = { holes: fluteHoles(n), readings: [] };
+  } else {
+    const old = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+    const holes = defaultCustomHoles(n).map((h, i) => (old.holes[i] ? { ...old.holes[i] } : h));
+    out.setup = { holes, f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
+    if (inst.holeMap) out.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap[i] ?? null);
+  }
+  return out;
+}
+
+// Where hole i sits on the instrument's photo: { x, y } as fractions of the
+// photo's width and height, or null when it isn't marked or is underneath
+// (thumb holes can't be seen from the top).
+export function holeSpot(inst, i) {
+  const s = inst.holeMap?.[i];
+  const hole = inst.setup?.holes?.[i] ?? inst.chambers?.[0]?.holes?.[i];
+  if (!s || hole?.side === 'bottom') return null;
+  return s;
+}
+
+// Whether the fingering diagrams draw this ocarina from its own photo: a
+// bought, single-chamber ocarina with every top hole marked.
+export function usesHoleMap(inst) {
+  if (inst.family !== 'ocarina' || inst.kind !== 'custom' || !inst.holeMap) return false;
+  const holes = inst.setup?.holes ?? [];
+  return holes.length > 0 && holes.every((h, i) => h.side === 'bottom' || inst.holeMap[i]);
+}

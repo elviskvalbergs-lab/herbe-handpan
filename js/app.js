@@ -33,7 +33,7 @@ import { rankScalesByNotes, addHeardNote } from './scalefinder.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
-  defaultCustomHoles, calibrateChamber, fluteHoles, fluteStepStates, fluteChamberFromReadings,
+  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, fluteHoles, fluteStepStates, fluteChamberFromReadings,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
@@ -101,6 +101,7 @@ const state = {
   pickerInstrumentId: null, // instrument of the ocarina card whose ♡ opened the picker
   plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
   plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
+  instEdit: null,          // id of the instrument in the Edit instrument sheet
   plName: null,            // { mode: 'new' | 'rename' | 'prog-new' | 'prog-rename', id, value, error } while naming a playlist or progression
   progressions: getProgressions(), // chord progressions (storage.js): ordered steps, repeats allowed
   activeProgressionId: null, // progression detail (#prog/<id>)
@@ -1049,7 +1050,7 @@ function instrumentRowHtml(inst) {
     meta = escHtml(`${familyName(inst.family)} · ${instrumentStatus(inst)}`);
   }
   return uiRow({
-    lead: FAMILY_ICONS[inst.family] ?? 'music', title: inst.name, meta,
+    lead: inst.photo?.src ? `<img class="row-avatar" src="${inst.photo.src}" alt="">` : FAMILY_ICONS[inst.family] ?? 'music', title: inst.name, meta,
     action: 'open-instrument', data: { id: inst.id },
     trail: uiIconBtn('ellipsis', `More: ${inst.name}`, { action: 'row-menu', data: { id: inst.id }, attrs: 'aria-haspopup="dialog"' }),
   });
@@ -1103,6 +1104,7 @@ function rowMenuSheet(id) {
   const inst = getInstrument(id);
   if (!inst) return '';
   const rows = [];
+  if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
   if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
   rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
   return uiSheet({ key: 'row-menu', variant: 'rowmenu', title: inst.name, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
@@ -1659,6 +1661,7 @@ function newOcState() {
     tab: 'notes', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
     category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
     missingOpen: false, buildChamber: 0, fingersSheet: false,
+    holeMap: null,         // { sel } while marking where the holes are on the photo
   };
 }
 
@@ -2676,7 +2679,10 @@ function setupOf(inst) {
 
 function viewSetup(inst) {
   if (inst.family === 'flute') return viewFluteSetup(inst);
+  if (state.oc.holeMap) return viewHoleMap(inst);
   const setup = setupOf(inst);
+  const mapped = setup.holes.filter((h, i) => h.side !== 'bottom' && inst.holeMap?.[i]).length;
+  const tops = setup.holes.filter(h => h.side !== 'bottom').length;
   const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
   const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
   const filled = paths.filter(p => value(p) > 0).length;
@@ -2692,6 +2698,17 @@ function viewSetup(inst) {
         <h2 class="b-title">Set up</h2>
         <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}<span class="sr-only">the microphone</span>, blow, and it fills itself in.</p>
         <p class="b-meta">Blow steadily at a medium breath.</p>
+        <div class="card b-card">
+          <div class="b-card-head">
+            <div class="b-card-head-text">
+              <h3 class="b-card-title">Where the holes are</h3>
+              <p class="b-meta">${inst.photo ? '' : 'No photo yet · '}${mapped} of ${tops} marked</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="hm-open">${icon('pencil')} ${mapped ? 'Edit' : 'Mark'}</button>
+          </div>
+          ${inst.photo || mapped ? `<button type="button" class="hm-preview" data-action="hm-open" aria-label="Edit where the holes are">${holeMapSvg(inst, { fingers: true })}</button>`
+            : '<p class="b-meta">Add a photo of the top of your ocarina, then tap where each hole is. The fingering pictures then show your own ocarina.</p>'}
+        </div>
         <div class="card b-card">
           <div class="b-card-head">
             <div class="b-card-head-text">
@@ -2717,6 +2734,7 @@ function viewSetup(inst) {
               return `
                 <div class="s-reading${isNext ? ' is-next' : ''}${v > 0 ? ' is-filled' : ''}">
                   <div class="s-reading-head">
+                    ${mapped && p !== 's:f0' ? `<span class="s-reading-map" aria-hidden="true">${holeMapSvg(inst, { highlight: i - 1, mini: true })}</span>` : ''}
                     <span class="s-reading-label">${label(p, i - 1)}</span>
                     ${isNext ? uiBadge('Next', 'accent') : v > 0 ? `<span class="s-done" aria-label="Recorded">${icon('check')}</span>` : ''}
                   </div>
@@ -2821,6 +2839,134 @@ function viewFluteSetup(inst) {
 }
 
 // Hole fingers: which finger covers each hole, in opening order.
+// ── Photo and hole layout of a bought instrument ─────────────────────────────
+
+function instEditMeta(inst) {
+  return inst.kind === 'custom' ? 'Name, photo, number of holes' : 'Name and photo';
+}
+
+// A photo from the camera or the library, made small enough to keep with
+// the instrument (and sync): JPEG, at most 600 px on the long side.
+async function readInstrumentPhoto(file) {
+  let src = null;
+  try {
+    src = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch (_) {
+    src = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  const w0 = src.width, h0 = src.height;
+  const k = Math.min(1, 600 / Math.max(w0, h0));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(w0 * k);
+  canvas.height = Math.round(h0 * k);
+  canvas.getContext('2d').drawImage(src, 0, 0, canvas.width, canvas.height);
+  return { src: canvas.toDataURL('image/jpeg', 0.75), aspect: canvas.width / canvas.height };
+}
+
+function instEditSheet() {
+  const inst = getInstrument(state.instEdit);
+  if (!inst) return '';
+  const custom = inst.kind === 'custom';
+  const flute = inst.family === 'flute';
+  const n = inst.holeCount ?? 0;
+  return uiSheet({
+    key: 'inst-edit', title: 'Edit instrument', close: 'inst-edit-close',
+    body: `
+      ${uiField({ label: 'Name', id: 'ie-name', control: `<input class="input" id="ie-name" data-action="ie-name" value="${escHtml(inst.name)}" autocomplete="off">` })}
+      <div class="field">
+        <span class="field-label">Photo</span>
+        <div class="ie-photo">
+          ${inst.photo?.src ? `<img class="ie-photo-img" src="${inst.photo.src}" alt="Photo of ${escHtml(inst.name)}">`
+            : `<span class="ie-photo-empty">${icon(FAMILY_ICONS[inst.family] ?? 'music')}</span>`}
+          <div class="ie-photo-actions">
+            <label class="btn btn-secondary btn-sm">${icon('camera')} ${inst.photo ? 'Change photo' : 'Add photo'}
+              <input type="file" accept="image/*" class="sr-only" data-action="ie-photo"></label>
+            ${inst.photo ? '<button type="button" class="btn btn-ghost btn-sm" data-action="ie-photo-remove">Remove</button>' : ''}
+          </div>
+        </div>
+        <div class="field-help">Shown next to its name${inst.family === 'ocarina' && custom ? ', and used to mark where the holes are' : ''}. A photo of the top works best.</div>
+      </div>
+      ${custom ? uiField({
+        label: flute ? 'Finger holes' : 'Holes, thumb holes included', id: 'ie-holes',
+        control: uiStepper({ value: n, label: 'Holes', action: 'ie-holes-step', min: n <= (flute ? 3 : 1), max: n >= (flute ? 8 : 13) }),
+        help: inst.chambers?.length || inst.setup ? 'Changing this clears the fingering chart; set it up again with the new holes.' : '',
+      }) : ''}`,
+    footer: '<button type="button" class="btn btn-primary" data-action="inst-edit-close">Done</button>',
+  });
+}
+
+const HM_W = 1000;
+
+// The instrument's photo (or a plain body when there's none) with its
+// marked holes. opts: sel (hole being placed, editor), highlight (one hole
+// drawn open, the reading list), fingers (label the spots), mini.
+function holeMapSvg(inst, { sel = null, highlight = null, fingers = false, mini = false } = {}) {
+  const aspect = inst.photo?.aspect ?? 1.6;
+  const H = Math.round(HM_W / aspect);
+  const holes = setupOf(inst).holes;
+  const r = mini ? 70 : 34;
+  const spots = holes.map((h, i) => ({ h, i, s: holeSpot(inst, i) })).filter(x => x.s);
+  const under = holes.map((h, i) => ({ h, i })).filter(x => x.h.side === 'bottom');
+  const bg = inst.photo?.src
+    ? `<image href="${inst.photo.src}" x="0" y="0" width="${HM_W}" height="${H}"/>`
+    : `<rect class="hm-blank" x="0" y="0" width="${HM_W}" height="${H}" rx="40"/>`;
+  const marks = spots.map(({ h, i, s }) => {
+    const cls = ['hm-spot', i === sel ? 'is-sel' : '', highlight != null ? (i === highlight ? 'is-open' : 'is-closed') : ''].join(' ');
+    const text = mini ? '' : `<text class="hm-num" x="${s.x * HM_W}" y="${s.y * H}">${fingers ? escHtml(h.finger) : i + 1}</text>`;
+    return `<g class="${cls}"><circle cx="${s.x * HM_W}" cy="${s.y * H}" r="${r}"/>${text}</g>`;
+  }).join('');
+  const underText = !mini && under.length
+    ? `<text class="hm-under" x="24" y="${H - 24}">Underneath: ${under.map(u => escHtml(u.h.finger)).join(', ')}</text>` : '';
+  return `<svg class="hm-svg${mini ? ' is-mini' : ''}" viewBox="0 0 ${HM_W} ${H}" preserveAspectRatio="xMidYMid meet">${bg}${marks}${underText}</svg>`;
+}
+
+// Marking the holes: pick a hole in the list, tap where it is on the photo;
+// the next unmarked hole is picked by itself.
+function viewHoleMap(inst) {
+  const setup = setupOf(inst);
+  const sel = state.oc.holeMap.sel;
+  const chips = setup.holes.map((h, i) => {
+    const under = h.side === 'bottom';
+    const done = under || inst.holeMap?.[i];
+    return `<button type="button" class="chip hm-chip${i === sel ? ' is-selected' : ''}" data-action="hm-select" data-index="${i}" ${under ? 'disabled' : ''}
+      aria-pressed="${i === sel ? 'true' : 'false'}">${i + 1} · ${escHtml(h.finger)}${under ? ' · under' : done ? ` ${icon('check')}` : ''}</button>`;
+  }).join('');
+  const selHole = sel != null ? setup.holes[sel] : null;
+  return `${ocHeader(inst, 'setup')}
+    <div class="b-layout is-single">
+      <div class="b-main">
+        <h2 class="b-title">Where the holes are</h2>
+        <p class="b-intro">${selHole ? `Tap where hole ${sel + 1} (${escHtml(selHole.finger)}) is.` : 'Every hole is marked. Tap a hole below to move it.'}</p>
+        ${inst.photo ? '' : `<p class="b-meta">No photo yet: <button type="button" class="btn-link" data-action="inst-edit-open" data-id="${escHtml(inst.id)}">add one</button>, or mark the holes on the plain shape.</p>`}
+        <div class="hm-stage" data-action="hm-place">${holeMapSvg(inst, { sel })}</div>
+        <div class="chips hm-chips">${chips}</div>
+        ${selHole ? uiField({
+          label: `Finger on hole ${sel + 1}`, id: `s-finger-${sel}`,
+          control: `<select class="select" id="s-finger-${sel}" data-action="s-finger" data-index="${sel}">
+            ${OC_FINGER_ORDER.map(f => `<option value="${f}" ${selHole.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>`,
+          help: 'A thumb (LT, RT) puts the hole underneath.',
+        }) : ''}
+        <p class="b-meta">Thumb holes underneath don't need a spot. Not sure which finger is which? See the ⋯ menu.</p>
+        <div class="b-actions">
+          ${selHole && inst.holeMap?.[sel] ? '<button type="button" class="btn btn-ghost" data-action="hm-clear">Clear this spot</button>' : ''}
+          <button type="button" class="btn btn-primary b-next" data-action="hm-close">Done</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function hmFirstUnmarked(inst) {
+  const holes = setupOf(inst).holes;
+  const i = holes.findIndex((h, k) => h.side !== 'bottom' && !inst.holeMap?.[k]);
+  return i >= 0 ? i : null;
+}
+
 function setupFingersSheet() {
   const inst = currentInstrument();
   if (!inst || inst.kind !== 'custom') return '';
@@ -3561,6 +3707,7 @@ function panRotateBtn() {
 function sheetHtml() {
   if (state.confirm) return confirmSheet();
   if (state.menu) return menuSheet();
+  if (state.instEdit) return instEditSheet();
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
   if (state.plName) return plNameSheet();
@@ -3642,6 +3789,7 @@ function menuSheet() {
     const inst = currentInstrument();
     const shared = inst?.id === SHARED_ID;
     title = inst?.name ?? title;
+    if (inst && !shared) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
     if (inst && !shared) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument' }));
     if (inst) rows.push(uiRow({ lead: 'hand', title: 'Which finger is which', action: 'oc-hand-open' }));
     rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
@@ -5136,6 +5284,53 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'inst-edit-open') {
+    state.instEdit = el.dataset.id || state.currentInstrumentId;
+    state.menu = false;
+    render();
+    return;
+  }
+  if (action === 'inst-edit-close') { state.instEdit = null; refreshInstruments(); render(); return; }
+  if (action === 'ie-photo-remove' || action === 'ie-holes-step') {
+    let inst = getInstrument(state.instEdit);
+    if (!inst) return;
+    if (action === 'ie-photo-remove') { delete inst.photo; delete inst.holeMap; }
+    else inst = withHoleCount(inst, (inst.holeCount ?? 0) + parseInt(el.dataset.delta, 10));
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+    return;
+  }
+  if (action === 'hm-open') {
+    const inst = currentInstrument();
+    if (!inst) return;
+    state.oc.holeMap = { sel: hmFirstUnmarked(inst) ?? 0 };
+    render();
+    return;
+  }
+  if (action === 'hm-close') { state.oc.holeMap = null; render(); return; }
+  if (action === 'hm-select') { state.oc.holeMap.sel = parseInt(el.dataset.index, 10); render(); return; }
+  if (action === 'hm-place' || action === 'hm-clear') {
+    const inst = currentInstrument();
+    const sel = state.oc.holeMap?.sel;
+    if (!inst || sel == null) return;
+    const n = setupOf(inst).holes.length;
+    inst.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap?.[i] ?? null);
+    if (action === 'hm-clear') {
+      inst.holeMap[sel] = null;
+    } else {
+      const svg = el.querySelector('svg');
+      const box = svg.getBoundingClientRect();
+      const x = (e.clientX - box.left) / box.width, y = (e.clientY - box.top) / box.height;
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      inst.holeMap[sel] = { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    if (action === 'hm-place') state.oc.holeMap.sel = hmFirstUnmarked(inst);
+    render();
+    return;
+  }
   if (action === 's-fingers-open') { state.oc.fingersSheet = true; render(); return; }
   if (action === 's-fingers-close') { state.oc.fingersSheet = false; render(); return; }
   if (action === 'b-hole-done') {
@@ -6368,6 +6563,30 @@ document.addEventListener('change', e => {
     render();
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
+  if (action === 'ie-name' || action === 'ie-photo') {
+    const inst = getInstrument(state.instEdit);
+    if (!inst) return;
+    if (action === 'ie-name') {
+      inst.name = el.value.trim() || inst.name;
+      saveInstrument(inst);
+      refreshInstruments();
+      render();
+      return;
+    }
+    const file = el.files?.[0];
+    if (!file) return;
+    readInstrumentPhoto(file).then(photo => {
+      const fresh = getInstrument(inst.id);
+      if (!fresh) return;
+      // A different photo moves everything: the old spots no longer match.
+      if (fresh.photo) delete fresh.holeMap;
+      fresh.photo = photo;
+      saveInstrument(fresh);
+      refreshInstruments();
+      render();
+    }).catch(() => showToast('That photo couldn\'t be read'));
+    return;
+  }
   if (action === 'cs-target' && state.chordSheet) { state.chordSheet.target = el.value; return; }
   if (action === 'oc-scale-filter') { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); }
   if (action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')
@@ -6422,6 +6641,10 @@ document.addEventListener('change', e => {
       h.finger = el.value;
       h.side = el.value.endsWith('T') ? 'bottom' : 'top';
       inst.setup = setup;
+      // The chart's holes are copies made when it was worked out: keep their
+      // finger names in step (the notes don't depend on them).
+      const ch = inst.chambers?.[0]?.holes?.[parseInt(el.dataset.index, 10)];
+      if (ch) Object.assign(ch, { finger: h.finger, side: h.side });
     }
     if (action === 'b-design') {
       inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };

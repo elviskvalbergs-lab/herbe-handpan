@@ -1041,3 +1041,11 @@ Each step is one small commit that can be checked on the Vercel preview at 360px
 14. **Ocarina Notes, Chords and Practice** (§6.10–6.12): the sticky stage, medium grid, master-detail Chords on desktop, and the Practice focus view.
 15. **Build and Set up** (§6.13–6.17): the stepper, chamber switch, card structure, desktop preview panel, Set up guided capture and hole-fingers sheet, and the Clay bodies page in Settings. **A4:** deferred by the owner's decision. There is no A4 setting for now: the reference stays 440 Hz everywhere (tuner, builder targets and `build.a4` of new builds).
 16. **Final pass:** at 360px every screen in both themes, no horizontal scroll (`document.documentElement.scrollWidth === innerWidth`), every interactive element ≥44px (spot-check with devtools), `aria-label` on every icon button, keyboard-only navigation through the tabs, sheets and wizard, and reduced motion. Retake the 34 screenshots for the PR description.
+
+### Instrument photo, editing and hole layout (bought ocarinas)
+
+- **Edit instrument** sheet (`instEditSheet`, from the instrument's ⋯ menu and its row menu on Home; ocarinas and flutes): Name, Photo (Add / Change / Remove, a camera or library picture stored as a JPEG of at most 600 px), and for a bought instrument the number of holes (stepper). Changing the hole count clears the fingering chart; an ocarina keeps the fingers, single-hole readings and marked spots of the holes it still has (`withHoleCount` in js/builder.js).
+- The photo is the instrument's avatar on Home (40 px, rounded).
+- **Where the holes are** (Set up tab of a bought ocarina): a card with the photo and the marked holes, then the editor (`viewHoleMap`): the photo (or a plain shape), chips for each hole (number · finger, ✓ when marked, thumb holes "under"), the finger of the selected hole, Clear this spot, Done. Tapping the photo marks the selected hole and moves on to the next unmarked one.
+- Each "Only hole N open" reading shows a small copy of the photo with that hole drawn open.
+- Once every top hole is marked, the fingering diagrams draw the photo with the holes on it, sized from the calibration, thumb holes in the underside strip (`fgPhotoParts`).
