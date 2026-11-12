@@ -189,6 +189,9 @@ test('ChordPro short forms {soc} {eoc} {t:} and inline bar lines', () => {
   const s = parseChordSheet('{t: Short}\n{soc}\n| [Am] [Dm] | [E7] |\n{eoc}', { merge: false });
   assert.equal(s.title, 'Short');
   assert.deepEqual(s.steps.map(x => [x.symbol, x.beats, x.section]), [['Am', 2, 'Chorus'], ['Dm', 2, 'Chorus'], ['E7', 4, 'Chorus']]);
+  // Bracketed and bare chords on one chord line.
+  const mixed = parseChordSheet('| [C] [G] | Am | x2', { merge: false });
+  assert.deepEqual(mixed.steps.map(x => [x.symbol, x.beats]), [['C', 2], ['G', 2], ['Am', 4], ['C', 2], ['G', 2], ['Am', 4]]);
 });
 
 test('symbols that do not map are reported once', () => {

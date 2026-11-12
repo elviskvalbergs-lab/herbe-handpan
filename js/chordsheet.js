@@ -129,6 +129,11 @@ const CS_REPEAT_TOKEN = /^\(?(?:x\s?(\d+)|(\d+)\s?x)\)?$/i;
 // ([Am]) count wherever they are; the words around them are lyrics.
 function csLineTokens(line) {
   const inline = [...line.matchAll(/\[([^\]]*)\]/g)];
+  // "| [C] [G] | Am |": brackets on a line of chords are just brackets.
+  if (inline.length && inline.every(m => parseChordSymbol(m[1]))) {
+    const plain = line.replace(/\[([^\]]*)\]/g, ' $1 ');
+    if (plain.trim() !== line.trim() && csLineTokens(plain)) return csLineTokens(plain);
+  }
   if (inline.length) {
     const out = [];
     let repeat = 1;
