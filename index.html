@@ -8939,8 +8939,8 @@ function viewSetup(inst) {
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Set up</h2>
-        <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}<span class="sr-only">the microphone</span>, blow, and it fills itself in.</p>
-        <p class="b-meta">Blow steadily at a medium breath.</p>
+        <p class="b-intro">Everything about your ocarina: what it's called, its holes and fingers, and the readings its fingering chart is worked out from.</p>
+        ${instSetupCardHtml(inst)}
         <div class="card b-card">
           <div class="b-card-head">
             <div class="b-card-head-text">
@@ -8970,6 +8970,7 @@ function viewSetup(inst) {
           <div class="practice-progress" role="progressbar" aria-label="Readings recorded" aria-valuemin="0" aria-valuemax="${paths.length}" aria-valuenow="${filled}">
             <span style="width:${Math.round((filled / paths.length) * 100)}%"></span>
           </div>
+          <p class="b-meta">Blow each line into the tuner: tap ${icon('mic')}<span class="sr-only">the microphone</span>, blow steadily at a medium breath, and it fills itself in.</p>
           <div class="s-readings">
             ${paths.map((p, i) => {
               const v = value(p);
@@ -9037,6 +9038,7 @@ function viewFluteSetup(inst) {
         <h2 class="b-title">Set up</h2>
         <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}<span class="sr-only">the microphone</span>, blow, and it fills itself in.</p>
         <p class="b-meta">Holes count from the mouthpiece down: hole 1 is nearest your mouth. Lifted holes stay open for the lines below. Blow steadily at a medium breath.</p>
+        ${instSetupCardHtml(inst)}
         <div class="card b-card">
           <div class="b-card-head">
             <div class="b-card-head-text">
@@ -9085,7 +9087,7 @@ function viewFluteSetup(inst) {
 // ── Photo and hole layout of a bought instrument ─────────────────────────────
 
 function instEditMeta(inst) {
-  return inst.kind === 'custom' ? 'Name, photo, number of holes' : 'Name and photo';
+  return inst.kind === 'custom' ? 'Name, photo, holes, fingers and readings' : 'Name and photo';
 }
 
 // A photo from the camera or the library, made small enough to keep with
@@ -9111,16 +9113,16 @@ async function readInstrumentPhoto(file) {
   return { src: canvas.toDataURL('image/jpeg', 0.75), aspect: canvas.width / canvas.height };
 }
 
-function instEditSheet() {
-  const inst = getInstrument(state.instEdit);
-  if (!inst) return '';
+// Name, photo and (for one you set up yourself) the number of holes. In
+// the Edit instrument sheet, or at the top of Set up for a bought ocarina
+// or flute: one place for everything about it.
+function instFieldsHtml(inst) {
   const custom = inst.kind === 'custom';
   const flute = inst.family === 'flute';
   const n = inst.holeCount ?? 0;
-  return uiSheet({
-    key: 'inst-edit', title: 'Edit instrument', close: 'inst-edit-close',
-    body: `
-      ${uiField({ label: 'Name', id: 'ie-name', control: `<input class="input" id="ie-name" data-action="ie-name" value="${escHtml(inst.name)}" autocomplete="off">` })}
+  const id = escHtml(inst.id);
+  return `
+      ${uiField({ label: 'Name', id: `ie-name-${id}`, control: `<input class="input" id="ie-name-${id}" data-action="ie-name" data-id="${id}" value="${escHtml(inst.name)}" autocomplete="off">` })}
       <div class="field">
         <span class="field-label">Photo</span>
         <div class="ie-photo">
@@ -9128,21 +9130,38 @@ function instEditSheet() {
             : `<span class="ie-photo-empty">${icon(FAMILY_ICONS[inst.family] ?? 'music')}</span>`}
           <div class="ie-photo-actions">
             <label class="btn btn-secondary btn-sm">${icon('camera')} ${inst.photo ? 'Change photo' : 'Add photo'}
-              <input type="file" accept="image/*" class="sr-only" data-action="ie-photo"></label>
-            ${inst.photo ? '<button type="button" class="btn btn-ghost btn-sm" data-action="ie-photo-remove">Remove</button>' : ''}
+              <input type="file" accept="image/*" class="sr-only" data-action="ie-photo" data-id="${id}"></label>
+            ${inst.photo ? `<button type="button" class="btn btn-ghost btn-sm" data-action="ie-photo-remove" data-id="${id}">Remove</button>` : ''}
           </div>
         </div>
         <div class="field-help">Shown next to its name${inst.family === 'ocarina' && custom ? ', and used to mark where the holes are' : ''}. A photo of the top works best.</div>
       </div>
-      ${custom && !flute && inst.id === state.currentInstrumentId && state.view === 'instrument' ? `
-        <button type="button" class="btn btn-secondary btn-block ie-fingers" data-action="ie-fingers">${icon('hand')} Which finger covers each hole</button>` : ''}
       ${custom ? uiField({
         label: flute ? 'Finger holes' : 'Holes, thumb holes included', id: 'ie-holes',
-        control: uiStepper({ value: n, label: 'Holes', action: 'ie-holes-step', min: n <= (flute ? 3 : 1), max: n >= (flute ? 8 : 13) }),
+        control: uiStepper({ value: n, label: 'Holes', action: 'ie-holes-step', data: { id: inst.id }, min: n <= (flute ? 3 : 1), max: n >= (flute ? 8 : 13) }),
         help: inst.chambers?.length || inst.setup ? 'Changing this clears the fingering chart; set it up again with the new holes.' : '',
-      }) : ''}`,
+      }) : ''}`;
+}
+
+// The Edit instrument sheet: ocarinas and flutes without a Set up tab
+// (from a published chart, or designed here). Name and photo.
+function instEditSheet() {
+  const inst = getInstrument(state.instEdit);
+  if (!inst) return '';
+  return uiSheet({
+    key: 'inst-edit', title: 'Edit instrument', close: 'inst-edit-close',
+    body: instFieldsHtml(inst),
     footer: '<button type="button" class="btn btn-primary" data-action="inst-edit-close">Done</button>',
   });
+}
+
+// The card at the top of Set up.
+function instSetupCardHtml(inst) {
+  return `
+        <div class="card b-card ie-card">
+          <h3 class="b-card-title">Your ${inst.family === 'flute' ? 'flute' : 'ocarina'}</h3>
+          ${instFieldsHtml(inst)}
+        </div>`;
 }
 
 const HM_W = 1000;
@@ -11645,14 +11664,26 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'inst-edit-open') {
-    state.instEdit = el.dataset.id || state.currentInstrumentId;
+    const id = el.dataset.id || state.currentInstrumentId;
+    const inst = getInstrument(id);
     state.menu = false;
+    // One you set up yourself is edited on its Set up tab, with everything else.
+    if (inst?.kind === 'custom' && inst.family !== 'handpan') {
+      if (state.currentInstrumentId !== id || state.view !== 'instrument') openInstrument(id);
+      state.oc.tab = 'setup';
+      state.oc.holeMap = null;
+      navReplace(`#i/${id}/setup`);
+      render();
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    state.instEdit = id;
     render();
     return;
   }
   if (action === 'inst-edit-close') { state.instEdit = null; refreshInstruments(); render(); return; }
   if (action === 'ie-photo-remove' || action === 'ie-holes-step') {
-    let inst = getInstrument(state.instEdit);
+    let inst = getInstrument(el.dataset.id || state.instEdit);
     if (!inst) return;
     if (action === 'ie-photo-remove') { delete inst.photo; delete inst.holeMap; }
     else inst = withHoleCount(inst, (inst.holeCount ?? 0) + parseInt(el.dataset.delta, 10));
@@ -11704,14 +11735,6 @@ document.addEventListener('click', e => {
     saveInstrument(inst);
     refreshInstruments();
     showToast(`${el.dataset.hand === 'R' ? 'Right' : 'Left'} hand reversed`);
-    render();
-    return;
-  }
-  if (action === 'ie-fingers') {
-    state.instEdit = null;
-    state.oc.tab = 'setup';
-    state.oc.fingersSheet = true;
-    navReplace(`#i/${state.currentInstrumentId}/setup`);
     render();
     return;
   }
@@ -12948,7 +12971,7 @@ document.addEventListener('change', e => {
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
   if (action === 'ie-name' || action === 'ie-photo') {
-    const inst = getInstrument(state.instEdit);
+    const inst = getInstrument(el.dataset.id || state.instEdit);
     if (!inst) return;
     if (action === 'ie-name') {
       inst.name = el.value.trim() || inst.name;
