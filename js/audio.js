@@ -5,6 +5,7 @@ let masterGain = null;
 let reverbSend = null; // set after reverb setup; null = reverb not ready, use masterGain
 let routingEl = null;  // iOS: the <audio> element that carries Web Audio to the main speaker
 let speed = 1;         // time multiplier for arpeggios, scales and sequences (1 = normal)
+let voice = 'handpan'; // which instrument the next notes sound like, see setVoice()
 
 // Playback speed: 'slow' | 'normal' | 'fast'. Normal keeps the original
 // timings exactly; slow stretches them by half again, fast shortens them.
@@ -114,10 +115,92 @@ function whenRunning(fn) {
 
 const START_OFFSET = 0.05;
 
-function playFreq(freq, startTime) {
+// Wind voices: ocarina, wooden (Native American style) flute, tin whistle.
+// Each is a sustained tone with a soft breathy attack, built from a few
+// harmonics (one PeriodicWave), a little breath noise and a slow vibrato
+// that comes in after the attack. Handpan keeps its own struck sound.
+export const VOICES = ['handpan', 'ocarina', 'flute', 'whistle'];
+export function setVoice(name) { voice = VOICES.includes(name) ? name : 'handpan'; }
+
+const WIND = {
+  //            harmonics (1st, 2nd, …)      attack  breath  breath band   vibrato depth/rate  level
+  ocarina: { h: [1, 0.06, 0.035, 0.01],        a: 0.045, n: 0.05, nf: 2.2, nq: 1.2, vd: 4, vr: 5.0, g: 0.34 },
+  flute:   { h: [1, 0.22, 0.12, 0.05, 0.02],   a: 0.07,  n: 0.11, nf: 1.6, nq: 0.9, vd: 6, vr: 4.6, g: 0.33 },
+  whistle: { h: [1, 0.42, 0.24, 0.13, 0.07, 0.04], a: 0.025, n: 0.07, nf: 3.0, nq: 1.4, vd: 7, vr: 5.6, g: 0.3 },
+};
+const windWaves = {};
+let noiseBuf = null;
+
+function windWave(name) {
+  if (!windWaves[name]) {
+    const h = WIND[name].h;
+    const real = new Float32Array(h.length + 1), imag = new Float32Array(h.length + 1);
+    h.forEach((v, i) => { imag[i + 1] = v; });
+    windWaves[name] = ctx.createPeriodicWave(real, imag);
+  }
+  return windWaves[name];
+}
+
+function breathNoise() {
+  if (!noiseBuf) {
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+  src.loop = true;
+  return src;
+}
+
+function playWind(freq, now, dur, sink) {
+  const v = WIND[voice];
+  const hold = Math.max(0.12, dur);
+  const end = now + hold, release = 0.09;
+
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, now);
+  out.gain.linearRampToValueAtTime(v.g * 1.15, now + v.a);          // a slight push on the breath
+  out.gain.linearRampToValueAtTime(v.g, now + v.a + 0.08);
+  out.gain.setValueAtTime(v.g, end);
+  out.gain.exponentialRampToValueAtTime(0.0001, end + release);
+  out.connect(sink);
+
+  const osc = ctx.createOscillator();
+  osc.setPeriodicWave(windWave(voice));
+  osc.frequency.setValueAtTime(freq * 0.985, now);                   // blown notes settle up into pitch
+  osc.frequency.exponentialRampToValueAtTime(freq, now + v.a + 0.03);
+  const vib = ctx.createOscillator(), vibGain = ctx.createGain();
+  vib.frequency.value = v.vr;
+  vibGain.gain.setValueAtTime(0, now);
+  vibGain.gain.linearRampToValueAtTime(0, now + 0.25);
+  vibGain.gain.linearRampToValueAtTime(v.vd, now + 0.6);            // cents
+  vib.connect(vibGain);
+  vibGain.connect(osc.detune);
+  osc.connect(out);
+
+  // Breath: band-passed noise, strongest on the attack (the "chiff").
+  const noise = breathNoise(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+  bp.type = 'bandpass';
+  bp.frequency.value = Math.min(freq * v.nf, 9000);
+  bp.Q.value = v.nq;
+  ng.gain.setValueAtTime(0, now);
+  ng.gain.linearRampToValueAtTime(v.n * 3, now + v.a * 0.6);
+  ng.gain.linearRampToValueAtTime(v.n, now + v.a + 0.1);
+  ng.gain.setValueAtTime(v.n, end);
+  ng.gain.exponentialRampToValueAtTime(0.0001, end + release);
+  noise.connect(bp); bp.connect(ng); ng.connect(out);
+
+  const stop = end + release + 0.05;
+  [osc, vib, noise].forEach(n => { n.start(now); n.stop(stop); });
+  osc.onended = () => [osc, vib, vibGain, noise, bp, ng, out].forEach(n => n.disconnect());
+}
+
+function playFreq(freq, startTime, dur = 0.9) {
   if (!ctx) return;
   const now = startTime ?? ctx.currentTime;
   const sink = reverbSend ?? masterGain; // fall back if reverb not ready yet
+  if (voice !== 'handpan') { playWind(freq, now, dur, sink); return; }
 
   const harmonics = [
     { mult: 1,   gain: 0.52, decay: 5.5 },
@@ -159,10 +242,10 @@ export function playChord(noteNames, onArp, onTogether) {
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
     sorted.forEach((n, i) => {
-      playFreq(noteToFreq(n), now + i * ARP);
+      playFreq(noteToFreq(n), now + i * ARP, ARP * 0.92);
       if (onArp) setTimeout(() => onArp(n), Math.round(i * ARP * 1000));
     });
-    sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset));
+    sorted.forEach(n => playFreq(noteToFreq(n), now + togetherOffset, 1.4 * speed));
     if (onTogether) setTimeout(() => onTogether(sorted), Math.round(togetherOffset * 1000));
   });
 }
@@ -176,7 +259,7 @@ export function playScale(noteNames, onNote) {
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
     all.forEach((n, i) => {
-      playFreq(noteToFreq(n), now + i * INTERVAL);
+      playFreq(noteToFreq(n), now + i * INTERVAL, INTERVAL * 0.92);
       if (onNote) setTimeout(() => onNote(n), Math.round(i * INTERVAL * 1000));
     });
   });
@@ -190,7 +273,7 @@ export function playSequence(noteNames, onNote, interval = 0.4) {
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
     noteNames.forEach((n, i) => {
-      playFreq(noteToFreq(n), now + i * interval);
+      playFreq(noteToFreq(n), now + i * interval, interval * 0.92);
       if (onNote) setTimeout(() => onNote(n, i), Math.round(i * interval * 1000));
     });
   });

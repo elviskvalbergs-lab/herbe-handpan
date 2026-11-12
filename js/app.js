@@ -20,7 +20,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
-import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput } from './audio.js';
+import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
@@ -2068,7 +2068,19 @@ function ocCardData(inst, key) {
   };
 }
 
+// Which sound the next notes use: the open ocarina or flute sounds like
+// one (a whistle-bodied flute like a tin whistle); everything else, the
+// handpan screens included, keeps the handpan sound.
+function voiceForState() {
+  if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
+  const inst = currentInstrument();
+  if (!inst || inst.family === 'handpan') return 'handpan';
+  if (inst.family === 'ocarina') return 'ocarina';
+  return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'flute';
+}
+
 function playPracticeStep() {
+  setVoice(voiceForState());
   const inst = currentInstrument();
   const src = practiceSource(inst);
   if (!src) return;
@@ -4870,6 +4882,10 @@ document.addEventListener('visibilitychange', () => {
 
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
 document.addEventListener('touchstart', () => initAudio(), { once: true, passive: true });
+
+// Every tap first picks the sound for whatever it may play (capture phase,
+// so it runs before the handlers below).
+document.addEventListener('click', () => setVoice(voiceForState()), true);
 
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {
