@@ -5414,21 +5414,25 @@ const HAND_W = 1007.276, HAND_H = 1630.965;
 const HAND_TIPS = { 4: [114, 297], 3: [305, 99], 2: [493, 16], 1: [684, 121], T: [930, 610] };
 
 function renderHandLegend() {
+  // Fingers pointing down, as the hands come onto the instrument from
+  // above: the drawing flipped top to bottom, so every finger keeps its
+  // place (L4 … L1 left to right, thumbs facing the middle) and the labels
+  // sit under the fingertips, the hand names above the wrists.
   const k = 0.36, top = 46, gap = 70;
-  const w = HAND_W * k;
+  const w = HAND_W * k, h = HAND_H * k;
   const hand = (side, ox) => {
     const mirror = side === 'R';
     const px = x => ox + (mirror ? HAND_W - x : x) * k;
-    const py = y => top + y * k;
+    const py = y => top + (HAND_H - y) * k;
     const labels = Object.entries(HAND_TIPS).map(([f, [x, y]]) =>
-      `<text class="hand-label" x="${px(x)}" y="${py(y) - 24}">${side}${f}</text>`).join('');
-    const t = mirror ? `translate(${ox + w} ${top}) scale(${-k} ${k})` : `translate(${ox} ${top}) scale(${k})`;
-    return `<path class="hand-line" transform="${t}" d="${HAND_PATH}"/>${labels}
-      <text class="hand-name" x="${ox + w / 2}" y="${top + HAND_H * k + 34}">${side === 'L' ? 'Left hand' : 'Right hand'}</text>`;
+      `<text class="hand-label" x="${px(x)}" y="${py(y) + 26}">${side}${f}</text>`).join('');
+    const t = `translate(${mirror ? ox + w : ox} ${top + h}) scale(${mirror ? -k : k} ${-k})`;
+    return `<text class="hand-name" x="${ox + w / 2}" y="${top - 18}">${side === 'L' ? 'Left hand' : 'Right hand'}</text>
+      <path class="hand-line" transform="${t}" d="${HAND_PATH}"/>${labels}`;
   };
-  const W = 2 * w + gap + 40, H = top + HAND_H * k + 50;
+  const W = 2 * w + gap + 40, H = top + h + 50;
   return `<svg class="hand-legend" viewBox="0 0 ${Math.round(W)} ${Math.round(H)}" role="img"
-    aria-label="Finger names: L1 to L4 are the left index to pinky, R1 to R4 the right index to pinky, LT and RT the thumbs">
+    aria-label="Finger names, hands seen from above with the fingers pointing down: L1 to L4 are the left index to pinky, R1 to R4 the right index to pinky, LT and RT the thumbs">
     ${hand('L', 20)}${hand('R', 20 + w + gap)}</svg>`;
 }
 
