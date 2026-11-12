@@ -42,10 +42,14 @@ function fgHoleName(h) { return h.sub ? `${h.finger} sub-hole` : h.finger; }
 
 // Per finger (sub-holes separately), whether it is on a hole ('c' or 'h').
 function fgFingersDown(chamber, states) {
+  // Per finger: 'c' covered, 'h' half-covered, 'o' open (a finger with
+  // several holes counts as its most covered one).
+  const rank = { o: 0, h: 1, c: 2 };
   const down = {};
   chamber.holes.forEach((h, i) => {
     const k = fgHoleName(h);
-    down[k] = (down[k] ?? false) || states[i] !== 'o';
+    const st = states[i] === 'c' || states[i] === 'h' ? states[i] : 'o';
+    if (!down[k] || rank[st] > rank[down[k]]) down[k] = st;
   });
   return down;
 }
@@ -65,16 +69,18 @@ export function fingeringMoves(inst, fromMidi, toMidi) {
   const before = fgFingersDown(a.chamber, a.states);
   const after = fgFingersDown(b.chamber, b.states);
   const fingers = Object.keys(after);
-  const lift = fingers.filter(f => before[f] === true && after[f] === false);
-  const cover = fingers.filter(f => before[f] !== true && after[f] === true);
+  const lift = fingers.filter(f => before[f] && before[f] !== 'o' && after[f] === 'o');
+  const cover = fingers.filter(f => before[f] !== 'c' && after[f] === 'c');
+  const half = fingers.filter(f => before[f] !== 'h' && after[f] === 'h');
   const switchChamber = a.chamberIndex !== b.chamberIndex;
   const parts = [];
   if (switchChamber) parts.push(`Blow chamber ${b.chamberIndex + 1}`);
   if (cover.length) parts.push(`cover ${fgJoinFingers(cover)}`);
   if (lift.length) parts.push(`lift ${fgJoinFingers(lift)}`);
+  if (half.length) parts.push(`half-cover ${fgJoinFingers(half)}`);
   let text = parts.join(', ');
   text = text ? text[0].toUpperCase() + text.slice(1) : 'No change';
-  return { lift, cover, switchChamber, text };
+  return { lift, cover, half, switchChamber, text };
 }
 
 // Accessible label: "D4: R4 and R3 open, all others closed".
@@ -378,14 +384,16 @@ export function renderFingering(inst, midi, opts = {}) {
 }
 
 // One hole with its state, change mark, arrow, finger label and size.
-function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false }) {
+function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false, photo = false }) {
   const hk = fgHoleName(hole);
-  const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk));
-  g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}`));
+  const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk) || moves.half?.includes(hk));
+  g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}${photo ? ' fg-on-photo' : ''}`));
   if (changed && size !== 'mini' && labelled) g.push(fgArrow(x, y, r, moves.lift.includes(hk) ? 'up' : 'down'));
   if (showFingers && size !== 'mini' && labelled) {
     // Small flute holes can't hold a label: it goes under the hole.
-    g.push(wood
+    g.push(photo
+      ? `<text class="fg-finger-photo" x="${x}" y="${y + r + 10}">${hole.finger}</text>`
+      : wood
       ? `<text class="fg-finger-below" x="${x}" y="${y + r + 11}">${hole.sub ? '' : hole.finger}</text>`
       : `<text class="fg-finger ${state === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${hole.sub ? '' : hole.finger}</text>`);
   }
@@ -523,8 +531,8 @@ function fgPhotoParts(ctx) {
       x = x0 + spot.x * w;
       y = y0 + spot.y * h;
     }
-    const r = Math.max(4.5, 11 * (rel[i] ?? 1));
-    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size,
+    const r = Math.max(6, 13 * (rel[i] ?? 1));
+    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
       showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
   });
   return { parts: [`<g class="fg-chamber">${g.join('')}</g>`], bodyBottom: sy + (hasThumbs ? FG_STRIP_H : 0) };

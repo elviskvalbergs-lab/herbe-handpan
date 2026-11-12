@@ -23,7 +23,7 @@ test('playable notes and fingering lookup', () => {
 
 test('moves between notes', () => {
   assert.deepEqual(fingeringMoves(dKurd, m('D3'), m('Bb3')), {
-    lift: ['R4', 'R3'], cover: [], switchChamber: false, text: 'Lift R4 and R3',
+    lift: ['R4', 'R3'], cover: [], half: [], switchChamber: false, text: 'Lift R4 and R3',
   });
   assert.equal(fingeringMoves(dKurd, m('C4'), m('A3')).text, 'Cover R3 and R2');
   // Changing chamber: D4 (all four open) → F4 on chamber 2 (only R4 open).
@@ -31,6 +31,17 @@ test('moves between notes', () => {
   assert.equal(mv.switchChamber, true);
   assert.equal(mv.text, 'Blow chamber 2, cover R3 and R2');
   assert.equal(fingeringMoves(dKurd, m('D3'), m('D3')).text, 'No change');
+});
+
+test('moves include half-covering a hole', () => {
+  const inst = { family: 'ocarina', chambers: [{ notes: [60, 61, 62], holes: [{ id: 'R1', finger: 'R1', side: 'top' }, { id: 'R2', finger: 'R2', side: 'top' }],
+    fingerings: { 60: ['c', 'c'], 61: ['c', 'h'], 62: ['c', 'o'] } }] };
+  const ab = fingeringMoves(inst, 60, 61);
+  assert.deepEqual(ab.half, ['R2']);
+  assert.equal(ab.text, 'Half-cover R2');
+  assert.equal(fingeringMoves(inst, 61, 62).text, 'Lift R2');
+  assert.equal(fingeringMoves(inst, 62, 61).text, 'Half-cover R2');
+  assert.equal(fingeringMoves(inst, 61, 60).text, 'Cover R2');
 });
 
 test('mixed moves read as "Cover …, lift …"', () => {

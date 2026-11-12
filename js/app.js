@@ -24,7 +24,7 @@ import { initAudio, playNote, playChord, playScale, playSequence, playClick, set
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
-  renderFingering, renderHandLegend, fingeringMoves, playableMidis,
+  renderFingering, renderHandLegend, fingeringMoves, playableMidis, fingeringFor,
   ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
 } from './ocarina-ui.js';
 import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch } from './ocarina.js';
@@ -1709,6 +1709,7 @@ function ocMovesHtml(moves, { lower = false } = {}) {
   if (chamber) parts.push(['', chamber[0].toLowerCase()]);
   if (moves.cover.length) parts.push(['move-cover', `cover ${join(moves.cover)}`]);
   if (moves.lift.length) parts.push(['move-lift', `lift ${join(moves.lift)}`]);
+  if (moves.half?.length) parts.push(['move-cover', `half-cover ${join(moves.half)}`]);
   return parts.map(([cls, text], i) => {
     const t = i === 0 && !lower ? text[0].toUpperCase() + text.slice(1) : text;
     return cls ? `<span class="${cls}">${escHtml(t)}</span>` : escHtml(t);
@@ -1752,11 +1753,23 @@ function ocChordBody(inst, a, parts, { size = 'mini' } = {}) {
           aria-label="Move ${nn(m)} to another octave" title="Move to another octave">${nn(m)}</button>`).join('')}</div>
         <div class="oc-hint">Tap a note to move it to another octave</div>
       </div>
-      <div class="oc-arp${size === 'mini' ? ' chips-scroll' : ''}">
+      <ol class="oc-steps">
         ${parts.arp.map((m, i) => `
-          ${i > 0 ? `<div class="fg-move">${icon('chevron-right')}<span>${ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m))}</span></div>` : ''}
-          <button type="button" class="fg-mini${size === 'medium' ? ' is-medium' : ''}" data-action="oc-play-note" data-midi="${m}">${renderFingering(inst, m, { ...opts, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
-        `).join('')}
+          <li class="oc-step">
+            <button type="button" class="oc-step-fg" data-action="oc-play-note" data-midi="${m}" aria-label="Play ${escHtml(nn(m))}">
+              ${renderFingering(inst, m, { ...opts, size: 'medium', showFingers: true, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
+            <div class="oc-step-text">
+              <div class="oc-step-num">${i + 1} of ${parts.arp.length}</div>
+              <div class="oc-step-note">${escHtml(nn(m))}</div>
+              <div class="oc-step-move">${i === 0 ? 'Start with this fingering' : ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m))}</div>
+            </div>
+          </li>`).join('')}
+      </ol>
+      <div class="fg-legend oc-steps-legend">
+        <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span>
+        ${parts.arp.some(m => fingeringFor(inst, m)?.states?.includes('h')) ? `<span>${legendHole('h')} half</span>` : ''}
+        <span>${legendHole('x')} changes</span>
+        ${uiIconBtn('hand', 'Which finger is which', { action: 'oc-hand-open', cls: 'is-dense' })}
       </div>
       ${parts.pairs.map(p => `
         <button type="button" class="oc-pair" data-action="oc-play-pair" data-a="${p.a.midi}" data-b="${p.b.midi}">
@@ -2036,7 +2049,8 @@ function recordedCentsHtml(inst, midi) {
 }
 
 function legendHole(state) {
-  const body = state === 'c' ? '<circle class="fg-c" cx="8" cy="8" r="6"/>'
+  const body = state === 'x' ? '<g class="fg-changed"><circle class="fg-o" cx="8" cy="8" r="5.5"/></g>'
+    : state === 'c' ? '<circle class="fg-c" cx="8" cy="8" r="6"/>'
     : state === 'o' ? '<circle class="fg-o" cx="8" cy="8" r="6"/>'
     : '<circle class="fg-o" cx="8" cy="8" r="6"/><path class="fg-c" d="M 2 8 A 6 6 0 0 0 14 8 Z"/>';
   return `<svg class="fingering" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">${body}</svg>`;

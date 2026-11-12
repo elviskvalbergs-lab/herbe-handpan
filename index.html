@@ -1569,6 +1569,25 @@ html { touch-action: manipulation; }
 .fingering .fg-photo-frame { fill: none; stroke: var(--border); stroke-width: 1; }
 .scale-row.listen-match .row-meta + .row-meta { -webkit-line-clamp: 3; }
 
+/* Chord fingerings as steps: picture, then the note and what changes */
+.oc-steps { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.oc-step { display: flex; align-items: center; gap: var(--space-3); }
+.oc-step-fg { flex: 0 0 58%; max-width: 260px; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--surface-1); cursor: pointer; color: inherit; }
+.oc-step-fg .fingering { width: 100%; height: auto; display: block; }
+.oc-step-text { min-width: 0; }
+.oc-step-num { font-size: var(--fs-13); color: var(--text-3); }
+.oc-step-note { font-size: 22px; font-weight: 700; color: var(--text-1); line-height: 1.2; }
+.oc-step-move { font-size: var(--fs-15, 15px); color: var(--text-2); margin-top: 2px; }
+.oc-steps-legend { margin-top: var(--space-3); flex-wrap: wrap; }
+.oc-steps-legend .icon-btn, .oc-steps-legend .btn-icon { margin-left: auto; }
+/* Holes drawn on a photo: white outline so they read on dark clay, finger name under the hole */
+.fingering .fg-on-photo .fg-c, .fingering .fg-on-photo.fg-c { fill: #111; stroke: #fff; stroke-width: 2; }
+.fingering .fg-on-photo .fg-o, .fingering .fg-on-photo.fg-o { fill: #fff; stroke: #111; stroke-width: 1.5; }
+.fingering .fg-finger-photo { fill: #fff; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central;
+  paint-order: stroke; stroke: rgba(0, 0, 0, 0.8); stroke-width: 3px; }
+.fingering .fg-on-photo.fg-changed, .fingering .fg-on-photo.fg-changed circle { stroke: var(--accent); stroke-width: 4; }
+
   </style>
 </head>
 <body>
@@ -5087,10 +5106,14 @@ function fgHoleName(h) { return h.sub ? `${h.finger} sub-hole` : h.finger; }
 
 // Per finger (sub-holes separately), whether it is on a hole ('c' or 'h').
 function fgFingersDown(chamber, states) {
+  // Per finger: 'c' covered, 'h' half-covered, 'o' open (a finger with
+  // several holes counts as its most covered one).
+  const rank = { o: 0, h: 1, c: 2 };
   const down = {};
   chamber.holes.forEach((h, i) => {
     const k = fgHoleName(h);
-    down[k] = (down[k] ?? false) || states[i] !== 'o';
+    const st = states[i] === 'c' || states[i] === 'h' ? states[i] : 'o';
+    if (!down[k] || rank[st] > rank[down[k]]) down[k] = st;
   });
   return down;
 }
@@ -5110,16 +5133,18 @@ function fingeringMoves(inst, fromMidi, toMidi) {
   const before = fgFingersDown(a.chamber, a.states);
   const after = fgFingersDown(b.chamber, b.states);
   const fingers = Object.keys(after);
-  const lift = fingers.filter(f => before[f] === true && after[f] === false);
-  const cover = fingers.filter(f => before[f] !== true && after[f] === true);
+  const lift = fingers.filter(f => before[f] && before[f] !== 'o' && after[f] === 'o');
+  const cover = fingers.filter(f => before[f] !== 'c' && after[f] === 'c');
+  const half = fingers.filter(f => before[f] !== 'h' && after[f] === 'h');
   const switchChamber = a.chamberIndex !== b.chamberIndex;
   const parts = [];
   if (switchChamber) parts.push(`Blow chamber ${b.chamberIndex + 1}`);
   if (cover.length) parts.push(`cover ${fgJoinFingers(cover)}`);
   if (lift.length) parts.push(`lift ${fgJoinFingers(lift)}`);
+  if (half.length) parts.push(`half-cover ${fgJoinFingers(half)}`);
   let text = parts.join(', ');
   text = text ? text[0].toUpperCase() + text.slice(1) : 'No change';
-  return { lift, cover, switchChamber, text };
+  return { lift, cover, half, switchChamber, text };
 }
 
 // Accessible label: "D4: R4 and R3 open, all others closed".
@@ -5423,14 +5448,16 @@ function renderFingering(inst, midi, opts = {}) {
 }
 
 // One hole with its state, change mark, arrow, finger label and size.
-function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false }) {
+function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false, photo = false }) {
   const hk = fgHoleName(hole);
-  const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk));
-  g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}`));
+  const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk) || moves.half?.includes(hk));
+  g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}${photo ? ' fg-on-photo' : ''}`));
   if (changed && size !== 'mini' && labelled) g.push(fgArrow(x, y, r, moves.lift.includes(hk) ? 'up' : 'down'));
   if (showFingers && size !== 'mini' && labelled) {
     // Small flute holes can't hold a label: it goes under the hole.
-    g.push(wood
+    g.push(photo
+      ? `<text class="fg-finger-photo" x="${x}" y="${y + r + 10}">${hole.finger}</text>`
+      : wood
       ? `<text class="fg-finger-below" x="${x}" y="${y + r + 11}">${hole.sub ? '' : hole.finger}</text>`
       : `<text class="fg-finger ${state === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${hole.sub ? '' : hole.finger}</text>`);
   }
@@ -5568,8 +5595,8 @@ function fgPhotoParts(ctx) {
       x = x0 + spot.x * w;
       y = y0 + spot.y * h;
     }
-    const r = Math.max(4.5, 11 * (rel[i] ?? 1));
-    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size,
+    const r = Math.max(6, 13 * (rel[i] ?? 1));
+    fgHoleParts(g, { x, y, r, state: states[i], hole, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
       showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
   });
   return { parts: [`<g class="fg-chamber">${g.join('')}</g>`], bodyBottom: sy + (hasThumbs ? FG_STRIP_H : 0) };
@@ -7845,6 +7872,7 @@ function ocMovesHtml(moves, { lower = false } = {}) {
   if (chamber) parts.push(['', chamber[0].toLowerCase()]);
   if (moves.cover.length) parts.push(['move-cover', `cover ${join(moves.cover)}`]);
   if (moves.lift.length) parts.push(['move-lift', `lift ${join(moves.lift)}`]);
+  if (moves.half?.length) parts.push(['move-cover', `half-cover ${join(moves.half)}`]);
   return parts.map(([cls, text], i) => {
     const t = i === 0 && !lower ? text[0].toUpperCase() + text.slice(1) : text;
     return cls ? `<span class="${cls}">${escHtml(t)}</span>` : escHtml(t);
@@ -7888,11 +7916,23 @@ function ocChordBody(inst, a, parts, { size = 'mini' } = {}) {
           aria-label="Move ${nn(m)} to another octave" title="Move to another octave">${nn(m)}</button>`).join('')}</div>
         <div class="oc-hint">Tap a note to move it to another octave</div>
       </div>
-      <div class="oc-arp${size === 'mini' ? ' chips-scroll' : ''}">
+      <ol class="oc-steps">
         ${parts.arp.map((m, i) => `
-          ${i > 0 ? `<div class="fg-move">${icon('chevron-right')}<span>${ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m))}</span></div>` : ''}
-          <button type="button" class="fg-mini${size === 'medium' ? ' is-medium' : ''}" data-action="oc-play-note" data-midi="${m}">${renderFingering(inst, m, { ...opts, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
-        `).join('')}
+          <li class="oc-step">
+            <button type="button" class="oc-step-fg" data-action="oc-play-note" data-midi="${m}" aria-label="Play ${escHtml(nn(m))}">
+              ${renderFingering(inst, m, { ...opts, size: 'medium', showFingers: true, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
+            <div class="oc-step-text">
+              <div class="oc-step-num">${i + 1} of ${parts.arp.length}</div>
+              <div class="oc-step-note">${escHtml(nn(m))}</div>
+              <div class="oc-step-move">${i === 0 ? 'Start with this fingering' : ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m))}</div>
+            </div>
+          </li>`).join('')}
+      </ol>
+      <div class="fg-legend oc-steps-legend">
+        <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span>
+        ${parts.arp.some(m => fingeringFor(inst, m)?.states?.includes('h')) ? `<span>${legendHole('h')} half</span>` : ''}
+        <span>${legendHole('x')} changes</span>
+        ${uiIconBtn('hand', 'Which finger is which', { action: 'oc-hand-open', cls: 'is-dense' })}
       </div>
       ${parts.pairs.map(p => `
         <button type="button" class="oc-pair" data-action="oc-play-pair" data-a="${p.a.midi}" data-b="${p.b.midi}">
@@ -8172,7 +8212,8 @@ function recordedCentsHtml(inst, midi) {
 }
 
 function legendHole(state) {
-  const body = state === 'c' ? '<circle class="fg-c" cx="8" cy="8" r="6"/>'
+  const body = state === 'x' ? '<g class="fg-changed"><circle class="fg-o" cx="8" cy="8" r="5.5"/></g>'
+    : state === 'c' ? '<circle class="fg-c" cx="8" cy="8" r="6"/>'
     : state === 'o' ? '<circle class="fg-o" cx="8" cy="8" r="6"/>'
     : '<circle class="fg-o" cx="8" cy="8" r="6"/><path class="fg-c" d="M 2 8 A 6 6 0 0 0 14 8 Z"/>';
   return `<svg class="fingering" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">${body}</svg>`;
