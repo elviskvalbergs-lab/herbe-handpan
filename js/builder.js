@@ -158,9 +158,15 @@ export function defaultCustomHoles(count) {
 // A playable chamber from calibration readings: f0 with every hole closed,
 // singles[i] with only hole i open. Returns { notes, holes, fingerings,
 // calibration } or null until every reading is in.
-export function calibrateChamber(holes, f0, singles, { a4 = 440, toleranceCents = 20 } = {}) {
+// extra: further readings the owner took of other fingerings ([{ states,
+// hz }], from changing a fingering by hand); they refine the fit and, like
+// the set-up readings, win the note they land on.
+export function calibrateChamber(holes, f0, singles, { a4 = 440, toleranceCents = 20, extra = [] } = {}) {
   if (!(f0 > 0) || singles.length !== holes.length || !singles.every(hz => hz > f0)) return null;
-  const measurements = singles.map((hz, i) => ({ states: holes.map((_, j) => (j === i ? 'o' : 'c')), hz }));
+  const measurements = [
+    ...singles.map((hz, i) => ({ states: holes.map((_, j) => (j === i ? 'o' : 'c')), hz })),
+    ...extra.filter(x => x?.hz > 0 && x.states?.length === holes.length),
+  ];
   const ratios = solveHoleRatios(f0, measurements);
   const chart = calibratedChart(f0, ratios, { a4, toleranceCents });
   const max = Math.max(...ratios);

@@ -3010,10 +3010,15 @@ function fgEditStageHtml(inst, opts) {
       ${renderFingering(tmp, ed.midi, { ...opts, size: 'large', showFingers: true, editable: true })}
       <p class="fg-edit-help">Tap a hole: covered → open → half. Blow it with the tuner on to check.</p>
       ${guess ? `<p class="fg-edit-help">${guess}</p>` : ''}
+      <div class="fg-edit-rec">
+        <div class="field-label">What it really sounds (optional)</div>
+        ${uiHzField('e:hz', ed.hz ?? null, { label: 'What this fingering sounds in Hz' })}
+        <p class="fg-edit-help">Tap ${icon('mic')}<span class="sr-only">the microphone</span> and blow this fingering: the reading is added to your set-up readings, so the other notes are worked out better too.</p>
+      </div>
       <div class="fg-edit-actions">
         ${fixed ? '<button type="button" class="btn btn-ghost btn-sm" data-action="fg-edit-reset">Use the worked-out one</button>' : ''}
         <button type="button" class="btn btn-secondary btn-sm" data-action="fg-edit-cancel">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" data-action="fg-edit-save">Save for ${escHtml(displayNote(midiToNoteName(ed.midi), uf, us))}</button>
+        <button type="button" class="btn btn-primary btn-sm" data-action="fg-edit-save">Save for ${escHtml(displayNote(midiToNoteName(ed.hz > 0 ? Math.round(hzToMidi(ed.hz)) : ed.midi), uf, us))}</button>
       </div>
     </div>`;
 }
@@ -3046,6 +3051,10 @@ function setReading(inst, path, value) {
     const setup = fluteSetupOf(inst);
     setup.readings[parseInt(parts[1], 10)] = value;
     inst.setup = setup;
+    return;
+  }
+  if (parts[0] === 'e') {
+    if (state.oc.fgEdit) state.oc.fgEdit.hz = value;
     return;
   }
   if (parts[0] === 's') {
@@ -5367,19 +5376,40 @@ document.addEventListener('click', e => {
     const fixed = { ...(inst.setup.fixed ?? {}) };
     if (action === 'fg-edit-save') fixed[ed.midi] = ed.states;
     else delete fixed[ed.midi];
+    let heard = null;
+    if (action === 'fg-edit-save' && ed.hz > 0) {
+      // A reading of this fingering: one more measurement for the fit. It
+      // fixes the note it actually sounds, which may not be the one picked.
+      const same = x => x.states.join() === ed.states.join();
+      inst.setup.extra = [...(inst.setup.extra ?? []).filter(x => !same(x)), { states: ed.states, hz: ed.hz }];
+      heard = Math.round(hzToMidi(ed.hz));
+      if (heard !== ed.midi) delete fixed[ed.midi];
+    }
     inst.setup.fixed = fixed;
-    if (action === 'fg-edit-save') {
+    if (heard != null) {
+      const s2 = inst.setup;
+      const ch = calibrateChamber(s2.holes, s2.f0, s2.singles, { extra: s2.extra });
+      if (ch) {
+        inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, fixed)];
+        inst.calibration = ch.calibration;
+      }
+    } else if (action === 'fg-edit-save') {
       inst.chambers = [withFixedFingerings(inst.chambers[0], { [ed.midi]: ed.states })];
     } else {
       // Back to the chart worked out from the readings for this note.
       const s = inst.setup;
-      const ch = calibrateChamber(s.holes, s.f0, s.singles);
+      const ch = calibrateChamber(s.holes, s.f0, s.singles, { extra: s.extra });
       if (ch?.fingerings[ed.midi]) inst.chambers[0] = { ...inst.chambers[0], fingerings: { ...inst.chambers[0].fingerings, [ed.midi]: ch.fingerings[ed.midi] } };
     }
     saveInstrument(inst);
     refreshInstruments();
     state.oc.fgEdit = null;
-    showToast(action === 'fg-edit-save' ? 'Fingering saved' : 'Back to the worked-out fingering');
+    const uf = state.useFlats, us = state.useSolfege;
+    showToast(heard != null && heard !== ed.midi
+      ? `That fingering sounds ${displayNote(midiToNoteName(heard), uf, us)}: saved for ${displayNote(midiToNoteName(heard), uf, us)}, chart updated`
+      : heard != null ? 'Fingering and reading saved, chart updated'
+      : action === 'fg-edit-save' ? 'Fingering saved' : 'Back to the worked-out fingering');
+    if (heard != null && playableMidis(inst).includes(heard)) state.oc.selected = heard;
     render();
     return;
   }
@@ -5476,7 +5506,7 @@ document.addEventListener('click', e => {
   if (action === 's-calibrate') {
     const inst = currentInstrument();
     if (!inst?.setup) return;
-    const ch = calibrateChamber(inst.setup.holes, inst.setup.f0, inst.setup.singles);
+    const ch = calibrateChamber(inst.setup.holes, inst.setup.f0, inst.setup.singles, { extra: inst.setup.extra });
     if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each hole raises the pitch'); return; }
     inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
     inst.calibration = ch.calibration;

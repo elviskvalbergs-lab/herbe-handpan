@@ -189,3 +189,15 @@ test('fingerings set by hand override the worked-out chart', async () => {
   assert.deepEqual(out.notes, [60, 62, 64]);              // 65 has the wrong hole count: ignored
   assert.equal(withFixedFingerings(ch, {}), ch);
 });
+
+test('calibration: a reading of another fingering refines the chart and wins its note', () => {
+  const holes = defaultCustomHoles(5);
+  const hz = n => midiToHz(noteToMidi(n));
+  const singles = [hz('E4'), hz('F4'), hz('F#4'), hz('G4'), hz('A4')];
+  // Owner: C5 is every hole open but the third.
+  const c5 = ['o', 'o', 'c', 'o', 'o'];
+  const ch = calibrateChamber(holes, hz('C4'), singles, { extra: [{ states: c5, hz: hz('C5') }] });
+  assert.deepEqual(ch.fingerings[noteToMidi('C5')], c5);
+  // Readings with the wrong hole count are ignored.
+  assert.ok(calibrateChamber(holes, hz('C4'), singles, { extra: [{ states: ['o'], hz: 500 }] }));
+});
