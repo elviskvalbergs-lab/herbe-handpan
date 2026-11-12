@@ -7,7 +7,7 @@ The app talks to Supabase with the project URL and publishable key in
 
 `migrations/` holds the SQL files; `migrate.py` applies them. Every Vercel
 build runs `build.py`, which first runs `migrate.py` when the environment
-variable `HP_DATABASE_URL` is set:
+variable `DATABASE_URL` is set:
 
 - Pending files are applied in file-name order, each in its own transaction.
 - Applied files are recorded in `public._hp_migrations` (name, SHA-256,
@@ -39,7 +39,7 @@ sharing says it isn't available.
    connection: the direct host is IPv6-only and Vercel's build machines
    may not reach it.
 2. In Vercel → Project → Settings → **Environment Variables**, add
-   `HP_DATABASE_URL` with that value for the **Production** environment.
+   `DATABASE_URL` with that value for the **Production** environment.
 3. Redeploy production (or merge the next PR). The build log shows
    `[migrate] … applied`.
 
@@ -49,20 +49,20 @@ the browser.
 ## Test project for preview builds
 
 Every build shares the production database unless told otherwise, and with
-`HP_DATABASE_URL` set for Preview a pull request's build would migrate
+`DATABASE_URL` set for Preview a pull request's build would migrate
 production before the PR is merged. To give previews their own database:
 
 1. Create a second Supabase project, enable email sign-in, and create the
    `user_data` table the same way as in production (the migrations then add
    everything else on the first preview build).
 2. In Vercel → Environment Variables, for the **Preview** environment only:
-   - `HP_DATABASE_URL`: the test project's session pooler connection string
+   - `DATABASE_URL`: the test project's session pooler connection string
    - `HP_SUPABASE_URL`: the test project's URL
    - `HP_SUPABASE_KEY`: the test project's publishable key
 3. Redeploy a preview. `build.py` migrates the test database and swaps the
    test URL and key into the bundle; production keeps the values in
    `js/auth.js`.
 
-Without a test project, leave `HP_DATABASE_URL` unset for Preview: previews
+Without a test project, leave `DATABASE_URL` unset for Preview: previews
 then don't migrate anything, and new tables appear only once the PR is
 merged and production deploys.

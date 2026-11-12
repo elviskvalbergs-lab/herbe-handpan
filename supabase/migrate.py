@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Apply pending SQL migrations from supabase/migrations/ to the database.
 
-Runs as part of build.py when HP_DATABASE_URL is set (Vercel → Project →
+Runs as part of build.py when DATABASE_URL is set (Vercel → Project →
 Settings → Environment Variables; see supabase/README.md). Can also be run
-by hand: HP_DATABASE_URL=postgresql://… python3 supabase/migrate.py
+by hand: DATABASE_URL=postgresql://… python3 supabase/migrate.py
 
 - Files are applied in file-name order, each in its own transaction.
 - Applied files are recorded in public._hp_migrations (file name, SHA-256,
@@ -96,14 +96,14 @@ def run(url):
 
 
 def main():
-    url = os.environ.get('HP_DATABASE_URL')
+    url = os.environ.get('DATABASE_URL')
     if not url:
-        log('HP_DATABASE_URL is not set: skipping database migrations')
+        log('DATABASE_URL is not set: skipping database migrations')
         return 0
     try:
         run(url)
     except Exception as err:  # report without echoing the connection string
-        msg = str(err).replace(url, '<HP_DATABASE_URL>')
+        msg = str(err).replace(url, '<DATABASE_URL>')
         log(f'FAILED: {type(err).__name__}: {msg}')
         return 1
     return 0

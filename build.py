@@ -15,11 +15,11 @@ def strip_modules(js):
     js = re.sub(r'\bexport\s+(default\s+)?', '', js)
     return js
 
-# Database migrations first: with HP_DATABASE_URL set (Vercel builds), pending
+# Database migrations first: with DATABASE_URL set (Vercel builds), pending
 # files in supabase/migrations/ are applied, and a failure stops the build so
 # code that needs a schema change never deploys without it. Without the
 # variable (local builds) this step is skipped. See supabase/README.md.
-if os.environ.get('HP_DATABASE_URL'):
+if os.environ.get('DATABASE_URL'):
     import subprocess, sys
     if subprocess.call([sys.executable, os.path.join(ROOT, 'supabase', 'migrate.py')]) != 0:
         sys.exit('Database migration failed: build stopped.')
