@@ -1470,3 +1470,4 @@ html { touch-action: manipulation; }
 .fl-pattern { letter-spacing: 0.05em; color: var(--text-2); }
 .fl-recorded { margin: var(--space-2) 0 0; text-align: center; }
 .fl-detect-status .is-warning, .fl-step .is-warning { color: var(--warning); }
+.rec-help .rec-hz { color: var(--text-3); font-variant-numeric: tabular-nums; }

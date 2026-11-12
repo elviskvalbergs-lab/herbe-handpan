@@ -11,7 +11,7 @@
 //
 // Units: frequencies in Hz, lengths in mm, volumes in cm³ (= ml).
 
-import { noteToMidi } from './data.js';
+import { noteToMidi, displayNote, SHARP_NAMES } from './data.js';
 
 export const OC_DEFAULT_A4 = 440;
 export const OC_SPEED_OF_SOUND = 343;        // m/s
@@ -40,6 +40,43 @@ export function hzToMidi(hz, a4 = OC_DEFAULT_A4) {
 // Cents from `targetHz` to `hz` (positive = sharp, negative = flat).
 export function centsBetween(hz, targetHz) {
   return 1200 * Math.log2(hz / targetHz);
+}
+
+// ── Pitch as text (record fields) ────────────────────────────────────────────
+
+// A measured frequency as the nearest note and how far off it is, in the
+// user's notation: { midi, note: 'D4' | 'Re4' | 'Eb4', cents, text: 'D4 −3 ¢' }.
+export function pitchLabel(hz, { useFlats = false, useSolfege = false, a4 = OC_DEFAULT_A4 } = {}) {
+  const exact = hzToMidi(hz, a4);
+  const midi = Math.round(exact);
+  const cents = Math.round((exact - midi) * 100);
+  const name = SHARP_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  const note = displayNote(name, useFlats, useSolfege);
+  const off = cents === 0 ? '' : ` ${cents > 0 ? '+' : '−'}${Math.abs(cents)} ¢`;
+  return { midi, note, cents, text: note + off };
+}
+
+// What a person types into a record field, as a frequency in Hz, or null.
+// Accepts a frequency ("293.7", "293,7 Hz") or a note in letters or solfège
+// with an optional octave (default 4) and cents: "D4", "Eb4", "d#3",
+// "Re4", "Sib3", "D4 -3", "Re4 +12 ¢".
+export function parsePitch(text, a4 = OC_DEFAULT_A4) {
+  const t = String(text ?? '').trim().replace(',', '.').replace(/[−–]/g, '-');
+  if (!t) return null;
+  const num = t.match(/^(\d+(?:\.\d+)?)\s*(hz)?$/i);
+  if (num) { const hz = parseFloat(num[1]); return hz > 0 ? hz : null; }
+  const m = t.match(/^(do|re|mi|fa|sol|la|si|ti|[a-g])\s*([#♯b♭]?)\s*(-?\d)?\s*(?:([+-]\s*\d+(?:\.\d+)?)\s*(?:¢|c|cents?)?)?$/i);
+  if (!m) return null;
+  const solf = { do: 0, re: 2, mi: 4, fa: 5, sol: 7, la: 9, si: 11, ti: 11 };
+  const letter = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+  const base = m[1].toLowerCase();
+  let pc = base.length > 1 ? solf[base] : letter[base];
+  if (m[2] === '#' || m[2] === '♯') pc += 1;
+  if (m[2] === 'b' || m[2] === '♭') pc -= 1;
+  const octave = m[3] != null ? parseInt(m[3], 10) : 4;
+  const midi = (octave + 1) * 12 + pc;
+  const cents = m[4] ? parseFloat(m[4].replace(/\s/g, '')) : 0;
+  return midiToHz(midi + cents / 100, a4);
 }
 
 // ── Scale → notes ────────────────────────────────────────────────────────────

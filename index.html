@@ -1490,6 +1490,7 @@ html { touch-action: manipulation; }
 .fl-pattern { letter-spacing: 0.05em; color: var(--text-2); }
 .fl-recorded { margin: var(--space-2) 0 0; text-align: center; }
 .fl-detect-status .is-warning, .fl-step .is-warning { color: var(--warning); }
+.rec-help .rec-hz { color: var(--text-3); font-variant-numeric: tabular-nums; }
 
   </style>
 </head>
@@ -2838,6 +2839,43 @@ function hzToMidi(hz, a4 = OC_DEFAULT_A4) {
 // Cents from `targetHz` to `hz` (positive = sharp, negative = flat).
 function centsBetween(hz, targetHz) {
   return 1200 * Math.log2(hz / targetHz);
+}
+
+// ── Pitch as text (record fields) ────────────────────────────────────────────
+
+// A measured frequency as the nearest note and how far off it is, in the
+// user's notation: { midi, note: 'D4' | 'Re4' | 'Eb4', cents, text: 'D4 −3 ¢' }.
+function pitchLabel(hz, { useFlats = false, useSolfege = false, a4 = OC_DEFAULT_A4 } = {}) {
+  const exact = hzToMidi(hz, a4);
+  const midi = Math.round(exact);
+  const cents = Math.round((exact - midi) * 100);
+  const name = SHARP_NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  const note = displayNote(name, useFlats, useSolfege);
+  const off = cents === 0 ? '' : ` ${cents > 0 ? '+' : '−'}${Math.abs(cents)} ¢`;
+  return { midi, note, cents, text: note + off };
+}
+
+// What a person types into a record field, as a frequency in Hz, or null.
+// Accepts a frequency ("293.7", "293,7 Hz") or a note in letters or solfège
+// with an optional octave (default 4) and cents: "D4", "Eb4", "d#3",
+// "Re4", "Sib3", "D4 -3", "Re4 +12 ¢".
+function parsePitch(text, a4 = OC_DEFAULT_A4) {
+  const t = String(text ?? '').trim().replace(',', '.').replace(/[−–]/g, '-');
+  if (!t) return null;
+  const num = t.match(/^(\d+(?:\.\d+)?)\s*(hz)?$/i);
+  if (num) { const hz = parseFloat(num[1]); return hz > 0 ? hz : null; }
+  const m = t.match(/^(do|re|mi|fa|sol|la|si|ti|[a-g])\s*([#♯b♭]?)\s*(-?\d)?\s*(?:([+-]\s*\d+(?:\.\d+)?)\s*(?:¢|c|cents?)?)?$/i);
+  if (!m) return null;
+  const solf = { do: 0, re: 2, mi: 4, fa: 5, sol: 7, la: 9, si: 11, ti: 11 };
+  const letter = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
+  const base = m[1].toLowerCase();
+  let pc = base.length > 1 ? solf[base] : letter[base];
+  if (m[2] === '#' || m[2] === '♯') pc += 1;
+  if (m[2] === 'b' || m[2] === '♭') pc -= 1;
+  const octave = m[3] != null ? parseInt(m[3], 10) : 4;
+  const midi = (octave + 1) * 12 + pc;
+  const cents = m[4] ? parseFloat(m[4].replace(/\s/g, '')) : 0;
+  return midiToHz(midi + cents / 100, a4);
 }
 
 // ── Scale → notes ────────────────────────────────────────────────────────────
@@ -7678,17 +7716,23 @@ function uiHzField(path, value, { label = 'Reading in Hz' } = {}) {
   const help = r.error?.path === path ? `<span class="is-error">${escHtml(r.error.msg)}</span>`
     : armed && r.slow ? '<span class="is-warning">No steady note yet: keep blowing, or type the value</span>'
     : armed ? '<span class="sr-only">Listening for a steady note</span>' : '';
+  // Shown as the nearest note in the user's notation and how far off it is
+  // ("D4 −3 ¢"); the exact frequency is what's stored and what the maths
+  // uses, so it stays visible underneath. Typing accepts a note or Hz.
+  const pitch = value > 0 ? pitchLabel(value, { useFlats: state.useFlats, useSolfege: state.useSolfege }) : null;
+  const hzLine = pitch && !help ? `<span class="rec-hz">${(Math.round(value * 10) / 10).toFixed(1)} Hz</span>` : '';
   return `
     <div class="rec-field${armed ? ' is-armed' : ''}" data-rec="${escHtml(path)}">
       <div class="rec">
-        <input class="rec-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
-          value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${armed ? 'Listening…' : 'Hz'}" aria-label="${escHtml(label)}">
-        <span class="rec-unit" aria-hidden="true">Hz</span>
+        <input class="rec-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+          data-action="b-input" data-kind="pitch" data-path="${path}"
+          value="${pitch ? escHtml(pitch.text) : ''}" placeholder="${armed ? 'Listening…' : 'Note, e.g. ' + escHtml(displayNote('D4', state.useFlats, state.useSolfege))}"
+          aria-label="${escHtml(label.replace(/ in Hz$/, ''))}: a note such as D4, or a frequency in Hz">
         <button type="button" class="rec-btn${captured ? ' is-captured' : ''}" data-action="b-record" data-path="${path}"
           aria-pressed="${armed ? 'true' : 'false'}" aria-label="${armed ? 'Stop listening' : 'Fill in from the tuner'}"
           title="${armed ? 'Stop listening' : 'Fill in from the tuner'}">${armed ? '<span class="rec-dot" aria-hidden="true"></span>' : ''}${icon(captured ? 'check' : 'mic')}</button>
       </div>
-      <div class="rec-help" aria-live="polite">${help}</div>
+      <div class="rec-help" aria-live="polite">${help}${hzLine}</div>
     </div>`;
 }
 
@@ -11773,7 +11817,13 @@ document.addEventListener('change', e => {
     let inst = currentInstrument();
     if (!inst) return;
     const num = parseFloat(el.value);
-    if (action === 'b-input') setReading(inst, el.dataset.path, num > 0 ? num : null);
+    if (action === 'b-input') {
+      // Record fields take a note ("D4", "Re4 +12") or a frequency; other
+      // builder inputs (the test hole in mm) stay plain numbers.
+      const v = el.dataset.kind === 'pitch' ? parsePitch(el.value) : (num > 0 ? num : null);
+      if (el.dataset.kind === 'pitch' && el.value.trim() && v == null) { showToast(`"${el.value.trim()}" isn't a note or a frequency`); render(); return; }
+      setReading(inst, el.dataset.path, v);
+    }
     if (action === 'b-shrink' && num >= 0) inst.build.shrinkPct = num;
     if (action === 'b-window') {
       const ci = parseInt(el.dataset.ci, 10);

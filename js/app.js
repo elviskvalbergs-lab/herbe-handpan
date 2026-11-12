@@ -27,7 +27,7 @@ import {
   renderFingering, renderHandLegend, fingeringMoves, playableMidis,
   ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
 } from './ocarina-ui.js';
-import { playablePairs, centsBetween, midiToHz, hzToMidi } from './ocarina.js';
+import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch } from './ocarina.js';
 import { startTuner } from './tuner.js';
 import { rankScalesByNotes, addHeardNote } from './scalefinder.js';
 import {
@@ -2004,17 +2004,23 @@ function uiHzField(path, value, { label = 'Reading in Hz' } = {}) {
   const help = r.error?.path === path ? `<span class="is-error">${escHtml(r.error.msg)}</span>`
     : armed && r.slow ? '<span class="is-warning">No steady note yet: keep blowing, or type the value</span>'
     : armed ? '<span class="sr-only">Listening for a steady note</span>' : '';
+  // Shown as the nearest note in the user's notation and how far off it is
+  // ("D4 −3 ¢"); the exact frequency is what's stored and what the maths
+  // uses, so it stays visible underneath. Typing accepts a note or Hz.
+  const pitch = value > 0 ? pitchLabel(value, { useFlats: state.useFlats, useSolfege: state.useSolfege }) : null;
+  const hzLine = pitch && !help ? `<span class="rec-hz">${(Math.round(value * 10) / 10).toFixed(1)} Hz</span>` : '';
   return `
     <div class="rec-field${armed ? ' is-armed' : ''}" data-rec="${escHtml(path)}">
       <div class="rec">
-        <input class="rec-input" type="number" inputmode="decimal" step="0.1" min="0" data-action="b-input" data-path="${path}"
-          value="${value > 0 ? (Math.round(value * 10) / 10) : ''}" placeholder="${armed ? 'Listening…' : 'Hz'}" aria-label="${escHtml(label)}">
-        <span class="rec-unit" aria-hidden="true">Hz</span>
+        <input class="rec-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+          data-action="b-input" data-kind="pitch" data-path="${path}"
+          value="${pitch ? escHtml(pitch.text) : ''}" placeholder="${armed ? 'Listening…' : 'Note, e.g. ' + escHtml(displayNote('D4', state.useFlats, state.useSolfege))}"
+          aria-label="${escHtml(label.replace(/ in Hz$/, ''))}: a note such as D4, or a frequency in Hz">
         <button type="button" class="rec-btn${captured ? ' is-captured' : ''}" data-action="b-record" data-path="${path}"
           aria-pressed="${armed ? 'true' : 'false'}" aria-label="${armed ? 'Stop listening' : 'Fill in from the tuner'}"
           title="${armed ? 'Stop listening' : 'Fill in from the tuner'}">${armed ? '<span class="rec-dot" aria-hidden="true"></span>' : ''}${icon(captured ? 'check' : 'mic')}</button>
       </div>
-      <div class="rec-help" aria-live="polite">${help}</div>
+      <div class="rec-help" aria-live="polite">${help}${hzLine}</div>
     </div>`;
 }
 
@@ -6099,7 +6105,13 @@ document.addEventListener('change', e => {
     let inst = currentInstrument();
     if (!inst) return;
     const num = parseFloat(el.value);
-    if (action === 'b-input') setReading(inst, el.dataset.path, num > 0 ? num : null);
+    if (action === 'b-input') {
+      // Record fields take a note ("D4", "Re4 +12") or a frequency; other
+      // builder inputs (the test hole in mm) stay plain numbers.
+      const v = el.dataset.kind === 'pitch' ? parsePitch(el.value) : (num > 0 ? num : null);
+      if (el.dataset.kind === 'pitch' && el.value.trim() && v == null) { showToast(`"${el.value.trim()}" isn't a note or a frequency`); render(); return; }
+      setReading(inst, el.dataset.path, v);
+    }
     if (action === 'b-shrink' && num >= 0) inst.build.shrinkPct = num;
     if (action === 'b-window') {
       const ci = parseInt(el.dataset.ci, 10);

@@ -304,3 +304,36 @@ test('fingering search prefers the standard order, then no half-holes', () => {
   const sharps = ms('C#4 D#4 F#4 G#4 A#4');
   sharps.forEach(x => assert.ok(chart[x] && Math.abs(chart[x].cents) <= 20, `no fingering for ${x}`));
 });
+
+// ── Pitch as text ────────────────────────────────────────────────────────────
+import { pitchLabel, parsePitch } from '../js/ocarina.js';
+
+test('pitchLabel: nearest note and cents in the chosen notation', () => {
+  assert.equal(pitchLabel(293.66).text, 'D4');
+  const flat = pitchLabel(293.66 * 2 ** (-3 / 1200));
+  assert.equal(flat.note, 'D4');
+  assert.equal(flat.cents, -3);
+  assert.equal(flat.text, 'D4 −3 ¢');
+  assert.equal(pitchLabel(311.13, { useFlats: true }).note, 'Eb4');
+  assert.equal(pitchLabel(311.13).note, 'D#4');
+  assert.equal(pitchLabel(293.66 * 2 ** (12 / 1200), { useSolfege: true }).text, 'Re4 +12 ¢');
+});
+
+test('parsePitch: notes in letters or solfège, with cents, or Hz', () => {
+  close(parsePitch('293.7'), 293.7);
+  close(parsePitch('293,7 Hz'), 293.7);
+  close(parsePitch('D4'), 293.6647679174076, 1e-9);
+  close(parsePitch('d4'), parsePitch('D4'));
+  close(parsePitch('Re4'), parsePitch('D4'));
+  close(parsePitch('Eb4'), parsePitch('D#4'));
+  close(parsePitch('Sib3'), parsePitch('Bb3'));
+  close(parsePitch('D'), parsePitch('D4'));          // octave defaults to 4
+  close(parsePitch('D4 -3'), 293.6647679174076 * 2 ** (-3 / 1200), 1e-9);
+  close(parsePitch('Re4 +12 ¢'), 293.6647679174076 * 2 ** (12 / 1200), 1e-9);
+  close(parsePitch('D4 −3 ¢'), parsePitch('D4 -3'));  // what pitchLabel shows round-trips
+  assert.equal(parsePitch('hello'), null);
+  assert.equal(parsePitch(''), null);
+  assert.equal(parsePitch('0'), null);
+  const hz = 246.9 * 2 ** (7 / 1200);
+  close(parsePitch(pitchLabel(hz).text), hz, 0.2);    // display → parse keeps it within a cent
+});
