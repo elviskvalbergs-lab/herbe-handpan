@@ -744,6 +744,9 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fingering .fg-blow-label { fill: var(--accent-text); font-size: 12px; font-weight: 600; dominant-baseline: central; }
 .fingering .fg-strip { fill: var(--surface-0); stroke: var(--border-strong); stroke-dasharray: 4 3; }
 .fingering .fg-row-label { fill: var(--text-3); font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-line { fill: none; stroke: var(--border-strong); stroke-width: 1.5; stroke-linecap: round; }
+.fingering .fg-windway { fill: none; stroke: var(--border-strong); stroke-width: 7; stroke-linecap: round; }
+.fingering .fg-windway.fg-blow { stroke: var(--accent); }
 .fingering .fg-strip-label { fill: var(--text-3); font-size: 12px; text-anchor: middle; dominant-baseline: central; letter-spacing: 0.08em; }
 .fingering .fg-c { fill: var(--hole-covered); stroke: var(--hole-covered); stroke-width: 2; }
 .fingering .fg-o { fill: var(--hole-open); stroke: var(--hole-covered); stroke-width: 2; }
