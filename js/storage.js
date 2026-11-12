@@ -294,6 +294,17 @@ export function addProgression(name, steps = [], extra = {}) {
   return id;
 }
 
+// Puts a chord sheet into a progression that has no steps yet (from its
+// empty state): its steps, and timing and other fields from `extra`.
+export function fillProgression(id, steps, extra = {}) {
+  return editProgression(id, p => {
+    if (p.steps.length) return false;
+    Object.assign(p, extra, { steps });
+    Object.assign(p, normalizeProgression(p));
+    return true;
+  });
+}
+
 export function renameProgression(id, name) {
   return editProgression(id, p => { p.name = name; return true; });
 }

@@ -101,15 +101,21 @@ function strikeBadgesSvg(placed, strikeMarks) {
     const at = placed.find(p => p.note === note);
     if (!at || !marks.length) continue;
     const label = marks.map(m => `${m.n}${m.hand}`).join(' ');
-    const w = 10 + label.length * 8;
-    const h = 20;
-    const x = Math.min(500 - w - 2, Math.round(at.x + at.r * 0.55));
-    const y = Math.max(2, Math.round(at.y - at.r * 0.55 - h));
+    const w = 14 + label.length * 13;
+    const h = 30;
+    // Just outside the note, away from the pan's centre (above the ding),
+    // so the note's name stays readable.
+    const dx = at.x - 250, dy = at.y - 250;
+    const d = Math.hypot(dx, dy);
+    const ux = d < 1 ? 0 : dx / d, uy = d < 1 ? -1 : dy / d;
+    const off = at.r + 3 + Math.max(Math.abs(ux) * w / 2, Math.abs(uy) * h / 2);
+    const x = Math.max(2, Math.min(500 - w - 2, Math.round(at.x + ux * off - w / 2)));
+    const y = Math.max(2, Math.min(500 - h - 2, Math.round(at.y + uy * off - h / 2)));
     const hand = marks[0].hand === 'L' ? 'l' : 'r';
     out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
-  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
   <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="14" font-weight="700">${label}</text>
+    font-family="system-ui,sans-serif" font-size="23" font-weight="700">${label}</text>
 </g>`;
   }
   return out;

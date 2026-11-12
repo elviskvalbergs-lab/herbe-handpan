@@ -671,6 +671,23 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
 .pl-entries { display: flex; flex-direction: column; gap: var(--space-2); }
 .pl-new { margin-top: var(--space-3); }
+.pl-new-row { display: flex; flex-wrap: wrap; column-gap: var(--space-2); }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-4); }
+.empty-actions .btn { margin-top: 0; }
+/* Paste a chord sheet */
+.input.cs-text { height: auto; min-height: 184px; padding: var(--space-3); resize: vertical; line-height: 1.5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 15px; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+@media (max-width: 1023px) { .input.cs-text { font-size: 16px; } }
+.cs-facts { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.cs-note { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2);
+  background: var(--warning-soft); border-radius: var(--r-sm); padding: var(--space-2) var(--space-3); }
+.cs-note .ico { width: 18px; height: 18px; flex-shrink: 0; color: var(--warning); }
+.cs-label { font: var(--fw-semibold) var(--fs-12)/var(--lh-12) var(--font); text-transform: uppercase; letter-spacing: var(--tracking-overline); color: var(--text-3); margin: 0 0 var(--space-2); }
+.cs-key .row-title { white-space: normal; }
+.cs-key .row-trail .badge { white-space: nowrap; }
+.cs-preview { gap: var(--space-1); align-items: center; }
+.cs-preview .chip { height: 32px; padding: 0 10px; }
+.cs-sec { flex-basis: 100%; font-size: var(--fs-12); font-weight: var(--fw-semibold); color: var(--text-3); margin-top: var(--space-1); }
 .pl-order-row .row-trail { gap: 0; }
 @media (min-width: 600px) { .sheet-plrow .sheet { width: min(360px, 100%); } }
 .sheet-plrow .row.is-danger .row-lead { color: var(--danger); }
@@ -699,6 +716,11 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .prog-beat-dots > span.is-on { background: var(--text-1); }
 .prog-beat-dots > span.is-on:first-child { background: var(--accent); }
 .prog-beat-text { font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-2); }
+.prog-now-pattern { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2); font-weight: var(--fw-medium); margin-top: 2px; }
+.prog-count { font: var(--fw-bold) var(--fs-32)/var(--lh-32) var(--font); color: var(--accent-text); font-variant-numeric: tabular-nums; }
+.prog-level .seg-opt { padding: 0 4px; }
+.prog-missing { color: var(--warning); font-weight: var(--fw-medium); }
+.row.prog-step.is-missing .row-title { color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--text-3); }
 .prog-summary { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); margin-top: calc(-1 * var(--space-2)); }
 .prog-num, .prog-bars-val, .prog-beat-text, .prog-summary, .prog-now-meta { font-variant-numeric: tabular-nums; }
 .prog-num {

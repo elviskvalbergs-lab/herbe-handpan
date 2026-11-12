@@ -16,7 +16,7 @@ const {
   nextProgressionStep, mergeProgressionLists, getProgressions, getProgressionsRaw, addProgression,
   renameProgression, deleteProgression, setProgressionTiming, addStepToProgression,
   duplicateProgressionStep, moveProgressionStep, removeProgressionStep, setProgressionStepBars,
-  getPlaylists, progressionStepBeats, progressionLevel, setProgressionLevel, PROG_PLAY_LEVELS,
+  getPlaylists, progressionStepBeats, progressionLevel, setProgressionLevel, PROG_PLAY_LEVELS, fillProgression,
 } = await import('../js/storage.js');
 
 const entry = (chordId, rootName, typeName, notes, extra = {}) => ({
@@ -187,4 +187,17 @@ test('chord sheet steps: part-bar beats, sections, levels and extra fields', () 
   // Older progressions play the whole chord, as before.
   assert.equal(progressionLevel({}), 'chord');
   assert.equal(normalizeProgression({ steps: [{ bars: 1, beats: 'x' }] }).steps[0].beats, undefined);
+});
+
+test('a chord sheet fills an empty progression, never one with steps', () => {
+  const id = addProgression('Empty');
+  assert.equal(fillProgression(id, [newProgressionStep(Am, { bars: 2 })], { bpm: 120, beatsPerBar: 3, level: 'roots' }), true);
+  const p = getProgressions().find(x => x.id === id);
+  assert.equal(p.name, 'Empty');
+  assert.equal(p.steps.length, 1);
+  assert.equal(p.bpm, 120);
+  assert.equal(p.beatsPerBar, 3);
+  assert.equal(p.level, 'roots');
+  assert.equal(fillProgression(id, [newProgressionStep(Dm)]), false);
+  assert.equal(getProgressions().find(x => x.id === id).steps[0].chordId, 'A-min');
 });
