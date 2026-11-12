@@ -77,6 +77,7 @@ test('custom ocarina: default holes and calibration', () => {
   assert.equal(twelve.length, 12);
   assert.deepEqual(twelve.slice(8, 10).map(h => [h.finger, h.side]), [['LT', 'bottom'], ['RT', 'bottom']]);
   assert.ok(twelve.slice(10).every(h => h.sub));
+  assert.deepEqual(twelve.slice(10).map(h => h.finger), ['R2', 'L2']);
 
   // A 4-hole ocarina whose holes give a C major pentachord, cumulatively.
   const holes = defaultCustomHoles(4);

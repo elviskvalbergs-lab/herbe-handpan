@@ -141,12 +141,13 @@ export function updateClayBody(body, learned) {
 
 // Default finger for each hole of an ocarina with `count` holes: the
 // standard opening order, thumbs underneath above 8 holes; holes beyond 10
-// are sub-holes (on a 12-hole ocarina, small holes next to a finger hole).
-// The user checks and changes these.
+// are sub-holes (on a 12-hole ocarina, small holes next to a finger hole):
+// beside the right then the left middle finger, as on the STL 12-hole
+// chart in charts.js. The user checks and changes these.
 export function defaultCustomHoles(count) {
   const main = fingersForHoleCount(Math.min(count, OC_FINGER_ORDER.length));
   const holes = main.map(f => ({ id: f, finger: f, side: f.endsWith('T') ? 'bottom' : 'top' }));
-  const subFingers = ['R4', 'L4', 'R3'];
+  const subFingers = ['R2', 'L2'];
   for (let i = 0; holes.length < count; i++) {
     const f = subFingers[i % subFingers.length];
     holes.push({ id: f + 's' + (i + 1), finger: f, side: 'top', sub: true });
