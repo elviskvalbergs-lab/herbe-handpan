@@ -1580,3 +1580,9 @@ html { touch-action: manipulation; }
 .s-reverse { display: flex; width: 100%; justify-content: flex-start; text-align: left; margin-bottom: var(--space-2); white-space: normal; }
 .ie-fingers { margin: var(--space-2) 0 var(--space-3); }
 .fg-yours { text-align: center; margin: var(--space-2) 0 0; }
+/* The step of a chord being played */
+.oc-step { border-radius: var(--r-md, 12px); transition: background-color 0.15s ease, box-shadow 0.15s ease; }
+.oc-step.is-playing { background: var(--accent-soft, rgba(205, 76, 56, 0.12)); box-shadow: 0 0 0 2px var(--accent); }
+.oc-step.is-playing .oc-step-fg { border-color: var(--accent); }
+.oc-step.is-playing .oc-step-note { color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .oc-step { transition: none; } }

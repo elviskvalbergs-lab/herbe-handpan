@@ -1725,6 +1725,17 @@ function ocScaleSelect(title) {
   });
 }
 
+// While a chord's arpeggio plays: the step being played is highlighted
+// (no re-render; the list may not be on screen). The last one clears itself.
+let _ocStepTimer = null;
+function ocHighlightStep(key, i, last) {
+  clearTimeout(_ocStepTimer);
+  document.querySelectorAll('.oc-step.is-playing').forEach(li => li.classList.remove('is-playing'));
+  const lists = [...document.querySelectorAll('.oc-steps')].filter(ol => ol.dataset.key === key);
+  for (const ol of lists) ol.children[i]?.classList.add('is-playing');
+  if (last) _ocStepTimer = setTimeout(() => document.querySelectorAll('.oc-step.is-playing').forEach(li => li.classList.remove('is-playing')), 900);
+}
+
 // What a chord card shows, worked out once for the row and its detail.
 function ocChordParts(inst, { key, chordId, midis, rootPC }) {
   const names = midis.map(midiToNoteName);
@@ -1754,7 +1765,7 @@ function ocChordBody(inst, a, parts, { size = 'mini' } = {}) {
           aria-label="Move ${nn(m)} to another octave" title="Move to another octave">${nn(m)}</button>`).join('')}</div>
         <div class="oc-hint">Tap a note to move it to another octave</div>
       </div>
-      <ol class="oc-steps">
+      <ol class="oc-steps" data-key="${key}">
         ${parts.arp.map((m, i) => `
           <li class="oc-step">
             <button type="button" class="oc-step-fg" data-action="oc-play-note" data-midi="${m}" aria-label="Play ${escHtml(nn(m))}">
@@ -5699,7 +5710,8 @@ document.addEventListener('click', e => {
     if (action === 'oc-play-arp') {
       const names = card.midis.map(midiToNoteName);
       const rootName = names.find(n => notePC(n) === card.rootPC) ?? names[0];
-      playSequence(arpeggioOrder(names, rootName).map(midiToNoteName));
+      const seq = arpeggioOrder(names, rootName).map(midiToNoteName);
+      playSequence(seq, (n, i) => ocHighlightStep(key, i, i === seq.length - 1));
       return;
     }
     if (action === 'oc-voicing') {
@@ -5728,6 +5740,8 @@ document.addEventListener('click', e => {
   if (action === 'oc-play-note') {
     initAudio();
     playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
+    const li = el.closest('.oc-step');
+    if (li) ocHighlightStep(li.parentElement.dataset.key, [...li.parentElement.children].indexOf(li), true);
     return;
   }
   if (action === 'oc-play-pair') {
