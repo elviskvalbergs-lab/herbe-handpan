@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Handpan Chords</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -1451,6 +1451,15 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   /* Back and Next stay in reach under a tall diagram. */
   .practice-bar { position: sticky; bottom: 0; z-index: 5; margin-top: 0; padding: var(--space-3) 0 var(--space-4); background: var(--bg); }
   body.tuner-on .practice-bar { bottom: calc(var(--tuner-h) + var(--space-6)); }
+}
+
+/* No browser zoom: the layout is built for phones. Double-tap zoom is off
+   (fast taps on pan notes and buttons never zoom), and on touch screens
+   every field uses at least 16px text so iOS never zooms in on focus. The
+   viewport meta in build.py also caps the scale at 1. */
+html { touch-action: manipulation; }
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, 1em) !important; }
 }
 
   </style>
