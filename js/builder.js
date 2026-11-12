@@ -279,11 +279,11 @@ export function holeSpot(inst, i) {
   return s;
 }
 
-// Whether the fingering diagrams draw this ocarina from its own photo: a
-// bought, single-chamber ocarina with every top hole marked.
+// Whether the fingering diagrams draw this ocarina from its own photo: one
+// set up by the owner or from a published chart, with every top hole marked.
 export function usesHoleMap(inst) {
-  if (inst.family !== 'ocarina' || inst.kind !== 'custom' || !inst.holeMap) return false;
-  const holes = inst.setup?.holes ?? [];
+  if (inst.family !== 'ocarina' || !['custom', 'traditional'].includes(inst.kind) || !inst.holeMap) return false;
+  const holes = inst.setup?.holes ?? inst.chambers?.[0]?.holes ?? [];
   return holes.length > 0 && holes.every((h, i) => h.side === 'bottom' || inst.holeMap[i]);
 }
 

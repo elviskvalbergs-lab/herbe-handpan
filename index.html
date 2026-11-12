@@ -1599,6 +1599,7 @@ html { touch-action: manipulation; }
 .fg-edit-rec { margin-top: var(--space-3); }
 .s-reverse { display: flex; width: 100%; justify-content: flex-start; text-align: left; margin-bottom: var(--space-2); white-space: normal; }
 .ie-fingers { margin: var(--space-2) 0 var(--space-3); }
+.fg-yours { text-align: center; margin: var(--space-2) 0 0; }
 
   </style>
 </head>
@@ -4481,11 +4482,11 @@ function holeSpot(inst, i) {
   return s;
 }
 
-// Whether the fingering diagrams draw this ocarina from its own photo: a
-// bought, single-chamber ocarina with every top hole marked.
+// Whether the fingering diagrams draw this ocarina from its own photo: one
+// set up by the owner or from a published chart, with every top hole marked.
 function usesHoleMap(inst) {
-  if (inst.family !== 'ocarina' || inst.kind !== 'custom' || !inst.holeMap) return false;
-  const holes = inst.setup?.holes ?? [];
+  if (inst.family !== 'ocarina' || !['custom', 'traditional'].includes(inst.kind) || !inst.holeMap) return false;
+  const holes = inst.setup?.holes ?? inst.chambers?.[0]?.holes ?? [];
   return holes.length > 0 && holes.every((h, i) => h.side === 'bottom' || inst.holeMap[i]);
 }
 
@@ -5661,7 +5662,8 @@ function fgPhotoParts(ctx) {
       x = x0 + spot.x * w;
       y = y0 + spot.y * h;
     }
-    const r = Math.max(6, 13 * (rel[i] ?? 1));
+    // Sizes from the calibration; a chart's holes have none: sub-holes small.
+    const r = hole.rel > 0 ? Math.max(6, 13 * rel[i]) : hole.sub ? 6 : 10;
     fgHoleParts(g, { x, y, r, state: states[i], hole, index: i, editable: ctx.editable, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
       showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
   });
@@ -7793,7 +7795,7 @@ function ocTabs(inst) {
   if (inst.id === SHARED_ID) return tabs;
   if (playable) tabs.push(['playlists', 'Playlists', 'list-music']);
   if (inst.kind === 'scale') tabs.push(['builder', 'Build', 'hammer']);
-  if (inst.kind === 'custom') tabs.push(['setup', 'Set up', 'wrench']);
+  if (inst.kind === 'custom' || inst.kind === 'traditional') tabs.push(['setup', 'Set up', 'wrench']);
   return tabs;
 }
 
@@ -8250,7 +8252,8 @@ function viewInstrument() {
               <div class="fg-moves">${moves ? ocMovesHtml(moves) : ''}</div>
               ${state.showFingers ? uiIconBtn('hand', 'Which finger is which', { action: 'oc-hand-open' }) : '<span></span>'}
             </div>
-            ${fgEditable(inst) ? `<button type="button" class="btn btn-ghost btn-sm fg-edit-open" data-action="fg-edit-open">${icon('pencil')} Not how you play it? Change the fingering</button>` : ''}
+            ${inst.setup?.fixed?.[oc.selected] ? `<p class="fg-yours">${uiBadge('Your fingering', 'accent')}</p>` : ''}
+            ${fgEditable(inst) ? `<button type="button" class="btn btn-ghost btn-sm fg-edit-open" data-action="fg-edit-open">${icon('pencil')} ${inst.setup?.fixed?.[oc.selected] ? 'Change your fingering' : 'Not how you play it? Change the fingering'}</button>` : ''}
           </div>`}
         </div>
         ${recordedCentsHtml(inst, oc.selected)}
@@ -8920,12 +8923,21 @@ function viewBuilder(inst) {
 // (folded into a sheet), then one reading with all holes closed and one per
 // hole open on its own. A capture arms the next empty reading by itself.
 function setupOf(inst) {
-  return inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+  if (inst.setup) return inst.setup;
+  // From a published chart: its own holes (the owner may rename fingers).
+  if (inst.kind === 'traditional') return { holes: (inst.chambers?.[0]?.holes ?? []).map(h => ({ ...h })) };
+  return { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+}
+
+// Holes of a bought flute live in its flute set-up; everything else in setupOf.
+function holesSetupOf(inst) {
+  return inst.family === 'flute' && inst.kind === 'custom' ? fluteSetupOf(inst) : setupOf(inst);
 }
 
 function viewSetup(inst) {
+  if (state.oc.holeMap && inst.family === 'ocarina') return viewHoleMap(inst);
+  if (inst.kind === 'traditional') return viewChartSetup(inst);
   if (inst.family === 'flute') return viewFluteSetup(inst);
-  if (state.oc.holeMap) return viewHoleMap(inst);
   const setup = setupOf(inst);
   const mapped = setup.holes.filter((h, i) => h.side !== 'bottom' && inst.holeMap?.[i]).length;
   const tops = setup.holes.filter(h => h.side !== 'bottom').length;
@@ -8944,17 +8956,7 @@ function viewSetup(inst) {
         <h2 class="b-title">Set up</h2>
         <p class="b-intro">Everything about your ocarina: what it's called, its holes and fingers, and the readings its fingering chart is worked out from.</p>
         ${instSetupCardHtml(inst)}
-        <div class="card b-card">
-          <div class="b-card-head">
-            <div class="b-card-head-text">
-              <h3 class="b-card-title">Where the holes are</h3>
-              <p class="b-meta">${inst.photo ? '' : 'No photo yet · '}${mapped} of ${tops} marked</p>
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" data-action="hm-open">${icon('pencil')} ${mapped ? 'Edit' : 'Mark'}</button>
-          </div>
-          ${inst.photo || mapped ? `<button type="button" class="hm-preview" data-action="hm-open" aria-label="Edit where the holes are">${holeMapSvg(inst, { fingers: true })}</button>`
-            : '<p class="b-meta">Add a photo of the top of your ocarina, then tap where each hole is. The fingering pictures then show your own ocarina.</p>'}
-        </div>
+        ${holeMapCardHtml(inst)}
         <div class="card b-card">
           <div class="b-card-head">
             <div class="b-card-head-text">
@@ -9180,6 +9182,60 @@ function instEditSheet() {
   });
 }
 
+// Where the holes are: the photo with the marked holes, and Mark / Edit.
+function holeMapCardHtml(inst) {
+  const holes = setupOf(inst).holes;
+  const mapped = holes.filter((h, i) => h.side !== 'bottom' && inst.holeMap?.[i]).length;
+  const tops = holes.filter(h => h.side !== 'bottom').length;
+  return `
+        <div class="card b-card">
+          <div class="b-card-head">
+            <div class="b-card-head-text">
+              <h3 class="b-card-title">Where the holes are</h3>
+              <p class="b-meta">${inst.photo ? '' : 'No photo yet · '}${mapped} of ${tops} marked</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="hm-open">${icon('pencil')} ${mapped ? 'Edit' : 'Mark'}</button>
+          </div>
+          ${inst.photo || mapped ? `<button type="button" class="hm-preview" data-action="hm-open" aria-label="Edit where the holes are">${holeMapSvg(inst, { fingers: true })}</button>`
+            : '<p class="b-meta">Add a photo of the top of your ocarina, then tap where each hole is. The fingering pictures then show your own ocarina.</p>'}
+        </div>`;
+}
+
+// Set up of an ocarina or flute from a published chart: name, photo, key,
+// where the holes are (ocarinas), which finger covers each hole, and the
+// notes whose fingering you changed. No readings: the chart gives the notes.
+function viewChartSetup(inst) {
+  const setup = setupOf(inst);
+  const chart = getChart(inst.type);
+  const fixed = Object.keys(inst.setup?.fixed ?? {}).map(Number).sort((a, b) => a - b);
+  const uf = state.useFlats, us = state.useSolfege;
+  return `${ocHeader(inst, 'setup')}
+    <div class="b-layout is-single">
+      <div class="b-main">
+        <h2 class="b-title">Set up</h2>
+        <p class="b-intro">Your ${inst.family === 'flute' ? 'flute' : 'ocarina'} plays from ${escHtml(chart?.sourceName ? `the ${chart.sourceName} chart` : 'a published chart')}. Make it yours: its name and photo, ${inst.family === 'ocarina' ? 'where its holes are, ' : ''}and which finger covers each hole.</p>
+        ${instSetupCardHtml(inst)}
+        ${inst.family === 'ocarina' ? holeMapCardHtml(inst) : ''}
+        <div class="card b-card">
+          <div class="b-card-head">
+            <div class="b-card-head-text">
+              <h3 class="b-card-title">Holes and fingers</h3>
+              <p class="b-meta">${setup.holes.length} holes${inst.family === 'flute' ? ', from the mouthpiece down' : ''}</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="s-fingers-open" aria-haspopup="dialog">${icon('pencil')} Edit</button>
+          </div>
+          <p class="b-fingers">${setup.holes.map(h => escHtml(h.finger) + (h.sub ? '·sub' : '')).join(' ')}</p>
+        </div>
+        <div class="card b-card">
+          <h3 class="b-card-title">Your fingerings</h3>
+          <p class="b-meta">${fixed.length
+            ? `Played your way: ${fixed.map(m => escHtml(displayNote(midiToNoteName(m), uf, us))).join(', ')}. The chart's fingering is a tap away on each note.`
+            : 'None yet. On Notes, pick a note and tap "Not how you play it?" to set the fingering you use.'}</p>
+        </div>
+      </div>
+    </div>`;
+}
+
 // The card at the top of Set up.
 function instSetupCardHtml(inst) {
   return `
@@ -9259,7 +9315,8 @@ function hmFirstUnmarked(inst) {
 // ── Changing a note's fingering by hand (bought ocarinas) ────────────────────
 
 function fgEditable(inst) {
-  return inst.kind === 'custom' && inst.family === 'ocarina' && inst.id !== SHARED_ID && inst.chambers?.length === 1;
+  if (inst.id === SHARED_ID || inst.chambers?.length !== 1) return false;
+  return inst.kind === 'traditional' || (inst.kind === 'custom' && inst.family === 'ocarina');
 }
 
 // The selected note's fingering while it's being changed: tap a hole to go
@@ -9282,13 +9339,13 @@ function fgEditStageHtml(inst, opts) {
       ${renderFingering(tmp, ed.midi, { ...opts, size: 'large', showFingers: true, editable: true })}
       <p class="fg-edit-help">Tap a hole: covered → open → half. Blow it with the tuner on to check.</p>
       ${guess ? `<p class="fg-edit-help">${guess}</p>` : ''}
-      <div class="fg-edit-rec">
+      ${inst.kind !== 'custom' ? '' : `<div class="fg-edit-rec">
         <div class="field-label">What it really sounds (optional)</div>
         ${uiHzField('e:hz', ed.hz ?? null, { label: 'What this fingering sounds in Hz' })}
         <p class="fg-edit-help">Tap ${icon('mic')}<span class="sr-only">the microphone</span> and blow this fingering: the reading is added to your set-up readings, so the other notes are worked out better too.</p>
-      </div>
+      </div>`}
       <div class="fg-edit-actions">
-        ${fixed ? '<button type="button" class="btn btn-ghost btn-sm" data-action="fg-edit-reset">Use the worked-out one</button>' : ''}
+        ${fixed ? `<button type="button" class="btn btn-ghost btn-sm" data-action="fg-edit-reset">${inst.kind === 'traditional' ? 'Use the chart\'s one' : 'Use the worked-out one'}</button>` : ''}
         <button type="button" class="btn btn-secondary btn-sm" data-action="fg-edit-cancel">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" data-action="fg-edit-save">Save for ${escHtml(displayNote(midiToNoteName(ed.hz > 0 ? Math.round(hzToMidi(ed.hz)) : ed.midi), uf, us))}</button>
       </div>
@@ -9306,8 +9363,8 @@ function handSwapText(holes, hand) {
 
 function setupFingersSheet() {
   const inst = currentInstrument();
-  if (!inst || inst.kind !== 'custom') return '';
-  const setup = inst.family === 'flute' ? fluteSetupOf(inst) : setupOf(inst);
+  if (!inst || (inst.kind !== 'custom' && inst.kind !== 'traditional')) return '';
+  const setup = holesSetupOf(inst);
   return uiSheet({
     key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
     body: `
@@ -11679,6 +11736,12 @@ document.addEventListener('click', e => {
       }
     } else if (action === 'fg-edit-save') {
       inst.chambers = [withFixedFingerings(inst.chambers[0], { [ed.midi]: ed.states })];
+    } else if (inst.kind === 'traditional') {
+      // Back to the published chart's fingering for this note.
+      const chartFg = instrumentFromChart(inst.type, inst.key).chambers[0].fingerings[ed.midi];
+      const fg = { ...inst.chambers[0].fingerings };
+      if (chartFg) fg[ed.midi] = chartFg; else delete fg[ed.midi];
+      inst.chambers[0] = { ...inst.chambers[0], fingerings: fg, notes: Object.keys(fg).map(Number).sort((a, b) => a - b) };
     } else {
       // Back to the chart worked out from the readings for this note.
       const s = inst.setup;
@@ -11692,7 +11755,7 @@ document.addEventListener('click', e => {
     showToast(heard != null && heard !== ed.midi
       ? `That fingering sounds ${displayNote(midiToNoteName(heard), uf, us)}: saved for ${displayNote(midiToNoteName(heard), uf, us)}, chart updated`
       : heard != null ? 'Fingering and reading saved, chart updated'
-      : action === 'fg-edit-save' ? 'Fingering saved' : 'Back to the worked-out fingering');
+      : action === 'fg-edit-save' ? 'Fingering saved' : inst.kind === 'traditional' ? 'Back to the chart\'s fingering' : 'Back to the worked-out fingering');
     if (heard != null && playableMidis(inst).includes(heard)) state.oc.selected = heard;
     render();
     return;
@@ -11702,7 +11765,7 @@ document.addEventListener('click', e => {
     const inst = getInstrument(id);
     state.menu = false;
     // One you set up yourself is edited on its Set up tab, with everything else.
-    if (inst?.kind === 'custom' && inst.family !== 'handpan') {
+    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && inst.family !== 'handpan') {
       if (state.currentInstrumentId !== id || state.view !== 'instrument') openInstrument(id);
       state.oc.tab = 'setup';
       state.oc.holeMap = null;
@@ -11759,7 +11822,7 @@ document.addEventListener('click', e => {
   if (action === 's-fingers-reverse') {
     const inst = currentInstrument();
     if (!inst) return;
-    const setup = inst.family === 'flute' ? fluteSetupOf(inst) : setupOf(inst);
+    const setup = holesSetupOf(inst);
     setup.holes = reverseHandFingers(setup.holes, el.dataset.hand);
     inst.setup = setup;
     // The chart's copies of the holes take the new finger names too.
@@ -13012,7 +13075,14 @@ document.addEventListener('change', e => {
     // A name the app made ("… (D4)") follows the key; one the owner typed stays.
     if (inst.name === before.name) inst.name = fresh.name;
     inst.key = fresh.key;
-    inst.chambers = fresh.chambers;
+    // Finger names the owner set stay with their holes; fingerings set by
+    // hand move with the key.
+    const shift = fresh.chambers[0].notes[0] - before.chambers[0].notes[0];
+    const holes = fresh.chambers[0].holes.map((h, i) => (inst.setup?.holes?.[i] ? { ...h, finger: inst.setup.holes[i].finger, side: inst.setup.holes[i].side } : h));
+    if (inst.setup?.fixed) {
+      inst.setup.fixed = Object.fromEntries(Object.entries(inst.setup.fixed).map(([m, st]) => [Number(m) + shift, st]));
+    }
+    inst.chambers = [withFixedFingerings({ ...fresh.chambers[0], holes }, inst.setup?.fixed)];
     saveInstrument(inst);
     refreshInstruments();
     state.oc.selected = null;
@@ -13092,7 +13162,7 @@ document.addEventListener('change', e => {
       }
     }
     if (action === 's-finger') {
-      const setup = inst.family === 'flute' ? fluteSetupOf(inst) : (inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] });
+      const setup = holesSetupOf(inst);
       const h = setup.holes[parseInt(el.dataset.index, 10)];
       h.finger = el.value;
       h.side = el.value.endsWith('T') ? 'bottom' : 'top';

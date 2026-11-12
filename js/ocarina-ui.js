@@ -541,7 +541,8 @@ function fgPhotoParts(ctx) {
       x = x0 + spot.x * w;
       y = y0 + spot.y * h;
     }
-    const r = Math.max(6, 13 * (rel[i] ?? 1));
+    // Sizes from the calibration; a chart's holes have none: sub-holes small.
+    const r = hole.rel > 0 ? Math.max(6, 13 * rel[i]) : hole.sub ? 6 : 10;
     fgHoleParts(g, { x, y, r, state: states[i], hole, index: i, editable: ctx.editable, moves: ctx.moves, changedOk: !!f, size, photo: hole.side !== 'bottom' && !!spot,
       showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: true });
   });

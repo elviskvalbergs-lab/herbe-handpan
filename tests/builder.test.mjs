@@ -212,3 +212,9 @@ test('reversing one hand\'s fingers', async () => {
   assert.deepEqual(reverseHandFingers(flute, 'L').map(h => h.finger), ['L3', 'L2', 'L1', 'R1', 'R2', 'R3']);
   assert.equal(holes[2].finger, 'R4');   // original untouched
 });
+
+test('a charted ocarina can be drawn on its photo too', async () => {
+  const { usesHoleMap } = await import('../js/builder.js');
+  const inst = { family: 'ocarina', kind: 'traditional', chambers: [{ holes: [{ finger: 'L1', side: 'top' }, { finger: 'LT', side: 'bottom' }] }], holeMap: [{ x: 0.5, y: 0.5 }, null] };
+  assert.equal(usesHoleMap(inst), true);
+});
