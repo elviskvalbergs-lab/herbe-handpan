@@ -13,9 +13,13 @@ import { noteToMidi, FLAT_NAMES } from './data.js';
 const SF_DING_EXACT = 10;   // first note heard = the scale's ding
 const SF_DING_OCTAVE = 4;   // ding's pitch class, another octave
 const SF_NOTE_EXACT = 3;    // any other heard note in the scale
-const SF_NOTE_OCTAVE = 1;   // its pitch class is in the scale, another octave
+const SF_NOTE_OCTAVE = 0;   // its pitch class is in the scale, another octave
 const SF_NOTE_MISSING = -4; // not in the scale at all
 const SF_COVERAGE = 4;      // × the share of the scale's notes heard
+const SF_OVERTONE = 0;      // not in the scale, but an overtone of another note heard
+// Intervals (semitones) at which a struck note's overtones sound: the
+// octave, octave + fifth, two octaves, two octaves + third and + fifth.
+const SF_OVERTONE_STEPS = [12, 19, 24, 28, 31];
 
 // 'Bb3' style name of a MIDI number (the spelling SCALES uses most).
 export function heardNoteName(midi) {
@@ -44,7 +48,7 @@ function sfScaleMidis(scale) {
 }
 
 // Ranks scales by the notes heard (MIDI numbers, the first is the ding).
-// Returns [{ scale, score, matched, total, missing: [midi], octave: [midi],
+// Returns [{ scale, score, matched, total, missing: [midi], octave: [midi], overtone: [midi],
 // ding: 'exact' | 'higher' | 'lower' | 'none', reasons: [text] }], best first.
 // ding 'higher' means the scale's ding is an octave (or more) above the note
 // heard first. name(midi) spells notes in the reasons.
@@ -58,7 +62,7 @@ export function rankScalesByNotes(heard, scales, { name = heardNoteName } = {}) 
     const ding = midis[0];
     const pc = m => ((m % 12) + 12) % 12;
     let score = 0;
-    const matched = [], octave = [], missing = [];
+    const matched = [], octave = [], missing = [], overtone = [];
     let dingMatch = 'none';
     heard.forEach((m, i) => {
       if (i === 0 && m === ding) { dingMatch = 'exact'; score += SF_DING_EXACT; matched.push(m); return; }
@@ -68,7 +72,11 @@ export function rankScalesByNotes(heard, scales, { name = heardNoteName } = {}) 
         if (set.has(m)) matched.push(m); else octave.push(m);
         return;
       }
-      if (set.has(m)) { score += SF_NOTE_EXACT; matched.push(m); } else if (pcs.has(pc(m))) { score += SF_NOTE_OCTAVE; octave.push(m); } else { score += SF_NOTE_MISSING; missing.push(m); }
+      if (set.has(m)) { score += SF_NOTE_EXACT; matched.push(m); return; }
+      // A note the scale doesn't have that sits an overtone above one it
+      // does (C4 → G5) was most likely heard ringing over: no penalty.
+      if (heard.some(h => set.has(h) && SF_OVERTONE_STEPS.includes(m - h))) { score += SF_OVERTONE; overtone.push(m); return; }
+      if (pcs.has(pc(m))) { score += SF_NOTE_OCTAVE; octave.push(m); } else { score += SF_NOTE_MISSING; missing.push(m); }
     });
     score += SF_COVERAGE * (matched.length / set.size);
     const reasons = [];
@@ -78,10 +86,12 @@ export function rankScalesByNotes(heard, scales, { name = heardNoteName } = {}) 
     if (dingMatch === 'exact') reasons.push('ding matches');
     else if (dingMatch !== 'none') reasons.push(`ding ${name(ding)}: an octave ${dingMatch} than ${name(first)}`);
     else if (set.has(first)) reasons.push(`${name(first)} isn't its ding`);
-    for (const m of octave) if (!(m === first && dingMatch !== 'none')) reasons.push(`${name(m)} is here only in another octave`);
-    for (const m of missing) reasons.push(`${name(m)} isn't in this scale`);
+    const oct = octave.filter(m => !(m === first && dingMatch !== 'none'));
+    if (missing.length) reasons.push(`not in it: ${missing.map(name).join(', ')}`);
+    if (oct.length) reasons.push(`other octave: ${oct.map(name).join(', ')}`);
+    if (overtone.length) reasons.push(`overtones: ${overtone.map(name).join(', ')}`);
     if (heard.length > 1 && matched.length === set.size) reasons.push('all its notes heard');
-    return { scale, score, matched, total: set.size, octave, missing, ding: dingMatch, reasons, order };
+    return { scale, score, matched, total: set.size, octave, missing, overtone, ding: dingMatch, reasons, order };
   });
   out.sort((a, b) => b.score - a.score || a.order - b.order);
   return out.map(({ order, ...r }) => r);

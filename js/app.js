@@ -3087,11 +3087,17 @@ function micHelpUrl() {
 
 // What the strip shows for the current reading: tone ok | near | far | idle.
 function tunerReadout() {
-  const r = state.tuner.reading;
+  let r = state.tuner.reading;
   const uf = state.useFlats, us = state.useSolfege;
   const target = tunerTarget();
+  // A struck note (handpan) fades fast: the last note heard stays up a
+  // moment after the sound drops out instead of blinking away.
+  const last = state.tuner.lastHeard;
+  const held = r?.midi == null && last && performance.now() - last.at < TUNER_HOLD_MS;
+  if (held) r = last.reading;
   const heard = r?.midi != null ? Math.round(r.midi) : null;
   if (heard == null) return { tone: 'idle', note: '—', cents: null, status: 'Listening…', hz: null };
+  if (held) return { tone: 'idle', note: displayNote(midiToNoteName(heard), uf, us), cents: null, status: 'Last note heard', hz: r.hz };
   const name = displayNote(midiToNoteName(heard), uf, us);
   if (target != null) {
     const tName = displayNote(midiToNoteName(target), uf, us);
@@ -3128,8 +3134,10 @@ function tunerPanelInner() {
 }
 
 let _tunerLiveAt = 0;
+const TUNER_HOLD_MS = 2000;
 function onTunerReading(reading) {
   state.tuner.reading = reading;
+  if (reading.midi != null) state.tuner.lastHeard = { reading, at: performance.now() };
   // An armed record field takes the first steady reading. One armed by
   // itself after a capture waits for a note that started after it.
   if (state.view === 'wizard' && state.wizard?.fl?.detect?.listening && reading.stable && reading.hz > 0) {

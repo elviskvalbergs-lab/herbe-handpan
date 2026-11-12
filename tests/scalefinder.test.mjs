@@ -28,7 +28,7 @@ test('an extra wrong note keeps the right scale near the top', () => {
   const r = rankScalesByNotes(m(KURD + ' C#4'), SCALES);
   const at = r.findIndex(x => x.scale.id === 'D-Kurd');
   assert.ok(at >= 0 && at < 3, `D Kurd at ${at}`);
-  assert.ok(r[at].reasons.includes("Db4 isn't in this scale"));
+  assert.ok(r[at].reasons.includes('not in it: Db4'));
   assert.ok(r[at].reasons.includes('9 of 10 notes match'));
   assert.ok(r[0].scale.top.ding === 'D3');
 });
@@ -62,4 +62,11 @@ test('collecting notes: ring-over and repeats are ignored', () => {
   assert.deepEqual(addHeardNote(notes, 69), [50, 57, 69]); // an octave above is a note
   assert.equal(heardNoteName(58), 'Bb3');
   assert.deepEqual(rankScalesByNotes([], SCALES), []);
+});
+
+test('overtones of notes heard are not counted against a scale', () => {
+  // A real session on an F Low Pygmy: G5 and Eb5 rang over C4 and Ab3.
+  const r = rankScalesByNotes(m('F3 G3 C4 F4 Ab4 G5 Eb5 C5 G4 Eb4 Ab3'), SCALES);
+  assert.ok(['F-Low-Pygmy', 'F-Low-Pygmy-11'].includes(r[0].scale.id), r[0].scale.id);
+  assert.deepEqual(r[0].overtone.map(heardNoteName), ['G5', 'Eb5']);
 });

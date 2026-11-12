@@ -1567,6 +1567,7 @@ html { touch-action: manipulation; }
 /* Fingering diagram drawn on the instrument's own photo */
 .fingering .fg-photo { opacity: 0.85; }
 .fingering .fg-photo-frame { fill: none; stroke: var(--border); stroke-width: 1; }
+.listen-match .row-meta { white-space: normal; overflow: visible; text-overflow: clip; display: block; -webkit-line-clamp: unset; }
 
   </style>
 </head>
@@ -1788,6 +1789,21 @@ const SCALES = [
     desc:'Full 17-note F Phrygian. Five sub-bass gu notes (Ab2–Eb3) anchor the low end; 11 ring notes span from Gb3 up to C5.',
     top:{ ding:'F3', notes:['Gb3','Ab3','Bb3','C4','Db4','Eb4','F4','Gb4','Ab4','Bb4','C5'], capacity:11 },
     bottom:{ notes:['Eb3','Db3','C3','Bb2','Ab2'], capacity:5 } },
+
+  // F Low Pygmy as most makers sell it today: a pentatonic minor with a
+  // natural 2nd (F G Ab C Eb), not the Phrygian above. 9 notes from X8 Drums
+  // (https://www.x8drums.com/x8-pro-handpan-f-low-pygmy-stainless-steel-w-bag);
+  // the two bottom notes Db3 Eb3 from Meinl's F Pygmy 11
+  // (https://www.scan.co.uk/products/meinl-sonic-energy-sensory-handpan-stainless-steel-f-pygmy-11-notes-440-hz-vintage-copper).
+  { id:'F-Low-Pygmy', name:'F Low Pygmy', family:'Pygmy',
+    desc:'F3 ding with G Ab C Eb above it: the pentatonic Pygmy most makers sell (X8, Meinl).',
+    top:{ ding:'F3', notes:['G3','Ab3','C4','Eb4','F4','G4','Ab4','C5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'F-Low-Pygmy-11', name:'F Low Pygmy (11)', family:'Pygmy',
+    desc:'F Low Pygmy with two bottom notes, Db3 and Eb3 (Meinl F Pygmy 11).',
+    top:{ ding:'F3', notes:['G3','Ab3','C4','Eb4','F4','G4','Ab4','C5'], capacity:8 },
+    bottom:{ notes:['Db3','Eb3'], capacity:3 } },
 
   // ── INTEGRAL (PANArt Hang — specific layouts) ─────────────────────────────
   // D Integral: PANArt Final Hang 2008. G/E Integral: confirmed by 3 maker sources.
@@ -2321,9 +2337,13 @@ function getRelatedChords(chord, allChords) {
 const SF_DING_EXACT = 10;   // first note heard = the scale's ding
 const SF_DING_OCTAVE = 4;   // ding's pitch class, another octave
 const SF_NOTE_EXACT = 3;    // any other heard note in the scale
-const SF_NOTE_OCTAVE = 1;   // its pitch class is in the scale, another octave
+const SF_NOTE_OCTAVE = 0;   // its pitch class is in the scale, another octave
 const SF_NOTE_MISSING = -4; // not in the scale at all
 const SF_COVERAGE = 4;      // × the share of the scale's notes heard
+const SF_OVERTONE = 0;      // not in the scale, but an overtone of another note heard
+// Intervals (semitones) at which a struck note's overtones sound: the
+// octave, octave + fifth, two octaves, two octaves + third and + fifth.
+const SF_OVERTONE_STEPS = [12, 19, 24, 28, 31];
 
 // 'Bb3' style name of a MIDI number (the spelling SCALES uses most).
 function heardNoteName(midi) {
@@ -2352,7 +2372,7 @@ function sfScaleMidis(scale) {
 }
 
 // Ranks scales by the notes heard (MIDI numbers, the first is the ding).
-// Returns [{ scale, score, matched, total, missing: [midi], octave: [midi],
+// Returns [{ scale, score, matched, total, missing: [midi], octave: [midi], overtone: [midi],
 // ding: 'exact' | 'higher' | 'lower' | 'none', reasons: [text] }], best first.
 // ding 'higher' means the scale's ding is an octave (or more) above the note
 // heard first. name(midi) spells notes in the reasons.
@@ -2366,7 +2386,7 @@ function rankScalesByNotes(heard, scales, { name = heardNoteName } = {}) {
     const ding = midis[0];
     const pc = m => ((m % 12) + 12) % 12;
     let score = 0;
-    const matched = [], octave = [], missing = [];
+    const matched = [], octave = [], missing = [], overtone = [];
     let dingMatch = 'none';
     heard.forEach((m, i) => {
       if (i === 0 && m === ding) { dingMatch = 'exact'; score += SF_DING_EXACT; matched.push(m); return; }
@@ -2376,7 +2396,11 @@ function rankScalesByNotes(heard, scales, { name = heardNoteName } = {}) {
         if (set.has(m)) matched.push(m); else octave.push(m);
         return;
       }
-      if (set.has(m)) { score += SF_NOTE_EXACT; matched.push(m); } else if (pcs.has(pc(m))) { score += SF_NOTE_OCTAVE; octave.push(m); } else { score += SF_NOTE_MISSING; missing.push(m); }
+      if (set.has(m)) { score += SF_NOTE_EXACT; matched.push(m); return; }
+      // A note the scale doesn't have that sits an overtone above one it
+      // does (C4 → G5) was most likely heard ringing over: no penalty.
+      if (heard.some(h => set.has(h) && SF_OVERTONE_STEPS.includes(m - h))) { score += SF_OVERTONE; overtone.push(m); return; }
+      if (pcs.has(pc(m))) { score += SF_NOTE_OCTAVE; octave.push(m); } else { score += SF_NOTE_MISSING; missing.push(m); }
     });
     score += SF_COVERAGE * (matched.length / set.size);
     const reasons = [];
@@ -2386,10 +2410,12 @@ function rankScalesByNotes(heard, scales, { name = heardNoteName } = {}) {
     if (dingMatch === 'exact') reasons.push('ding matches');
     else if (dingMatch !== 'none') reasons.push(`ding ${name(ding)}: an octave ${dingMatch} than ${name(first)}`);
     else if (set.has(first)) reasons.push(`${name(first)} isn't its ding`);
-    for (const m of octave) if (!(m === first && dingMatch !== 'none')) reasons.push(`${name(m)} is here only in another octave`);
-    for (const m of missing) reasons.push(`${name(m)} isn't in this scale`);
+    const oct = octave.filter(m => !(m === first && dingMatch !== 'none'));
+    if (missing.length) reasons.push(`not in it: ${missing.map(name).join(', ')}`);
+    if (oct.length) reasons.push(`other octave: ${oct.map(name).join(', ')}`);
+    if (overtone.length) reasons.push(`overtones: ${overtone.map(name).join(', ')}`);
     if (heard.length > 1 && matched.length === set.size) reasons.push('all its notes heard');
-    return { scale, score, matched, total: set.size, octave, missing, ding: dingMatch, reasons, order };
+    return { scale, score, matched, total: set.size, octave, missing, overtone, ding: dingMatch, reasons, order };
   });
   out.sort((a, b) => b.score - a.score || a.order - b.order);
   return out.map(({ order, ...r }) => r);
@@ -9197,11 +9223,17 @@ function micHelpUrl() {
 
 // What the strip shows for the current reading: tone ok | near | far | idle.
 function tunerReadout() {
-  const r = state.tuner.reading;
+  let r = state.tuner.reading;
   const uf = state.useFlats, us = state.useSolfege;
   const target = tunerTarget();
+  // A struck note (handpan) fades fast: the last note heard stays up a
+  // moment after the sound drops out instead of blinking away.
+  const last = state.tuner.lastHeard;
+  const held = r?.midi == null && last && performance.now() - last.at < TUNER_HOLD_MS;
+  if (held) r = last.reading;
   const heard = r?.midi != null ? Math.round(r.midi) : null;
   if (heard == null) return { tone: 'idle', note: '—', cents: null, status: 'Listening…', hz: null };
+  if (held) return { tone: 'idle', note: displayNote(midiToNoteName(heard), uf, us), cents: null, status: 'Last note heard', hz: r.hz };
   const name = displayNote(midiToNoteName(heard), uf, us);
   if (target != null) {
     const tName = displayNote(midiToNoteName(target), uf, us);
@@ -9238,8 +9270,10 @@ function tunerPanelInner() {
 }
 
 let _tunerLiveAt = 0;
+const TUNER_HOLD_MS = 2000;
 function onTunerReading(reading) {
   state.tuner.reading = reading;
+  if (reading.midi != null) state.tuner.lastHeard = { reading, at: performance.now() };
   // An armed record field takes the first steady reading. One armed by
   // itself after a capture waits for a note that started after it.
   if (state.view === 'wizard' && state.wizard?.fl?.detect?.listening && reading.stable && reading.hz > 0) {

@@ -212,6 +212,21 @@ export const SCALES = [
     top:{ ding:'F3', notes:['Gb3','Ab3','Bb3','C4','Db4','Eb4','F4','Gb4','Ab4','Bb4','C5'], capacity:11 },
     bottom:{ notes:['Eb3','Db3','C3','Bb2','Ab2'], capacity:5 } },
 
+  // F Low Pygmy as most makers sell it today: a pentatonic minor with a
+  // natural 2nd (F G Ab C Eb), not the Phrygian above. 9 notes from X8 Drums
+  // (https://www.x8drums.com/x8-pro-handpan-f-low-pygmy-stainless-steel-w-bag);
+  // the two bottom notes Db3 Eb3 from Meinl's F Pygmy 11
+  // (https://www.scan.co.uk/products/meinl-sonic-energy-sensory-handpan-stainless-steel-f-pygmy-11-notes-440-hz-vintage-copper).
+  { id:'F-Low-Pygmy', name:'F Low Pygmy', family:'Pygmy',
+    desc:'F3 ding with G Ab C Eb above it: the pentatonic Pygmy most makers sell (X8, Meinl).',
+    top:{ ding:'F3', notes:['G3','Ab3','C4','Eb4','F4','G4','Ab4','C5'], capacity:8 },
+    bottom:{ notes:[], capacity:3 } },
+
+  { id:'F-Low-Pygmy-11', name:'F Low Pygmy (11)', family:'Pygmy',
+    desc:'F Low Pygmy with two bottom notes, Db3 and Eb3 (Meinl F Pygmy 11).',
+    top:{ ding:'F3', notes:['G3','Ab3','C4','Eb4','F4','G4','Ab4','C5'], capacity:8 },
+    bottom:{ notes:['Db3','Eb3'], capacity:3 } },
+
   // ── INTEGRAL (PANArt Hang — specific layouts) ─────────────────────────────
   // D Integral: PANArt Final Hang 2008. G/E Integral: confirmed by 3 maker sources.
 
