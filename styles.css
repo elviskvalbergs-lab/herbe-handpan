@@ -896,7 +896,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fg-move > span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .fg-move .ico { width: 16px; height: 16px; color: var(--text-3); }
 .hand-legend { width: 100%; max-width: 420px; display: block; margin: 8px auto; }
-.hand-legend .hand-line { fill: var(--text-2); }
+.hand-legend .hand-skin { fill: var(--surface-2); stroke: var(--text-2); stroke-width: 7; stroke-linejoin: round; }
+.hand-legend .hand-nail { fill: none; stroke: var(--text-2); stroke-width: 6; }
 .hand-legend .hand-label { fill: var(--text-1); font-size: 30px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
 .hand-legend .hand-name { fill: var(--text-3); font-size: 28px; text-anchor: middle; }
 
