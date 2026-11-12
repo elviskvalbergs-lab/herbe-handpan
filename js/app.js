@@ -27,19 +27,19 @@ import {
   renderFingering, renderHandLegend, fingeringMoves, playableMidis,
   ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
 } from './ocarina-ui.js';
-import { playablePairs, centsBetween, midiToHz } from './ocarina.js';
+import { playablePairs, centsBetween, midiToHz, hzToMidi } from './ocarina.js';
 import { startTuner } from './tuner.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
-  defaultCustomHoles, calibrateChamber,
+  defaultCustomHoles, calibrateChamber, fluteHoles, fluteStepStates, fluteChamberFromReadings,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
-import { chartsForFamily, getChart, instrumentFromChart } from './charts.js';
+import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, CHART_ROOTS } from './charts.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
-  createScaleOcarina, createCustomOcarina, instrumentStatus, midiToNoteName,
+  createScaleOcarina, createCustomOcarina, createCustomFlute, instrumentStatus, midiToNoteName,
   getClayBodies, saveClayBodies, getInstrumentsRaw, writeInstrumentsRaw,
   newPublicId, mergeInstruments, copySharedInstrument,
 } from './instruments.js';
@@ -744,7 +744,7 @@ function newWizard(firstRun) {
     search: '',
     noteFilter: 'all',
     oc: { path: null, scaleId: 'D-Kurd', transpose: 0, includeGu: true, chambers: null, windowStart: null, name: '', holeCount: 12, chartId: 'custom', keyId: null },
-    fl: { chartId: chartsForFamily('flute')[0]?.id ?? null, keyId: null, name: '' },
+    fl: { chartId: chartsForFamily('flute')[0]?.id ?? null, keyId: null, name: '', holeCount: 6, detect: null },
   };
 }
 
@@ -962,25 +962,125 @@ function viewWizard() {
   if (w.step === 'flute') {
     const fl = w.fl;
     const charts = chartsForFamily('flute');
-    const chart = getChart(fl.chartId) ?? charts[0];
+    const custom = fl.chartId === 'custom';
+    const chart = custom ? null : getChart(fl.chartId) ?? charts[0];
+    const placeholder = custom ? 'My flute' : chart ? wizardFluteName(chart, fl.keyId) : 'My flute';
     return wizardFrame(w, {
       title: 'Your flute',
+      sub: 'A Native American flute in a key not listed: pick an “any key” type and set its key. Another flute, or not sure what it is? Pick “Other flute: record its notes” and blow each fingering into the tuner.',
       body: `<div class="wizard-form">
-        ${uiField({ label: 'Name', id: 'wizard-fl-name', control: `<input class="input" id="wizard-fl-name" value="${escHtml(fl.name)}" placeholder="${escHtml(chart ? chart.name : 'My flute')}">` })}
+        ${uiField({ label: 'Name', id: 'wizard-fl-name', control: `<input class="input" id="wizard-fl-name" value="${escHtml(fl.name)}" placeholder="${escHtml(placeholder)}">` })}
         ${uiField({ label: 'Type', id: 'wizard-fl-chart', control: `
           <select class="select" id="wizard-fl-chart" data-action="wizard-chart" data-fam="fl">
             ${charts.map(c => `<option value="${c.id}" ${chart?.id === c.id ? 'selected' : ''}>${escHtml(c.name)}</option>`).join('')}
+            <option value="custom" ${custom ? 'selected' : ''}>Other flute: record its notes</option>
           </select>` })}
-        ${chart ? wizardKeySelect('fl', chart, fl.keyId) : ''}
+        ${custom ? uiField({
+          label: 'Finger holes',
+          control: uiStepper({ value: fl.holeCount, label: 'Finger holes', action: 'wizard-fl-holes-step', min: fl.holeCount <= 3, max: fl.holeCount >= 8 }),
+          help: 'Its chart comes from the flute itself: on Set up you blow it into the tuner with all holes closed, then lift the holes one at a time from the bottom.',
+        }) : chart?.octaves ? wizardFluteKeyHtml(chart, fl) : chart ? wizardKeySelect('fl', chart, fl.keyId) : ''}
       </div>`,
       bar: {
         left: w.history.length ? WIZARD_BACK : '',
         right: `<button type="button" class="btn btn-ghost" data-action="wizard-skip-step">Skip</button>
-          <button type="button" class="btn btn-primary btn-lg" data-action="wizard-fl-create" ${chart ? '' : 'disabled'}>Add flute</button>`,
+          <button type="button" class="btn btn-primary btn-lg" data-action="wizard-fl-create" ${chart || custom ? '' : 'disabled'}>Add flute</button>`,
       },
     });
   }
   return wizardFrame(w, { title: '', body: '', bar: {} });
+}
+
+// Name a flute from a chart gets unless the user types one: any-key charts
+// say the key in the user's note spelling ("… in Bb (Bb3)").
+function wizardFluteName(chart, keyId) {
+  const key = chart.keys.find(k => k.id === (keyId ?? chartDefaultKey(chart))) ?? chart.keys[0];
+  if (!chart.octaves) return chart.keys.length > 1 ? `${chart.name} (${key.lowest})` : chart.name;
+  const uf = state.useFlats, us = state.useSolfege;
+  return `${chart.shortName ?? chart.name} in ${displayNote(key.root, uf, us)} (${displayNote(key.lowest, uf, us)})`;
+}
+
+const FLUTE_OCTAVE_NAMES = { 3: 'Low', 4: 'Mid', 5: 'High' };
+
+// Key and octave of an any-key flute chart: a Key select (12 roots in the
+// user's spelling), Low · Mid · High, and Detect with tuner.
+function wizardFluteKeyHtml(chart, fl) {
+  const uf = state.useFlats, us = state.useSolfege;
+  const key = chart.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart))) ?? chart.keys[0];
+  const d = fl.detect;
+  const status = !d ? ''
+    : d.listening ? `<span>${icon('mic')} Cover all holes and blow a steady note</span>`
+    : d.error ? `<span class="is-warning">${escHtml(d.error)}</span>`
+    : `<span>${escHtml(d.text)}</span>${d.warn ? `<br><span class="is-warning">${escHtml(d.warn)}</span>` : ''}`;
+  return `
+    <div class="fl-key">
+      ${uiField({
+        label: 'Key', id: 'wizard-fl-root',
+        control: `<select class="select" id="wizard-fl-root" data-action="wizard-fl-root">
+          ${CHART_ROOTS.map(r => `<option value="${r}" ${key.root === r ? 'selected' : ''}>${escHtml(displayNote(r, uf, us))}</option>`).join('')}
+        </select>`,
+      })}
+      <div class="field">
+        <div class="field-label" id="wizard-fl-octave-label">Octave</div>
+        ${uiSeg(chart.octaves.map(o => ({ value: String(o), label: FLUTE_OCTAVE_NAMES[o] ?? String(o) })), String(key.octave), { action: 'wizard-fl-octave', key: 'octave', label: 'Octave' })}
+      </div>
+    </div>
+    <div class="fl-detect">
+      <button type="button" class="btn btn-secondary btn-sm" data-action="wizard-fl-detect" aria-pressed="${d?.listening ? 'true' : 'false'}">
+        ${icon('mic')} ${d?.listening ? 'Listening…' : 'Detect with tuner'}</button>
+      <div class="fl-detect-status field-help" aria-live="polite">${status}</div>
+    </div>
+    <p class="field-help">All holes closed sounds ${escHtml(displayNote(key.lowest, uf, us))}. Not sure which octave? Detect it, or check with the tuner.</p>
+    ${chart.sourceName ? `<p class="field-help">Chart: ${escHtml(chart.sourceName)}</p>` : ''}`;
+}
+
+// Detect with tuner: the first steady reading sets the key and octave.
+let _flDetectTimer = null;
+function startFluteDetect() {
+  const fl = state.wizard?.fl;
+  if (!fl) return;
+  clearTimeout(_flDetectTimer);
+  fl.detect = { listening: true, startedTuner: !state.tuner.on || !!state.tuner.error };
+  _flDetectTimer = setTimeout(() => {
+    const f = state.wizard?.fl;
+    if (!f?.detect?.listening) return;
+    stopFluteDetect({ error: 'No steady note: blow a little longer' });
+  }, 10000);
+  if (fl.detect.startedTuner) {
+    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    toggleTuner().then(() => {
+      if (state.tuner.error && state.wizard?.fl.detect?.listening) stopFluteDetect({ error: state.tuner.error });
+    });
+    return;
+  }
+  render();
+}
+
+// Ends a detection with a result or an error; turns the tuner off again
+// if the detection turned it on.
+function stopFluteDetect(result) {
+  clearTimeout(_flDetectTimer);
+  const fl = state.wizard?.fl;
+  if (!fl?.detect) return;
+  const startedTuner = fl.detect.startedTuner;
+  fl.detect = result;
+  if (startedTuner && state.tuner.on && !state.tuner.error) { toggleTuner(); return; }
+  render();
+}
+
+function onFluteDetectReading(hz) {
+  const fl = state.wizard.fl;
+  const chart = getChart(fl.chartId);
+  if (!chart?.octaves) { stopFluteDetect(null); return; }
+  const r = detectChartKey(hz, { octaves: chart.octaves });
+  fl.keyId = chartKeyFor(chart, r.root, r.octave).id;
+  const uf = state.useFlats, us = state.useSolfege;
+  const heard = displayNote(r.root + r.heardOctave, uf, us);
+  const off = r.cents === 0 ? 'in tune' : `${Math.abs(r.cents)} ¢ ${r.cents > 0 ? 'sharp' : 'flat'}`;
+  const oct = FLUTE_OCTAVE_NAMES[r.octave] ?? String(r.octave);
+  let text = `Heard ${heard}, ${off}: key ${displayNote(r.root, uf, us)}, ${oct}`;
+  if (r.outOfRange) text += ` (the nearest octave offered; your flute sounds ${r.heardOctave < r.octave ? 'lower' : 'higher'})`;
+  stopFluteDetect({ text, warn: Math.abs(r.cents) > 30 ? 'This flute may not be tuned to A=440' : '' });
 }
 
 function wizardKeySelect(fam, chart, keyId) {
@@ -990,7 +1090,7 @@ function wizardKeySelect(fam, chart, keyId) {
       <select class="select" id="wizard-${fam}-key" data-action="wizard-key" data-fam="${fam}">
         ${chart.keys.map(k => `<option value="${k.id}" ${(keyId ?? chart.keys[0].id) === k.id ? 'selected' : ''}>${escHtml(k.name)}</option>`).join('')}
       </select>`,
-    help: `Chart source: ${chart.source.map(u => `<a href="${escHtml(u)}" target="_blank" rel="noopener">${escHtml(new URL(u).hostname)}</a>`).join(', ')}`,
+    help: chart.sourceName ? `Chart: ${escHtml(chart.sourceName)}` : '',
   });
 }
 
@@ -1455,6 +1555,7 @@ function viewInstrument() {
             </div>
           </div>
         </div>
+        ${recordedCentsHtml(inst, oc.selected)}
         ${state.ocLegendSeen ? '' : `
           <div class="fg-legend">
             <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span><span>${legendHole('h')} half</span>
@@ -1471,6 +1572,14 @@ function viewInstrument() {
         <p class="oc-count">${escHtml(instrumentStatus(inst))}</p>
       </div>
     </div>`;
+}
+
+// A recorded flute: how far the note it plays is from the charted note.
+function recordedCentsHtml(inst, midi) {
+  const c = inst.family === 'flute' && inst.kind === 'custom' ? inst.calibration?.cents?.[midi] : null;
+  if (c == null) return '';
+  const off = c === 0 ? 'in tune' : `${c > 0 ? '+' : '−'}${Math.abs(c)} ¢ (${c > 0 ? 'sharp' : 'flat'})`;
+  return `<p class="b-meta fl-recorded">Your flute played this ${off} when you recorded it.</p>`;
 }
 
 function legendHole(state) {
@@ -2100,6 +2209,7 @@ function setupOf(inst) {
 }
 
 function viewSetup(inst) {
+  if (inst.family === 'flute') return viewFluteSetup(inst);
   const setup = setupOf(inst);
   const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
   const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
@@ -2158,6 +2268,92 @@ function viewSetup(inst) {
     </div>`;
 }
 
+// Set up for a flute that isn't charted (Other flute): one reading with all
+// holes closed, then one more for each hole lifted, from the bottom up, the
+// lower ones staying open. Paths "f:<step>". Holes count from the mouthpiece.
+function fluteSetupOf(inst) {
+  return inst.setup ?? { holes: fluteHoles(inst.holeCount), readings: [] };
+}
+
+function fluteSetupPaths(setup) {
+  return Array.from({ length: setup.holes.length + 1 }, (_, k) => `f:${k}`);
+}
+
+function fluteStepLabel(n, k) {
+  if (k === 0) return 'All holes closed';
+  if (k === 1) return `Lift the lowest hole (hole ${n})`;
+  return k === n ? 'Also lift hole 1: all holes open' : `Also lift hole ${n - k + 1}`;
+}
+
+function viewFluteSetup(inst) {
+  const setup = fluteSetupOf(inst);
+  const n = setup.holes.length;
+  const uf = state.useFlats, us = state.useSolfege;
+  const paths = fluteSetupPaths(setup);
+  const value = k => setup.readings[k];
+  const filled = paths.filter((_, k) => value(k) > 0).length;
+  const left = paths.length - filled;
+  const next = paths.findIndex((_, k) => !(value(k) > 0));
+  // Heard note per reading, and readings that repeat an earlier note.
+  const heard = paths.map((_, k) => {
+    if (!(value(k) > 0)) return null;
+    const exact = hzToMidi(value(k));
+    return { midi: Math.round(exact), cents: Math.round((exact - Math.round(exact)) * 100) };
+  });
+  const firstWith = midi => heard.findIndex(h => h?.midi === midi);
+  const cents = c => (c === 0 ? '0 ¢' : `${c > 0 ? '+' : '−'}${Math.abs(c)} ¢`);
+  const pattern = k => fluteStepStates(n, k).map(st => (st === 'c' ? '●' : '○')).join(' ');
+  const dropped = inst.calibration?.dropped ?? [];
+  return `${ocHeader(inst, 'setup')}
+    <div class="b-layout is-single">
+      <div class="b-main">
+        <h2 class="b-title">Set up</h2>
+        <p class="b-intro">Blow each line into the tuner. Tap ${icon('mic')}<span class="sr-only">the microphone</span>, blow, and it fills itself in.</p>
+        <p class="b-meta">Holes count from the mouthpiece down: hole 1 is nearest your mouth. Lifted holes stay open for the lines below. Blow steadily at a medium breath.</p>
+        <div class="card b-card">
+          <div class="b-card-head">
+            <div class="b-card-head-text">
+              <h3 class="b-card-title">Holes and fingers</h3>
+              <p class="b-meta">${n} holes, from the mouthpiece down</p>
+            </div>
+          </div>
+          <p class="b-fingers">${setup.holes.map(h => escHtml(h.finger)).join(' ')}</p>
+        </div>
+        <div class="card b-card">
+          <div class="b-card-head">
+            <h3 class="b-card-title">Readings</h3>
+            <span class="b-card-count">${filled} of ${paths.length}</span>
+          </div>
+          <div class="practice-progress" role="progressbar" aria-label="Readings recorded" aria-valuemin="0" aria-valuemax="${paths.length}" aria-valuenow="${filled}">
+            <span style="width:${Math.round((filled / paths.length) * 100)}%"></span>
+          </div>
+          <div class="s-readings">
+            ${paths.map((p, k) => {
+              const v = value(k);
+              const h = heard[k];
+              const repeat = h && firstWith(h.midi) < k;
+              const isNext = k === next;
+              return `
+                <div class="s-reading${isNext ? ' is-next' : ''}${v > 0 ? ' is-filled' : ''}">
+                  <div class="s-reading-head">
+                    <span class="s-reading-label">${escHtml(fluteStepLabel(n, k))}</span>
+                    ${isNext ? uiBadge('Next', 'accent') : v > 0 ? `<span class="s-done" aria-label="Recorded">${icon('check')}</span>` : ''}
+                  </div>
+                  <div class="b-meta fl-step"><span class="fl-pattern" aria-hidden="true">${pattern(k)}</span>${h ? ` · ${escHtml(displayNote(midiToNoteName(h.midi), uf, us))} ${cents(h.cents)}` : ''}${repeat ? ` · <span class="is-warning">same note as “${escHtml(fluteStepLabel(n, firstWith(h.midi)))}”</span>` : ''}</div>
+                  ${uiHzField(p, v, { label: `${fluteStepLabel(n, k)}, Hz` })}
+                </div>`;
+            }).join('')}
+          </div>
+        </div>
+        <div class="b-actions">
+          <button type="button" class="btn btn-primary b-next" data-action="f-work-out" ${left ? 'disabled' : ''}>Work out the chart</button>
+        </div>
+        <p class="b-meta">${left ? `${left} reading${left !== 1 ? 's' : ''} to go` : 'Every reading is in.'}</p>
+        ${inst.calibration ? `<p class="b-meta">Current chart: ${playableMidis(inst).length} notes, each the nearest note to what you blew.${dropped.length ? ` ${dropped.length} reading${dropped.length !== 1 ? 's' : ''} gave a note already charted and ${dropped.length !== 1 ? 'were' : 'was'} left out.` : ''}</p>` : ''}
+      </div>
+    </div>`;
+}
+
 // Hole fingers: which finger covers each hole, in opening order.
 function setupFingersSheet() {
   const inst = currentInstrument();
@@ -2183,6 +2379,12 @@ function setupFingersSheet() {
 // "ci:stage:n:<midi>", "s:f0", "s:<holeIndex>".
 function setReading(inst, path, value) {
   const parts = path.split(':');
+  if (parts[0] === 'f') {
+    const setup = fluteSetupOf(inst);
+    setup.readings[parseInt(parts[1], 10)] = value;
+    inst.setup = setup;
+    return;
+  }
   if (parts[0] === 's') {
     const setup = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
     if (parts[1] === 'f0') setup.f0 = value; else setup.singles[parseInt(parts[1], 10)] = value;
@@ -2318,6 +2520,10 @@ function onTunerReading(reading) {
   state.tuner.reading = reading;
   // An armed record field takes the first steady reading. One armed by
   // itself after a capture waits for a note that started after it.
+  if (state.view === 'wizard' && state.wizard?.fl?.detect?.listening && reading.stable && reading.hz > 0) {
+    onFluteDetectReading(reading.hz);
+    return;
+  }
   const rec = state.rec;
   if (rec.armed && reading.stable && reading.hz > 0 && (!rec.auto || reading.since > rec.armedAt)) {
     captureReading(reading.hz);
@@ -2397,9 +2603,10 @@ function captureReading(hz) {
   if (!inst || inst.id === SHARED_ID) { render(); return; }
   setReading(inst, path, Math.round(hz * 10) / 10);
   saveInstrument(inst);
-  if (!path.startsWith('s:')) bAdvanceChamber(inst);
+  const setupPath = /^[sf]:/.test(path);
+  if (!setupPath) bAdvanceChamber(inst);
   state.rec.captured = path;
-  const next = path.startsWith('s:') ? nextEmptySetupPath(inst, path) : null;
+  const next = setupPath ? nextEmptySetupPath(inst, path) : null;
   if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
   render();
   if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -2415,8 +2622,10 @@ function captureReading(hz) {
 function nextEmptySetupPath(inst, fromPath) {
   const setup = inst.setup;
   if (!setup) return null;
-  const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
-  const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
+  const flute = fromPath.startsWith('f:');
+  const paths = flute ? fluteSetupPaths(setup) : ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
+  const value = p => (flute ? setup.readings[parseInt(p.slice(2), 10)]
+    : p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
   const at = paths.indexOf(fromPath);
   return [...paths.slice(at + 1), ...paths.slice(0, at)].find(p => !(value(p) > 0)) ?? null;
 }
@@ -4471,6 +4680,25 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'f-work-out') {
+    const inst = currentInstrument();
+    if (!inst?.setup || inst.family !== 'flute') return;
+    const ch = fluteChamberFromReadings(inst.setup.holes, inst.setup.readings);
+    if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each line is a different note'); return; }
+    inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
+    inst.calibration = ch.calibration;
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.tab = 'notes';
+    navReplace(`#i/${inst.id}/notes`);
+    const n = ch.calibration.dropped.length;
+    const nn = m => displayNote(midiToNoteName(m), state.useFlats, state.useSolfege);
+    showToast(n
+      ? `Chart ready: ${ch.notes.length} notes. ${ch.calibration.dropped.map(d => nn(d.midi)).join(', ')} came out twice; the first fingering is kept`
+      : `Chart ready: ${ch.notes.length} notes`);
+    render();
+    return;
+  }
   if (action === 's-calibrate') {
     const inst = currentInstrument();
     if (!inst?.setup) return;
@@ -4605,9 +4833,13 @@ document.addEventListener('click', e => {
   if (action === 'wizard-skip-step') { wizardNext(); return; }
   if (action === 'wizard-fl-create') {
     const fl = state.wizard.fl;
-    const chart = getChart(fl.chartId) ?? chartsForFamily('flute')[0];
-    if (!chart) return;
-    const inst = instrumentFromChart(chart.id, fl.keyId ?? chart.keys[0].id, { name: fl.name.trim() });
+    if (fl.detect?.listening) stopFluteDetect(null);
+    const chart = fl.chartId === 'custom' ? null : getChart(fl.chartId) ?? chartsForFamily('flute')[0];
+    if (!chart && fl.chartId !== 'custom') return;
+    const inst = chart
+      ? instrumentFromChart(chart.id, fl.keyId ?? chartDefaultKey(chart), { name: fl.name.trim() || wizardFluteName(chart, fl.keyId) })
+      : createCustomFlute({ name: fl.name.trim(), holeCount: fl.holeCount });
+    fl.detect = null;
     saveInstrument(inst);
     refreshInstruments();
     wizardAdded(inst.id, inst.name);
@@ -4669,6 +4901,22 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-filter-notes') { state.wizard.noteFilter = el.dataset.val; render(); return; }
+  if (action === 'wizard-fl-holes-step') {
+    const fl = state.wizard.fl;
+    fl.holeCount = Math.max(3, Math.min(8, fl.holeCount + parseInt(el.dataset.delta, 10)));
+    render();
+    return;
+  }
+  if (action === 'wizard-fl-octave') {
+    const fl = state.wizard.fl;
+    const chart = getChart(fl.chartId);
+    if (!chart?.octaves) return;
+    const cur = chart.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart)));
+    fl.keyId = chartKeyFor(chart, cur.root, parseInt(el.dataset.octave, 10))?.id ?? fl.keyId;
+    render();
+    return;
+  }
+  if (action === 'wizard-fl-detect') { startFluteDetect(); return; }
   if (action === 'wizard-oc-holes-step') {
     const oc = state.wizard.oc;
     oc.holeCount = Math.max(4, Math.min(13, oc.holeCount + parseInt(el.dataset.delta, 10)));
@@ -5674,7 +5922,17 @@ document.addEventListener('change', e => {
   if (action === 'oc-category') { state.oc.category = el.value; render(); }
   if (action === 'wizard-chart') {
     const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
-    t.chartId = el.value; t.keyId = null; render();
+    if (t === state.wizard.fl && t.detect?.listening) stopFluteDetect(null);
+    t.chartId = el.value; t.keyId = null;
+    if (t === state.wizard.fl) t.detect = null;
+    render();
+  }
+  if (action === 'wizard-fl-root') {
+    const fl = state.wizard.fl;
+    const chart = getChart(fl.chartId);
+    const cur = chart?.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart)));
+    if (cur) fl.keyId = chartKeyFor(chart, el.value, cur.octave)?.id ?? fl.keyId;
+    render();
   }
   if (action === 'wizard-key') {
     (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;

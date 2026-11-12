@@ -1441,3 +1441,14 @@ html { touch-action: manipulation; }
 @media (pointer: coarse) {
   input, select, textarea { font-size: max(16px, 1em) !important; }
 }
+
+/* Flute: key and octave of an any-key chart, Detect with tuner, recorded steps */
+.fl-key { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+@media (min-width: 600px) { .fl-key { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.fl-detect { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.fl-detect .btn { flex: none; }
+.fl-detect-status { margin: 0; flex: 1 1 200px; min-width: 0; }
+.fl-detect-status .ico { width: 16px; height: 16px; vertical-align: -3px; }
+.fl-pattern { letter-spacing: 0.05em; color: var(--text-2); }
+.fl-recorded { margin: var(--space-2) 0 0; text-align: center; }
+.fl-detect-status .is-warning, .fl-step .is-warning { color: var(--warning); }
