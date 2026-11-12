@@ -366,6 +366,10 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238BA898' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 12px center;
 }
+/* Searchable picker (uiPicker): a button that looks like a select */
+.picker-btn { display: flex; align-items: center; text-align: left; }
+.picker-val { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.picker-val.is-placeholder { color: var(--text-3); }
 .input-unit { position: relative; display: block; min-width: 0; }
 .input-unit .input { padding-right: 40px; }
 .input-unit-label {
@@ -757,6 +761,33 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .sheet-progrow .row.is-danger .row-lead { color: var(--danger); }
 .picker-mode { padding: 0 0 var(--space-3); }
 .picker-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); margin: 0 0 var(--space-3); }
+
+/* Searchable picker sheet: search box on top, grouped option rows below */
+.sheet-pick.is-tall .sheet { height: 85dvh; }
+.picker-search { position: relative; flex-shrink: 0; padding: 0 var(--space-4) var(--space-3); border-bottom: 1px solid var(--border); }
+.picker-search > .ico {
+  position: absolute; left: calc(var(--space-4) + 12px); top: calc(50% - var(--space-3) / 2); transform: translateY(-50%);
+  width: 20px; height: 20px; color: var(--text-3); pointer-events: none;
+}
+.picker-search .input { padding-left: 42px; }
+.picker-search .input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.picker-body { flex: 1 1 auto; min-height: 0; }
+.picker-group:first-child > .list:first-child { margin-top: var(--space-3); }
+.picker-group + .picker-group { margin-top: var(--space-2); }
+.picker-group-title {
+  position: sticky; top: 0; z-index: 1; margin: 0; padding: var(--space-3) 0 var(--space-2);
+  background: var(--surface-1);
+}
+.picker-row { min-height: 48px; }
+.picker-row .row-trail .ico { width: 20px; height: 20px; margin: 0 8px; color: var(--text-1); }
+.picker-row.is-active { background: var(--surface-2); }
+.sheet-pick:has(#pick-search:focus) .picker-row.is-active { box-shadow: inset 0 0 0 2px var(--focus); }
+.picker-row[hidden], .picker-group[hidden], .picker-empty[hidden] { display: none !important; }
+.picker-empty .empty { padding-top: var(--space-8); }
+@media (min-width: 600px) {
+  .sheet-pick .sheet { width: min(520px, 100%); }
+  .sheet-pick.is-tall .sheet { height: min(80dvh, 720px); }
+}
 
 /* Playlist picker sheet */
 .row-check { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; color: var(--text-1); }

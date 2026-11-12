@@ -605,6 +605,231 @@ function uiStepper({ value, label, action, data, min = false, max = false, help 
     </div>`;
 }
 
+// Searchable picker: a field that looks like a select (.select, chevron,
+// the chosen option's label) but opens a sheet with a search box and the
+// options as rows, grouped under headers. For lists that can be long.
+//   options: [{ value, label, group?, meta?, keywords? }]; groups: the group
+//   names in order (default: order of first appearance; ungrouped first).
+//   action + data: what choosing runs. A choice dispatches a change event
+//   from an input carrying data-action=action and the data, with the chosen
+//   value, so the change delegation below handles it exactly as it handled
+//   the <select> this replaced.
+// The sheet lives outside #app and filters in place as you type, so a
+// render() never runs per keystroke.
+const _pickerDefs = {};
+let _pickerOpen = null; // { id, root, rows, active }
+
+function uiPicker({ id, value, label, placeholder = 'Choose…', options, groups = null, action, data = {}, cls = '', hint = '' }) {
+  _pickerDefs[id] = { id, value, label, options, groups, action, data };
+  const cur = options.find(o => o.value === value);
+  return `<button type="button" class="select picker-btn ${cls}" id="${escHtml(id)}" data-action="picker-open" data-picker="${escHtml(id)}"
+    aria-haspopup="dialog" aria-label="${escHtml(label)}: ${escHtml(cur ? cur.label : placeholder)}"
+    title="${escHtml(hint || (cur ? cur.label : label))}"><span class="picker-val${cur ? '' : ' is-placeholder'}">${escHtml(cur ? cur.label : placeholder)}</span></button>`;
+}
+
+// Options for the handpan scales, grouped by family in catalogue order.
+// A scale is also found by its ding in any spelling and its note count.
+function scalePickerOptions(lead = []) {
+  return [...lead, ...SCALES.map(sc => {
+    const n = 1 + sc.top.notes.length + sc.bottom.notes.length;
+    return {
+      value: sc.id, label: sc.name, group: sc.family, meta: `${n} notes`,
+      keywords: [...noteSearchWords(sc.top.ding), ...noteSearchWords(sc.top.ding.replace(/\d+$/, ''))],
+    };
+  })];
+}
+
+function pickerSheetHtml(def) {
+  const order = def.groups ?? [...new Set(def.options.map(o => o.group).filter(Boolean))];
+  const rowHtml = (o, i) => {
+    const on = o.value === def.value;
+    return `<button type="button" class="row no-lead picker-row${on ? ' is-selected' : ''}" role="option" tabindex="-1"
+      id="pick-opt-${i}" data-pick-index="${i}" data-value="${escHtml(o.value)}" aria-selected="${on ? 'true' : 'false'}">
+      <span class="row-text"><span class="row-title">${escHtml(o.label)}</span>${o.meta ? `<span class="row-meta">${escHtml(o.meta)}</span>` : ''}</span>
+      <span class="row-trail">${on ? icon('check') : ''}</span>
+    </button>`;
+  };
+  const indexed = def.options.map((o, i) => [o, i]);
+  const loose = indexed.filter(([o]) => !o.group || !order.includes(o.group));
+  const sections = [];
+  if (loose.length) sections.push(`<div class="picker-group" role="group" aria-label="${escHtml(def.label)}"><div class="list">${loose.map(([o, i]) => rowHtml(o, i)).join('')}</div></div>`);
+  order.forEach((g, gi) => {
+    const rows = indexed.filter(([o]) => o.group === g);
+    if (!rows.length) return;
+    sections.push(`<div class="picker-group" role="group" aria-labelledby="pick-g-${gi}">
+      <div class="list-title picker-group-title" id="pick-g-${gi}">${escHtml(g)}</div>
+      <div class="list">${rows.map(([o, i]) => rowHtml(o, i)).join('')}</div></div>`);
+  });
+  const tall = def.options.length > 8 ? ' is-tall' : '';
+  return `
+    <div class="sheet-root sheet-pick${tall} is-entering" data-sheet="pick">
+      <div class="sheet-scrim" data-pick-close></div>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pick-title" tabindex="-1">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="sheet-head">
+          <h2 class="sheet-title" id="pick-title">${escHtml(def.label)}</h2>
+          ${uiIconBtn('x', 'Close', { attrs: 'data-pick-close' })}
+        </div>
+        <div class="picker-search">
+          ${icon('search')}
+          <input class="input" id="pick-search" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+            placeholder="Search" aria-label="Search ${escHtml(def.label)}" role="combobox" aria-expanded="true"
+            aria-controls="pick-list" aria-autocomplete="list">
+        </div>
+        <div class="sheet-body picker-body">
+          <div id="pick-list" role="listbox" aria-label="${escHtml(def.label)}">${sections.join('')}</div>
+          <div class="picker-empty" hidden>${uiEmpty({ icon: 'search', title: 'No matches', body: 'Try fewer letters, or another spelling.' })}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function openPicker(id) {
+  const def = _pickerDefs[id];
+  if (!def) return;
+  closePicker(false);
+  document.body.insertAdjacentHTML('beforeend', pickerSheetHtml(def));
+  const root = document.body.lastElementChild;
+  // Rows are in group order, which need not be the options' order.
+  const rows = [...root.querySelectorAll('.picker-row')];
+  const index = rows.map(r => pickIndex(def.options[parseInt(r.dataset.pickIndex, 10)]));
+  _pickerOpen = { id, def, root, rows, index, active: -1 };
+  const input = root.querySelector('#pick-search');
+  const cur = rows.find(r => r.classList.contains('is-selected'));
+  pickerSetActive(cur ? rows.indexOf(cur) : -1, 'center');
+  // Fine pointers (mouse, trackpad) type straight away. On touch screens the
+  // keyboard would cover half the list, so search waits for a tap.
+  if (matchMedia('(pointer: fine)').matches) input.focus({ preventScroll: true });
+  else root.querySelector('.sheet').focus({ preventScroll: true });
+  root.addEventListener('keydown', pickerKeydown);
+  root.addEventListener('click', pickerClick);
+  input.addEventListener('input', pickerFilterRows);
+  setTimeout(() => root.classList.remove('is-entering'), 400);
+}
+
+// Closes the picker; focus goes back to its field.
+function closePicker(refocus = true) {
+  const p = _pickerOpen;
+  if (!p) return;
+  _pickerOpen = null;
+  p.root.remove();
+  if (refocus) document.getElementById(p.id)?.focus({ preventScroll: true });
+}
+
+function pickerVisible() {
+  return _pickerOpen ? _pickerOpen.rows.filter(r => !r.hidden) : [];
+}
+
+function pickerSetActive(i, block = 'nearest') {
+  const p = _pickerOpen;
+  p.rows.forEach(r => r.classList.remove('is-active'));
+  p.active = i;
+  const input = p.root.querySelector('#pick-search');
+  const row = p.rows[i];
+  if (!row) { input.removeAttribute('aria-activedescendant'); return; }
+  row.classList.add('is-active');
+  input.setAttribute('aria-activedescendant', row.id);
+  // Keep the row clear of the sticky group header above it.
+  const body = p.root.querySelector('.picker-body');
+  const head = row.closest('.picker-group')?.querySelector('.picker-group-title');
+  const hh = head ? head.offsetHeight : 0;
+  const top = row.getBoundingClientRect().top - body.getBoundingClientRect().top;
+  if (block === 'center') body.scrollTop += top - (body.clientHeight - row.offsetHeight) / 2;
+  else if (top < hh) body.scrollTop += top - hh;
+  else if (top + row.offsetHeight > body.clientHeight) body.scrollTop += top + row.offsetHeight - body.clientHeight;
+}
+
+function pickerFilterRows() {
+  const p = _pickerOpen;
+  if (!p) return;
+  const q = p.root.querySelector('#pick-search').value;
+  p.rows.forEach((r, i) => { r.hidden = !pickMatches(q, p.index[i]); });
+  p.root.querySelectorAll('.picker-group').forEach(g => { g.hidden = !g.querySelector('.picker-row:not([hidden])'); });
+  const vis = pickerVisible();
+  p.root.querySelector('.picker-empty').hidden = vis.length > 0;
+  p.root.querySelector('.picker-body').scrollTop = 0;
+  // While searching, Enter picks the first match.
+  pickerSetActive(vis.length ? p.rows.indexOf(vis[0]) : -1);
+}
+
+function pickerKeydown(e) {
+  const p = _pickerOpen;
+  if (!p) return;
+  // The picker handles its own keys; the app's sheet keys (Esc closes the
+  // sheet under it, Tab cycles) must not see them.
+  e.stopPropagation();
+  const input = p.root.querySelector('#pick-search');
+  const vis = pickerVisible();
+  const pos = vis.indexOf(p.rows[p.active]);
+  if (e.key === 'Escape') { e.preventDefault(); closePicker(); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (!vis.length) return;
+    const next = e.key === 'ArrowDown' ? Math.min(vis.length - 1, pos + 1) : Math.max(0, pos < 0 ? 0 : pos - 1);
+    pickerSetActive(p.rows.indexOf(vis[next]));
+    if (document.activeElement !== input) input.focus({ preventScroll: true });
+    return;
+  }
+  if (e.key === 'Home' || e.key === 'End') {
+    if (document.activeElement === input && input.value) return; // caret moves in the text
+    e.preventDefault();
+    if (vis.length) pickerSetActive(p.rows.indexOf(vis[e.key === 'Home' ? 0 : vis.length - 1]));
+    return;
+  }
+  if (e.key === 'Enter') {
+    if (e.target.closest?.('[data-pick-close]')) return;
+    e.preventDefault();
+    if (pos >= 0) pickerChoose(p.active);
+    return;
+  }
+  if (e.key === 'Tab') {
+    const items = [p.root.querySelector('.sheet-head [data-pick-close]'), input];
+    e.preventDefault();
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.shiftKey ? items.length - 1 : 1)) % items.length].focus();
+    return;
+  }
+  // Typing anywhere in the sheet goes to the search box.
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement !== input) input.focus();
+}
+
+function pickerClick(e) {
+  if (e.target.closest('[data-pick-close]')) { closePicker(); return; }
+  const row = e.target.closest('.picker-row');
+  if (row) pickerChoose(_pickerOpen.rows.indexOf(row));
+}
+
+// Chooses an option: closes the sheet, puts focus back on the field and,
+// if the value changed, runs the field's change action.
+function pickerChoose(i) {
+  const p = _pickerOpen;
+  const opt = p?.rows[i] && p.def.options[parseInt(p.rows[i].dataset.pickIndex, 10)];
+  if (!opt) return;
+  closePicker();
+  const btn = document.getElementById(p.id);
+  if (opt.value === p.def.value) return;
+  p.def.value = opt.value;
+  if (btn) {
+    const val = btn.querySelector('.picker-val');
+    val.textContent = opt.label;
+    val.classList.remove('is-placeholder');
+    btn.title = opt.label;
+    btn.setAttribute('aria-label', `${p.def.label}: ${opt.label}`);
+  }
+  const el = document.createElement('input');
+  el.type = 'hidden';
+  el.dataset.action = p.def.action;
+  for (const [k, v] of Object.entries(p.def.data ?? {})) if (v != null) el.setAttribute(`data-${k}`, v);
+  el.value = opt.value;
+  (btn?.parentNode ?? document.body).appendChild(el);
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  el.remove();
+  document.getElementById(p.id)?.focus({ preventScroll: true });
+}
+
+// Browser back closes the picker with the screen it was on.
+window.addEventListener('popstate', () => closePicker(false));
+
 // ── View 1: Scale Selector ───────────────────────────────────────────────────
 // Scales matching a search and a note-count filter ('all' | '9' | '10' | '11+').
 function filterScales(query, count, { inDesc = true } = {}) {
@@ -1076,10 +1301,9 @@ function viewWizard() {
       title: 'Design an ocarina',
       body: `<div class="wizard-design">
         <div class="wizard-form">
-          ${uiField({ label: 'Handpan scale', id: 'wizard-oc-scale', control: `
-            <select class="select" id="wizard-oc-scale" data-action="wizard-oc-scale">
-              ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === oc.scaleId ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
-            </select>` })}
+          ${uiField({ label: 'Handpan scale', id: 'wizard-oc-scale', control: uiPicker({
+            id: 'wizard-oc-scale', value: oc.scaleId, label: 'Handpan scale', options: scalePickerOptions(), action: 'wizard-oc-scale',
+          }) })}
           <div class="list">
             ${uiSetRow({ label: 'Transpose', control: uiStepper({
               value: oc.transpose > 0 ? '+' + oc.transpose : String(oc.transpose), label: 'Transpose', action: 'wizard-oc-transpose-step',
@@ -1160,9 +1384,10 @@ function wizardFluteKeyHtml(chart, fl) {
     <div class="fl-key">
       ${uiField({
         label: 'Key', id: 'wizard-fl-root',
-        control: `<select class="select" id="wizard-fl-root" data-action="wizard-fl-root">
-          ${CHART_ROOTS.map(r => `<option value="${r}" ${key.root === r ? 'selected' : ''}>${escHtml(displayNote(r, uf, us))}</option>`).join('')}
-        </select>`,
+        control: uiPicker({
+          id: 'wizard-fl-root', value: key.root, label: 'Key', action: 'wizard-fl-root',
+          options: CHART_ROOTS.map(r => ({ value: r, label: displayNote(r, uf, us), keywords: noteSearchWords(r) })),
+        }),
       })}
       <div class="field">
         <div class="field-label" id="wizard-fl-octave-label">Octave</div>
@@ -1252,6 +1477,14 @@ function onOcarinaDetectReading(hz) {
   stopFluteDetect({ text, warn: Math.abs(r.cents) > 30 ? 'This ocarina may not be tuned to A=440' : '' }, 'oc');
 }
 
+// Group of a transposing chart's key in the Key picker: the octave of its
+// lowest note, in the user's spelling ("Lowest note C4–B4").
+function ocKeyOctaveName(key) {
+  const o = parseInt(key.lowest.replace(/^\D+/, ''), 10);
+  const uf = state.useFlats, us = state.useSolfege;
+  return `Lowest note ${displayNote('C' + o, uf, us)}–${displayNote('B' + o, uf, us)}`;
+}
+
 // "G (lowest E4)" in the user's note spelling.
 function ocKeyLabel(key) {
   const uf = state.useFlats, us = state.useSolfege;
@@ -1279,9 +1512,13 @@ function wizardOcKeyHtml(chart, oc) {
   return `
     ${uiField({
       label: 'Key', id: 'wizard-oc-key',
-      control: `<select class="select" id="wizard-oc-key" data-action="wizard-key" data-fam="oc">
-        ${chart.keys.map(k => `<option value="${k.id}" ${k.id === key.id ? 'selected' : ''}>${escHtml(ocKeyLabel(k))}</option>`).join('')}
-      </select>`,
+      control: uiPicker({
+        id: 'wizard-oc-key', value: key.id, label: 'Key', action: 'wizard-key', data: { fam: 'oc' },
+        options: chart.keys.map(k => ({
+          value: k.id, label: ocKeyLabel(k), group: ocKeyOctaveName(k),
+          keywords: [...noteSearchWords(k.root), ...noteSearchWords(k.lowest)],
+        })),
+      }),
       help: key.root === chart.writtenKey ? `The published chart is for ${escHtml(chart.writtenKey)}.`
         : `Same fingerings as the ${escHtml(chart.writtenKey)} chart, shifted to this key.`,
     })}
@@ -1469,12 +1706,10 @@ function ocMovesHtml(moves, { lower = false } = {}) {
 
 // The handpan-scale filter of the ocarina Notes and Chords tabs.
 function ocScaleSelect(title) {
-  const f = state.oc.scaleFilter;
-  return `
-    <select class="select" data-action="oc-scale-filter" aria-label="Scale filter" title="${escHtml(title)}">
-      <option value="All" ${f === 'All' ? 'selected' : ''}>All notes</option>
-      ${SCALES.map(sc => `<option value="${sc.id}" ${f === sc.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
-    </select>`;
+  return uiPicker({
+    id: 'oc-scale-filter', value: state.oc.scaleFilter, label: 'Handpan scale', hint: title, action: 'oc-scale-filter',
+    options: scalePickerOptions([{ value: 'All', label: 'All notes', keywords: ['none', 'off'] }]),
+  });
 }
 
 // What a chord card shows, worked out once for the row and its detail.
@@ -2206,10 +2441,9 @@ function viewBuilder(inst) {
     const transpose = d.transpose ?? 0;
     body = `
       <div class="card b-card">
-        ${uiField({ label: 'Handpan scale', id: 'b-scale', control: `
-          <select class="select" id="b-scale" data-action="b-design" data-key="scaleId">
-            ${SCALES.map(sc => `<option value="${sc.id}" ${sc.id === plan.scale.id ? 'selected' : ''}>${escHtml(sc.name)}</option>`).join('')}
-          </select>` })}
+        ${uiField({ label: 'Handpan scale', id: 'b-scale', control: uiPicker({
+          id: 'b-scale', value: plan.scale.id, label: 'Handpan scale', options: scalePickerOptions(), action: 'b-design', data: { key: 'scaleId' },
+        }) })}
         <div class="list b-inset">
           ${uiSetRow({ label: 'Transpose', control: uiStepper({
             value: transpose > 0 ? '+' + transpose : String(transpose), label: 'Transpose', action: 'b-design-transpose',
@@ -2236,11 +2470,10 @@ function viewBuilder(inst) {
       ${earlierBuilds(inst).length ? `
         <details class="b-details" ${b.fromId ? 'open' : ''}>
           <summary>${icon('chevron-right')} Start from an earlier build</summary>
-          ${uiField({ label: 'Earlier build', id: 'b-from', help: 'Copies its design, clay body, window and test hole, and shows its readings beside yours.', control: `
-            <select class="select" id="b-from" data-action="b-from">
-              <option value="">None</option>
-              ${earlierBuilds(inst).map(i => `<option value="${escHtml(i.id)}" ${b.fromId === i.id ? 'selected' : ''}>${escHtml(i.name)}</option>`).join('')}
-            </select>` })}
+          ${uiField({ label: 'Earlier build', id: 'b-from', help: 'Copies its design, clay body, window and test hole, and shows its readings beside yours.', control: uiPicker({
+            id: 'b-from', value: b.fromId ?? '', label: 'Earlier build', action: 'b-from',
+            options: [{ value: '', label: 'None' }, ...earlierBuilds(inst).map(i => ({ value: i.id, label: i.name }))],
+          }) })}
         </details>` : ''}`;
   }
 
@@ -3267,11 +3500,10 @@ function hpFiltersSheet() {
           <option value="All" ${f.category === 'All' ? 'selected' : ''}>All types</option>
           ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${f.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
         </select>` })}
-      ${uiField({ label: 'Playlist', control: `
-        <select class="select" data-action="select-playlist-filter" aria-label="Playlist">
-          <option value="All" ${f.playlist === 'All' ? 'selected' : ''}>All chords</option>
-          ${state.playlists.map(p => `<option value="${escHtml(p.id)}" ${f.playlist === p.id ? 'selected' : ''}>${escHtml(p.name)}</option>`).join('')}
-        </select>` })}
+      ${uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
+        id: 'hp-playlist-filter', value: f.playlist, label: 'Playlist', action: 'select-playlist-filter',
+        options: [{ value: 'All', label: 'All chords' }, ...state.playlists.map(p => ({ value: p.id, label: p.name, meta: `${p.chords.length} chord${p.chords.length !== 1 ? 's' : ''}` }))],
+      }) })}
       ${pl ? `<div class="list">${uiRow({ lead: 'pencil', title: 'Edit playlist', meta: escHtml(pl.name), chevron: true, action: 'hp-edit-playlist' })}</div>` : ''}
     </div>`;
   return uiSheet({
@@ -4088,8 +4320,10 @@ function chordSheetSheet() {
     const targetField = targets.length
       ? uiField({
         label: 'Play on', id: 'cs-target',
-        control: `<select class="select" id="cs-target" data-action="cs-target">${targets.map(t =>
-          `<option value="${escHtml(t.key)}"${t.key === cs.target ? ' selected' : ''}>${escHtml(t.name)}${t.kind === 'oc' ? ` (${escHtml(t.inst.family)})` : ''}</option>`).join('')}</select>`,
+        control: uiPicker({
+          id: 'cs-target', value: cs.target, label: 'Play on', action: 'cs-target',
+          options: targets.map(t => ({ value: t.key, label: `${t.name}${t.kind === 'oc' ? ` (${t.inst.family})` : ''}`, keywords: [t.kind === 'oc' ? t.inst.family : 'handpan'] })),
+        }),
       })
       : '<p class="cs-note">Add an instrument first: the chords are fitted to one.</p>';
     return uiSheet({
@@ -4676,6 +4910,7 @@ document.addEventListener('click', e => {
   const action = el.dataset.action;
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
   if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
+  if (action === 'picker-open') { openPicker(el.dataset.picker); return; }
 
   // ── Sheets: the ⋯ menu and confirm ────────────────────────────────────────
   if (action === 'menu-open') { state.menu = true; render(); return; }
