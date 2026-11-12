@@ -11,6 +11,8 @@
 //     holes: [{ id, finger, side: 'top' | 'bottom', sub? }],   // flutes: mouthpiece first
 //     keys: [{ id, name, lowest: 'D4' }],                       // lowest sounding note per key
 //     fingerings: [{ offset, states: ['c'|'o'|'h', …], alt?: true, overblow?: true }],
+//     octaves?: [3, 4, 5],   // any-key charts: keys are every root × these octaves
+//     defaultKey?, shortName?,  // and the key picked first, and the name before " in G"
 //   }
 //
 // Charts with readings taken from images (High Spirits, STL) were read at
@@ -43,6 +45,13 @@ const octaves = (note, name) => [
   { id: `${note}5`, name: `${name}, lowest note ${name}5 (high flute)` },
 ].map(k => ({ ...k, lowest: k.id }));
 
+// Every root in every octave a chart lists (charts whose fingerings are the
+// same in any key). Key ids are the lowest note with sharps, e.g. 'F#3'.
+export const CHART_ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const anyKey = (octs = [3, 4, 5]) => octs.flatMap(o => CHART_ROOTS.map(r => ({
+  id: `${r}${o}`, name: `${r}, lowest note ${r}${o}`, lowest: `${r}${o}`, root: r, octave: o,
+})));
+
 export const TRADITIONAL_CHARTS = [
   {
     id: 'tin-whistle-d',
@@ -65,6 +74,36 @@ export const TRADITIONAL_CHARTS = [
       [18, 'XXH|OOO', { overblow: true }], [19, 'XXO|OOO', { overblow: true }], [20, 'XHO|OOO', { overblow: true }],
       [21, 'XOO|OOO', { overblow: true }], [22, 'HOO|OOO', { overblow: true }], [23, 'OOO|OOO', { overblow: true }],
       [23, 'OOO|OOX', { alt: true, overblow: true }], [24, 'OXX|XXX', { overblow: true }],
+    ]),
+  },
+  {
+    id: 'naf6-penta',
+    family: 'flute',
+    name: 'Native American flute, 6 holes, pentatonic minor (any key)',
+    shortName: 'Native American flute, 6 holes',
+    source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
+    notes: 'High Spirits Flutes "How to Play" booklet, basic pentatonic minor scale (pp.14–15): the same fingerings by scale degree in every key (the booklet names them for A: A C D E G A, and F#: F# A B C# E F#). Six-hole rule from the booklet: the third hole from the mouthpiece stays closed for this scale. Holes from the mouthpiece down. Pick the key and octave your flute plays and check with the tuner.',
+    holes: NAF6_HOLES,
+    keys: anyKey(),
+    octaves: [3, 4, 5],
+    defaultKey: 'A4',
+    fingerings: rows([
+      [0, 'XXXXXX'], [3, 'XXXXXO'], [5, 'XXXXOO'], [7, 'XXXOOO'], [10, 'XOXOOO'], [12, 'OOXOOO'],
+    ]),
+  },
+  {
+    id: 'naf5-penta',
+    family: 'flute',
+    name: 'Native American flute, 5 holes, pentatonic minor (any key)',
+    shortName: 'Native American flute, 5 holes',
+    source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
+    notes: 'High Spirits Flutes "How to Play" booklet, basic pentatonic minor scale (pp.14–15), 5-hole fingerings: the same by scale degree in every key. Holes from the mouthpiece down. Pick the key and octave your flute plays and check with the tuner.',
+    holes: NAF5_HOLES,
+    keys: anyKey(),
+    octaves: [3, 4, 5],
+    defaultKey: 'A4',
+    fingerings: rows([
+      [0, 'XXXXX'], [3, 'XXXXO'], [5, 'XXXOO'], [7, 'XXOOO'], [10, 'XOOOO'], [12, 'OOOOO'],
     ]),
   },
   {
@@ -165,6 +204,20 @@ export function chartsForFamily(family) {
   return TRADITIONAL_CHARTS.filter(c => c.family === family);
 }
 
+// The key a chart starts on in the wizard.
+export function chartDefaultKey(chart) {
+  return chart.keys.find(k => k.id === chart.defaultKey)?.id ?? chart.keys[0].id;
+}
+
+// Key of an any-key chart from a root ('G', 'Gb' or 'F#' spelling) and an
+// octave; null if the chart has no such key.
+export function chartKeyFor(chart, root, octave) {
+  const pc = CHART_ROOTS.indexOf(root) >= 0 ? CHART_ROOTS.indexOf(root)
+    : ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'].indexOf(root);
+  if (pc < 0) return null;
+  return chart.keys.find(k => k.id === `${CHART_ROOTS[pc]}${octave}`) ?? null;
+}
+
 // An instrument of a traditional type in a key. Each note keeps its main
 // fingering (the first listed for its offset); alternates are kept in
 // `alternates` for display.
@@ -190,7 +243,8 @@ export function instrumentFromChart(chartId, keyId, { name, now = new Date().toI
     kind: 'traditional',
     type: chart.id,
     key: key.id,
-    name: name || (chart.keys.length > 1 ? `${chart.name} (${key.lowest})` : chart.name),
+    name: name || (chart.octaves ? `${chart.shortName ?? chart.name} in ${key.root} (${key.lowest})`
+      : chart.keys.length > 1 ? `${chart.name} (${key.lowest})` : chart.name),
     chambers: [{ notes, holes: chart.holes.map(h => ({ ...h, x: null, y: null, sizeMm: null })), fingerings, alternates, overblow }],
     createdAt: now,
     updatedAt: now,

@@ -85,3 +85,37 @@ test('sub-holes are named and moved on their own', async () => {
   assert.equal(describeFingering(o, noteToMidi('Bb3'), 'Bb3'), 'Bb3: R2 sub-hole open, all others closed');
   assert.equal(o.name, '12-hole ocarina in C (STL chart, Asian top notes) (A3)');
 });
+
+test('any-key pentatonic NAF charts: every root in octaves 3–5, fingerings by degree (High Spirits pp.14–15)', async () => {
+  const { chartDefaultKey, chartKeyFor } = await import('../js/charts.js');
+  const order = chartsForFamily('flute').map(c => c.id);
+  assert.deepEqual(order.slice(0, 3), ['tin-whistle-d', 'naf6-penta', 'naf5-penta']);
+  for (const id of ['naf6-penta', 'naf5-penta']) {
+    const c = getChart(id);
+    assert.deepEqual(c.octaves, [3, 4, 5]);
+    assert.equal(c.keys.length, 36);
+    assert.equal(chartDefaultKey(c), 'A4');
+    assert.deepEqual(c.fingerings.map(f => f.offset), [0, 3, 5, 7, 10, 12]);
+    assert.equal(c.source[0], getChart('naf6-a').source[0]);
+    assert.equal(chartKeyFor(c, 'Bb', 3).id, 'A#3');
+    assert.equal(chartKeyFor(c, 'G', 6), null);
+  }
+  const g = instrumentFromChart('naf6-penta', 'G3', { now: 'T' });
+  const ch = g.chambers[0];
+  assert.equal(g.name, 'Native American flute, 6 holes in G (G3)');
+  assert.deepEqual(ch.notes, ['G3', 'Bb3', 'C4', 'D4', 'F4', 'G4'].map(noteToMidi));
+  const row = n => ch.fingerings[noteToMidi(n)].map(s => (s === 'c' ? 'X' : 'O')).join('');
+  assert.deepEqual(['G3', 'Bb3', 'C4', 'D4', 'F4', 'G4'].map(row), ['XXXXXX', 'XXXXXO', 'XXXXOO', 'XXXOOO', 'XOXOOO', 'OOXOOO']);
+  const e = instrumentFromChart('naf5-penta', 'E4').chambers[0];
+  assert.deepEqual(e.notes, ['E4', 'G4', 'A4', 'B4', 'D5', 'E5'].map(noteToMidi));
+  assert.deepEqual(e.fingerings[noteToMidi('D5')], ['c', 'o', 'o', 'o', 'o']);
+  // The pentatonic chart in A matches the A chromatic chart's scale notes.
+  for (const [p, c] of [['naf6-penta', 'naf6-a'], ['naf5-penta', 'naf5-a'], ['naf6-penta', 'naf6-fs'], ['naf5-penta', 'naf5-fs']]) {
+    const key = c.endsWith('fs') ? 'F#4' : 'A4';
+    const pa = instrumentFromChart(p, key).chambers[0];
+    const ca = instrumentFromChart(c, key).chambers[0];
+    for (const m of pa.notes) assert.deepEqual(pa.fingerings[m], ca.fingerings[m], `${p} vs ${c} at ${m}`);
+  }
+  // Charts with explicit keys still name instruments as before.
+  assert.equal(instrumentFromChart('naf6-a', 'A3').name, 'Native American flute, 6 holes, key of A (A3)');
+});
