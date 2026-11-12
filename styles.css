@@ -790,14 +790,22 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fingering .fg-finger { fill: var(--text-1); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .fingering .fg-finger.on-dark { fill: var(--hole-open); }
 .fingering .fg-size { fill: var(--text-3); font-size: 12px; text-anchor: middle; dominant-baseline: central; }
-.fingering .fg-head { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 2; stroke-linejoin: round; }
-.fingering .fg-bore { fill: var(--bg); stroke: var(--border-strong); stroke-width: 1.5; }
+.fingering .fg-head { fill: #2d3a34; stroke: #1b2420; stroke-width: 2; stroke-linejoin: round; }
+.fingering .fg-bore { fill: #2a170b; stroke: #1a0f07; stroke-width: 1.5; } /* an opening into the bore is always dark */
 .fingering .fg-grain { fill: none; stroke: var(--border); stroke-width: 1; stroke-linecap: round; }
-.fingering .fg-block { fill: var(--surface-3); stroke: var(--border-strong); stroke-width: 2; stroke-linejoin: round; }
+.fingering .fg-block { fill: var(--wood-dark, #7c4a24); stroke: var(--wood-edge, #6b3f1f); stroke-width: 2; stroke-linejoin: round; }
 .fingering .fg-tie { fill: var(--leather, #8b5e3c); stroke: var(--leather-edge, #5e3d24); stroke-width: 1; }
 .fingering .fg-tie-end { fill: none; stroke: var(--leather, #8b5e3c); stroke-width: 2.5; stroke-linecap: round; }
 .fingering .fg-mouth-lip { fill: none; stroke: var(--border-strong); stroke-width: 5; stroke-linecap: round; }
 .fingering .fg-mouth-lip.fg-blow { stroke: var(--accent); }
+.fingering .fg-wood { fill: var(--wood, #a8693a); stroke: var(--wood-edge, #6b3f1f); stroke-width: 2; }
+.fingering .fg-wood-grain { fill: none; stroke: var(--wood-edge, #6b3f1f); stroke-width: 1; opacity: 0.35; stroke-linecap: round; }
+.fingering .fg-on-wood.fg-o, .fingering .fg-on-wood .fg-o { fill: #2a170b; stroke: #2a170b; }
+.fingering .fg-on-wood.fg-c, .fingering .fg-on-wood .fg-c { fill: #f1dfc6; stroke: #6b3f1f; stroke-width: 1.5; }
+.fingering .fg-on-wood.fg-changed { stroke: var(--accent); stroke-width: 3; }
+.fingering .fg-finger-below { fill: var(--text-2); font-size: 10px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-metal { fill: #c3c9cc; stroke: #7d8589; stroke-width: 2; }
+.fingering .fg-metal-shine { fill: none; stroke: #eef1f2; stroke-width: 2; stroke-linecap: round; opacity: 0.8; }
 .fingering .fg-overblow { fill: var(--move-cover); font-size: 12px; font-weight: 600; }
 .fingering .fg-arrow line, .fingering .fg-arrow polyline { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .fingering .fg-arrow-up line, .fingering .fg-arrow-up polyline { stroke: var(--move-lift); }

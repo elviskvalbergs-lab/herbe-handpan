@@ -810,14 +810,22 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .fingering .fg-finger { fill: var(--text-1); font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .fingering .fg-finger.on-dark { fill: var(--hole-open); }
 .fingering .fg-size { fill: var(--text-3); font-size: 12px; text-anchor: middle; dominant-baseline: central; }
-.fingering .fg-head { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 2; stroke-linejoin: round; }
-.fingering .fg-bore { fill: var(--bg); stroke: var(--border-strong); stroke-width: 1.5; }
+.fingering .fg-head { fill: #2d3a34; stroke: #1b2420; stroke-width: 2; stroke-linejoin: round; }
+.fingering .fg-bore { fill: #2a170b; stroke: #1a0f07; stroke-width: 1.5; } /* an opening into the bore is always dark */
 .fingering .fg-grain { fill: none; stroke: var(--border); stroke-width: 1; stroke-linecap: round; }
-.fingering .fg-block { fill: var(--surface-3); stroke: var(--border-strong); stroke-width: 2; stroke-linejoin: round; }
+.fingering .fg-block { fill: var(--wood-dark, #7c4a24); stroke: var(--wood-edge, #6b3f1f); stroke-width: 2; stroke-linejoin: round; }
 .fingering .fg-tie { fill: var(--leather, #8b5e3c); stroke: var(--leather-edge, #5e3d24); stroke-width: 1; }
 .fingering .fg-tie-end { fill: none; stroke: var(--leather, #8b5e3c); stroke-width: 2.5; stroke-linecap: round; }
 .fingering .fg-mouth-lip { fill: none; stroke: var(--border-strong); stroke-width: 5; stroke-linecap: round; }
 .fingering .fg-mouth-lip.fg-blow { stroke: var(--accent); }
+.fingering .fg-wood { fill: var(--wood, #a8693a); stroke: var(--wood-edge, #6b3f1f); stroke-width: 2; }
+.fingering .fg-wood-grain { fill: none; stroke: var(--wood-edge, #6b3f1f); stroke-width: 1; opacity: 0.35; stroke-linecap: round; }
+.fingering .fg-on-wood.fg-o, .fingering .fg-on-wood .fg-o { fill: #2a170b; stroke: #2a170b; }
+.fingering .fg-on-wood.fg-c, .fingering .fg-on-wood .fg-c { fill: #f1dfc6; stroke: #6b3f1f; stroke-width: 1.5; }
+.fingering .fg-on-wood.fg-changed { stroke: var(--accent); stroke-width: 3; }
+.fingering .fg-finger-below { fill: var(--text-2); font-size: 10px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+.fingering .fg-metal { fill: #c3c9cc; stroke: #7d8589; stroke-width: 2; }
+.fingering .fg-metal-shine { fill: none; stroke: #eef1f2; stroke-width: 2; stroke-linecap: round; opacity: 0.8; }
 .fingering .fg-overblow { fill: var(--move-cover); font-size: 12px; font-weight: 600; }
 .fingering .fg-arrow line, .fingering .fg-arrow polyline { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .fingering .fg-arrow-up line, .fingering .fg-arrow-up polyline { stroke: var(--move-lift); }
@@ -5028,7 +5036,7 @@ function fgFluteStyle(inst) {
 
 function fgTubePositions(holes, y0, style = 'naf') {
   const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
-  const [from, to] = style === 'whistle' ? [118, 272] : [150, 282];
+  const [from, to] = style === 'whistle' ? [118, 272] : [176, 280];
   const xs = {};
   const gap = 12;
   const n = top.length;
@@ -5046,22 +5054,25 @@ function fgFluteBody(style, y0, blown) {
   if (style === 'whistle') {
     // Body tube, then the mouthpiece over its end: tapered to the lip,
     // with the sound window (the opening with the cut edge) on top.
-    g.push(`<rect class="fg-body" x="86" y="${cy - r}" width="${FG_W - 92}" height="${r * 2}" rx="3"/>`);
+    g.push(`<rect class="fg-metal" x="86" y="${cy - r + 2}" width="${FG_W - 92}" height="${r * 2 - 4}" rx="3"/>`);
+    g.push(`<path class="fg-metal-shine" d="M 96 ${cy - 5} L ${FG_W - 14} ${cy - 5}"/>`);
     g.push(`<path class="fg-head" d="M 8 ${cy - 6} Q 6 ${cy}, 8 ${cy + 6} L 64 ${cy + r + 1} L 94 ${cy + r + 1} L 94 ${cy - r - 1} L 64 ${cy - r - 1} Z"/>`);
     g.push(`<rect class="fg-bore" x="70" y="${cy - 5}" width="13" height="10" rx="1.5"/>`);
     g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 8 ${cy - 6} Q 6 ${cy}, 8 ${cy + 6}"/>`);
   } else {
-    // Tube with a little grain, the mouth end, the open foot end.
-    g.push(`<rect class="fg-body" x="8" y="${cy - r}" width="${FG_W - 14}" height="${r * 2}" rx="${r}"/>`);
-    g.push(`<path class="fg-grain" d="M 26 ${cy - 5} L ${FG_W - 22} ${cy - 5} M 40 ${cy + 6} L ${FG_W - 30} ${cy + 6}"/>`);
-    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 14 ${cy - r + 2} Q 6 ${cy}, 14 ${cy + r - 2}"/>`);
-    g.push(`<ellipse class="fg-bore" cx="${FG_W - 8}" cy="${cy}" rx="3.5" ry="${r - 3}"/>`);
-    // Fetish: a carved block over the sound hole, tied on with leather.
-    g.push(`<path class="fg-tie-end" d="M 84 ${cy + r} q 4 10, -2 20 M 88 ${cy + r} q 6 9, 4 18 M 128 ${cy + r} q 4 11, 0 22 M 132 ${cy + r} q 7 8, 6 16"/>`);
-    g.push(`<path class="fg-block" d="M 88 ${cy - 10} L 114 ${cy - 10} C 120 ${cy - 21}, 134 ${cy - 21}, 136 ${cy - 11} C 137 ${cy - 5}, 130 ${cy - 4}, 124 ${cy - 4} L 124 ${cy + 10} L 88 ${cy + 10} Z"/>`);
-    g.push(`<rect class="fg-tie" x="82" y="${cy - r - 2}" width="8" height="${r * 2 + 4}" rx="2"/>`);
-    g.push(`<rect class="fg-tie" x="124" y="${cy - r - 2}" width="8" height="${r * 2 + 4}" rx="2"/>`);
-    g.push(`<rect class="fg-bore" x="138" y="${cy - 4}" width="7" height="8" rx="1"/>`);
+    // Wooden tube: the mouth end tapers and rounds off, the foot is open.
+    const L = FG_W - 6;
+    g.push(`<path class="fg-wood" d="M 6 ${cy} C 6 ${cy - r + 4}, 16 ${cy - r}, 34 ${cy - r} L ${L - r} ${cy - r} Q ${L} ${cy - r}, ${L} ${cy} Q ${L} ${cy + r}, ${L - r} ${cy + r} L 34 ${cy + r} C 16 ${cy + r}, 6 ${cy + r - 4}, 6 ${cy} Z"/>`);
+    g.push(`<path class="fg-wood-grain" d="M 30 ${cy - 6} C 110 ${cy - 8}, 190 ${cy - 4}, ${L - 14} ${cy - 6} M 44 ${cy + 3} C 130 ${cy + 5}, 200 ${cy + 1}, ${L - 20} ${cy + 4} M 70 ${cy + 9} L ${L - 40} ${cy + 9}"/>`);
+    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 12 ${cy - 6} Q 5 ${cy}, 12 ${cy + 6}"/>`);
+    g.push(`<ellipse class="fg-bore" cx="${L - 3}" cy="${cy}" rx="2.5" ry="${r - 5}"/>`);
+    // Fetish: a long carved block over the sound hole, tied on with
+    // leather, the ends hanging down; the sound hole just in front of it.
+    g.push(`<path class="fg-tie-end" d="M 92 ${cy + r} q 3 12, -4 24 M 96 ${cy + r} q 8 10, 6 22 M 124 ${cy + r} q 3 12, -2 26 M 128 ${cy + r} q 8 9, 8 20"/>`);
+    g.push(`<path class="fg-block" d="M 76 ${cy - 9} C 82 ${cy - 12}, 112 ${cy - 12}, 128 ${cy - 10} C 136 ${cy - 17}, 146 ${cy - 16}, 147 ${cy - 9} C 148 ${cy - 4}, 142 ${cy - 3}, 138 ${cy - 3} L 138 ${cy + 9} C 112 ${cy + 11}, 84 ${cy + 11}, 76 ${cy + 9} Z"/>`);
+    g.push(`<rect class="fg-tie" x="90" y="${cy - r - 1}" width="7" height="${r * 2 + 2}" rx="2"/>`);
+    g.push(`<rect class="fg-tie" x="122" y="${cy - r - 1}" width="7" height="${r * 2 + 2}" rx="2"/>`);
+    g.push(`<rect class="fg-bore" x="150" y="${cy - 3}" width="6" height="6" rx="1"/>`);
   }
   return g.join('');
 }
@@ -5132,13 +5143,16 @@ function renderFingering(inst, midi, opts = {}) {
 }
 
 // One hole with its state, change mark, arrow, finger label and size.
-function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled }) {
+function fgHoleParts(g, { x, y, r, state, hole, moves, changedOk, size, showFingers, showSizes, labelled, wood = false }) {
   const hk = fgHoleName(hole);
   const changed = moves && changedOk && (moves.lift.includes(hk) || moves.cover.includes(hk));
-  g.push(fgHoleShape(x, y, r, state, changed ? 'fg-changed' : ''));
+  g.push(fgHoleShape(x, y, r, state, `${changed ? 'fg-changed' : ''}${wood ? ' fg-on-wood' : ''}`));
   if (changed && size !== 'mini' && labelled) g.push(fgArrow(x, y, r, moves.lift.includes(hk) ? 'up' : 'down'));
   if (showFingers && size !== 'mini' && labelled) {
-    g.push(`<text class="fg-finger ${state === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${hole.sub ? '' : hole.finger}</text>`);
+    // Small flute holes can't hold a label: it goes under the hole.
+    g.push(wood
+      ? `<text class="fg-finger-below" x="${x}" y="${y + r + 11}">${hole.sub ? '' : hole.finger}</text>`
+      : `<text class="fg-finger ${state === 'c' ? 'on-dark' : ''}" x="${x}" y="${y}">${hole.sub ? '' : hole.finger}</text>`);
   }
   if (showSizes && size !== 'mini' && hole.sizeMm > 0) {
     g.push(`<text class="fg-size" x="${x}" y="${y + r + 9}">${hole.sizeMm.toFixed(1)}</text>`);
@@ -5279,8 +5293,9 @@ function fgFlatParts(ctx, tube) {
       if (h.sub) { x += 13; y += 15; }
       const r0 = Math.max(4, (split ? 18 / sameFinger.length : 13) * rel[i] * (h.sub && !(h.rel > 0) ? 0.5 : 1));
       // Flute holes sit inside the tube's width.
-      const r = tube ? Math.min(r0, FG_TUBE_R - 5) : r0;
-      fgHoleParts(g, { x, y, r, state: states[i], hole: h, moves: ctx.moves, changedOk: !!f, size,
+      // On a real flute the finger holes are about a third of the tube's width.
+      const r = tube ? Math.min(r0, 5.5) : r0;
+      fgHoleParts(g, { x, y, r, state: states[i], hole: h, moves: ctx.moves, changedOk: !!f, size, wood: tube,
         showFingers: ctx.showFingers, showSizes: ctx.showSizes, labelled: nth === 0 });
     });
     parts.push(`<g class="fg-chamber ${blown ? '' : 'fg-dim'}">${g.join('')}</g>`);
