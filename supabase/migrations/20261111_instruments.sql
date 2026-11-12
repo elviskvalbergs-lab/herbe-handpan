@@ -1,6 +1,6 @@
 -- Ocarina mode, phase 7: instruments sync and public sharing.
 -- Additive only: a new table and a new function. Nothing existing changes.
--- Run once in the Supabase SQL editor (test project first, then production).
+-- Applied automatically by the build (supabase/migrate.py) when HP_DATABASE_URL is set.
 
 create table if not exists public.instruments (
   owner_id   uuid        not null default auth.uid() references auth.users (id) on delete cascade,
@@ -14,11 +14,24 @@ create table if not exists public.instruments (
 
 alter table public.instruments enable row level security;
 
--- Owners read and write only their own rows.
-create policy "instruments: owner reads"   on public.instruments for select using (auth.uid() = owner_id);
-create policy "instruments: owner inserts" on public.instruments for insert with check (auth.uid() = owner_id);
-create policy "instruments: owner updates" on public.instruments for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
-create policy "instruments: owner deletes" on public.instruments for delete using (auth.uid() = owner_id);
+-- Owners read and write only their own rows. (Each policy is created only
+-- if missing, so the file is safe to run again by hand.)
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'instruments' and policyname = 'instruments: owner reads') then
+    create policy "instruments: owner reads" on public.instruments for select using (auth.uid() = owner_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'instruments' and policyname = 'instruments: owner inserts') then
+    create policy "instruments: owner inserts" on public.instruments for insert with check (auth.uid() = owner_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'instruments' and policyname = 'instruments: owner updates') then
+    create policy "instruments: owner updates" on public.instruments for update using (auth.uid() = owner_id) with check (auth.uid() = owner_id);
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'instruments' and policyname = 'instruments: owner deletes') then
+    create policy "instruments: owner deletes" on public.instruments for delete using (auth.uid() = owner_id);
+  end if;
+end
+$$;
 
 -- Anyone, signed in or not, reads a shared instrument by its exact public ID.
 -- There is no public select policy, so shared instruments can't be listed;
