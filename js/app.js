@@ -20,7 +20,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
-import { initAudio, playNote, playChord, playScale, playSequence, playClick } from './audio.js';
+import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
@@ -91,6 +91,7 @@ const state = {
   autoplayOn: false,
   autoplayPlaylistId: null,
   autoplaySeconds: 4,
+  playbackSpeed: 'normal',   // arpeggios, scales and sequences: 'slow' | 'normal' | 'fast'
   discoverMode: false,
   discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
   sourcePlaylistId: null,  // playlist the current chord was opened from, if any
@@ -325,6 +326,13 @@ function viewSettings() {
         ${uiSetRow({ label: 'Note style', control: uiSeg([
           { value: 'letters', label: 'C D E' }, { value: 'solfege', label: 'Do Re Mi' },
         ], state.useSolfege ? 'solfege' : 'letters', { action: 'set-solfege', label: 'Note style' }) })}
+      </div>
+
+      <h2 class="list-title">Sound</h2>
+      <div class="list">
+        ${uiSetRow({ label: 'Playback speed', help: 'How fast arpeggios, scales and note sequences play', control: uiSeg([
+          { value: 'slow', label: 'Slow' }, { value: 'normal', label: 'Normal' }, { value: 'fast', label: 'Fast' },
+        ], state.playbackSpeed, { action: 'set-speed', label: 'Playback speed' }) })}
       </div>
 
       <h2 class="list-title">Handpan</h2>
@@ -2773,7 +2781,7 @@ function onTunerReading(reading) {
 
 async function toggleTuner() {
   if (state.tuner.on) {
-    if (_tunerStop) { _tunerStop(); _tunerStop = null; }
+    if (_tunerStop) { _tunerStop(); _tunerStop = null; ensureAudioOutput(); } // iOS: give the speaker back after the mic
     state.tuner = { on: false, reading: null, error: null, lastAdvance: 0 };
     disarmRecord();
     render();
@@ -4471,6 +4479,7 @@ function loadPrefs() {
     if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
     if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
     if (typeof p.autoplaySeconds === 'number') state.autoplaySeconds = p.autoplaySeconds;
+    if (['slow', 'normal', 'fast'].includes(p.playbackSpeed)) state.playbackSpeed = p.playbackSpeed;
     if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
@@ -4479,6 +4488,7 @@ function loadPrefs() {
     if (typeof p.syncTipHidden === 'boolean') state.syncTipHidden = p.syncTipHidden;
   } catch {}
   applyTheme();
+  setPlaybackSpeed(state.playbackSpeed);
 }
 
 // The theme pref on <html data-theme> (the CSS does the rest) and the
@@ -4498,6 +4508,7 @@ function savePrefs() {
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
     autoplaySeconds: state.autoplaySeconds,
+    playbackSpeed: state.playbackSpeed,
     showFingers: state.showFingers,
     showSizes: state.showSizes,
     ocLegendSeen: state.ocLegendSeen,
@@ -5711,6 +5722,15 @@ document.addEventListener('click', e => {
   if (action === 'set-theme') { state.theme = el.dataset.value; applyTheme(); savePrefs(); render(); return; }
   if (action === 'set-flats') { state.useFlats = el.dataset.value === 'flats'; savePrefs(); render(); return; }
   if (action === 'set-solfege') { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; }
+  if (action === 'set-speed') {
+    state.playbackSpeed = el.dataset.value;
+    setPlaybackSpeed(state.playbackSpeed);
+    savePrefs();
+    initAudio();
+    playScale(['C4', 'E4', 'G4']); // a short preview at the new speed
+    render();
+    return;
+  }
   if (action === 'set-rotation') { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; }
   if (action === 'set-autoplay-step') {
     const i = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);

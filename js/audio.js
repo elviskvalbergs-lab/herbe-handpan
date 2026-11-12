@@ -3,6 +3,22 @@ import { noteToFreq, noteToMidi } from './data.js';
 let ctx = null;
 let masterGain = null;
 let reverbSend = null; // set after reverb setup; null = reverb not ready, use masterGain
+let routingEl = null;  // iOS: the <audio> element that carries Web Audio to the main speaker
+let speed = 1;         // time multiplier for arpeggios, scales and sequences (1 = normal)
+
+// Playback speed: 'slow' | 'normal' | 'fast'. Normal keeps the original
+// timings exactly; slow stretches them by half again, fast shortens them.
+export const PLAYBACK_SPEEDS = { slow: 1.5, normal: 1, fast: 0.7 };
+export function setPlaybackSpeed(name) { speed = PLAYBACK_SPEEDS[name] ?? 1; }
+
+// iOS pauses the routing <audio> element whenever the microphone is used
+// (the tuner switches the audio session to recording) or after an
+// interruption, and then every sound goes nowhere. Called from a tap, this
+// restarts it and the context; harmless everywhere else.
+export function ensureAudioOutput() {
+  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});
+  if (routingEl && routingEl.paused) routingEl.play().catch(() => {});
+}
 
 function buildReverb() {
   // ~1.8 s exponentially-decaying white-noise impulse response
@@ -54,7 +70,7 @@ export function initAudio() {
     try {
       const streamDest = ctx.createMediaStreamDestination();
       masterGain.connect(streamDest);
-      const routingEl = document.createElement('audio');
+      routingEl = document.createElement('audio'); // module-level, see ensureAudioOutput()
       routingEl.setAttribute('playsinline', '');
       routingEl.srcObject = streamDest.stream;
       document.body.appendChild(routingEl);
@@ -88,6 +104,7 @@ export function initAudio() {
 // scheduling on a suspended context drops the audio silently.
 function whenRunning(fn) {
   if (!ctx) initAudio();
+  ensureAudioOutput();
   if (ctx.state === 'running') {
     fn();
   } else {
@@ -137,8 +154,8 @@ export function playNote(noteName) {
 export function playChord(noteNames, onArp, onTogether) {
   initAudio();
   const sorted = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
-  const ARP = 0.3;
-  const togetherOffset = sorted.length * ARP + 0.35;
+  const ARP = 0.3 * speed;
+  const togetherOffset = sorted.length * ARP + 0.35 * speed;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
     sorted.forEach((n, i) => {
@@ -155,7 +172,7 @@ export function playScale(noteNames, onNote) {
   const asc = [...noteNames].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const desc = asc.slice(0, -1).reverse();
   const all = [...asc, ...desc];
-  const INTERVAL = 0.4;
+  const INTERVAL = 0.4 * speed;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
     all.forEach((n, i) => {
@@ -169,6 +186,7 @@ export function playScale(noteNames, onNote) {
 // on an instrument that sounds one note at a time (ocarina, flute).
 export function playSequence(noteNames, onNote, interval = 0.4) {
   initAudio();
+  interval *= speed;
   whenRunning(() => {
     const now = ctx.currentTime + START_OFFSET;
     noteNames.forEach((n, i) => {
