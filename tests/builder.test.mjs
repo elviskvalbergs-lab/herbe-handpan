@@ -201,3 +201,11 @@ test('calibration: a reading of another fingering refines the chart and wins its
   // Readings with the wrong hole count are ignored.
   assert.ok(calibrateChamber(holes, hz('C4'), singles, { extra: [{ states: ['o'], hz: 500 }] }));
 });
+
+test('reversing one hand\'s fingers', async () => {
+  const { reverseHandFingers } = await import('../js/builder.js');
+  const holes = ['L4', 'L3', 'R4', 'R3', 'R2', 'RT'].map(f => ({ id: f, finger: f, side: f.endsWith('T') ? 'bottom' : 'top' }));
+  assert.deepEqual(reverseHandFingers(holes, 'R').map(h => h.finger), ['L4', 'L3', 'R1', 'R2', 'R3', 'RT']);
+  assert.deepEqual(reverseHandFingers(holes, 'L').map(h => h.finger), ['L1', 'L2', 'R4', 'R3', 'R2', 'RT']);
+  assert.equal(holes[2].finger, 'R4');   // original untouched
+});

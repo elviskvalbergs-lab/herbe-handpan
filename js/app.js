@@ -33,7 +33,7 @@ import { rankScalesByNotes, addHeardNote } from './scalefinder.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
-  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, withFixedFingerings, fluteHoles, fluteStepStates, fluteChamberFromReadings,
+  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, withFixedFingerings, reverseHandFingers, fluteHoles, fluteStepStates, fluteChamberFromReadings,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
@@ -2908,6 +2908,8 @@ function instEditSheet() {
         </div>
         <div class="field-help">Shown next to its name${inst.family === 'ocarina' && custom ? ', and used to mark where the holes are' : ''}. A photo of the top works best.</div>
       </div>
+      ${custom && !flute && inst.id === state.currentInstrumentId && state.view === 'instrument' ? `
+        <button type="button" class="btn btn-secondary btn-block ie-fingers" data-action="ie-fingers">${icon('hand')} Which finger covers each hole</button>` : ''}
       ${custom ? uiField({
         label: flute ? 'Finger holes' : 'Holes, thumb holes included', id: 'ie-holes',
         control: uiStepper({ value: n, label: 'Holes', action: 'ie-holes-step', min: n <= (flute ? 3 : 1), max: n >= (flute ? 8 : 13) }),
@@ -3031,6 +3033,9 @@ function setupFingersSheet() {
     key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
     body: `
       <p class="sheet-text">Check which finger covers each hole. The order is the order the holes open going up the scale.</p>
+      ${['R', 'L'].filter(hand => setup.holes.some(h => new RegExp(`^${hand}[1-4]$`).test(h.finger))).map(hand => `
+        <button type="button" class="btn btn-secondary btn-sm s-reverse" data-action="s-fingers-reverse" data-hand="${hand}">
+          ${icon('refresh')} ${hand === 'R' ? 'Reverse right hand: R1↔R4, R2↔R3' : 'Reverse left hand: L1↔L4, L2↔L3'}</button>`).join('')}
       <div class="s-fingers">
         ${setup.holes.map((h, i) => uiField({
           label: `Hole ${i + 1}${h.sub ? ' (sub-hole)' : ''}`, id: `s-finger-${i}`,
@@ -5457,6 +5462,30 @@ document.addEventListener('click', e => {
     saveInstrument(inst);
     refreshInstruments();
     if (action === 'hm-place') state.oc.holeMap.sel = hmFirstUnmarked(inst);
+    render();
+    return;
+  }
+  if (action === 's-fingers-reverse') {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const setup = setupOf(inst);
+    setup.holes = reverseHandFingers(setup.holes, el.dataset.hand);
+    inst.setup = setup;
+    // The chart's copies of the holes take the new finger names too.
+    if (inst.chambers?.[0]?.holes?.length === setup.holes.length) {
+      inst.chambers[0] = { ...inst.chambers[0], holes: inst.chambers[0].holes.map((h, i) => ({ ...h, finger: setup.holes[i].finger, side: setup.holes[i].side })) };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    showToast(`${el.dataset.hand === 'R' ? 'Right' : 'Left'} hand reversed`);
+    render();
+    return;
+  }
+  if (action === 'ie-fingers') {
+    state.instEdit = null;
+    state.oc.tab = 'setup';
+    state.oc.fingersSheet = true;
+    navReplace(`#i/${state.currentInstrumentId}/setup`);
     render();
     return;
   }

@@ -298,3 +298,14 @@ export function withFixedFingerings(chamber, fixed) {
   const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
   return { ...chamber, notes, fingerings };
 }
+
+// The holes with one hand's fingers in the opposite order (R1 ↔ R4,
+// R2 ↔ R3, or the same for L): for when they were set up the wrong way
+// round. Thumbs and sub-hole flags stay; returns new hole objects.
+export function reverseHandFingers(holes, hand) {
+  const swap = { 1: 4, 2: 3, 3: 2, 4: 1 };
+  return holes.map(h => {
+    const m = new RegExp(`^${hand}([1-4])$`).exec(h.finger);
+    return m ? { ...h, finger: `${hand}${swap[m[1]]}` } : { ...h };
+  });
+}

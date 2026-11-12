@@ -1577,3 +1577,5 @@ html { touch-action: manipulation; }
 .fg-edit-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
 .fg-edit-open { margin: var(--space-2) auto 0; display: flex; }
 .fg-edit-rec { margin-top: var(--space-3); }
+.s-reverse { display: flex; width: 100%; justify-content: flex-start; text-align: left; margin-bottom: var(--space-2); white-space: normal; }
+.ie-fingers { margin: var(--space-2) 0 var(--space-3); }
