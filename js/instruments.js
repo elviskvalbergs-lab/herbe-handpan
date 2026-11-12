@@ -133,6 +133,24 @@ export function createCustomOcarina({ name, holeCount }, now = nowIso()) {
   };
 }
 
+// A flute that isn't in js/charts.js. Its chart comes from recording its
+// notes on Set up: all holes closed, then the holes lifted one by one from
+// the bottom (fluteChamberFromReadings in js/builder.js).
+export function createCustomFlute({ name, holeCount }, now = nowIso()) {
+  return {
+    id: 'fl-' + Math.random().toString(36).slice(2, 10),
+    family: 'flute',
+    kind: 'custom',
+    name: name || 'My flute',
+    holeCount,
+    chambers: [],
+    calibration: null,
+    createdAt: now,
+    updatedAt: now,
+    lastPlayedAt: now,
+  };
+}
+
 // One line under the instrument's name on its card.
 export function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
@@ -141,7 +159,11 @@ export function instrumentStatus(inst) {
     return notes.length ? `${notes.length} notes, ${midiToNoteName(notes[0])} to ${midiToNoteName(notes[notes.length - 1])}` : '';
   }
   if (inst.kind === 'custom') {
-    return inst.calibration ? `${inst.holeCount} holes` : `${inst.holeCount} holes · not set up yet`;
+    if (!inst.calibration) return `${inst.holeCount} holes · not set up yet`;
+    const notes = inst.chambers?.[0]?.notes ?? [];
+    return inst.family === 'flute' && notes.length
+      ? `${inst.holeCount} holes · ${notes.length} notes, ${midiToNoteName(notes[0])} to ${midiToNoteName(notes[notes.length - 1])}`
+      : `${inst.holeCount} holes`;
   }
   if (inst.kind === 'scale') {
     const stage = inst.build?.stage ?? 'done';

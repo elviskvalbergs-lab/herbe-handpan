@@ -41,6 +41,7 @@ test('sourced charts are well formed', () => {
   assert.ok(real.length >= 6);
   for (const c of real) {
     assert.ok(c.source.length > 0 && c.source.every(u => u.startsWith('https://')), `${c.id} source`);
+    assert.ok(typeof c.sourceName === 'string' && c.sourceName.trim().length > 0, `${c.id} sourceName`);
     for (const f of c.fingerings) {
       assert.equal(f.states.length, c.holes.length, `${c.id} offset ${f.offset}`);
       assert.ok(f.states.every(st => ['c', 'o', 'h'].includes(st)));
@@ -118,4 +119,21 @@ test('any-key pentatonic NAF charts: every root in octaves 3–5, fingerings by 
   }
   // Charts with explicit keys still name instruments as before.
   assert.equal(instrumentFromChart('naf6-a', 'A3').name, 'Native American flute, 6 holes, key of A (A3)');
+});
+
+test('detect the key of an any-key flute from its all-closed note', async () => {
+  const { detectChartKey } = await import('../js/charts.js');
+  assert.deepEqual(detectChartKey(196), { midi: 55, root: 'G', heardOctave: 3, octave: 3, cents: 0, outOfRange: false });
+  const sharp = detectChartKey(196 * 2 ** (8 / 1200));
+  assert.equal(sharp.cents, 8);
+  assert.equal(detectChartKey(440 * 2 ** (-45 / 1200)).cents, -45);
+  assert.equal(detectChartKey(440 * 2 ** (-55 / 1200)).root, 'G#');
+  assert.deepEqual([detectChartKey(370).root, detectChartKey(370).octave], ['F#', 4]);
+  const low = detectChartKey(110);
+  assert.equal(low.heardOctave, 2);
+  assert.equal(low.octave, 3);
+  assert.ok(low.outOfRange);
+  assert.equal(detectChartKey(1760).octave, 5);
+  assert.equal(detectChartKey(0), null);
+  assert.equal(detectChartKey(432, { a4: 432 }).root, 'A');
 });

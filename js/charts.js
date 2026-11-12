@@ -8,6 +8,7 @@
 //
 //   {
 //     id, family: 'ocarina' | 'flute', name, source: [urls], notes: '…',
+//     sourceName: 'High Spirits Flutes booklet',   // shown to users as plain text ("Chart: …")
 //     holes: [{ id, finger, side: 'top' | 'bottom', sub? }],   // flutes: mouthpiece first
 //     keys: [{ id, name, lowest: 'D4' }],                       // lowest sounding note per key
 //     fingerings: [{ offset, states: ['c'|'o'|'h', …], alt?: true, overblow?: true }],
@@ -57,6 +58,7 @@ export const TRADITIONAL_CHARTS = [
     id: 'tin-whistle-d',
     family: 'flute',
     name: 'Tin whistle in D',
+    sourceName: 'Woodwind Fingering Guide',
     source: [
       'https://www.wfg.woodwind.org/tinwhistle/tw_bas_1.html',
       'https://www.wfg.woodwind.org/tinwhistle/tw_bas_2.html',
@@ -81,6 +83,7 @@ export const TRADITIONAL_CHARTS = [
     family: 'flute',
     name: 'Native American flute, 6 holes, pentatonic minor (any key)',
     shortName: 'Native American flute, 6 holes',
+    sourceName: 'High Spirits Flutes booklet',
     source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
     notes: 'High Spirits Flutes "How to Play" booklet, basic pentatonic minor scale (pp.14–15): the same fingerings by scale degree in every key (the booklet names them for A: A C D E G A, and F#: F# A B C# E F#). Six-hole rule from the booklet: the third hole from the mouthpiece stays closed for this scale. Holes from the mouthpiece down. Pick the key and octave your flute plays and check with the tuner.',
     holes: NAF6_HOLES,
@@ -96,6 +99,7 @@ export const TRADITIONAL_CHARTS = [
     family: 'flute',
     name: 'Native American flute, 5 holes, pentatonic minor (any key)',
     shortName: 'Native American flute, 5 holes',
+    sourceName: 'High Spirits Flutes booklet',
     source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
     notes: 'High Spirits Flutes "How to Play" booklet, basic pentatonic minor scale (pp.14–15), 5-hole fingerings: the same by scale degree in every key. Holes from the mouthpiece down. Pick the key and octave your flute plays and check with the tuner.',
     holes: NAF5_HOLES,
@@ -110,6 +114,7 @@ export const TRADITIONAL_CHARTS = [
     id: 'naf6-a',
     family: 'flute',
     name: 'Native American flute, 6 holes, key of A',
+    sourceName: 'High Spirits Flutes booklet',
     source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
     notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for A (p.16). Holes from the mouthpiece down. The booklet does not say which octave; pick the one your flute plays and check with the tuner.',
     holes: NAF6_HOLES,
@@ -124,6 +129,7 @@ export const TRADITIONAL_CHARTS = [
     id: 'naf5-a',
     family: 'flute',
     name: 'Native American flute, 5 holes, key of A',
+    sourceName: 'High Spirits Flutes booklet',
     source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
     notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for A (p.16), 5-hole column. Holes from the mouthpiece down. Octave not stated; check with the tuner.',
     holes: NAF5_HOLES,
@@ -138,6 +144,7 @@ export const TRADITIONAL_CHARTS = [
     id: 'naf6-fs',
     family: 'flute',
     name: 'Native American flute, 6 holes, key of F#',
+    sourceName: 'High Spirits Flutes booklet',
     source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
     notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for F# (p.22). The booklet draws the high G# the same as the high A, which looks like a misprint, so that G# is left out. Octave not stated; check with the tuner.',
     holes: NAF6_HOLES,
@@ -152,6 +159,7 @@ export const TRADITIONAL_CHARTS = [
     id: 'naf5-fs',
     family: 'flute',
     name: 'Native American flute, 5 holes, key of F#',
+    sourceName: 'High Spirits Flutes booklet',
     source: ['https://cdn.shopify.com/s/files/1/0775/6597/files/HowToPlayDOWNLOAD.pdf'],
     notes: 'High Spirits Flutes "How to Play" booklet, chromatic chart for F# (p.22), 5-hole column. Octave not stated; check with the tuner.',
     holes: NAF5_HOLES,
@@ -166,6 +174,7 @@ export const TRADITIONAL_CHARTS = [
     id: 'ocarina-12-stl-c',
     family: 'ocarina',
     name: '12-hole ocarina in C (STL chart, Asian top notes)',
+    sourceName: 'STL Ocarina',
     source: [
       'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/12tenorC.pdf',
       'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/12_Hole_Ocarina_Instructions.pdf',
@@ -249,5 +258,25 @@ export function instrumentFromChart(chartId, keyId, { name, now = new Date().toI
     createdAt: now,
     updatedAt: now,
     lastPlayedAt: now,
+  };
+}
+
+// The key and octave of an any-key chart from the pitch heard with every
+// hole closed: the nearest note's pitch class and octave. An octave outside
+// the chart's octaves is moved to the nearest one (outOfRange: true).
+// cents: how far the reading is from that note (positive = sharp).
+export function detectChartKey(hz, { octaves: octs = [3, 4, 5], a4 = 440 } = {}) {
+  if (!(hz > 0)) return null;
+  const exact = 69 + 12 * Math.log2(hz / a4);
+  const midi = Math.round(exact);
+  const heardOctave = Math.floor(midi / 12) - 1;
+  const octave = octs.reduce((best, o) => (Math.abs(o - heardOctave) < Math.abs(best - heardOctave) ? o : best), octs[0]);
+  return {
+    midi,
+    root: CHART_ROOTS[((midi % 12) + 12) % 12],
+    heardOctave,
+    octave,
+    cents: Math.round((exact - midi) * 100),
+    outOfRange: octave !== heardOctave,
   };
 }

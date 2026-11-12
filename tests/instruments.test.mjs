@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { noteToMidi } from '../js/data.js';
 import {
   midiToNoteName, reconcileInstruments, sortInstruments, createScaleOcarina,
-  createCustomOcarina, instrumentStatus, handpanInstrumentId,
+  createCustomOcarina, createCustomFlute, instrumentStatus, handpanInstrumentId,
 } from '../js/instruments.js';
 
 const saved = (id, name, isCustom = false) => ({ id, name, noteCount: 9, layout: { id, isCustom }, savedAt: 1700000000000 });
@@ -71,4 +71,16 @@ test('custom ocarina waits for calibration', () => {
   const oc = createCustomOcarina({ name: 'Blue', holeCount: 12 });
   assert.equal(oc.kind, 'custom');
   assert.equal(instrumentStatus(oc), '12 holes · not set up yet');
+});
+
+test('custom flute: no chart until its notes are recorded', () => {
+  const fl = createCustomFlute({ name: '', holeCount: 6 }, 'T');
+  assert.equal(fl.family, 'flute');
+  assert.equal(fl.kind, 'custom');
+  assert.equal(fl.name, 'My flute');
+  assert.match(fl.id, /^fl-/);
+  assert.deepEqual(fl.chambers, []);
+  assert.equal(instrumentStatus(fl), '6 holes · not set up yet');
+  const done = { ...fl, calibration: {}, chambers: [{ notes: [55, 58, 60], holes: [], fingerings: {} }] };
+  assert.equal(instrumentStatus(done), '6 holes · 3 notes, G3 to C4');
 });
