@@ -4501,13 +4501,16 @@ function withFixedFingerings(chamber, fixed) {
   return { ...chamber, notes, fingerings };
 }
 
-// The holes with one hand's fingers in the opposite order (R1 ↔ R4,
-// R2 ↔ R3, or the same for L): for when they were set up the wrong way
-// round. Thumbs and sub-hole flags stay; returns new hole objects.
+// The holes with one hand's fingers in the opposite order, among the
+// fingers that hand uses (R1–R4: R1 ↔ R4, R2 ↔ R3; a flute's L1–L3:
+// L1 ↔ L3): for when they were set up the wrong way round. Thumbs and
+// sub-hole flags stay; returns new hole objects.
 function reverseHandFingers(holes, hand) {
-  const swap = { 1: 4, 2: 3, 3: 2, 4: 1 };
+  const re = new RegExp(`^${hand}([1-4])$`);
+  const used = [...new Set(holes.map(h => re.exec(h.finger)?.[1]).filter(Boolean))].sort();
+  const swap = Object.fromEntries(used.map((d, i) => [d, used[used.length - 1 - i]]));
   return holes.map(h => {
-    const m = new RegExp(`^${hand}([1-4])$`).exec(h.finger);
+    const m = re.exec(h.finger);
     return m ? { ...h, finger: `${hand}${swap[m[1]]}` } : { ...h };
   });
 }
@@ -9045,6 +9048,7 @@ function viewFluteSetup(inst) {
               <h3 class="b-card-title">Holes and fingers</h3>
               <p class="b-meta">${n} holes, from the mouthpiece down</p>
             </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="s-fingers-open" aria-haspopup="dialog">${icon('pencil')} Edit</button>
           </div>
           <p class="b-fingers">${setup.holes.map(h => escHtml(h.finger)).join(' ')}</p>
         </div>
@@ -9136,11 +9140,32 @@ function instFieldsHtml(inst) {
         </div>
         <div class="field-help">Shown next to its name${inst.family === 'ocarina' && custom ? ', and used to mark where the holes are' : ''}. A photo of the top works best.</div>
       </div>
+      ${instKeyFieldHtml(inst)}
       ${custom ? uiField({
         label: flute ? 'Finger holes' : 'Holes, thumb holes included', id: 'ie-holes',
         control: uiStepper({ value: n, label: 'Holes', action: 'ie-holes-step', data: { id: inst.id }, min: n <= (flute ? 3 : 1), max: n >= (flute ? 8 : 13) }),
         help: inst.chambers?.length || inst.setup ? 'Changing this clears the fingering chart; set it up again with the new holes.' : '',
       }) : ''}`;
+}
+
+// Key of an instrument made from a published chart, when the chart has
+// more than one: changing it moves every note (the fingerings stay).
+function instKeyFieldHtml(inst) {
+  if (inst.kind !== 'traditional') return '';
+  const chart = getChart(inst.type);
+  if (!chart || chart.keys.length < 2) return '';
+  const key = chart.keys.find(k => k.id === inst.key) ?? chart.keys[0];
+  return uiField({
+    label: 'Key', id: `ie-key-${escHtml(inst.id)}`,
+    control: uiPicker({
+      id: `ie-key-${inst.id}`, value: key.id, label: 'Key', action: 'ie-key', data: { id: inst.id },
+      options: chart.keys.map(k => ({
+        value: k.id, label: chart.octaves ? ocKeyLabel(k) : k.name, group: chart.octaves ? ocKeyOctaveName(k) : undefined,
+        keywords: [...(k.root ? noteSearchWords(k.root) : []), ...noteSearchWords(k.lowest)],
+      })),
+    }),
+    help: 'All holes closed sounds the lowest note. Changing the key moves every note; the fingerings stay the same.',
+  });
 }
 
 // The Edit instrument sheet: ocarinas and flutes without a Set up tab
@@ -9270,17 +9295,26 @@ function fgEditStageHtml(inst, opts) {
     </div>`;
 }
 
+// "R1 ↔ R4, R2 ↔ R3" for the fingers this hand uses.
+function handSwapText(holes, hand) {
+  const before = holes.map(h => h.finger);
+  const after = reverseHandFingers(holes, hand).map(h => h.finger);
+  const pairs = new Set();
+  before.forEach((f, i) => { if (f !== after[i]) pairs.add([f, after[i]].sort().join(' ↔ ')); });
+  return [...pairs].join(', ');
+}
+
 function setupFingersSheet() {
   const inst = currentInstrument();
   if (!inst || inst.kind !== 'custom') return '';
-  const setup = setupOf(inst);
+  const setup = inst.family === 'flute' ? fluteSetupOf(inst) : setupOf(inst);
   return uiSheet({
     key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
     body: `
-      <p class="sheet-text">Check which finger covers each hole. The order is the order the holes open going up the scale.</p>
+      <p class="sheet-text">Check which finger covers each hole. ${inst.family === 'flute' ? 'Holes count from the mouthpiece down: hole 1 is nearest your mouth.' : 'The order is the order the holes open going up the scale.'}</p>
       ${['R', 'L'].filter(hand => setup.holes.some(h => new RegExp(`^${hand}[1-4]$`).test(h.finger))).map(hand => `
         <button type="button" class="btn btn-secondary btn-sm s-reverse" data-action="s-fingers-reverse" data-hand="${hand}">
-          ${icon('refresh')} ${hand === 'R' ? 'Reverse right hand: R1↔R4, R2↔R3' : 'Reverse left hand: L1↔L4, L2↔L3'}</button>`).join('')}
+          ${icon('refresh')} Reverse ${hand === 'R' ? 'right' : 'left'} hand (${handSwapText(setup.holes, hand)})</button>`).join('')}
       <div class="s-fingers">
         ${setup.holes.map((h, i) => uiField({
           label: `Hole ${i + 1}${h.sub ? ' (sub-hole)' : ''}`, id: `s-finger-${i}`,
@@ -11725,7 +11759,7 @@ document.addEventListener('click', e => {
   if (action === 's-fingers-reverse') {
     const inst = currentInstrument();
     if (!inst) return;
-    const setup = setupOf(inst);
+    const setup = inst.family === 'flute' ? fluteSetupOf(inst) : setupOf(inst);
     setup.holes = reverseHandFingers(setup.holes, el.dataset.hand);
     inst.setup = setup;
     // The chart's copies of the holes take the new finger names too.
@@ -12970,6 +13004,21 @@ document.addEventListener('change', e => {
     render();
   }
   if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
+  if (action === 'ie-key') {
+    const inst = getInstrument(el.dataset.id);
+    if (!inst || inst.kind !== 'traditional') return;
+    const before = instrumentFromChart(inst.type, inst.key);
+    const fresh = instrumentFromChart(inst.type, el.value);
+    // A name the app made ("… (D4)") follows the key; one the owner typed stays.
+    if (inst.name === before.name) inst.name = fresh.name;
+    inst.key = fresh.key;
+    inst.chambers = fresh.chambers;
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.selected = null;
+    render();
+    return;
+  }
   if (action === 'ie-name' || action === 'ie-photo') {
     const inst = getInstrument(el.dataset.id || state.instEdit);
     if (!inst) return;
@@ -13043,7 +13092,7 @@ document.addEventListener('change', e => {
       }
     }
     if (action === 's-finger') {
-      const setup = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
+      const setup = inst.family === 'flute' ? fluteSetupOf(inst) : (inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] });
       const h = setup.holes[parseInt(el.dataset.index, 10)];
       h.finger = el.value;
       h.side = el.value.endsWith('T') ? 'bottom' : 'top';

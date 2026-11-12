@@ -205,7 +205,10 @@ test('calibration: a reading of another fingering refines the chart and wins its
 test('reversing one hand\'s fingers', async () => {
   const { reverseHandFingers } = await import('../js/builder.js');
   const holes = ['L4', 'L3', 'R4', 'R3', 'R2', 'RT'].map(f => ({ id: f, finger: f, side: f.endsWith('T') ? 'bottom' : 'top' }));
-  assert.deepEqual(reverseHandFingers(holes, 'R').map(h => h.finger), ['L4', 'L3', 'R1', 'R2', 'R3', 'RT']);
-  assert.deepEqual(reverseHandFingers(holes, 'L').map(h => h.finger), ['L1', 'L2', 'R4', 'R3', 'R2', 'RT']);
+  assert.deepEqual(reverseHandFingers(holes, 'R').map(h => h.finger), ['L4', 'L3', 'R2', 'R3', 'R4', 'RT']);
+  const full = ['R4', 'R3', 'R2', 'R1'].map(f => ({ finger: f }));
+  assert.deepEqual(reverseHandFingers(full, 'R').map(h => h.finger), ['R1', 'R2', 'R3', 'R4']);
+  const flute = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'].map(f => ({ finger: f }));
+  assert.deepEqual(reverseHandFingers(flute, 'L').map(h => h.finger), ['L3', 'L2', 'L1', 'R1', 'R2', 'R3']);
   assert.equal(holes[2].finger, 'R4');   // original untouched
 });

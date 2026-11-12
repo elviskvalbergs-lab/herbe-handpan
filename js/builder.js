@@ -299,13 +299,16 @@ export function withFixedFingerings(chamber, fixed) {
   return { ...chamber, notes, fingerings };
 }
 
-// The holes with one hand's fingers in the opposite order (R1 ↔ R4,
-// R2 ↔ R3, or the same for L): for when they were set up the wrong way
-// round. Thumbs and sub-hole flags stay; returns new hole objects.
+// The holes with one hand's fingers in the opposite order, among the
+// fingers that hand uses (R1–R4: R1 ↔ R4, R2 ↔ R3; a flute's L1–L3:
+// L1 ↔ L3): for when they were set up the wrong way round. Thumbs and
+// sub-hole flags stay; returns new hole objects.
 export function reverseHandFingers(holes, hand) {
-  const swap = { 1: 4, 2: 3, 3: 2, 4: 1 };
+  const re = new RegExp(`^${hand}([1-4])$`);
+  const used = [...new Set(holes.map(h => re.exec(h.finger)?.[1]).filter(Boolean))].sort();
+  const swap = Object.fromEntries(used.map((d, i) => [d, used[used.length - 1 - i]]));
   return holes.map(h => {
-    const m = new RegExp(`^${hand}([1-4])$`).exec(h.finger);
+    const m = re.exec(h.finger);
     return m ? { ...h, finger: `${hand}${swap[m[1]]}` } : { ...h };
   });
 }
