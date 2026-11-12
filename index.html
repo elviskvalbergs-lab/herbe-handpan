@@ -4947,8 +4947,22 @@ function normalizeProgression(p) {
     ...p,
     bpm: progClamp('bpm', p.bpm ?? PROG_DEFAULTS.bpm),
     beatsPerBar: progClamp('beatsPerBar', p.beatsPerBar ?? PROG_DEFAULTS.beatsPerBar),
-    steps: (p.steps ?? []).map(s => ({ ...s, bars: progClamp('bars', s.bars ?? PROG_DEFAULTS.bars) })),
+    steps: (p.steps ?? []).map(s => {
+      const step = { ...s, bars: progClamp('bars', s.bars ?? PROG_DEFAULTS.bars) };
+      if (step.beats != null) {
+        const b = Math.round(Number(step.beats));
+        if (Number.isFinite(b) && b >= 1) step.beats = Math.min(b, PROG_LIMITS.bars[1] * PROG_LIMITS.beatsPerBar[1]);
+        else delete step.beats;
+      }
+      return step;
+    }),
   };
+}
+
+// A step's length in beats: its beats when set (part of a bar, from a chord
+// sheet with two chords in a bar), otherwise its bars.
+function progressionStepBeats(step, beatsPerBar) {
+  return step.beats != null ? step.beats : step.bars * beatsPerBar;
 }
 
 // How long one step lasts at the progression's tempo, in milliseconds.
@@ -4961,8 +4975,9 @@ function progressionStepMs(bpm, beatsPerBar, bars) {
 function progressionTotals(p, isHere = () => true) {
   const n = normalizeProgression(p);
   const here = n.steps.filter(isHere);
-  const bars = here.reduce((sum, s) => sum + s.bars, 0);
-  return { steps: here.length, bars, ms: (bars * n.beatsPerBar * 60000) / n.bpm };
+  const beats = here.reduce((sum, s) => sum + progressionStepBeats(s, n.beatsPerBar), 0);
+  const bars = beats / n.beatsPerBar;
+  return { steps: here.length, bars, ms: (beats * 60000) / n.bpm };
 }
 
 // Index of the next step after `from` (wrapping round) that plays here, or
@@ -5023,10 +5038,12 @@ function editProgression(id, fn) {
   return result;
 }
 
-function addProgression(name, steps = []) {
+// extra: more fields for the new progression (a chord sheet's bpm,
+// beatsPerBar, level, transpose …).
+function addProgression(name, steps = [], extra = {}) {
   const all = getProgressionsRaw();
   const id = progUid('pr');
-  all.push({ id, name, bpm: PROG_DEFAULTS.bpm, beatsPerBar: PROG_DEFAULTS.beatsPerBar, steps, updatedAt: now() });
+  all.push(normalizeProgression({ bpm: PROG_DEFAULTS.bpm, beatsPerBar: PROG_DEFAULTS.beatsPerBar, ...extra, id, name, steps, updatedAt: now() }));
   writeProgressionsRaw(all);
   return id;
 }
@@ -5090,8 +5107,23 @@ function setProgressionStepBars(id, idx, bars) {
   return editProgression(id, p => {
     if (!p.steps[idx]) return false;
     p.steps[idx].bars = progClamp('bars', bars);
+    delete p.steps[idx].beats; // whole bars from now on
     return true;
   });
+}
+
+// How a handpan progression is played (docs/ocarina-mode.md, "From chord
+// sheet to playing"): 'chord' strikes the whole chord on beat 1 (what Play
+// always did, and the default), or a level's pattern.
+const PROG_PLAY_LEVELS = ['chord', 'roots', 'arpeggio', 'groove'];
+
+function progressionLevel(p) {
+  return PROG_PLAY_LEVELS.includes(p?.level) ? p.level : 'chord';
+}
+
+function setProgressionLevel(id, level) {
+  if (!PROG_PLAY_LEVELS.includes(level)) return false;
+  return editProgression(id, p => { p.level = level; return true; });
 }
 
 

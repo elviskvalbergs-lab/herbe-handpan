@@ -16,7 +16,7 @@ const {
   nextProgressionStep, mergeProgressionLists, getProgressions, getProgressionsRaw, addProgression,
   renameProgression, deleteProgression, setProgressionTiming, addStepToProgression,
   duplicateProgressionStep, moveProgressionStep, removeProgressionStep, setProgressionStepBars,
-  getPlaylists,
+  getPlaylists, progressionStepBeats, progressionLevel, setProgressionLevel, PROG_PLAY_LEVELS,
 } = await import('../js/storage.js');
 
 const entry = (chordId, rootName, typeName, notes, extra = {}) => ({
@@ -156,4 +156,35 @@ test('merge keeps the newest version of each progression and says who needs what
 
   r = mergeProgressionLists([], null ?? []);
   assert.deepEqual(r, { merged: [], changedLocal: false, needPush: false });
+});
+
+test('chord sheet steps: part-bar beats, sections, levels and extra fields', () => {
+  const half = newProgressionStep({ ...Am, section: 'Chorus' }, { bars: 1 });
+  const id = addProgression('Imported', [{ ...half, beats: 2 }, newProgressionStep(Dm, { bars: 2 })],
+    { bpm: 96, beatsPerBar: 3, level: 'arpeggio', transpose: 5, source: 'chordsheet' });
+  let p = getProgressions().find(x => x.id === id);
+  assert.equal(p.bpm, 96);
+  assert.equal(p.beatsPerBar, 3);
+  assert.equal(p.transpose, 5);
+  assert.equal(p.steps[0].section, 'Chorus');
+  assert.equal(progressionStepBeats(p.steps[0], 3), 2);
+  assert.equal(progressionStepBeats(p.steps[1], 3), 6);
+  assert.deepEqual(progressionTotals(p), { steps: 2, bars: 8 / 3, ms: 8 * 60000 / 96 });
+  assert.equal(progressionLevel(p), 'arpeggio');
+  // Changing the bars of a part-bar step makes it whole bars again.
+  setProgressionStepBars(id, 0, 2);
+  p = getProgressions().find(x => x.id === id);
+  assert.equal(p.steps[0].beats, undefined);
+  assert.equal(p.steps[0].bars, 2);
+  // Duplicating keeps the section and beats.
+  setProgressionLevel(id, 'groove');
+  duplicateProgressionStep(id, 0);
+  p = getProgressions().find(x => x.id === id);
+  assert.equal(p.steps[1].section, 'Chorus');
+  assert.equal(progressionLevel(p), 'groove');
+  assert.equal(setProgressionLevel(id, 'loud'), false);
+  assert.deepEqual(PROG_PLAY_LEVELS, ['chord', 'roots', 'arpeggio', 'groove']);
+  // Older progressions play the whole chord, as before.
+  assert.equal(progressionLevel({}), 'chord');
+  assert.equal(normalizeProgression({ steps: [{ bars: 1, beats: 'x' }] }).steps[0].beats, undefined);
 });
