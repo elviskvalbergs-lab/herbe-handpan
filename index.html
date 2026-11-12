@@ -5060,18 +5060,19 @@ function fgFluteBody(style, y0, blown) {
     g.push(`<rect class="fg-bore" x="70" y="${cy - 5}" width="13" height="10" rx="1.5"/>`);
     g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 8 ${cy - 6} Q 6 ${cy}, 8 ${cy + 6}"/>`);
   } else {
-    // Wooden tube: the mouth end tapers and rounds off, the foot is open.
-    const L = FG_W - 6;
-    g.push(`<path class="fg-wood" d="M 6 ${cy} C 6 ${cy - r + 4}, 16 ${cy - r}, 34 ${cy - r} L ${L - r} ${cy - r} Q ${L} ${cy - r}, ${L} ${cy} Q ${L} ${cy + r}, ${L - r} ${cy + r} L 34 ${cy + r} C 16 ${cy + r}, 6 ${cy + r - 4}, 6 ${cy} Z"/>`);
-    g.push(`<path class="fg-wood-grain" d="M 30 ${cy - 6} C 110 ${cy - 8}, 190 ${cy - 4}, ${L - 14} ${cy - 6} M 44 ${cy + 3} C 130 ${cy + 5}, 200 ${cy + 1}, ${L - 20} ${cy + 4} M 70 ${cy + 9} L ${L - 40} ${cy + 9}"/>`);
-    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 12 ${cy - 6} Q 5 ${cy}, 12 ${cy + 6}"/>`);
-    g.push(`<ellipse class="fg-bore" cx="${L - 3}" cy="${cy}" rx="2.5" ry="${r - 5}"/>`);
-    // Fetish: a long carved block over the sound hole, tied on with
-    // leather, the ends hanging down; the sound hole just in front of it.
-    g.push(`<path class="fg-tie-end" d="M 92 ${cy + r} q 3 12, -4 24 M 96 ${cy + r} q 8 10, 6 22 M 124 ${cy + r} q 3 12, -2 26 M 128 ${cy + r} q 8 9, 8 20"/>`);
-    g.push(`<path class="fg-block" d="M 76 ${cy - 9} C 82 ${cy - 12}, 112 ${cy - 12}, 128 ${cy - 10} C 136 ${cy - 17}, 146 ${cy - 16}, 147 ${cy - 9} C 148 ${cy - 4}, 142 ${cy - 3}, 138 ${cy - 3} L 138 ${cy + 9} C 112 ${cy + 11}, 84 ${cy + 11}, 76 ${cy + 9} Z"/>`);
-    g.push(`<rect class="fg-tie" x="90" y="${cy - r - 1}" width="7" height="${r * 2 + 2}" rx="2"/>`);
-    g.push(`<rect class="fg-tie" x="122" y="${cy - r - 1}" width="7" height="${r * 2 + 2}" rx="2"/>`);
+    // Wooden tube with nearly square-cut ends (slightly rounded corners);
+    // the blowing end is a little narrower, as on a real flute.
+    const L = FG_W - 6, rr = r - 2;
+    g.push(`<path class="fg-wood" d="M 8 ${cy - rr + 2} Q 8 ${cy - rr}, 12 ${cy - rr} L 40 ${cy - rr - 1} L ${L - 4} ${cy - rr - 1} Q ${L} ${cy - rr - 1}, ${L} ${cy - rr + 3} L ${L} ${cy + rr - 3} Q ${L} ${cy + rr + 1}, ${L - 4} ${cy + rr + 1} L 40 ${cy + rr + 1} L 12 ${cy + rr} Q 8 ${cy + rr}, 8 ${cy + rr - 2} Z"/>`);
+    g.push(`<path class="fg-wood-grain" d="M 20 ${cy - 4} L ${L - 10} ${cy - 5} M 30 ${cy + 3} L ${L - 16} ${cy + 4}"/>`);
+    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 9 ${cy - rr + 3} L 9 ${cy + rr - 3}"/>`);
+    g.push(`<ellipse class="fg-bore" cx="${L - 3}" cy="${cy}" rx="2" ry="${rr - 4}"/>`);
+    // Fetish: an angular carved block tied on with two flat leather wraps;
+    // the loose ends lie along the tube. The sound hole sits just in front.
+    g.push(`<path class="fg-block" d="M 78 ${cy - 8} L 132 ${cy - 8} L 142 ${cy - 4} L 142 ${cy + 4} L 132 ${cy + 8} L 78 ${cy + 8} Z"/>`);
+    g.push(`<rect class="fg-tie" x="90" y="${cy - rr - 2}" width="6" height="${rr * 2 + 4}" rx="1.5"/>`);
+    g.push(`<rect class="fg-tie" x="120" y="${cy - rr - 2}" width="6" height="${rr * 2 + 4}" rx="1.5"/>`);
+    g.push(`<path class="fg-tie-end" d="M 96 ${cy + rr + 1} L 112 ${cy + rr + 1} M 126 ${cy + rr + 1} L 140 ${cy + rr + 1}"/>`);
     g.push(`<rect class="fg-bore" x="150" y="${cy - 3}" width="6" height="6" rx="1"/>`);
   }
   return g.join('');
