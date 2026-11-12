@@ -6,7 +6,7 @@
 // are in app.js; the clay body list is stored by instruments.js.
 
 import {
-  midiToHz, centsBetween, holeSizes, splitHole, applyHoleSizes, defaultWindow, chamberVolume,
+  midiToHz, hzToMidi, centsBetween, holeSizes, splitHole, applyHoleSizes, defaultWindow, chamberVolume,
   learnedShrinkage, solveHoleRatios, calibratedChart, fingersForHoleCount, OC_FINGER_ORDER,
 } from './ocarina.js';
 
@@ -171,5 +171,58 @@ export function calibrateChamber(holes, f0, singles, { a4 = 440, toleranceCents 
     holes: holes.map((h, i) => ({ ...h, rel: ratios[i] / max })),
     fingerings,
     calibration: { f0, singles, ratios, cents: Object.fromEntries(notes.map(m => [m, Math.round(chart[m].cents)])) },
+  };
+}
+
+// ── Other flutes: recording their notes ──────────────────────────────────────
+
+// Fingers of a flute with `count` holes (3–8), from the mouthpiece down. Six
+// holes are the usual L1 L2 L3 R1 R2 R3. Fewer holes drop fingers from the
+// top of the left hand (5: L2 L3 R1 R2 R3 … 3: R1 R2 R3). Seven add the right
+// little finger at the bottom (R4); eight also the left little finger (L4,
+// after L3). The fingers are only labels: the chart comes from the readings.
+export function fluteHoles(count) {
+  const n = Math.max(3, Math.min(8, count));
+  const six = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'];
+  const fingers = n <= 6 ? six.slice(6 - n)
+    : n === 7 ? [...six, 'R4'] : ['L1', 'L2', 'L3', 'L4', 'R1', 'R2', 'R3', 'R4'];
+  return fingers.map(f => ({ id: f, finger: f, side: 'top' }));
+}
+
+// Hole states for recorded step k of a flute with n holes: step 0 all
+// closed, step k the k lowest holes open (holes listed from the mouthpiece
+// down, so the last k).
+export function fluteStepStates(n, k) {
+  return Array.from({ length: n }, (_, i) => (i >= n - k ? 'o' : 'c'));
+}
+
+// A playable chamber from a flute's recorded notes: readings[0] with every
+// hole closed, readings[k] with the k lowest holes open. Each reading is
+// rounded to the nearest note; its cents off that note are kept for display.
+// When two readings round to the same note the first one is kept and the
+// later one listed in `dropped`. Returns null until every reading is in.
+export function fluteChamberFromReadings(holes, readings, { a4 = 440 } = {}) {
+  const n = holes.length;
+  if (readings.length !== n + 1 || !readings.every(hz => hz > 0)) return null;
+  const fingerings = {};
+  const cents = {};
+  const dropped = [];
+  readings.forEach((hz, k) => {
+    const exact = hzToMidi(hz, a4);
+    const midi = Math.round(exact);
+    if (fingerings[midi]) { dropped.push({ step: k, midi, keptStep: cents[midi].step }); return; }
+    fingerings[midi] = fluteStepStates(n, k);
+    cents[midi] = { step: k, cents: Math.round((exact - midi) * 100) };
+  });
+  const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
+  return {
+    notes,
+    holes: holes.map(h => ({ ...h })),
+    fingerings,
+    calibration: {
+      readings: [...readings],
+      cents: Object.fromEntries(notes.map(m => [m, cents[m].cents])),
+      dropped,
+    },
   };
 }

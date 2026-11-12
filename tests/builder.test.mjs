@@ -91,3 +91,43 @@ test('custom ocarina: default holes and calibration', () => {
   assert.ok(ch.notes.includes(61) && ch.notes.includes(63)); // chromatic notes found too
   assert.equal(Math.max(...ch.holes.map(h => h.rel)), 1);
 });
+
+test('flute holes: fingers by hole count, from the mouthpiece down', async () => {
+  const { fluteHoles } = await import('../js/builder.js');
+  const f = n => fluteHoles(n).map(h => h.finger).join(' ');
+  assert.equal(f(6), 'L1 L2 L3 R1 R2 R3');
+  assert.equal(f(5), 'L2 L3 R1 R2 R3');
+  assert.equal(f(3), 'R1 R2 R3');
+  assert.equal(f(7), 'L1 L2 L3 R1 R2 R3 R4');
+  assert.equal(f(8), 'L1 L2 L3 L4 R1 R2 R3 R4');
+  assert.ok(fluteHoles(6).every(h => h.side === 'top'));
+});
+
+test('flute chamber from recorded notes: cumulative openings, cents kept, repeats dropped', async () => {
+  const { fluteHoles, fluteChamberFromReadings, fluteStepStates } = await import('../js/builder.js');
+  const holes = fluteHoles(6);
+  const hz = (n, c = 0) => midiToHz(m(n)) * 2 ** (c / 1200);
+  assert.deepEqual(fluteStepStates(4, 0), ['c', 'c', 'c', 'c']);
+  assert.deepEqual(fluteStepStates(4, 1), ['c', 'c', 'c', 'o']);
+  assert.deepEqual(fluteStepStates(4, 3), ['c', 'o', 'o', 'o']);
+  assert.equal(fluteChamberFromReadings(holes, [hz('G3')]), null);
+  assert.equal(fluteChamberFromReadings(holes, [hz('G3'), 0, 1, 1, 1, 1, 1]), null);
+  const readings = [hz('G3', 12), hz('Bb3', -8), hz('C4'), hz('D4', 3), hz('Eb4', 49), hz('F4'), hz('G4', -20)];
+  const ch = fluteChamberFromReadings(holes, readings);
+  assert.deepEqual(ch.notes, ['G3', 'Bb3', 'C4', 'D4', 'Eb4', 'F4', 'G4'].map(m));
+  assert.deepEqual(ch.fingerings[m('G3')], ['c', 'c', 'c', 'c', 'c', 'c']);
+  assert.deepEqual(ch.fingerings[m('Bb3')], ['c', 'c', 'c', 'c', 'c', 'o']);
+  assert.deepEqual(ch.fingerings[m('G4')], ['o', 'o', 'o', 'o', 'o', 'o']);
+  assert.equal(ch.calibration.cents[m('G3')], 12);
+  assert.equal(ch.calibration.cents[m('Bb3')], -8);
+  assert.equal(ch.calibration.cents[m('Eb4')], 49);
+  assert.deepEqual(ch.calibration.dropped, []);
+  assert.deepEqual(ch.holes, holes);
+  // Two readings on the same note: the first is kept, the second reported.
+  const dup = fluteChamberFromReadings(fluteHoles(3), [hz('C4'), hz('D4'), hz('D4', 20), hz('E4')]);
+  assert.deepEqual(dup.notes, ['C4', 'D4', 'E4'].map(m));
+  assert.deepEqual(dup.fingerings[m('D4')], ['c', 'c', 'o']);
+  assert.deepEqual(dup.calibration.dropped, [{ step: 2, midi: m('D4'), keptStep: 1 }]);
+  // Readings are rounded against the given A4.
+  assert.deepEqual(fluteChamberFromReadings(fluteHoles(3), [432, 485, 545, 577], { a4: 432 }).notes, [69, 71, 73, 74]);
+});
