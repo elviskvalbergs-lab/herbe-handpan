@@ -162,7 +162,7 @@ Replace the current `:root` block in `styles.css` with the block below. The **le
 
 The theme is set on `<html data-theme="dark|light|auto">` from the `theme` pref, and `auto` follows the OS. The JS that sets the attribute also updates `<meta name="theme-color">` (`#090F0D` dark, `#F3F6F4` light).
 
-**The pan drawing stays dark in both themes.** It's a picture of a dark steel instrument, and the four chord colours are tuned for it. `pan.js` hard-codes its gradients, and that stays as it is. In the light theme the pan sits in a `--pan-stage` dark card. The fingering diagram follows the theme (in the light theme it's ink on paper, like printed ocarina charts).
+**The pan drawing follows the theme** (changed at the owner's request; it used to stay dark). `pan.js` draws with `--pan-*` tokens: dark steel in the dark theme, a light steel shell with darker lines in the light theme (`--pan-stage` #E4EBE6 behind it). The four chord colours are the same in both; the faint and other-octave note colours have light-theme versions. The fingering diagram follows the theme too.
 
 ```css
 :root {

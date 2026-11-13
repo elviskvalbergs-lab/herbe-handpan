@@ -74,7 +74,7 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
   }
 
   return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
-  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
+  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
   ${textHtml}
 </g>`;
 }
@@ -167,25 +167,25 @@ export function renderPan(layout, opts = {}) {
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#1a3828"/>
-      <stop offset="60%" stop-color="#0d2018"/>
-      <stop offset="100%" stop-color="#060f0c"/>
+      <stop offset="0%" style="stop-color: var(--pan-g0)"/>
+      <stop offset="60%" style="stop-color: var(--pan-g1)"/>
+      <stop offset="100%" style="stop-color: var(--pan-g2)"/>
     </radialGradient>
     <radialGradient id="innerGrad" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#183028"/>
-      <stop offset="100%" stop-color="#0d1e18"/>
+      <stop offset="0%" style="stop-color: var(--pan-i0)"/>
+      <stop offset="100%" style="stop-color: var(--pan-i1)"/>
     </radialGradient>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="var(--pan-rim)" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="var(--pan-groove)" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
+  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="var(--pan-groove)" stroke-width="1.5"/>
   <!-- Tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="var(--pan-guide)" stroke-width="1" opacity="0.5"/>
+  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="var(--pan-guide)" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)

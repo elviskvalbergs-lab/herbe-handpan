@@ -114,7 +114,14 @@
   --chord-c3: #9B6FD4; --chord-c3-stroke: #c6a3f0; --chord-c3-text: #1c0d2e;
   --note-rest-bg: #162c22; --note-rest-text: #5a9878;
   --note-active-bg: #CD4C38; --note-active-text: #fff; --note-empty-border: #224838;
-  --pan-playing: #FFFFFF;    /* ring around a sounding note on the (always dark) pan */
+  --pan-playing: #FFFFFF;    /* ring around a sounding note */
+  /* The pan drawing (js/pan.js), dark; light values with the light theme below. */
+  --pan-g0: #1a3828; --pan-g1: #0d2018; --pan-g2: #060f0c; --pan-i0: #183028; --pan-i1: #0d1e18;
+  --pan-rim: #2a5040; --pan-groove: #1c3828; --pan-guide: #183028; --pan-note-stroke: #1F3B2E;
+  --pan-glow: rgba(255, 255, 255, 0.55);
+  --alt-c0-text: rgba(232,190,160,0.75); --alt-c1-text: rgba(240,216,150,0.75);
+  --alt-c2-text: rgba(170,224,222,0.75); --alt-c3-text: rgba(214,190,240,0.75);
+  --faint-stroke: #7fd6d4; --faint-text: #9fc9bb;
   --qr-bg: #FFFFFF;          /* QR codes need a white quiet zone in both themes */
 }
 
@@ -132,7 +139,7 @@
   --focus: #0B6E6C;
   --move-lift: #0E7C7B; --move-cover: #9A6700;
   --hole-covered: #0F231A; --hole-open: #FFFFFF;
-  --pan-stage: #0C1713; --scrim: rgba(15, 35, 26, 0.45);
+  --pan-stage: #E4EBE6; --scrim: rgba(15, 35, 26, 0.45);
   --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
   --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
   --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
@@ -152,10 +159,31 @@
     --focus: #0B6E6C;
     --move-lift: #0E7C7B; --move-cover: #9A6700;
     --hole-covered: #0F231A; --hole-open: #FFFFFF;
-    --pan-stage: #0C1713; --scrim: rgba(15, 35, 26, 0.45);
+    --pan-stage: #E4EBE6; --scrim: rgba(15, 35, 26, 0.45);
     --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
     --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
     --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+  }
+}
+
+/* The pan drawing in daylight: a light steel shell, darker lines. The chord
+   colours stay the same in both themes. (Two blocks, like the theme above.) */
+:root[data-theme="light"] {
+  --pan-g0: #FBFDFB; --pan-g1: #E2EAE5; --pan-g2: #C6D4CB; --pan-i0: #F5F9F6; --pan-i1: #DAE4DE;
+  --pan-rim: #93AA9D; --pan-groove: #A9BDB1; --pan-guide: #A9BDB1; --pan-note-stroke: #9DB2A6;
+  --note-rest-bg: #FFFFFF; --note-rest-text: #3F6253; --note-empty-border: #93AA9D;
+  --pan-playing: #0F231A; --pan-glow: rgba(15, 35, 26, 0.35);
+  --alt-c0-text: #9C3222; --alt-c1-text: #7A5A00; --alt-c2-text: #0B6E6C; --alt-c3-text: #5B3A8C;
+  --faint-stroke: #0B6E6C; --faint-text: #2C6B63;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --pan-g0: #FBFDFB; --pan-g1: #E2EAE5; --pan-g2: #C6D4CB; --pan-i0: #F5F9F6; --pan-i1: #DAE4DE;
+    --pan-rim: #93AA9D; --pan-groove: #A9BDB1; --pan-guide: #A9BDB1; --pan-note-stroke: #9DB2A6;
+    --note-rest-bg: #FFFFFF; --note-rest-text: #3F6253; --note-empty-border: #93AA9D;
+    --pan-playing: #0F231A; --pan-glow: rgba(15, 35, 26, 0.35);
+    --alt-c0-text: #9C3222; --alt-c1-text: #7A5A00; --alt-c2-text: #0B6E6C; --alt-c3-text: #5B3A8C;
+    --faint-stroke: #0B6E6C; --faint-text: #2C6B63;
   }
 }
 @media (min-width: 1024px) { :root { --gutter: 24px; } }
@@ -555,13 +583,13 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
    pan. Same hue as its degree's highlight color, dimmed and dashed. */
 .pan-note.alt-highlight circle { stroke-width: 1.5; stroke-dasharray: 3 3; }
 .pan-note.alt-highlight-0 circle { fill: rgba(205,76,56,0.12) !important; stroke: rgba(205,76,56,0.5) !important; }
-.pan-note.alt-highlight-0 text { fill: rgba(232,190,160,0.75) !important; }
+.pan-note.alt-highlight-0 text { fill: var(--alt-c0-text) !important; }
 .pan-note.alt-highlight-1 circle { fill: rgba(217,166,46,0.12) !important; stroke: rgba(217,166,46,0.5) !important; }
-.pan-note.alt-highlight-1 text { fill: rgba(240,216,150,0.75) !important; }
+.pan-note.alt-highlight-1 text { fill: var(--alt-c1-text) !important; }
 .pan-note.alt-highlight-2 circle { fill: rgba(63,167,166,0.12) !important; stroke: rgba(63,167,166,0.5) !important; }
-.pan-note.alt-highlight-2 text { fill: rgba(170,224,222,0.75) !important; }
+.pan-note.alt-highlight-2 text { fill: var(--alt-c2-text) !important; }
 .pan-note.alt-highlight-3 circle { fill: rgba(155,111,212,0.12) !important; stroke: rgba(155,111,212,0.5) !important; }
-.pan-note.alt-highlight-3 text { fill: rgba(214,190,240,0.75) !important; }
+.pan-note.alt-highlight-3 text { fill: var(--alt-c3-text) !important; }
 
 /* Playing animation — ring + pulse only, keeps whatever fill/text color the
    note already has (default or per-degree highlight color) unchanged. */
@@ -569,7 +597,7 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .pan-note.playing rect, .pan-note.playing circle {
   stroke: var(--pan-playing) !important;
   stroke-width: 2.5;
-  filter: drop-shadow(0 0 8px rgba(255,255,255,0.55));
+  filter: drop-shadow(0 0 8px var(--pan-glow));
 }
 .pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
 @media (prefers-reduced-motion: reduce) {
@@ -580,8 +608,8 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 /* Progression play levels: the next chord drawn faintly, and strike-order
    badges (number + hand). The pan stays dark in both themes, so these are
    fixed colours like the rest of the drawing. */
-.pan-note.faint circle { stroke: #7fd6d4; stroke-width: 1.5; stroke-dasharray: 2 4; }
-.pan-note.faint text { fill: #9fc9bb !important; }
+.pan-note.faint circle { stroke: var(--faint-stroke); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.pan-note.faint text { fill: var(--faint-text) !important; }
 .pan-strike { pointer-events: none; }
 .pan-strike rect { stroke: #060f0c; stroke-width: 1.5; }
 .pan-strike-r rect { fill: #E4F2EA; }
@@ -1263,14 +1291,9 @@ button.set-row[role="switch"] { cursor: pointer; }
 .set-form .set-actions { padding: 0; }
 .list > .set-actions { padding-top: 0; }
 
-/* Pan drawing: always on its dark stage, with the rotate button over it.
-   The drawing uses a few theme tokens, pinned here to their dark values. */
-.pan-wrap {
-  position: relative; background: var(--pan-stage); border-radius: var(--r-md);
-  --border: #1F3B2E; --border-strong: #2F5544; --text-1: #E4F2EA; --text-2: #B8D0C4; --text-3: #8BA898;
-  --surface-2: #172A21; --surface-3: #1E372B; --focus: #7FD6D4;
-  --accent-soft: rgba(205, 76, 56, 0.16); --accent-text: #EE7A66;
-}
+/* Pan drawing on its stage, with the rotate button over it. It follows the
+   theme: the --pan-* tokens (dark in :root, light in the light theme). */
+.pan-wrap { position: relative; background: var(--pan-stage); border-radius: var(--r-md); }
 .pan-rotate { position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1; }
 .btn-secondary[aria-pressed="true"] { background: var(--selected-bg); border-color: var(--selected-bg); color: var(--on-selected); }
 
@@ -4949,7 +4972,7 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
   }
 
   return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
-  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
+  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
   ${textHtml}
 </g>`;
 }
@@ -5042,25 +5065,25 @@ function renderPan(layout, opts = {}) {
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#1a3828"/>
-      <stop offset="60%" stop-color="#0d2018"/>
-      <stop offset="100%" stop-color="#060f0c"/>
+      <stop offset="0%" style="stop-color: var(--pan-g0)"/>
+      <stop offset="60%" style="stop-color: var(--pan-g1)"/>
+      <stop offset="100%" style="stop-color: var(--pan-g2)"/>
     </radialGradient>
     <radialGradient id="innerGrad" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#183028"/>
-      <stop offset="100%" stop-color="#0d1e18"/>
+      <stop offset="0%" style="stop-color: var(--pan-i0)"/>
+      <stop offset="100%" style="stop-color: var(--pan-i1)"/>
     </radialGradient>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="var(--pan-rim)" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="var(--pan-groove)" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
+  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="var(--pan-groove)" stroke-width="1.5"/>
   <!-- Tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="var(--pan-guide)" stroke-width="1" opacity="0.5"/>
+  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="var(--pan-guide)" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
