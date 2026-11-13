@@ -358,6 +358,7 @@ export function renderFingering(inst, midi, opts = {}) {
   const {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
     useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null, editable = false,
+    noteLabel = true,
   } = opts;
   const tube = inst.family === 'flute';
   const pendant = !tube && fgIsPendant(inst);
@@ -370,7 +371,7 @@ export function renderFingering(inst, midi, opts = {}) {
     : previousMidi != null && previousMidi !== midi ? fingeringMoves(inst, previousMidi, midi) : null;
   const label = displayNote(midiToNoteName(midi), useFlats, useSolfege);
   const aria = describeFingering(inst, midi, label);
-  const labelH = size === 'mini' ? 26 : 30;
+  const labelH = !noteLabel ? 6 : size === 'mini' ? 26 : 30;
   const ctx = { inst, chambers, main, second, moves, size, showFingers, showSizes, a4, editable };
 
   const { parts, bodyBottom } = usesHoleMap(inst) && chambers.length === 1 ? fgPhotoParts(ctx)
@@ -378,7 +379,7 @@ export function renderFingering(inst, midi, opts = {}) {
   const H = bodyBottom + labelH;
   const noteY = bodyBottom + (size === 'mini' ? 14 : 16);
   const overblow = main && main.chamber.overblow?.includes(midi);
-  parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
+  if (noteLabel) parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
 
   return `<svg class="fingering fingering-${size}${tube ? ' is-flute' : ''}" viewBox="0 0 ${FG_W} ${Math.round(H)}" role="img"
     aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${parts.join('')}</svg>`;

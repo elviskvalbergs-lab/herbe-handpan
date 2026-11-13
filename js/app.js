@@ -1728,12 +1728,20 @@ function ocScaleSelect(title) {
 // While a chord's arpeggio plays: the step being played is highlighted
 // (no re-render; the list may not be on screen). The last one clears itself.
 let _ocStepTimer = null;
+function ocShowStep(key, i) {
+  (state.oc.chordStep ??= {})[key] = i;
+  for (const box of document.querySelectorAll('.oc-player')) {
+    if (box.dataset.key !== key) continue;
+    box.querySelectorAll('.oc-pnote').forEach((b, k) => { b.classList.toggle('is-current', k === i); b.setAttribute('aria-pressed', k === i ? 'true' : 'false'); });
+    box.querySelectorAll('.oc-pstage').forEach((st, k) => st.classList.toggle('is-current', k === i));
+  }
+}
 function ocHighlightStep(key, i, last) {
   clearTimeout(_ocStepTimer);
-  document.querySelectorAll('.oc-step.is-playing').forEach(li => li.classList.remove('is-playing'));
-  const lists = [...document.querySelectorAll('.oc-steps')].filter(ol => ol.dataset.key === key);
-  for (const ol of lists) ol.children[i]?.classList.add('is-playing');
-  if (last) _ocStepTimer = setTimeout(() => document.querySelectorAll('.oc-step.is-playing').forEach(li => li.classList.remove('is-playing')), 900);
+  ocShowStep(key, i);
+  document.querySelectorAll('.oc-player.is-playing').forEach(b => b.classList.remove('is-playing'));
+  for (const box of document.querySelectorAll('.oc-player')) if (box.dataset.key === key) box.classList.add('is-playing');
+  if (last) _ocStepTimer = setTimeout(() => document.querySelectorAll('.oc-player.is-playing').forEach(b => b.classList.remove('is-playing')), 900);
 }
 
 // What a chord card shows, worked out once for the row and its detail.
@@ -1759,24 +1767,31 @@ function ocChordBody(inst, a, parts, { size = 'mini' } = {}) {
   const key = escHtml(a.key);
   return `
     <div class="oc-chord-body${size === 'medium' ? ' is-medium' : ''}">
-      <div class="oc-voicing">
-        <div class="oc-label">Voicing</div>
-        <div class="chips">${a.midis.map(m => `<button type="button" class="chip" data-action="oc-voicing" data-key="${key}" data-midi="${m}"
-          aria-label="Move ${nn(m)} to another octave" title="Move to another octave">${nn(m)}</button>`).join('')}</div>
-        <div class="oc-hint">Tap a note to move it to another octave</div>
+      <div class="oc-voicing is-inline">
+        <span class="oc-label">Octaves</span>
+        <div class="chips">${a.midis.map(m => `<button type="button" class="chip is-dense" data-action="oc-voicing" data-key="${key}" data-midi="${m}"
+          aria-label="Move ${nn(m)} to another octave" title="Tap to move to another octave">${nn(m)}</button>`).join('')}</div>
       </div>
-      <ol class="oc-steps" data-key="${key}">
+      ${(() => {
+        // One picture at a time: the notes in playing order above it, the
+        // one on show (or being played) lit, and what to change under it.
+        const sel = Math.min(state.oc.chordStep?.[a.key] ?? 0, parts.arp.length - 1);
+        return `
+      <div class="oc-player" data-key="${key}">
+        <div class="oc-player-notes" role="group" aria-label="Notes of the chord, in playing order">
+          ${parts.arp.map((m, i) => `
+            <button type="button" class="oc-pnote${i === sel ? ' is-current' : ''}" data-action="oc-step" data-key="${key}" data-i="${i}" data-midi="${m}"
+              aria-pressed="${i === sel ? 'true' : 'false'}"><span class="oc-pnote-num">${i + 1}</span>${escHtml(nn(m))}</button>
+            ${i < parts.arp.length - 1 ? `<span class="oc-pnote-sep" aria-hidden="true">${icon('chevron-right')}</span>` : ''}`).join('')}
+        </div>
         ${parts.arp.map((m, i) => `
-          <li class="oc-step">
-            <button type="button" class="oc-step-fg" data-action="oc-play-note" data-midi="${m}" aria-label="Play ${escHtml(nn(m))}">
-              ${renderFingering(inst, m, { ...opts, size: 'medium', showFingers: true, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
-            <div class="oc-step-text">
-              <div class="oc-step-num">${i + 1} of ${parts.arp.length}</div>
-              <div class="oc-step-note">${escHtml(nn(m))}</div>
-              <div class="oc-step-move">${i === 0 ? 'Start with this fingering' : ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m))}</div>
-            </div>
-          </li>`).join('')}
-      </ol>
+          <div class="oc-pstage${i === sel ? ' is-current' : ''}" data-i="${i}">
+            <button type="button" class="oc-pstage-fg" data-action="oc-play-note" data-midi="${m}" aria-label="Play ${escHtml(nn(m))}">
+              ${renderFingering(inst, m, { ...opts, size: 'medium', showFingers: true, noteLabel: false, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
+            <div class="oc-pstage-move"><strong>${escHtml(nn(m))}</strong> · ${i === 0 ? 'start with this fingering' : ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m), { lower: true })}</div>
+          </div>`).join('')}
+      </div>`;
+      })()}
       <div class="fg-legend oc-steps-legend">
         <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span>
         ${parts.arp.some(m => fingeringFor(inst, m)?.states?.includes('h')) ? `<span>${legendHole('h')} half</span>` : ''}
@@ -5687,6 +5702,7 @@ document.addEventListener('click', e => {
     // Desktop Chords is list | detail: a row selects rather than toggles.
     const select = ocWide() && state.view === 'instrument' && state.oc.tab === 'chords';
     state.oc.expanded = !select && state.oc.expanded === el.dataset.key ? null : el.dataset.key;
+    state.oc.chordStep = {};
     render();
     return;
   }
@@ -5737,11 +5753,17 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'oc-step') {
+    initAudio();
+    playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
+    ocHighlightStep(el.dataset.key, parseInt(el.dataset.i, 10), true);
+    return;
+  }
   if (action === 'oc-play-note') {
     initAudio();
     playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
-    const li = el.closest('.oc-step');
-    if (li) ocHighlightStep(li.parentElement.dataset.key, [...li.parentElement.children].indexOf(li), true);
+    const stage = el.closest('.oc-pstage');
+    if (stage) ocHighlightStep(stage.closest('.oc-player').dataset.key, parseInt(stage.dataset.i, 10), true);
     return;
   }
   if (action === 'oc-play-pair') {

@@ -1593,3 +1593,26 @@ html { touch-action: manipulation; }
 .oc-step:has(.fingering.is-flute) .oc-step-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2); padding: 0 var(--space-1); }
 .oc-step:has(.fingering.is-flute) .oc-step-num { order: 3; }
 .oc-step:has(.fingering.is-flute) .oc-step-move { flex-basis: 100%; margin-top: 0; }
+
+/* Chord player: one picture at a time, so a whole chord fits on a phone screen */
+.oc-voicing.is-inline { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.oc-voicing.is-inline .oc-label { margin: 0; }
+.chip.is-dense { min-height: 32px; padding: 2px 10px; font-size: var(--fs-13); }
+.oc-player { margin-top: var(--space-3); }
+.oc-player-notes { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+.oc-pnote { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border-radius: 22px;
+  border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1); font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; }
+.oc-pnote-num { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-3); color: var(--text-2); font-size: 12px; }
+.oc-pnote.is-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.oc-pnote.is-current .oc-pnote-num { background: var(--accent); color: var(--on-accent, #fff); }
+.oc-player.is-playing .oc-pnote.is-current { background: var(--accent-soft); }
+.oc-pnote-sep { color: var(--text-3); display: inline-flex; }
+.oc-pnote-sep svg { width: 16px; height: 16px; }
+.oc-pstage { display: none; margin-top: var(--space-2); }
+.oc-pstage.is-current { display: block; }
+.oc-pstage-fg { display: block; width: 100%; max-width: 420px; margin: 0 auto; padding: 6px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); background: var(--surface-1); color: inherit; cursor: pointer; }
+.oc-player.is-playing .oc-pstage.is-current .oc-pstage-fg { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.oc-pstage-fg .fingering { width: 100%; height: auto; display: block; max-height: 42vh; }
+.oc-pstage-move { margin-top: var(--space-2); font-size: 17px; line-height: 1.35; color: var(--text-2); text-align: center; min-height: 2.7em; }
+.oc-pstage-move strong { color: var(--text-1); }
