@@ -1670,7 +1670,8 @@ html { touch-action: manipulation; }
 .crop-stage::after { content: ''; position: absolute; inset: 0; border: 2px solid var(--accent); border-radius: inherit; pointer-events: none; }
 .crop-stage:active { cursor: grabbing; }
 .crop-img { position: absolute; max-width: none; pointer-events: none; }
-.crop-zoom-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); color: var(--text-3); }
+.crop-tools { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+.crop-zoom-row { flex: 1; display: flex; align-items: center; gap: var(--space-2); color: var(--text-3); }
 .crop-zoom-row .crop-zoom { flex: 1; accent-color: var(--accent); }
 
 /* Set-up readings in a row: the guide sits on the tuner strip */

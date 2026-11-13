@@ -2950,13 +2950,31 @@ function photoCropSheet() {
   return uiSheet({
     key: 'photo-crop', title: 'Fit the photo', close: 'crop-cancel',
     body: `
-      <p class="sheet-text">Drag the photo so the instrument fills the frame, top side up. Zoom in to crop closer.</p>
+      <p class="sheet-text">Drag the photo so the instrument fills the frame, top side up. Zoom in to crop closer; Rotate turns an upright photo.</p>
       <div class="crop-stage" style="aspect-ratio: ${c.ratio}"><img class="crop-img" src="${c.src}" alt="" draggable="false"></div>
-      <label class="crop-zoom-row">${icon('search')}<input type="range" class="crop-zoom" data-action="crop-zoom" min="1" max="4" step="0.01" value="${c.zoom}" aria-label="Zoom"></label>`,
+      <div class="crop-tools">
+        <label class="crop-zoom-row">${icon('search')}<input type="range" class="crop-zoom" data-action="crop-zoom" min="1" max="4" step="0.01" value="${c.zoom}" aria-label="Zoom"></label>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="crop-rotate" title="Turn the photo a quarter turn">${icon('rotate')} Rotate</button>
+      </div>`,
     footer: `
       <button type="button" class="btn btn-ghost" data-action="crop-cancel">Cancel</button>
       <button type="button" class="btn btn-primary" data-action="crop-done">Use photo</button>`,
   });
+}
+
+// A quarter turn clockwise (a photo taken upright), as a new image.
+async function rotateCropImage() {
+  const c = state.photoCrop;
+  if (!c) return;
+  const img = await new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = c.src; });
+  const canvas = document.createElement('canvas');
+  canvas.width = c.ih; canvas.height = c.iw;
+  const g = canvas.getContext('2d');
+  g.translate(c.ih, 0);
+  g.rotate(Math.PI / 2);
+  g.drawImage(img, 0, 0);
+  Object.assign(c, { src: canvas.toDataURL('image/jpeg', 0.9), iw: canvas.width, ih: canvas.height, zoom: 1, cx: 0.5, cy: 0.5 });
+  render();
 }
 
 // Places the photo under the frame from state.photoCrop (no re-render).
@@ -5815,6 +5833,7 @@ document.addEventListener('click', e => {
   }
   if (action === 'crop-cancel') { state.photoCrop = null; render(); return; }
   if (action === 'crop-done') { finishCrop(); return; }
+  if (action === 'crop-rotate') { rotateCropImage().catch(() => showToast('That photo couldn\'t be turned')); return; }
   if (action === 'inst-edit-close') { state.instEdit = null; refreshInstruments(); render(); return; }
   if (action === 'ie-photo-remove' || action === 'ie-holes-step') {
     let inst = getInstrument(el.dataset.id || state.instEdit);
