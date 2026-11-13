@@ -951,28 +951,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   .fg-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
 }
 
-/* Ocarina Chords (§6.11): filters, a list of rows that open in place;
-   desktop is list | detail. */
-.oc-chords-view, .oc-chords-side { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+/* Ocarina / flute Chords: the shared Chords screen; its filters and the ⋯ sheet. */
 .oc-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); }
-.oc-chord { position: relative; }
-.list > .oc-chord + .oc-chord::before {
-  content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--border); z-index: 1;
-}
-.oc-chord.is-open { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
-.oc-chord.is-open .oc-chord-row { box-shadow: none; background: transparent; }
-.oc-chord-row .row-trail { gap: 0; }
-.oc-chord-row .row-meta .badge { margin-right: var(--space-1); vertical-align: 1px; }
-.oc-chord-body { display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4) var(--space-4); min-width: 0; }
-.oc-label { font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-2); margin-bottom: var(--space-2); }
-.oc-voicing .oc-hint { margin-top: var(--space-2); }
-.oc-arp { display: flex; align-items: flex-start; gap: var(--space-1); }
-.oc-arp.chips-scroll { margin-inline: calc(-1 * var(--space-4)); padding-inline: var(--space-4); padding-bottom: var(--space-1); }
-.oc-arp.chips-scroll > * { scroll-snap-align: none; }
-.oc-arp .fg-move { padding-top: 24px; }
-.oc-chord-body.is-medium .oc-arp { flex-wrap: wrap; row-gap: var(--space-3); }
-.oc-chord-body.is-medium .fg-move { flex-basis: 96px; width: 96px; padding-top: 56px; }
-.oc-chord-body.is-medium .fg-move > span { -webkit-line-clamp: 5; }
 .oc-pair {
   display: grid; grid-template-columns: minmax(0, 1fr) 64px; align-items: center; gap: var(--space-3);
   width: 100%; min-height: 44px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); text-align: left;
@@ -990,20 +970,6 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .oc-missing[open] > summary .ico { transform: rotate(90deg); }
 .oc-missing > .oc-hint { margin-bottom: var(--space-2); }
 .oc-missing .list { opacity: 0.7; }
-.oc-detail-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
-.oc-detail-text { flex: 1 1 220px; min-width: 0; }
-.oc-detail-title { font: var(--fw-semibold) var(--fs-20)/var(--lh-20) var(--font); color: var(--text-1); }
-.oc-detail-meta { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); margin-top: 2px; }
-.oc-detail .oc-chord-body { padding: 0; }
-.oc-detail .empty { padding: var(--space-8) 0; }
-@media (min-width: 1024px) {
-  .oc-chords-view.is-wide { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: var(--space-6); align-items: start; }
-  .oc-chords-detail {
-    position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); min-width: 0;
-    max-height: calc(100dvh - var(--appbar-h) - env(safe-area-inset-top) - var(--space-8)); overflow-y: auto; overscroll-behavior: contain;
-  }
-  body.tuner-on .oc-chords-detail { max-height: calc(100dvh - var(--appbar-h) - var(--tuner-h) - var(--space-12)); }
-}
 
 /* Practice (§6.12): a focus view with Back and Next at the bottom. */
 .practice { display: flex; flex-direction: column; gap: var(--space-3); max-width: var(--reading-max); margin: 0 auto; }
@@ -1573,16 +1539,6 @@ html { touch-action: manipulation; }
 .fingering .fg-photo-frame { fill: none; stroke: var(--border); stroke-width: 1; }
 .scale-row.listen-match .row-meta + .row-meta { -webkit-line-clamp: 3; }
 
-/* Chord fingerings as steps: picture, then the note and what changes */
-.oc-steps { list-style: none; margin: var(--space-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.oc-step { display: flex; align-items: center; gap: var(--space-3); }
-.oc-step-fg { flex: 0 0 58%; max-width: 260px; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-sm);
-  background: var(--surface-1); cursor: pointer; color: inherit; }
-.oc-step-fg .fingering { width: 100%; height: auto; display: block; }
-.oc-step-text { min-width: 0; }
-.oc-step-num { font-size: var(--fs-13); color: var(--text-3); }
-.oc-step-note { font-size: 22px; font-weight: 700; color: var(--text-1); line-height: 1.2; }
-.oc-step-move { font-size: var(--fs-15, 15px); color: var(--text-2); margin-top: 2px; }
 .oc-steps-legend { margin-top: var(--space-3); flex-wrap: wrap; }
 .oc-steps-legend .icon-btn, .oc-steps-legend .btn-icon { margin-left: auto; }
 /* Holes drawn on a photo: white outline so they read on dark clay, finger name under the hole */
@@ -1604,18 +1560,6 @@ html { touch-action: manipulation; }
 .s-reverse { display: flex; width: 100%; justify-content: flex-start; text-align: left; margin-bottom: var(--space-2); white-space: normal; }
 .ie-fingers { margin: var(--space-2) 0 var(--space-3); }
 .fg-yours { text-align: center; margin: var(--space-2) 0 0; }
-/* The step of a chord being played */
-.oc-step { border-radius: var(--r-md, 12px); transition: background-color 0.15s ease, box-shadow 0.15s ease; }
-.oc-step.is-playing { background: var(--accent-soft, rgba(205, 76, 56, 0.12)); box-shadow: 0 0 0 2px var(--accent); }
-.oc-step.is-playing .oc-step-fg { border-color: var(--accent); }
-.oc-step.is-playing .oc-step-note { color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { .oc-step { transition: none; } }
-/* A flute is long and thin: its chord steps put the picture full width, the words under it */
-.oc-step:has(.fingering.is-flute) { flex-direction: column; align-items: stretch; gap: var(--space-1); }
-.oc-step:has(.fingering.is-flute) .oc-step-fg { flex: none; max-width: none; }
-.oc-step:has(.fingering.is-flute) .oc-step-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-2); padding: 0 var(--space-1); }
-.oc-step:has(.fingering.is-flute) .oc-step-num { order: 3; }
-.oc-step:has(.fingering.is-flute) .oc-step-move { flex-basis: 100%; margin-top: 0; }
 
 /* Chord player: one picture at a time, so a whole chord fits on a phone screen */
 .oc-voicing.is-inline { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }

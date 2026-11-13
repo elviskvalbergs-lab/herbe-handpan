@@ -16,6 +16,11 @@ Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starti
 - Progressions, chord-sheet import and the play levels from the brief's last two sections are built (at the owner's request). The rest of the songs project (melody, MusicXML/MIDI import, a song catalogue) is still for later: don't build it unless asked.
 - If anything in the brief conflicts with the code, stop and ask rather than guessing.
 
+## Design consistency (reuse, don't copy)
+- Every instrument uses the same screens and components. A screen that exists for one instrument (Chords, Playlists, Set up, a sheet, a card, a list row) is built from shared parts, and another instrument plugs its own content into them instead of getting its own version. The Chords screen is `chordsScreenHtml` / `chordCardHtml` / `chordRowHtml` in `js/app.js`: an instrument gives its picture and its chord rows, nothing else.
+- Before adding UI for one instrument, look for the pattern the others already use and reuse it (or extend the shared part so all of them get it). Only the parts that really differ between instruments (the picture of the instrument, its fingerings) are instrument-specific.
+- When a screen's pattern changes, change the shared part so every instrument changes with it, and remove the old copy. `docs/design-system.md` lists the shared patterns; keep it up to date.
+
 ## Data and database
 - Database changes are additive only: new tables, columns, functions or policies, never altering or dropping existing ones. Write them as new SQL files under `supabase/migrations/` (`YYYYMMDD_short_name.sql`); the build applies them automatically (`supabase/migrate.py`, see `supabase/README.md`). Never edit a migration file after it has been merged: add a new one. Never ask for, print or commit the database connection string or any Supabase secret key; it lives only in Vercel's environment variables.
 - Fingering charts and instrument ranges must come from a published source (maker or manufacturer chart), with the source URL noted in the data file. Never fill them in from memory. If no reliable source is found, leave a clearly marked TODO with the data structure in place.
