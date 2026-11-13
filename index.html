@@ -8049,7 +8049,7 @@ function ocMovesHtml(moves, { lower = false } = {}) {
 // The handpan-scale filter of the ocarina Notes and Chords tabs.
 function ocScaleSelect(title) {
   return uiPicker({
-    id: 'oc-scale-filter', value: state.oc.scaleFilter, label: 'Handpan scale', hint: title, action: 'oc-scale-filter',
+    id: 'oc-scale-filter', value: state.oc.scaleFilter, label: 'Scale', hint: title, action: 'oc-scale-filter',
     options: scalePickerOptions([{ value: 'All', label: 'All notes', keywords: ['none', 'off'] }]),
   });
 }
@@ -8187,7 +8187,7 @@ function ocFiltersSheet() {
     <div class="hp-sheet-form">
       ${chordCountField(new Set(oc.counts ?? []), 'oc-toggle-count')}
       ${chordTypeField(oc.category, 'oc-category')}
-      ${uiField({ label: 'Only notes of a handpan scale', id: 'oc-scale-filter', control: ocScaleSelect('Only notes of a handpan scale') })}
+      ${uiField({ label: 'Scale', id: 'oc-scale-filter', control: ocScaleSelect('Only chords made of this scale\'s notes'), help: 'Only chords made of the scale\'s notes.' })}
     </div>`,
     footer: `
       <button type="button" class="btn btn-ghost" data-action="oc-filters-clear">Clear all</button>
@@ -8361,7 +8361,7 @@ function viewInstrument() {
     <div class="oc-notes">
       <div class="oc-notes-side">
         <div class="oc-context">
-          ${ocScaleSelect('Dim notes outside a handpan scale')}
+          ${ocScaleSelect('Dim notes outside a scale')}
           <button type="button" class="btn btn-secondary" data-action="oc-play-scale">${icon('play')} Scale</button>
         </div>
         <div class="fg-stage-wrap">

@@ -1058,7 +1058,7 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 
 | Screen | Shared parts | What an instrument supplies |
 |---|---|---|
-| Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml`, `chordRowHtml`, the filter row `chordFilterRowHtml` (Filters + root chips, `chordRootsOf`) and the Filters sheet fields `chordCountField` / `chordTypeField`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows and card actions; anything below the card (ocarina/flute: notes in playing order and the move); extra filters in its sheet (handpan: playlist; ocarina/flute: handpan scale) |
+| Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml`, `chordRowHtml`, the filter row `chordFilterRowHtml` (Filters + root chips, `chordRootsOf`) and the Filters sheet fields `chordCountField` / `chordTypeField`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows and card actions; anything below the card (ocarina/flute: notes in playing order and the move); extra filters in its sheet (handpan: playlist; ocarina/flute: scale) |
 | Playlists tab | `playlistsTabHtml` | nothing |
 | Playlist page | one row per entry; tapping it opens the chord on its instrument's Chords screen | nothing |
 | Set up | the "Your …" card (`instFieldsHtml`), Holes and fingers, Where the holes are | what it needs set up (readings for a bought one) |
