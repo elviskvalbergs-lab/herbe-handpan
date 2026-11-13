@@ -259,8 +259,11 @@ input[type="number"], .chord-count, .tuner-hz, .share-code, .b-result, .rec-inpu
 .tab-label { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (hover: hover) { .tab:hover { color: var(--text-2); } }
 .tab[aria-selected="true"] { color: var(--text-1); font-weight: var(--fw-semibold); }
-.tab[aria-selected="true"]::before {
-  content: ''; position: absolute; top: 3px; left: 50%; width: 24px; height: 3px; margin-left: -12px;
+/* The selected tab's mark: on phones and tablets as wide as its label, at
+   the top edge of the bar (≥1024px it underlines the tab, see below). */
+.tab-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: inherit; max-width: 100%; min-width: 0; }
+.tab[aria-selected="true"] .tab-inner::before {
+  content: ''; position: absolute; top: -9px; left: -4px; right: -4px; height: 3px;
   border-radius: var(--r-full); background: var(--accent);
 }
 .tab:focus-visible { outline-offset: -2px; }
@@ -280,9 +283,11 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
     padding: 0 var(--space-4); font-size: var(--fs-15); font-weight: var(--fw-semibold);
   }
   .tab .ico { display: none; }
+  .tab-inner { flex-direction: row; }
+  .tab[aria-selected="true"] .tab-inner::before { display: none; }
   .tab[aria-selected="true"]::before {
-    top: auto; bottom: -1px; left: var(--space-4); right: var(--space-4); width: auto; height: 2px;
-    margin-left: 0; border-radius: 0;
+    content: ''; position: absolute; top: auto; bottom: -1px; left: var(--space-4); right: var(--space-4); height: 2px;
+    background: var(--accent);
   }
   body.has-tabbar .main { padding-bottom: max(var(--space-6), env(safe-area-inset-bottom)); }
 }
@@ -1590,7 +1595,7 @@ html { touch-action: manipulation; }
 .oc-pnote { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border-radius: 22px;
   border: 1px solid var(--border); background: var(--surface-1); color: var(--text-1); font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; }
 .oc-pnote-num { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-3); color: var(--text-2); font-size: 12px; }
-.oc-pnote.is-current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.oc-pnote.is-current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .oc-pnote.is-current .oc-pnote-num { background: var(--accent); color: var(--on-accent, #fff); }
 .oc-player.is-playing .oc-pnote.is-current { background: var(--accent-soft); }
 .oc-pnote-sep { color: var(--text-3); display: inline-flex; }
@@ -1632,7 +1637,7 @@ html { touch-action: manipulation; }
   :root { --tabbar-h: 54px; }
   .tab { padding-top: 7px; gap: 1px; }
   .tab .ico { width: 22px; height: 22px; }
-  .tab[aria-selected="true"]::before { top: 1px; }
+  .tab[aria-selected="true"] .tab-inner::before { top: -6px; }
 
   .hp-stage { padding-top: var(--space-2); padding-bottom: var(--space-2); gap: 6px; }
   .hp-pan svg { width: min(100%, 25dvh); }
@@ -6823,7 +6828,7 @@ function uiTabBar(tabs, current) {
       ${tabs.map(t => `
         <button type="button" class="tab" role="tab" aria-selected="${t.id === current ? 'true' : 'false'}"
           data-action="${t.action}"${uiData(t.data)}>
-          ${icon(t.icon)}<span class="tab-label">${escHtml(t.label)}</span>
+          <span class="tab-inner">${icon(t.icon)}<span class="tab-label">${escHtml(t.label)}</span></span>
         </button>`).join('')}
     </nav>`;
 }
@@ -7981,6 +7986,7 @@ function newOcState() {
     tab: 'notes', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
     category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
     missingOpen: false, buildChamber: 0, fingersSheet: false, chordMore: false,
+    filtersOpen: false, root: 'All', counts: [],
     holeMap: null,         // { sel } while marking where the holes are on the photo
     fgEdit: null,          // { midi, states } while changing a note's fingering by hand
   };
@@ -8003,8 +8009,11 @@ function ocChordModel(inst) {
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const layout = ocarinaToLayout(inst, pcs);
   const chords = layout.top.ding ? findAllChords(layout) : [];
+  const counts = new Set(oc.counts ?? []);
   const items = chords
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
+    .filter(c => !counts.size || counts.has(chordCountKey(c.noteCount)))
+    .filter(c => !oc.root || oc.root === 'All' || notePC(c.rootNote) === NOTE_NAMES.indexOf(oc.root))
     .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
   const sourceId = oc.scaleFilter !== 'All' ? oc.scaleFilter : inst.scaleId;
@@ -8095,7 +8104,7 @@ function viewOcarinaChords(inst) {
   const selected = model.items.find(x => x.chord.id === oc.expanded) ?? model.items[0] ?? null;
   if (selected && oc.expanded !== selected.chord.id) oc.expanded = selected.chord.id;
   const rows = model.items.length === 0
-    ? uiEmpty({ icon: 'music', title: 'No chords match these filters', action: oc.category !== 'All' || oc.scaleFilter !== 'All' ? '<button type="button" class="btn btn-secondary" data-action="oc-filters-clear">Clear filters</button>' : '' })
+    ? uiEmpty({ icon: 'music', title: 'No chords match these filters', action: oc.category !== 'All' || oc.scaleFilter !== 'All' || oc.counts?.length || (oc.root && oc.root !== 'All') ? '<button type="button" class="btn btn-secondary" data-action="oc-filters-clear" data-all="1">Clear filters</button>' : '' })
     : `<div class="list chord-rows">${model.items.map(x => {
       const a = cardArgs(x);
       const parts = ocChordParts(inst, a);
@@ -8117,15 +8126,10 @@ function viewOcarinaChords(inst) {
         })).join('')}
       </div>
     </details>` : '';
+  const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0);
   const listHead = `
-          <div class="oc-filters">
-            ${ocScaleSelect('Only notes of a handpan scale')}
-            <select class="select" data-action="oc-category" aria-label="Chord type">
-              <option value="All" ${oc.category === 'All' ? 'selected' : ''}>All types</option>
-              ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${oc.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
-            </select>
-          </div>
-          <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>`;
+    ${chordFilterRowHtml({ open: 'oc-filters-open', count: nFilters, roots: chordRootsOf(model.chords), root: oc.root ?? 'All', rootAction: 'oc-filter-root' })}
+    <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>`;
   const stage = selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
   return `${ocHeader(inst, 'chords')}${chordsScreenHtml({
     cls: ' oc-chords', stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
@@ -8171,6 +8175,24 @@ function ocChordStageParts(inst, a) {
           <div class="oc-pmove${i === sel ? ' is-current' : ''}" data-i="${i}"><strong>${escHtml(nn(m))}</strong> · ${i === 0 ? 'start with this fingering' : ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m), { lower: true })}</div>`).join('')}`,
   });
   return { picture, card, key };
+}
+
+// Filters of ocarina / flute Chords: the same sheet as the handpan's, with
+// the handpan-scale filter in place of the playlist.
+function ocFiltersSheet() {
+  const oc = state.oc;
+  return uiSheet({
+    key: 'oc-filters', title: 'Filters', close: 'oc-filters-close',
+    body: `
+    <div class="hp-sheet-form">
+      ${chordCountField(new Set(oc.counts ?? []), 'oc-toggle-count')}
+      ${chordTypeField(oc.category, 'oc-category')}
+      ${uiField({ label: 'Only notes of a handpan scale', id: 'oc-scale-filter', control: ocScaleSelect('Only notes of a handpan scale') })}
+    </div>`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="oc-filters-clear">Clear all</button>
+      <button type="button" class="btn btn-primary" data-action="oc-filters-close">Done</button>`,
+  });
 }
 
 // ⋯ of the chord on top: its octaves, the two-note pairs of a
@@ -9924,8 +9946,7 @@ function hpFilteredChords() {
   const { chords, chordFilter, layout } = state;
   // Root options: NOTE_NAMES[i] is at PC i — filter by which PCs have chords.
   const ROOT_ORDER = NOTE_NAMES;
-  const usedRootPCs = new Set(chords.map(c => notePC(c.rootNote)));
-  const roots = ['All', ...ROOT_ORDER.filter((_, i) => usedRootPCs.has(i))];
+  const roots = chordRootsOf(chords);
 
   // Apply filters — compare root by PC to handle G# ↔ Ab equivalence.
   const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
@@ -9937,10 +9958,7 @@ function hpFilteredChords() {
     : null;
 
   const filtered = chords.filter(c => {
-    if (state.chordCountSet.size > 0) {
-      const k = c.noteCount >= 5 ? '5+' : String(c.noteCount);
-      if (!state.chordCountSet.has(k)) return false;
-    }
+    if (state.chordCountSet.size > 0 && !state.chordCountSet.has(chordCountKey(c.noteCount))) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All') {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
@@ -10059,6 +10077,47 @@ function chordRowHtml({ title, titleHtml = false, meta, action, data, current, t
   });
 }
 
+// The list head's filter row: Filters (opens the instrument's filter
+// sheet, with how many are on) and the root-note chips.
+function chordFilterRowHtml({ open, count, roots, root, rootAction }) {
+  const uf = state.useFlats, us = state.useSolfege;
+  return `<div class="hp-filter-row">
+      <button type="button" class="btn btn-secondary hp-filter-btn" data-action="${open}" aria-haspopup="dialog">
+        ${icon('sliders-horizontal')} Filters${count ? ` · ${count}` : ''}
+      </button>
+      <div class="chips-scroll hp-roots" role="group" aria-label="Root note">
+        ${roots.map(r => `<button type="button" class="chip" aria-pressed="${root === r ? 'true' : 'false'}"
+          data-action="${rootAction}" data-root="${r}">${r === 'All' ? 'All' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
+      </div>
+    </div>`;
+}
+
+// Root chips: All, then the roots the chords have, in pitch order.
+function chordRootsOf(chords) {
+  const used = new Set(chords.map(c => notePC(c.rootNote)));
+  return ['All', ...NOTE_NAMES.filter((_, i) => used.has(i))];
+}
+
+// Fields of every instrument's Filters sheet.
+function chordCountField(selected, action) {
+  return `
+      <div class="field">
+        <span class="field-label">Notes in chord</span>
+        <div class="chips" role="group" aria-label="Notes in chord">
+          ${['2', '3', '4', '5+'].map(n => `<button type="button" class="chip" aria-pressed="${selected.has(n) ? 'true' : 'false'}"
+            data-action="${action}" data-count="${n}">${n}</button>`).join('')}
+        </div>
+      </div>`;
+}
+function chordTypeField(value, action) {
+  return uiField({ label: 'Type', control: `
+        <select class="select" data-action="${action}" aria-label="Chord type">
+          <option value="All" ${value === 'All' ? 'selected' : ''}>All types</option>
+          ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${value === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+        </select>` });
+}
+function chordCountKey(n) { return n >= 5 ? '5+' : String(n); }
+
 function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
   const uf = state.useFlats;
@@ -10127,15 +10186,7 @@ function viewChords() {
   const nFilters = hpFilterCount();
   const browseHead = `
     ${nowPlaying}
-    <div class="hp-filter-row">
-      <button type="button" class="btn btn-secondary hp-filter-btn" data-action="hp-filters-open" aria-haspopup="dialog">
-        ${icon('sliders-horizontal')} Filters${nFilters ? ` · ${nFilters}` : ''}
-      </button>
-      <div class="chips-scroll hp-roots" role="group" aria-label="Root note">
-        ${roots.map(r => `<button type="button" class="chip" aria-pressed="${chordFilter.root === r ? 'true' : 'false'}"
-          data-action="filter-root" data-root="${r}">${r === 'All' ? 'All' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
-      </div>
-    </div>
+    ${chordFilterRowHtml({ open: 'hp-filters-open', count: nFilters, roots, root: chordFilter.root, rootAction: 'filter-root' })}
     <div class="hp-count">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</div>`;
 
   const rows = filtered.length === 0
@@ -10204,18 +10255,8 @@ function hpFiltersSheet() {
   const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
   const body = `
     <div class="hp-sheet-form">
-      <div class="field">
-        <span class="field-label">Notes in chord</span>
-        <div class="chips" role="group" aria-label="Notes in chord">
-          ${['2', '3', '4', '5+'].map(n => `<button type="button" class="chip" aria-pressed="${state.chordCountSet.has(n) ? 'true' : 'false'}"
-            data-action="toggle-note-count" data-count="${n}">${n}</button>`).join('')}
-        </div>
-      </div>
-      ${uiField({ label: 'Type', control: `
-        <select class="select" data-action="filter-category" aria-label="Chord type">
-          <option value="All" ${f.category === 'All' ? 'selected' : ''}>All types</option>
-          ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${f.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
-        </select>` })}
+      ${chordCountField(state.chordCountSet, 'toggle-note-count')}
+      ${chordTypeField(f.category, 'filter-category')}
       ${uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
         id: 'hp-playlist-filter', value: f.playlist, label: 'Playlist', action: 'select-playlist-filter',
         options: [{ value: 'All', label: 'All chords' }, ...state.playlists.map(p => ({ value: p.id, label: p.name, meta: `${p.chords.length} chord${p.chords.length !== 1 ? 's' : ''}` }))],
@@ -10270,6 +10311,7 @@ function sheetHtml() {
   if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
   if (state.oc.fingersSheet && state.view === 'instrument' && state.oc.tab === 'setup') return setupFingersSheet();
   if (state.oc.chordMore && state.view === 'instrument' && state.oc.tab === 'chords') return ocChordMoreSheet();
+  if (state.oc.filtersOpen && state.view === 'instrument' && state.oc.tab === 'chords') return ocFiltersSheet();
   if (state.clayEdit && state.view === 'clay') return clayEditSheet();
   return '';
 }
@@ -12057,6 +12099,16 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'oc-more-open') { state.oc.chordMore = true; render(); return; }
+  if (action === 'oc-filters-open') { state.oc.filtersOpen = true; render(); return; }
+  if (action === 'oc-filters-close') { state.oc.filtersOpen = false; render(); return; }
+  if (action === 'oc-filter-root') { state.oc.root = el.dataset.root; render(); return; }
+  if (action === 'oc-toggle-count') {
+    const set = new Set(state.oc.counts ?? []);
+    if (set.has(el.dataset.count)) set.delete(el.dataset.count); else set.add(el.dataset.count);
+    state.oc.counts = [...set];
+    render();
+    return;
+  }
   if (action === 'oc-more-close') { state.oc.chordMore = false; render(); return; }
   if (action === 'oc-missing-toggle') {
     // The <details> opens by itself; remember it across re-renders.
@@ -12064,7 +12116,9 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'oc-filters-clear') {
-    Object.assign(state.oc, { scaleFilter: 'All', category: 'All', voicings: {} });
+    // The sheet's filters; the empty list's "Clear filters" also clears the root.
+    Object.assign(state.oc, { scaleFilter: 'All', category: 'All', counts: [] });
+    if (el.dataset.all) state.oc.root = 'All';
     render();
     return;
   }
