@@ -74,7 +74,7 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
   }
 
   return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
-  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--border)" stroke-width="1.5"/>
+  <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
   ${textHtml}
 </g>`;
 }
@@ -92,12 +92,51 @@ function ringNoteRadius(sortedIndex, total) {
 // Bottom notes now rendered as outer ring in unified renderPan — this function is kept
 // only for callers that may reference it directly (shellMode='bottom' handled inline).
 
+// Strike-order badges (opts.strikeMarks, from a progression's play level):
+// each note's strike numbers and hands, e.g. "2L 4L", in a tag at the
+// note's top right, coloured by the hand of its first strike.
+function strikeBadgesSvg(placed, strikeMarks) {
+  let out = '';
+  for (const { note, marks } of strikeMarks) {
+    const at = placed.find(p => p.note === note);
+    if (!at || !marks.length) continue;
+    const label = marks.map(m => `${m.n}${m.hand}`).join(' ');
+    const w = 14 + label.length * 13;
+    const h = 30;
+    // Just outside the note, away from the pan's centre (above the ding),
+    // so the note's name stays readable.
+    const dx = at.x - 250, dy = at.y - 250;
+    const d = Math.hypot(dx, dy);
+    const ux = d < 1 ? 0 : dx / d, uy = d < 1 ? -1 : dy / d;
+    const off = at.r + 3 + Math.max(Math.abs(ux) * w / 2, Math.abs(uy) * h / 2);
+    const x = Math.max(2, Math.min(500 - w - 2, Math.round(at.x + ux * off - w / 2)));
+    const y = Math.max(2, Math.min(500 - h - 2, Math.round(at.y + uy * off - h / 2)));
+    const hand = marks[0].hand === 'L' ? 'l' : 'r';
+    out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
+  <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
+    font-family="system-ui,sans-serif" font-size="23" font-weight="700">${label}</text>
+</g>`;
+  }
+  return out;
+}
+
+// opts.faintNotes (optional) draws notes faintly (the next chord), and
+// opts.strikeMarks (optional) numbers notes in strike order with L/R; a pan
+// rendered without them is exactly as before.
 export function renderPan(layout, opts = {}) {
-  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false } = opts;
+  const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false,
+    faintNotes = [], strikeMarks = [] } = opts;
 
   const cx = 250, cy = 250;
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
+  const faintSet = new Set(faintNotes);
+  const placed = []; // { x, y, r, note } of every note drawn, for strike badges
+  const place = (x, y, note, classes, id, r) => {
+    if (note) placed.push({ x, y, r, note });
+    return noteSlotSvg(x, y, note, classes, id, r, useFlats, useSolfege);
+  };
 
   // Assign each unique pitch class in the chord its own color (0-3, root first),
   // cycling for chords with more than 4 distinct pitch classes.
@@ -115,6 +154,7 @@ export function renderPan(layout, opts = {}) {
     if (!note) classes.push('empty');
     else if (hlSet.has(note)) classes.push(`highlight highlight-${pcColorIndex.get(notePC(note))}`);
     else if (altSet.has(note)) classes.push(`alt-highlight alt-highlight-${pcColorIndex.get(notePC(note))}`);
+    else if (faintSet.has(note)) classes.push('faint');
     if (isTopShell && dimTop) classes.push('dimmed');
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
@@ -127,25 +167,25 @@ export function renderPan(layout, opts = {}) {
   let svg = `<svg id="${PAN_SVG_ID}" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="panGrad" cx="38%" cy="32%">
-      <stop offset="0%" stop-color="#1a3828"/>
-      <stop offset="60%" stop-color="#0d2018"/>
-      <stop offset="100%" stop-color="#060f0c"/>
+      <stop offset="0%" style="stop-color: var(--pan-g0)"/>
+      <stop offset="60%" style="stop-color: var(--pan-g1)"/>
+      <stop offset="100%" style="stop-color: var(--pan-g2)"/>
     </radialGradient>
     <radialGradient id="innerGrad" cx="50%" cy="50%">
-      <stop offset="0%" stop-color="#183028"/>
-      <stop offset="100%" stop-color="#0d1e18"/>
+      <stop offset="0%" style="stop-color: var(--pan-i0)"/>
+      <stop offset="100%" style="stop-color: var(--pan-i1)"/>
     </radialGradient>
   </defs>
 
   <!-- Pan body -->
-  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="#2a5040" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="193" fill="url(#panGrad)" stroke="var(--pan-rim)" stroke-width="2"/>
   <!-- Outer groove ring -->
-  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="#1c3828" stroke-width="1" stroke-dasharray="3 7"/>
+  <circle cx="${cx}" cy="${cy}" r="173" fill="none" stroke="var(--pan-groove)" stroke-width="1" stroke-dasharray="3 7"/>
   <!-- Inner center dome -->
-  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="#1c3828" stroke-width="1.5"/>
+  <circle cx="${cx}" cy="${cy}" r="66" fill="url(#innerGrad)" stroke="var(--pan-groove)" stroke-width="1.5"/>
   <!-- Tone field guide ring -->
-  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="#183028" stroke-width="1" opacity="0.5"/>
-  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="#183028" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
+  <circle cx="${cx}" cy="${cy}" r="142" fill="none" stroke="var(--pan-guide)" stroke-width="1" opacity="0.5"/>
+  ${hasInnerRing ? `<circle cx="${cx}" cy="${cy}" r="${totalRingSlots >= 12 ? 95 : 100}" fill="none" stroke="var(--pan-guide)" stroke-width="1" stroke-dasharray="3 5" opacity="0.4"/>` : ''}
 `;
 
   // Ding (center)
@@ -154,9 +194,10 @@ export function renderPan(layout, opts = {}) {
   const dingClass = [
     !dingNote ? 'empty' : '',
     dingHighlighted ? `highlight highlight-${pcColorIndex.get(notePC(dingNote))}` : '',
+    dingNote && !dingHighlighted && faintSet.has(dingNote) ? 'faint' : '',
     dimTop ? 'dimmed' : '',
   ].filter(Boolean).join(' ');
-  svg += noteSlotSvg(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36, useFlats, useSolfege);
+  svg += place(cx, cy, dingNote, `ding ${dingClass}`, 'ding', 36);
 
   if (hasInnerRing) {
     const outerSlots = OUTER_8_ORDER.map(i => layout.top.slots[i] ?? { note: null });
@@ -166,8 +207,8 @@ export function renderPan(layout, opts = {}) {
       const slot = outerSlots[i];
       const sortedIdx = OUTER_8_ORDER[i];
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
-      svg += noteSlotSvg(outerPos[i].x, outerPos[i].y, slot.note,
-        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
+      svg += place(outerPos[i].x, outerPos[i].y, slot.note,
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r);
     }
     const innerCount = Math.min(5, totalRingSlots - 8);
     const innerPos = innerRingPositions(cx, cy, innerCount);
@@ -175,8 +216,8 @@ export function renderPan(layout, opts = {}) {
       const sortedIdx = 8 + i;
       const slot = layout.top.slots[sortedIdx] ?? { note: null };
       const r = ringNoteRadius(sortedIdx, totalRingSlots);
-      svg += noteSlotSvg(innerPos[i].x, innerPos[i].y, slot.note,
-        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r, useFlats, useSolfege);
+      svg += place(innerPos[i].x, innerPos[i].y, slot.note,
+        `ring ${noteClass(slot.note, true)}`, `ring-${sortedIdx}`, r);
     }
   } else {
     const ringCount = Math.max(layout.top.capacity, totalRingSlots);
@@ -197,7 +238,7 @@ export function renderPan(layout, opts = {}) {
       const slot = ringSlots[i] ?? { note: null };
       const pos = ringPos[i];
       const r = sortedIndices ? ringNoteRadius(sortedIndices[i], totalRingSlots) : 22;
-      svg += noteSlotSvg(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r, useFlats, useSolfege);
+      svg += place(pos.x, pos.y, slot.note, `ring ${noteClass(slot.note, true)}`, `ring-${i}`, r);
     }
   }
 
@@ -206,11 +247,12 @@ export function renderPan(layout, opts = {}) {
     const guPos = circlePositions(guCount, cx, cy, 228, 0);
     for (let i = 0; i < guCount; i++) {
       const slot = layout.bottom.slots[i] ?? { note: null };
-      svg += noteSlotSvg(guPos[i].x, guPos[i].y, slot.note,
-        `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 16, useFlats, useSolfege);
+      svg += place(guPos[i].x, guPos[i].y, slot.note,
+        `gu ${noteClass(slot.note, false)}`, `gu-${i}`, 16);
     }
   }
 
+  if (strikeMarks.length) svg += strikeBadgesSvg(placed, strikeMarks);
   svg += '</svg>';
   return svg;
 }

@@ -69,3 +69,56 @@ export function scheduleSave() {
     });
   }, 1500);
 }
+
+// ── Instruments (needs supabase/migrations/20261111_instruments.sql) ─────────
+// Every call fails soft: null / false when signed out, offline, or before the
+// migration has been run, so the rest of sync is never affected.
+
+export async function loadCloudInstruments() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb.from('instruments').select('id,public_id,data,updated_at,deleted_at');
+  if (error) { console.warn('Instruments sync unavailable:', error.message); return null; }
+  return data;
+}
+
+export async function saveCloudInstruments(list) {
+  if (!_sb || !_session || list.length === 0) return true;
+  const rows = list.map(inst => ({
+    owner_id: _session.user.id,
+    id: inst.id,
+    public_id: inst.publicId ?? null,
+    data: inst,
+    updated_at: inst.updatedAt,
+    deleted_at: inst.deletedAt ?? null,
+  }));
+  const { error } = await _sb.from('instruments').upsert(rows, { onConflict: 'owner_id,id' });
+  if (error) { console.warn('Instruments sync error:', error.message); return error.code ?? false; }
+  return true;
+}
+
+// Read-only fetch of a shared instrument; works signed out.
+export async function fetchSharedInstrument(publicId) {
+  if (!_sb) return null;
+  const { data, error } = await _sb.rpc('get_shared_instrument', { p_public_id: publicId });
+  if (error) { console.warn('Shared instrument unavailable:', error.message); return null; }
+  return data;
+}
+
+// ── Progressions (needs supabase/migrations/20261111_progressions.sql) ───────
+// Kept in their own user_data column and their own requests, so the main
+// upsert above never names it: until the migration has been run these fail
+// soft (null / false) and nothing else in sync is affected.
+
+export async function loadCloudProgressions() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb.from('user_data').select('progressions').single();
+  if (error) { console.warn('Progressions sync unavailable:', error.message); return null; }
+  return Array.isArray(data?.progressions) ? data.progressions : [];
+}
+
+export async function saveCloudProgressions(list) {
+  if (!_sb || !_session) return false;
+  const { error } = await _sb.from('user_data').update({ progressions: list }).eq('user_id', _session.user.id);
+  if (error) { console.warn('Progressions sync error:', error.message); return false; }
+  return true;
+}
