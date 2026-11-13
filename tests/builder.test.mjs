@@ -72,7 +72,13 @@ test('finishing a build stores sizes and learns shrinkage', () => {
 });
 
 test('custom ocarina: default holes and calibration', () => {
-  assert.deepEqual(defaultCustomHoles(4).map(h => h.finger), ['R4', 'R3', 'R2', 'R1']);
+  // Split between the hands by anatomy, the right hand taking the odd hole.
+  const f = n => defaultCustomHoles(n).map(h => h.finger);
+  assert.deepEqual(f(3), ['R2', 'R1', 'L1']);
+  assert.deepEqual(f(4), ['R2', 'R1', 'L2', 'L1']);
+  assert.deepEqual(f(5), ['R3', 'R2', 'R1', 'L2', 'L1']);
+  assert.deepEqual(f(7), ['R4', 'R3', 'R2', 'R1', 'L3', 'L2', 'L1']);
+  assert.deepEqual(f(9), ['R4', 'R3', 'R2', 'R1', 'L4', 'L3', 'L2', 'L1', 'LT']);
   const twelve = defaultCustomHoles(12);
   assert.equal(twelve.length, 12);
   assert.deepEqual(twelve.slice(8, 10).map(h => [h.finger, h.side]), [['LT', 'bottom'], ['RT', 'bottom']]);
@@ -221,9 +227,9 @@ test('a charted ocarina can be drawn on its photo too', async () => {
 
 test('holes are listed and named by finger', async () => {
   const { holeDisplayOrder, holeLabel } = await import('../js/builder.js');
-  const holes = defaultCustomHoles(5);                      // stored: R4 R3 R2 R1 L4
-  assert.deepEqual(holes.map(h => h.finger), ['R4', 'R3', 'R2', 'R1', 'L4']);
-  assert.deepEqual(holeDisplayOrder(holes).map(i => holes[i].finger), ['R1', 'R2', 'R3', 'R4', 'L4']);
+  const holes = defaultCustomHoles(5);                      // stored: R3 R2 R1 L2 L1
+  assert.deepEqual(holes.map(h => h.finger), ['R3', 'R2', 'R1', 'L2', 'L1']);
+  assert.deepEqual(holeDisplayOrder(holes).map(i => holes[i].finger), ['R1', 'R2', 'R3', 'L1', 'L2']);
   const twelve = defaultCustomHoles(12);
   assert.deepEqual(holeDisplayOrder(twelve).map(i => holeLabel(twelve, i)),
     ['R1', 'R2', 'R2 sub-hole', 'R3', 'R4', 'L1', 'L2', 'L2 sub-hole', 'L3', 'L4', 'RT', 'LT']);

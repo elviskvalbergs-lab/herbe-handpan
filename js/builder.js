@@ -139,14 +139,21 @@ export function updateClayBody(body, learned) {
 
 // ── Bought ocarinas: calibration ─────────────────────────────────────────────
 
-// Default finger for each hole of an ocarina with `count` holes: the
-// standard opening order, thumbs underneath above 8 holes; holes beyond 10
-// are sub-holes (on a 12-hole ocarina, small holes next to a finger hole):
-// beside the right then the left middle finger, as on the STL 12-hole
-// chart in charts.js. The user checks and changes these.
+// First guess at which finger covers each hole of a bought ocarina with
+// `count` holes, by the hands: the holes are split between them, the right
+// hand taking the odd one (3 → R1 R2 + L1, 5 → R1–R3 + L1 L2, 7 → R1–R4 +
+// L1–L3, 8 → both hands), each hand counted out from the index finger; then
+// the thumbs (left first) and, past ten, sub-holes beside the right then the
+// left middle finger (as on the STL 12-hole chart in charts.js). Stored in
+// opening order (each hand's outer finger first, the right hand before the
+// left), which the fingering choices rely on. The user checks and changes it.
 export function defaultCustomHoles(count) {
-  const main = fingersForHoleCount(Math.min(count, OC_FINGER_ORDER.length));
-  const holes = main.map(f => ({ id: f, finger: f, side: f.endsWith('T') ? 'bottom' : 'top' }));
+  const fingers = Math.min(count, 8);
+  const right = Math.min(4, Math.ceil(fingers / 2)), left = fingers - right;
+  const holes = [];
+  for (let k = right; k >= 1; k--) holes.push({ id: `R${k}`, finger: `R${k}`, side: 'top' });
+  for (let k = left; k >= 1; k--) holes.push({ id: `L${k}`, finger: `L${k}`, side: 'top' });
+  for (const t of ['LT', 'RT'].slice(0, Math.max(0, Math.min(2, count - 8)))) holes.push({ id: t, finger: t, side: 'bottom' });
   const subFingers = ['R2', 'L2'];
   for (let i = 0; holes.length < count; i++) {
     const f = subFingers[i % subFingers.length];
