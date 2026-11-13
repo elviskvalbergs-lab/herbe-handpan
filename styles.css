@@ -1616,3 +1616,23 @@ html { touch-action: manipulation; }
 .oc-pstage-fg .fingering { width: 100%; height: auto; display: block; max-height: 42vh; }
 .oc-pstage-move { margin-top: var(--space-2); font-size: 17px; line-height: 1.35; color: var(--text-2); text-align: center; min-height: 2.7em; }
 .oc-pstage-move strong { color: var(--text-1); }
+
+/* Ocarina / flute Chords: the handpan layout (.hp-chords / .hp-stage /
+   .hp-card / .hp-list) with a fingering picture in place of the pan. */
+.oc-stage .oc-stage-fg { display: flex; justify-content: center; }
+.oc-stage .oc-pstage { display: none; width: 100%; margin: 0; }
+.oc-stage .oc-pstage.is-current { display: block; }
+.oc-stage .oc-pstage-fg { max-width: 460px; padding: 4px; }
+.oc-stage .oc-pstage-fg .fingering { max-height: 30dvh; width: 100%; }
+.oc-stage .fingering.is-flute { max-height: 22dvh; }
+.oc-stage .hp-card { gap: var(--space-2); }
+.oc-stage .oc-player-notes { gap: 2px; }
+.oc-stage .oc-pnote { min-height: 40px; padding: 4px 10px; font-size: 16px; }
+.oc-pmove { display: none; font-size: var(--fs-15, 15px); line-height: 1.35; color: var(--text-2); padding: 0 var(--space-1) var(--space-1); }
+.oc-pmove.is-current { display: block; }
+.oc-pmove strong { color: var(--text-1); }
+.oc-chords .oc-filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+@media (min-width: 600px) {
+  .oc-stage .oc-pstage-fg .fingering { max-height: 50dvh; }
+  .oc-stage .fingering.is-flute { max-height: 30dvh; }
+}

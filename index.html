@@ -1637,6 +1637,26 @@ html { touch-action: manipulation; }
 .oc-pstage-move { margin-top: var(--space-2); font-size: 17px; line-height: 1.35; color: var(--text-2); text-align: center; min-height: 2.7em; }
 .oc-pstage-move strong { color: var(--text-1); }
 
+/* Ocarina / flute Chords: the handpan layout (.hp-chords / .hp-stage /
+   .hp-card / .hp-list) with a fingering picture in place of the pan. */
+.oc-stage .oc-stage-fg { display: flex; justify-content: center; }
+.oc-stage .oc-pstage { display: none; width: 100%; margin: 0; }
+.oc-stage .oc-pstage.is-current { display: block; }
+.oc-stage .oc-pstage-fg { max-width: 460px; padding: 4px; }
+.oc-stage .oc-pstage-fg .fingering { max-height: 30dvh; width: 100%; }
+.oc-stage .fingering.is-flute { max-height: 22dvh; }
+.oc-stage .hp-card { gap: var(--space-2); }
+.oc-stage .oc-player-notes { gap: 2px; }
+.oc-stage .oc-pnote { min-height: 40px; padding: 4px 10px; font-size: 16px; }
+.oc-pmove { display: none; font-size: var(--fs-15, 15px); line-height: 1.35; color: var(--text-2); padding: 0 var(--space-1) var(--space-1); }
+.oc-pmove.is-current { display: block; }
+.oc-pmove strong { color: var(--text-1); }
+.oc-chords .oc-filters { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+@media (min-width: 600px) {
+  .oc-stage .oc-pstage-fg .fingering { max-height: 50dvh; }
+  .oc-stage .fingering.is-flute { max-height: 30dvh; }
+}
+
   </style>
 </head>
 <body>
@@ -7929,7 +7949,7 @@ function newOcState() {
   return {
     tab: 'notes', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
     category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
-    missingOpen: false, buildChamber: 0, fingersSheet: false,
+    missingOpen: false, buildChamber: 0, fingersSheet: false, chordMore: false,
     holeMap: null,         // { sel } while marking where the holes are on the photo
     fgEdit: null,          // { midi, states } while changing a note's fingering by hand
   };
@@ -8002,7 +8022,7 @@ function ocShowStep(key, i) {
   for (const box of document.querySelectorAll('.oc-player')) {
     if (box.dataset.key !== key) continue;
     box.querySelectorAll('.oc-pnote').forEach((b, k) => { b.classList.toggle('is-current', k === i); b.setAttribute('aria-pressed', k === i ? 'true' : 'false'); });
-    box.querySelectorAll('.oc-pstage').forEach((st, k) => st.classList.toggle('is-current', k === i));
+    box.querySelectorAll('.oc-pstage, .oc-pmove').forEach(st => st.classList.toggle('is-current', Number(st.dataset.i) === i));
   }
 }
 function ocHighlightStep(key, i, last) {
@@ -8129,23 +8149,33 @@ function viewOcarinaChords(inst) {
   const oc = state.oc;
   const uf = state.useFlats, us = state.useSolfege;
   const model = ocChordModel(inst);
-  const wide = ocWide();
   const cardArgs = ({ chord, midis }) => ({
     key: chord.id, chordId: chord.id, canonical: chord.notes,
     title: `${displayNote(chord.rootName, uf, us)} ${escHtml(chord.type.name)}`, sub: escHtml(chord.type.category),
     midis, rootPC: notePC(chord.rootNote),
     favId: ocFavId(inst, chord.id, midis.map(midiToNoteName), chord.notes),
   });
-  // On desktop the first chord is shown until one is picked.
-  const selected = model.items.find(x => x.chord.id === oc.expanded) ?? (wide ? model.items[0] : null);
-  if (wide && selected && oc.expanded !== selected.chord.id) oc.expanded = selected.chord.id;
-  const list = model.items.length === 0
+  // Same pattern as the handpan's Chords: the instrument and the chord on
+  // top (sticky on phones), the chord list under it. A chord is always
+  // shown: the first one until another is picked.
+  const selected = model.items.find(x => x.chord.id === oc.expanded) ?? model.items[0] ?? null;
+  if (selected && oc.expanded !== selected.chord.id) oc.expanded = selected.chord.id;
+  const rows = model.items.length === 0
     ? uiEmpty({ icon: 'music', title: 'No chords match these filters', action: oc.category !== 'All' || oc.scaleFilter !== 'All' ? '<button type="button" class="btn btn-secondary" data-action="oc-filters-clear">Clear filters</button>' : '' })
-    : `<div class="list oc-chord-list">${model.items.map(x => ocChordCard(inst, cardArgs(x), { inline: !wide })).join('')}</div>`;
+    : `<div class="list chord-rows">${model.items.map(x => {
+      const a = cardArgs(x);
+      const parts = ocChordParts(inst, a);
+      return uiRow({
+        title: a.title, titleHtml: true,
+        meta: `${parts.pairs.length ? uiBadge('Together', 'accent') + ' ' : ''}${a.sub}`,
+        action: 'oc-chord-select', data: { key: a.key }, cls: `chord-row${x === selected ? ' is-current' : ''}`,
+        trail: `${hpHeartBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}<span class="chord-count">${x.midis.length}</span>`,
+      });
+    }).join('')}</div>`;
   const missing = model.missing.length ? `
     <details class="oc-missing" ${oc.missingOpen ? 'open' : ''}>
-      <summary data-action="oc-missing-toggle">${icon('chevron-right')} Not on this ocarina (${model.missing.length})</summary>
-      ${model.source ? `<p class="oc-hint">Chords of ${escHtml(model.source.name)} that need a note this ocarina doesn't have.</p>` : ''}
+      <summary data-action="oc-missing-toggle">${icon('chevron-right')} Not on this ${inst.family === 'flute' ? 'flute' : 'ocarina'} (${model.missing.length})</summary>
+      ${model.source ? `<p class="oc-hint">Chords of ${escHtml(model.source.name)} that need a note it doesn't have.</p>` : ''}
       <div class="list">
         ${model.missing.map(({ chord, fit }) => uiRow({
           title: `${displayNote(chord.rootName, uf, us)} ${chord.type.name}`,
@@ -8154,21 +8184,101 @@ function viewOcarinaChords(inst) {
       </div>
     </details>` : '';
   return `${ocHeader(inst, 'chords')}
-    <div class="oc-chords-view${wide ? ' is-wide' : ''}">
-      <div class="oc-chords-side">
-        <div class="oc-filters">
-          ${ocScaleSelect('Only notes of a handpan scale')}
-          <select class="select" data-action="oc-category" aria-label="Chord type">
-            <option value="All" ${oc.category === 'All' ? 'selected' : ''}>All types</option>
-            ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${oc.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
-          </select>
+    <div class="hp-chords oc-chords">
+      ${selected ? ocChordStageHtml(inst, cardArgs(selected)) : ''}
+      <section class="hp-list chord-list" aria-label="Chords">
+        <div class="hp-list-head">
+          <div class="oc-filters">
+            ${ocScaleSelect('Only notes of a handpan scale')}
+            <select class="select" data-action="oc-category" aria-label="Chord type">
+              <option value="All" ${oc.category === 'All' ? 'selected' : ''}>All types</option>
+              ${CHORD_CATEGORIES.filter(c => c !== 'All').map(cat => `<option value="${cat}" ${oc.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+            </select>
+          </div>
+          <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>
         </div>
-        <p class="oc-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}${model.items.length ? ` · ${wide ? 'pick one for its fingerings' : 'tap one for its fingerings'}` : ''}</p>
-        ${list}
+        ${rows}
         ${missing}
-      </div>
-      ${wide && model.items.length ? `<div class="oc-chords-detail">${ocChordDetail(inst, selected ? cardArgs(selected) : null)}</div>` : ''}
+      </section>
     </div>`;
+}
+
+// The top of ocarina / flute Chords, like the handpan's pan and chord card:
+// one fingering picture (the note on show or being played), then the chord
+// card with its notes in playing order and what to change for each.
+function ocChordStageHtml(inst, a) {
+  const parts = ocChordParts(inst, a);
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const key = escHtml(a.key);
+  const sel = Math.min(state.oc.chordStep?.[a.key] ?? 0, parts.arp.length - 1);
+  const opts = { useFlats: uf, useSolfege: us, size: 'medium', showFingers: true, noteLabel: false };
+  return `
+    <div class="hp-stage oc-stage oc-player" data-key="${key}">
+      <div class="oc-stage-fg">
+        ${parts.arp.map((m, i) => `
+          <div class="oc-pstage${i === sel ? ' is-current' : ''}" data-i="${i}">
+            <button type="button" class="oc-pstage-fg" data-action="oc-play-note" data-midi="${m}" aria-label="Play ${escHtml(nn(m))}">
+              ${renderFingering(inst, m, { ...opts, previousMidi: i > 0 ? parts.arp[i - 1] : null })}</button>
+          </div>`).join('')}
+      </div>
+      <div class="hp-card">
+        <div class="hp-card-head">
+          <div class="hp-card-text">
+            <div class="hp-card-title">${a.title}</div>
+            <div class="hp-card-meta">${a.sub} · ${a.midis.map(nn).join(' · ')}</div>
+          </div>
+          <div class="hp-card-actions">
+            ${hpHeartBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}
+            <button type="button" class="btn btn-primary hp-play" data-action="oc-play-arp" data-key="${key}">${icon('play')} Chord</button>
+            ${uiIconBtn('ellipsis', 'More: octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}
+          </div>
+        </div>
+        <div class="oc-player-notes" role="group" aria-label="Notes of the chord, in playing order">
+          ${parts.arp.map((m, i) => `
+            <button type="button" class="oc-pnote${i === sel ? ' is-current' : ''}" data-action="oc-step" data-key="${key}" data-i="${i}" data-midi="${m}"
+              aria-pressed="${i === sel ? 'true' : 'false'}"><span class="oc-pnote-num">${i + 1}</span>${escHtml(nn(m))}</button>
+            ${i < parts.arp.length - 1 ? `<span class="oc-pnote-sep" aria-hidden="true">${icon('chevron-right')}</span>` : ''}`).join('')}
+        </div>
+        ${parts.arp.map((m, i) => `
+          <div class="oc-pmove${i === sel ? ' is-current' : ''}" data-i="${i}"><strong>${escHtml(nn(m))}</strong> · ${i === 0 ? 'start with this fingering' : ocMovesHtml(fingeringMoves(inst, parts.arp[i - 1], m), { lower: true })}</div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ⋯ of the chord on top: its octaves, the two-note pairs of a
+// multi-chamber ocarina, and what the hole pictures mean.
+function ocChordMoreSheet() {
+  const inst = currentInstrument();
+  if (!inst) return '';
+  const key = state.oc.expanded;
+  const card = key && ocCardData(inst, key);
+  if (!card) return '';
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const pairs = inst.chambers.length > 1 ? playablePairs(inst.chambers, card.midis) : [];
+  const hasHalf = card.midis.some(m => fingeringFor(inst, m)?.states?.includes('h'));
+  return uiSheet({
+    key: 'oc-more', variant: 'menu', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
+    body: `
+      <div class="field">
+        <span class="field-label">Octaves</span>
+        <div class="chips">${card.midis.map(m => `<button type="button" class="chip" data-action="oc-voicing" data-key="${escHtml(key)}" data-midi="${m}"
+          aria-label="Move ${nn(m)} to another octave">${nn(m)}</button>`).join('')}</div>
+        <div class="field-help">Tap a note to move it to another octave.</div>
+      </div>
+      ${pairs.map(p => `
+        <button type="button" class="oc-pair" data-action="oc-play-pair" data-a="${p.a.midi}" data-b="${p.b.midi}">
+          <span class="oc-pair-text">${uiBadge('Together', 'accent')} <span>${nn(p.a.midi)} + ${nn(p.b.midi)}: blow both chambers</span></span>
+          <span class="fg-mini">${renderFingering(inst, p.a.midi, { useFlats: uf, useSolfege: us, size: 'mini', blowBoth: p.b.midi })}</span>
+        </button>`).join('')}
+      <div class="fg-legend oc-steps-legend">
+        <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span>
+        ${hasHalf ? `<span>${legendHole('h')} half</span>` : ''}
+        <span>${legendHole('x')} changes</span>
+      </div>
+      <div class="list">${uiRow({ lead: 'hand', title: 'Which finger is which', action: 'oc-hand-open', chevron: true })}</div>`,
+  });
 }
 
 // Practice mode: autoplay on an ocarina playlist or progression, one
@@ -10192,6 +10302,7 @@ function sheetHtml() {
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
   if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
   if (state.oc.fingersSheet && state.view === 'instrument' && state.oc.tab === 'setup') return setupFingersSheet();
+  if (state.oc.chordMore && state.view === 'instrument' && state.oc.tab === 'chords') return ocChordMoreSheet();
   if (state.clayEdit && state.view === 'clay') return clayEditSheet();
   return '';
 }
@@ -11671,7 +11782,7 @@ document.addEventListener('click', e => {
   }
   if (action === 'oc-toggle-sizes') { state.showSizes = !state.showSizes; savePrefs(); render(); return; }
   if (action === 'oc-legend-dismiss') { state.ocLegendSeen = true; savePrefs(); render(); return; }
-  if (action === 'oc-hand-open') { state.oc.handLegend = true; render(); return; }
+  if (action === 'oc-hand-open') { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; }
   if (action === 'oc-hand-close') { state.oc.handLegend = false; render(); return; }
 
 
@@ -11966,6 +12077,21 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'oc-chord-select') {
+    if (e.target.closest('.row-trail button')) return;
+    // Like a handpan chord: pick it, and hear it.
+    state.oc.expanded = el.dataset.key;
+    state.oc.chordStep = {};
+    const list = document.querySelector('.chord-list');
+    const saved = list?.scrollTop ?? 0;
+    render();
+    const again = document.querySelector('.chord-list');
+    if (again) again.scrollTop = saved;
+    document.querySelector('.oc-stage [data-action="oc-play-arp"]')?.click();
+    return;
+  }
+  if (action === 'oc-more-open') { state.oc.chordMore = true; render(); return; }
+  if (action === 'oc-more-close') { state.oc.chordMore = false; render(); return; }
   if (action === 'oc-chord-toggle') {
     if (e.target.closest('.row-trail button')) return;
     // Desktop Chords is list | detail: a row selects rather than toggles.
