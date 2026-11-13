@@ -1693,6 +1693,34 @@ html { touch-action: manipulation; }
 .crop-zoom-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); color: var(--text-3); }
 .crop-zoom-row .crop-zoom { flex: 1; accent-color: var(--accent); }
 
+/* Set-up readings in a row: the guide sits on the tuner strip */
+.rec-guide {
+  position: fixed; left: 0; right: 0; z-index: var(--z-tuner);
+  bottom: calc(var(--tuner-h) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  background: var(--surface-2); border-top: 2px solid var(--accent); box-shadow: var(--e-2);
+}
+body.has-tabbar .rec-guide { bottom: calc(var(--tabbar-h) + var(--tuner-h) + env(safe-area-inset-bottom)); }
+.rec-guide-row { display: flex; align-items: center; gap: var(--space-3); }
+.rec-guide-map { width: 72px; flex: none; }
+.rec-guide-map .hm-svg { border-radius: 6px; }
+.rec-guide-text { flex: 1; min-width: 0; }
+.rec-guide-step { font-size: 12px; line-height: 16px; color: var(--text-3); }
+.rec-guide-now { font-size: 17px; line-height: 22px; color: var(--text-1); }
+.rec-guide-now strong { color: var(--accent-text); }
+.rec-guide-done { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 14px; color: var(--success);
+  animation: rec-done-fade 4s ease forwards; }
+.rec-guide-done .ico { width: 18px; height: 18px; }
+@keyframes rec-done-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .rec-guide-done { animation: none; } }
+body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) + 110px + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .rec-guide, body.has-tabbar .rec-guide {
+    left: 50%; right: auto; transform: translateX(-50%); bottom: calc(var(--space-4) + var(--tuner-h) + 8px);
+    width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-top: 2px solid var(--accent); border-radius: var(--r-md);
+  }
+}
+
   </style>
 </head>
 <body>
@@ -6462,7 +6490,8 @@ const state = {
   plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
   plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
   instEdit: null,          // id of the instrument in the Edit instrument sheet
-  photoCrop: null,         // { id, src, iw, ih, ratio, zoom, cx, cy } while fitting a new photo
+  photoCrop: null,
+  recLast: null,           // { path, label, text, at }: the set-up reading just recorded, for the guide         // { id, src, iw, ih, ratio, zoom, cx, cy } while fitting a new photo
   plName: null,            // { mode: 'new' | 'rename' | 'prog-new' | 'prog-rename', id, value, error } while naming a playlist or progression
   progressions: getProgressions(), // chord progressions (storage.js): ordered steps, repeats allowed
   activeProgressionId: null, // progression detail (#prog/<id>)
@@ -6501,6 +6530,9 @@ function render() {
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
   if (state.tuner.on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
+  const guide = recGuideHtml();
+  if (guide) app.insertAdjacentHTML('beforeend', guide);
+  document.body.classList.toggle('rec-guide-on', !!guide);
   app.insertAdjacentHTML('beforeend', sheetHtml());
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
@@ -9750,6 +9782,49 @@ function tunerTarget() {
 // The docked strip (§5.13): the heard note and cents, a status line, the
 // meter, and close. Its parts are redrawn in place on every reading; the
 // close button and the screen-reader line stay put.
+// Where a set-up reading path is in its sequence: { label, n, total, hole }
+// (hole: index on the photo map, for an ocarina's single-hole reading).
+function setupStepInfo(inst, path) {
+  if (path.startsWith('f:')) {
+    const setup = fluteSetupOf(inst);
+    const paths = fluteSetupPaths(setup);
+    const k = parseInt(path.slice(2), 10);
+    return { label: fluteStepLabel(setup.holes.length, k), n: paths.indexOf(path) + 1, total: paths.length, hole: null };
+  }
+  const setup = setupOf(inst);
+  const paths = ['s:f0', ...holeDisplayOrder(setup.holes).map(i => `s:${i}`)];
+  const hole = path === 's:f0' ? null : parseInt(path.slice(2), 10);
+  return {
+    label: hole == null ? 'All holes closed' : `Only ${holeLabel(setup.holes, hole)} open`,
+    n: paths.indexOf(path) + 1, total: paths.length, hole,
+  };
+}
+
+// While set-up readings are being recorded one after another: a bar over
+// the tuner with the step, what to blow now (on the photo when the holes are
+// marked), the reading just recorded, and Stop.
+function recGuideHtml() {
+  const path = state.rec.armed;
+  if (!path || !/^[sf]:/.test(path) || state.view !== 'instrument' || state.oc.tab !== 'setup' || !state.tuner.on) return '';
+  const inst = currentInstrument();
+  if (!inst) return '';
+  const step = setupStepInfo(inst, path);
+  const last = state.recLast && Date.now() - state.recLast.at < 4000 ? state.recLast : null;
+  const map = step.hole != null && holeSpot(inst, step.hole) ? `<span class="rec-guide-map" aria-hidden="true">${holeMapSvg(inst, { highlight: step.hole, mini: true })}</span>` : '';
+  return `
+    <div class="rec-guide" role="status" aria-live="polite">
+      ${last ? `<div class="rec-guide-done">${icon('check')} ${escHtml(last.label)}: <strong>${escHtml(last.text)}</strong></div>` : ''}
+      <div class="rec-guide-row">
+        ${map}
+        <div class="rec-guide-text">
+          <div class="rec-guide-step">Step ${step.n} of ${step.total}${last ? ' · next' : ''}</div>
+          <div class="rec-guide-now">Now blow: <strong>${escHtml(step.label)}</strong></div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="b-record" data-path="${escHtml(path)}">Stop</button>
+      </div>
+    </div>`;
+}
+
 function tunerStripHtml() {
   return `
     <div id="tuner-panel" class="tuner" role="region" aria-label="Tuner">
@@ -9908,6 +9983,13 @@ function captureReading(hz) {
   disarmRecord();
   const inst = currentInstrument();
   if (!inst || inst.id === SHARED_ID) { render(); return; }
+  // Set-up readings in a row: say what was just recorded (the guide shows it
+  // while the next one is armed) and buzz where phones can.
+  const step = /^[sf]:/.test(path) ? setupStepInfo(inst, path) : null;
+  if (step) {
+    state.recLast = { path, label: step.label, text: pitchLabel(hz, { useFlats: state.useFlats, useSolfege: state.useSolfege }).text, at: Date.now() };
+    try { navigator.vibrate?.(40); } catch (_) {}
+  }
   setReading(inst, path, Math.round(hz * 10) / 10);
   saveInstrument(inst);
   const setupPath = /^[sf]:/.test(path);
@@ -9915,6 +9997,7 @@ function captureReading(hz) {
   state.rec.captured = path;
   const next = setupPath ? nextEmptySetupPath(inst, path) : null;
   if (next) { armRecord(next, { auto: true }); state.rec.captured = path; }
+  else if (step) showToast(`${step.label}: ${state.recLast.text}. Every reading is in.`);
   render();
   if (next) document.querySelector('.rec-field.is-armed')?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   setTimeout(() => {

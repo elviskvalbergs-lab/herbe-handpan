@@ -1071,3 +1071,5 @@ A change to a screen's pattern goes into the shared part, so every instrument ge
 **Holes are listed by finger.** A bought ocarina's holes are stored in opening order (the right little finger first; fingering choices rely on it), but every screen lists and names them by finger: R1–R4, L1–L4, thumbs, each sub-hole after its finger (`holeDisplayOrder`, `holeLabel`): "Only R1 open", chips "R1 ✓", Hole fingers rows with a small map of the hole when it is marked.
 
 **Fit the photo.** Picking a photo opens a crop step (`photoCropSheet`): the photo under a frame of fixed shape (4:3 ocarina, 3:1 flute, `photoRatio`), drag to move, slider / pinch / wheel to zoom (`cropRect`). Use photo saves the framed part (≤720 px wide); a new photo clears marked holes.
+
+**Recording set-up readings in a row** (`recGuideHtml`): while one is armed, a guide bar sits on the tuner strip: "Step 3 of 6", "Now blow: Only R2 open" (with the hole marked on the photo when holes are marked), the reading just recorded ("✓ Only R1 open: D4 +37 ¢") and Stop. A capture buzzes the phone; the last one says "Every reading is in" in a toast.
