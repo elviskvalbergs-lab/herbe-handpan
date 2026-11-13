@@ -1067,3 +1067,7 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 A change to a screen's pattern goes into the shared part, so every instrument gets it, and any older copy is deleted.
 
 **Chords on a phone (≤599px).** Goal: at least three chords in view with the filters visible. The picture is capped (pan 25dvh, ocarina 23dvh, flute 15dvh) with no frame, the chord card is tighter (40px controls, 15px title, the notes in playing order on one scrolling line), the list head (filters, count) sticks right under the sticky stage (its height is kept in `--chords-stage-h` by `watchChordsStage`), chord rows are 50px, and the tab bar is 54px on phones.
+
+**Holes are listed by finger.** A bought ocarina's holes are stored in opening order (the right little finger first; fingering choices rely on it), but every screen lists and names them by finger: R1–R4, L1–L4, thumbs, each sub-hole after its finger (`holeDisplayOrder`, `holeLabel`): "Only R1 open", chips "R1 ✓", Hole fingers rows with a small map of the hole when it is marked.
+
+**Fit the photo.** Picking a photo opens a crop step (`photoCropSheet`): the photo under a frame of fixed shape (4:3 ocarina, 3:1 flute, `photoRatio`), drag to move, slider / pinch / wheel to zoom (`cropRect`). Use photo saves the framed part (≤720 px wide); a new photo clears marked holes.

@@ -1658,3 +1658,17 @@ html { touch-action: manipulation; }
   .chord-row .icon-btn { width: 40px; height: 40px; }
   html:has(.hp-stage) { scroll-padding-top: calc(var(--appbar-h) + var(--chords-stage-h, 36dvh) + 60px); }
 }
+.s-finger-row { display: flex; align-items: flex-end; gap: var(--space-2); }
+.s-finger-row .field { flex: 1; min-width: 0; }
+.s-finger-map { width: 64px; flex: none; margin-bottom: 4px; }
+.s-finger-map .hm-svg { border-radius: 6px; }
+
+/* Fit the photo: the photo under a fixed-shape frame */
+.crop-stage { position: relative; width: 100%; overflow: hidden; border-radius: var(--r-md, 12px); background: #000;
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; margin-top: var(--space-2);
+}
+.crop-stage::after { content: ''; position: absolute; inset: 0; border: 2px solid var(--accent); border-radius: inherit; pointer-events: none; }
+.crop-stage:active { cursor: grabbing; }
+.crop-img { position: absolute; max-width: none; pointer-events: none; }
+.crop-zoom-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); color: var(--text-3); }
+.crop-zoom-row .crop-zoom { flex: 1; accent-color: var(--accent); }

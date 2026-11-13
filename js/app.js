@@ -33,7 +33,7 @@ import { rankScalesByNotes, addHeardNote } from './scalefinder.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
-  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, withFixedFingerings, reverseHandFingers, fluteHoles, fluteStepStates, fluteChamberFromReadings,
+  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, withFixedFingerings, reverseHandFingers, holeDisplayOrder, holeLabel, cropRect, fluteHoles, fluteStepStates, fluteChamberFromReadings,
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
@@ -102,6 +102,7 @@ const state = {
   plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
   plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
   instEdit: null,          // id of the instrument in the Edit instrument sheet
+  photoCrop: null,         // { id, src, iw, ih, ratio, zoom, cx, cy } while fitting a new photo
   plName: null,            // { mode: 'new' | 'rename' | 'prog-new' | 'prog-rename', id, value, error } while naming a playlist or progression
   progressions: getProgressions(), // chord progressions (storage.js): ordered steps, repeats allowed
   activeProgressionId: null, // progression detail (#prog/<id>)
@@ -164,6 +165,7 @@ function render() {
     return;
   }
   watchChordsStage(app);
+  if (state.photoCrop) { const img = app.querySelector('.crop-img'); if (img?.complete) layoutCrop(); else img?.addEventListener('load', layoutCrop, { once: true }); }
   settleFocus(app, prevSheet, focusKey);
 }
 
@@ -2755,15 +2757,16 @@ function viewSetup(inst) {
   const setup = setupOf(inst);
   const mapped = setup.holes.filter((h, i) => h.side !== 'bottom' && inst.holeMap?.[i]).length;
   const tops = setup.holes.filter(h => h.side !== 'bottom').length;
-  const paths = ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
-  const value = p => (p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
+  // Listed by finger (R1 first), not in the stored opening order.
+  const paths = ['s:f0', ...holeDisplayOrder(setup.holes).map(i => `s:${i}`)];
+  const holeOf = p => parseInt(p.slice(2), 10);
+  const value = p => (p === 's:f0' ? setup.f0 : setup.singles[holeOf(p)]);
   const filled = paths.filter(p => value(p) > 0).length;
   const left = paths.length - filled;
   const next = paths.find(p => !(value(p) > 0));
   const standard = defaultCustomHoles(setup.holes.length).every((h, i) => h.finger === setup.holes[i].finger);
   const subs = setup.holes.filter(h => h.sub).length;
-  const label = (p, i) => (p === 's:f0' ? 'All holes closed'
-    : `Only hole ${i + 1} open · ${escHtml(setup.holes[i].finger)}${setup.holes[i].sub ? ' sub-hole' : ''}`);
+  const label = p => (p === 's:f0' ? 'All holes closed' : `Only ${escHtml(holeLabel(setup.holes, holeOf(p)))} open`);
   return `${ocHeader(inst, 'setup')}
     <div class="b-layout is-single">
       <div class="b-main">
@@ -2779,7 +2782,7 @@ function viewSetup(inst) {
             </div>
             <button type="button" class="btn btn-secondary btn-sm" data-action="s-fingers-open" aria-haspopup="dialog">${icon('pencil')} Edit</button>
           </div>
-          <p class="b-fingers">${setup.holes.map(h => escHtml(h.finger)).join(' ')}</p>
+          <p class="b-fingers">${holeDisplayOrder(setup.holes).map(i => escHtml(holeLabel(setup.holes, i))).join(' · ')}</p>
         </div>
         <div class="card b-card">
           <div class="b-card-head">
@@ -2797,11 +2800,11 @@ function viewSetup(inst) {
               return `
                 <div class="s-reading${isNext ? ' is-next' : ''}${v > 0 ? ' is-filled' : ''}">
                   <div class="s-reading-head">
-                    ${mapped && p !== 's:f0' ? `<span class="s-reading-map" aria-hidden="true">${holeMapSvg(inst, { highlight: i - 1, mini: true })}</span>` : ''}
-                    <span class="s-reading-label">${label(p, i - 1)}</span>
+                    ${mapped && p !== 's:f0' ? `<span class="s-reading-map" aria-hidden="true">${holeMapSvg(inst, { highlight: holeOf(p), mini: true })}</span>` : ''}
+                    <span class="s-reading-label">${label(p)}</span>
                     ${isNext ? uiBadge('Next', 'accent') : v > 0 ? `<span class="s-done" aria-label="Recorded">${icon('check')}</span>` : ''}
                   </div>
-                  ${uiHzField(p, v, { label: `${p === 's:f0' ? 'All holes closed' : `Only hole ${i} open`}, Hz` })}
+                  ${uiHzField(p, v, { label: `${p === 's:f0' ? 'All holes closed' : `Only ${holeLabel(setup.holes, holeOf(p))} open`}, Hz` })}
                 </div>`;
             }).join('')}
           </div>
@@ -2910,9 +2913,9 @@ function instEditMeta(inst) {
   return inst.kind === 'custom' ? 'Name, photo, holes, fingers and readings' : 'Name and photo';
 }
 
-// A photo from the camera or the library, made small enough to keep with
-// the instrument (and sync): JPEG, at most 600 px on the long side.
-async function readInstrumentPhoto(file) {
+// A photo from the camera or the library, read at up to 1600 px on the long
+// side for cropping: { src (JPEG data URL), iw, ih }.
+async function readImageFile(file, max = 1600) {
   let src = null;
   try {
     src = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -2924,14 +2927,112 @@ async function readInstrumentPhoto(file) {
       img.src = URL.createObjectURL(file);
     });
   }
-  const w0 = src.width, h0 = src.height;
-  const k = Math.min(1, 600 / Math.max(w0, h0));
+  const k = Math.min(1, max / Math.max(src.width, src.height));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(w0 * k);
-  canvas.height = Math.round(h0 * k);
+  canvas.width = Math.round(src.width * k);
+  canvas.height = Math.round(src.height * k);
   canvas.getContext('2d').drawImage(src, 0, 0, canvas.width, canvas.height);
-  return { src: canvas.toDataURL('image/jpeg', 0.75), aspect: canvas.width / canvas.height };
+  return { src: canvas.toDataURL('image/jpeg', 0.9), iw: canvas.width, ih: canvas.height };
 }
+
+// Every photo of an instrument has the same shape, so pictures line up:
+// 4:3 for an ocarina, long and thin (3:1) for a flute.
+function photoRatio(inst) { return inst.family === 'flute' ? 3 : 4 / 3; }
+
+// Crop step after picking a photo: the photo under a frame of that shape;
+// drag to move it, the slider (or a pinch / the wheel) to zoom.
+function photoCropSheet() {
+  const c = state.photoCrop;
+  return uiSheet({
+    key: 'photo-crop', title: 'Fit the photo', close: 'crop-cancel',
+    body: `
+      <p class="sheet-text">Drag the photo so the instrument fills the frame, top side up. Zoom in to crop closer.</p>
+      <div class="crop-stage" style="aspect-ratio: ${c.ratio}"><img class="crop-img" src="${c.src}" alt="" draggable="false"></div>
+      <label class="crop-zoom-row">${icon('search')}<input type="range" class="crop-zoom" data-action="crop-zoom" min="1" max="4" step="0.01" value="${c.zoom}" aria-label="Zoom"></label>`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="crop-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" data-action="crop-done">Use photo</button>`,
+  });
+}
+
+// Places the photo under the frame from state.photoCrop (no re-render).
+function layoutCrop() {
+  const c = state.photoCrop;
+  const stage = document.querySelector('.crop-stage');
+  const img = stage?.querySelector('.crop-img');
+  if (!c || !img) return;
+  const r = cropRect(c);
+  const k = stage.clientWidth / r.sw;
+  Object.assign(img.style, { width: `${c.iw * k}px`, height: `${c.ih * k}px`, left: `${-r.sx * k}px`, top: `${-r.sy * k}px` });
+  // Keep the centre inside the image, as the frame shows it.
+  c.cx = (r.sx + r.sw / 2) / c.iw;
+  c.cy = (r.sy + r.sh / 2) / c.ih;
+}
+
+// The cropped photo, at most 720 px wide, saved on the instrument. A new
+// photo moves everything, so marked holes are cleared.
+function finishCrop() {
+  const c = state.photoCrop;
+  const inst = c && getInstrument(c.id);
+  const img = document.querySelector('.crop-img');
+  if (!inst || !img) { state.photoCrop = null; render(); return; }
+  const r = cropRect(c);
+  const w = Math.round(Math.min(720, r.sw)), h = Math.round(w / c.ratio);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
+  if (inst.photo) delete inst.holeMap;
+  inst.photo = { src: canvas.toDataURL('image/jpeg', 0.78), aspect: c.ratio };
+  saveInstrument(inst);
+  refreshInstruments();
+  state.photoCrop = null;
+  render();
+}
+
+// Dragging, pinching and wheel-zooming the photo under the crop frame.
+const _cropPointers = new Map();
+let _cropPinch = null;
+document.addEventListener('pointerdown', e => {
+  const stage = e.target.closest?.('.crop-stage');
+  if (!stage || !state.photoCrop) return;
+  e.preventDefault();
+  stage.setPointerCapture?.(e.pointerId);
+  _cropPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (_cropPointers.size === 2) {
+    const [a, b] = [..._cropPointers.values()];
+    _cropPinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: state.photoCrop.zoom };
+  }
+});
+document.addEventListener('pointermove', e => {
+  const c = state.photoCrop;
+  const prev = _cropPointers.get(e.pointerId);
+  if (!c || !prev) return;
+  _cropPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const stage = document.querySelector('.crop-stage');
+  if (!stage) return;
+  if (_cropPointers.size === 2 && _cropPinch) {
+    const [a, b] = [..._cropPointers.values()];
+    c.zoom = Math.min(4, Math.max(1, _cropPinch.zoom * Math.hypot(a.x - b.x, a.y - b.y) / (_cropPinch.d || 1)));
+  } else {
+    const k = stage.clientWidth / cropRect(c).sw;   // screen px per image px
+    c.cx -= (e.clientX - prev.x) / k / c.iw;
+    c.cy -= (e.clientY - prev.y) / k / c.ih;
+  }
+  layoutCrop();
+  const zoom = document.querySelector('.crop-zoom');
+  if (zoom) zoom.value = c.zoom;
+});
+const cropPointerEnd = e => { _cropPointers.delete(e.pointerId); if (_cropPointers.size < 2) _cropPinch = null; };
+document.addEventListener('pointerup', cropPointerEnd);
+document.addEventListener('pointercancel', cropPointerEnd);
+document.addEventListener('wheel', e => {
+  if (!state.photoCrop || !e.target.closest?.('.crop-stage')) return;
+  e.preventDefault();
+  state.photoCrop.zoom = Math.min(4, Math.max(1, state.photoCrop.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)));
+  layoutCrop();
+  const zoom = document.querySelector('.crop-zoom');
+  if (zoom) zoom.value = state.photoCrop.zoom;
+}, { passive: false });
 
 // Name, photo and (for one you set up yourself) the number of holes. In
 // the Edit instrument sheet, or at the top of Set up for a bought ocarina
@@ -3089,23 +3190,24 @@ function holeMapSvg(inst, { sel = null, highlight = null, fingers = false, mini 
 function viewHoleMap(inst) {
   const setup = setupOf(inst);
   const sel = state.oc.holeMap.sel;
-  const chips = setup.holes.map((h, i) => {
+  const chips = holeDisplayOrder(setup.holes).map(i => {
+    const h = setup.holes[i];
     const under = h.side === 'bottom';
     const done = under || inst.holeMap?.[i];
     return `<button type="button" class="chip hm-chip${i === sel ? ' is-selected' : ''}" data-action="hm-select" data-index="${i}" ${under ? 'disabled' : ''}
-      aria-pressed="${i === sel ? 'true' : 'false'}">${i + 1} · ${escHtml(h.finger)}${under ? ' · under' : done ? ` ${icon('check')}` : ''}</button>`;
+      aria-pressed="${i === sel ? 'true' : 'false'}">${escHtml(holeLabel(setup.holes, i))}${under ? ' · under' : done ? ` ${icon('check')}` : ''}</button>`;
   }).join('');
   const selHole = sel != null ? setup.holes[sel] : null;
   return `${ocHeader(inst, 'setup')}
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Where the holes are</h2>
-        <p class="b-intro">${selHole ? `Tap where hole ${sel + 1} (${escHtml(selHole.finger)}) is.` : 'Every hole is marked. Tap a hole below to move it.'}</p>
+        <p class="b-intro">${selHole ? `Tap where the ${escHtml(holeLabel(setup.holes, sel))} hole is.` : 'Every hole is marked. Tap a hole below to move it.'}</p>
         ${inst.photo ? '' : `<p class="b-meta">No photo yet: <button type="button" class="btn-link" data-action="inst-edit-open" data-id="${escHtml(inst.id)}">add one</button>, or mark the holes on the plain shape.</p>`}
-        <div class="hm-stage" data-action="hm-place">${holeMapSvg(inst, { sel })}</div>
+        <div class="hm-stage" data-action="hm-place">${holeMapSvg(inst, { sel, fingers: true })}</div>
         <div class="chips hm-chips">${chips}</div>
         ${selHole ? uiField({
-          label: `Finger on hole ${sel + 1}`, id: `s-finger-${sel}`,
+          label: 'Finger on this hole', id: `s-finger-${sel}`,
           control: `<select class="select" id="s-finger-${sel}" data-action="s-finger" data-index="${sel}">
             ${OC_FINGER_ORDER.map(f => `<option value="${f}" ${selHole.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
           </select>`,
@@ -3122,8 +3224,8 @@ function viewHoleMap(inst) {
 
 function hmFirstUnmarked(inst) {
   const holes = setupOf(inst).holes;
-  const i = holes.findIndex((h, k) => h.side !== 'bottom' && !inst.holeMap?.[k]);
-  return i >= 0 ? i : null;
+  const i = holeDisplayOrder(holes).find(k => holes[k].side !== 'bottom' && !inst.holeMap?.[k]);
+  return i ?? null;
 }
 
 // ── Changing a note's fingering by hand (bought ocarinas) ────────────────────
@@ -3182,17 +3284,22 @@ function setupFingersSheet() {
   return uiSheet({
     key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
     body: `
-      <p class="sheet-text">Check which finger covers each hole. ${inst.family === 'flute' ? 'Holes count from the mouthpiece down: hole 1 is nearest your mouth.' : 'The order is the order the holes open going up the scale.'}</p>
-      ${['R', 'L'].filter(hand => setup.holes.some(h => new RegExp(`^${hand}[1-4]$`).test(h.finger))).map(hand => `
+      <p class="sheet-text">Check which finger covers each hole. ${inst.family === 'flute' ? 'Holes count from the mouthpiece down: hole 1 is nearest your mouth.' : 'Holes are listed by finger, right hand first.'}</p>
+      ${['R', 'L'].filter(hand => handSwapText(setup.holes, hand)).map(hand => `
         <button type="button" class="btn btn-secondary btn-sm s-reverse" data-action="s-fingers-reverse" data-hand="${hand}">
           ${icon('refresh')} Reverse ${hand === 'R' ? 'right' : 'left'} hand (${handSwapText(setup.holes, hand)})</button>`).join('')}
       <div class="s-fingers">
-        ${setup.holes.map((h, i) => uiField({
-          label: `Hole ${i + 1}${h.sub ? ' (sub-hole)' : ''}`, id: `s-finger-${i}`,
-          control: `<select class="select" id="s-finger-${i}" data-action="s-finger" data-index="${i}">
-            ${OC_FINGER_ORDER.map(f => `<option value="${f}" ${h.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
-          </select>`,
-        })).join('')}
+        ${(inst.family === 'flute' ? setup.holes.map((_, i) => i) : holeDisplayOrder(setup.holes)).map((i, n) => {
+          const h = setup.holes[i];
+          const where = inst.family !== 'flute' && holeSpot(inst, i)
+            ? `<span class="s-finger-map" aria-hidden="true">${holeMapSvg(inst, { highlight: i, mini: true })}</span>` : '';
+          return `<div class="s-finger-row">${where}${uiField({
+            label: `Hole ${n + 1}${h.sub ? ' (sub-hole)' : ''}`, id: `s-finger-${i}`,
+            control: `<select class="select" id="s-finger-${i}" data-action="s-finger" data-index="${i}">
+              ${OC_FINGER_ORDER.map(f => `<option value="${f}" ${h.finger === f ? 'selected' : ''}>${f}</option>`).join('')}
+            </select>`,
+          })}</div>`;
+        }).join('')}
       </div>`,
     footer: '<button type="button" class="btn btn-primary" data-action="s-fingers-close">Done</button>',
   });
@@ -3463,7 +3570,7 @@ function nextEmptySetupPath(inst, fromPath) {
   const setup = inst.setup;
   if (!setup) return null;
   const flute = fromPath.startsWith('f:');
-  const paths = flute ? fluteSetupPaths(setup) : ['s:f0', ...setup.holes.map((_, i) => `s:${i}`)];
+  const paths = flute ? fluteSetupPaths(setup) : ['s:f0', ...holeDisplayOrder(setup.holes).map(i => `s:${i}`)];
   const value = p => (flute ? setup.readings[parseInt(p.slice(2), 10)]
     : p === 's:f0' ? setup.f0 : setup.singles[parseInt(p.slice(2), 10)]);
   const at = paths.indexOf(fromPath);
@@ -3987,6 +4094,7 @@ function panRotateBtn() {
 function sheetHtml() {
   if (state.confirm) return confirmSheet();
   if (state.menu) return menuSheet();
+  if (state.photoCrop) return photoCropSheet();
   if (state.instEdit) return instEditSheet();
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
@@ -5650,6 +5758,8 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  if (action === 'crop-cancel') { state.photoCrop = null; render(); return; }
+  if (action === 'crop-done') { finishCrop(); return; }
   if (action === 'inst-edit-close') { state.instEdit = null; refreshInstruments(); render(); return; }
   if (action === 'ie-photo-remove' || action === 'ie-holes-step') {
     let inst = getInstrument(el.dataset.id || state.instEdit);
@@ -7001,14 +7111,8 @@ document.addEventListener('change', e => {
     }
     const file = el.files?.[0];
     if (!file) return;
-    readInstrumentPhoto(file).then(photo => {
-      const fresh = getInstrument(inst.id);
-      if (!fresh) return;
-      // A different photo moves everything: the old spots no longer match.
-      if (fresh.photo) delete fresh.holeMap;
-      fresh.photo = photo;
-      saveInstrument(fresh);
-      refreshInstruments();
+    readImageFile(file).then(img => {
+      state.photoCrop = { id: inst.id, ...img, ratio: photoRatio(inst), zoom: 1, cx: 0.5, cy: 0.5 };
       render();
     }).catch(() => showToast('That photo couldn\'t be read'));
     return;
@@ -7121,6 +7225,11 @@ document.addEventListener('change', e => {
 
 // ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {
+  if (e.target.classList?.contains('crop-zoom') && state.photoCrop) {
+    state.photoCrop.zoom = parseFloat(e.target.value) || 1;
+    layoutCrop();
+    return;
+  }
   if (e.target.id === 'scale-search-input') {
     state.scaleSearch = e.target.value;
     const pos = e.target.selectionStart;
