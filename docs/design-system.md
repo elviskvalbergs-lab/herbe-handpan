@@ -1065,3 +1065,5 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 | Sheets, rows, fields | `uiSheet`, `uiRow`, `uiField`, `uiPicker`, `uiStepper`, `uiSeg` | content |
 
 A change to a screen's pattern goes into the shared part, so every instrument gets it, and any older copy is deleted.
+
+**Chords on a phone (≤599px).** Goal: at least three chords in view with the filters visible. The picture is capped (pan 25dvh, ocarina 23dvh, flute 15dvh) with no frame, the chord card is tighter (40px controls, 15px title, the notes in playing order on one scrolling line), the list head (filters, count) sticks right under the sticky stage (its height is kept in `--chords-stage-h` by `watchChordsStage`), chord rows are 50px, and the tab bar is 54px on phones.

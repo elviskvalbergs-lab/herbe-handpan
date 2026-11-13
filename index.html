@@ -1624,6 +1624,56 @@ html { touch-action: manipulation; }
   .oc-stage .fingering.is-flute { max-height: 30dvh; }
 }
 
+/* ── Chords on a phone: room for the list ───────────────────────────────────
+   Every instrument's Chords screen (the shared parts), ≤599px: a smaller
+   picture, a tighter chord card, the filters pinned under it, denser chord
+   rows and a slimmer tab bar, so at least three chords show at once. */
+@media (max-width: 599px) {
+  :root { --tabbar-h: 54px; }
+  .tab { padding-top: 7px; gap: 1px; }
+  .tab .ico { width: 22px; height: 22px; }
+  .tab[aria-selected="true"]::before { top: 1px; }
+
+  .hp-stage { padding-top: var(--space-2); padding-bottom: var(--space-2); gap: 6px; }
+  .hp-pan svg { width: min(100%, 25dvh); }
+  .hp-pan .pan-rotate { top: 4px; right: 4px; }
+  .oc-stage .oc-pstage-fg { padding: 0; border: 0; background: none; }
+  .oc-stage .oc-pstage-fg .fingering { max-height: 23dvh; }
+  .oc-stage .fingering.is-flute { max-height: 15dvh; }
+  .hp-card { min-height: 0; padding: 6px 6px 6px 12px; gap: 6px; }
+  .hp-card-head { min-height: 40px; gap: 4px; }
+  .hp-card-title { font-size: var(--fs-15); line-height: 20px; }
+  .hp-card-meta { font-size: 12px; line-height: 16px; }
+  .hp-card-actions .btn { height: 40px; }
+  .hp-card-actions .icon-btn { width: 40px; height: 40px; }
+  .oc-stage .oc-player-notes { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -6px; }
+  .oc-stage .oc-player-notes::-webkit-scrollbar { display: none; }
+  .oc-stage .oc-pnote { min-height: 34px; padding: 2px 10px 2px 4px; font-size: 15px; flex: none; }
+  .oc-stage .oc-pnote-num { width: 18px; height: 18px; font-size: 11px; }
+  .oc-pmove { font-size: 13px; line-height: 17px; padding: 0 2px 2px; }
+
+  /* The filters stay in view: pinned under the stage while the list scrolls. */
+  .hp-list-head {
+    position: sticky; z-index: 4; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--chords-stage-h, 0px));
+    margin: 0 calc(-1 * var(--gutter)) var(--space-2); padding: var(--space-2) var(--gutter);
+    background: var(--bg); border-bottom: 1px solid var(--border); gap: var(--space-2);
+  }
+  .hp-chords { gap: 0; }
+  .hp-list-head .seg { height: 36px; }
+  .hp-list-head .seg button, .hp-list-head .seg [role="radio"] { min-height: 30px; }
+  .hp-list-head .btn, .hp-list-head .chip, .hp-list-head .select { height: 38px; min-height: 38px; }
+  .hp-count { font-size: 12px; line-height: 14px; margin-top: -2px; }
+  .oc-chords .hp-list-head { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .oc-chords .oc-filters { flex: 1; min-width: 0; }
+  .oc-chords .hp-count { flex-basis: 100%; }
+
+  .chord-row { min-height: 50px; padding-top: 4px; padding-bottom: 4px; }
+  .chord-row .row-title { font-size: var(--fs-15); line-height: 20px; }
+  .chord-row .row-meta { font-size: 12px; line-height: 15px; }
+  .chord-row .icon-btn { width: 40px; height: 40px; }
+  html:has(.hp-stage) { scroll-padding-top: calc(var(--appbar-h) + var(--chords-stage-h, 36dvh) + 60px); }
+}
+
   </style>
 </head>
 <body>
@@ -6419,7 +6469,21 @@ function render() {
     stopFluteDetect(null, det.fam);
     return;
   }
+  watchChordsStage(app);
   settleFocus(app, prevSheet, focusKey);
+}
+
+// Chords on a phone: the list's head (filters) sticks right under the
+// sticky stage, so it needs the stage's height, which depends on the
+// instrument picture and the chord card. Kept in --chords-stage-h.
+let _stageObserver = null;
+function watchChordsStage(app) {
+  _stageObserver?.disconnect();
+  const stage = app.querySelector('.hp-chords > .hp-stage');
+  if (!stage || typeof ResizeObserver === 'undefined') return;
+  const screen = stage.parentElement;
+  _stageObserver = new ResizeObserver(() => screen.style.setProperty('--chords-stage-h', `${Math.ceil(stage.getBoundingClientRect().height)}px`));
+  _stageObserver.observe(stage);
 }
 
 // ── Focus across re-renders ──────────────────────────────────────────────────

@@ -163,7 +163,21 @@ function render() {
     stopFluteDetect(null, det.fam);
     return;
   }
+  watchChordsStage(app);
   settleFocus(app, prevSheet, focusKey);
+}
+
+// Chords on a phone: the list's head (filters) sticks right under the
+// sticky stage, so it needs the stage's height, which depends on the
+// instrument picture and the chord card. Kept in --chords-stage-h.
+let _stageObserver = null;
+function watchChordsStage(app) {
+  _stageObserver?.disconnect();
+  const stage = app.querySelector('.hp-chords > .hp-stage');
+  if (!stage || typeof ResizeObserver === 'undefined') return;
+  const screen = stage.parentElement;
+  _stageObserver = new ResizeObserver(() => screen.style.setProperty('--chords-stage-h', `${Math.ceil(stage.getBoundingClientRect().height)}px`));
+  _stageObserver.observe(stage);
 }
 
 // ── Focus across re-renders ──────────────────────────────────────────────────
