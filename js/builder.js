@@ -312,3 +312,38 @@ export function reverseHandFingers(holes, hand) {
     return m ? { ...h, finger: `${hand}${swap[m[1]]}` } : { ...h };
   });
 }
+
+// ── How holes are shown ──────────────────────────────────────────────────────
+// A bought ocarina's holes are stored in the order they open going up the
+// scale (the right little finger first): fingering choices rely on that.
+// On screen they are listed and named by finger instead: right hand R1–R4,
+// left hand L1–L4, the thumbs, each sub-hole after its finger's hole.
+const HOLE_FINGER_RANK = { R1: 0, R2: 1, R3: 2, R4: 3, L1: 4, L2: 5, L3: 6, L4: 7, RT: 8, LT: 9 };
+
+// Indexes of `holes` in the order they are shown.
+export function holeDisplayOrder(holes) {
+  const rank = h => (HOLE_FINGER_RANK[h.finger] ?? 10) + (h.sub ? 0.5 : 0);
+  return holes.map((h, i) => i).sort((a, b) => rank(holes[a]) - rank(holes[b]) || a - b);
+}
+
+// What hole i is called: its finger ("R1", "R2 sub-hole"), numbered when a
+// finger covers more than one ("R4 (2)").
+export function holeLabel(holes, i) {
+  const h = holes[i];
+  const name = h.sub ? `${h.finger} sub-hole` : h.finger;
+  const same = holes.map((x, k) => k).filter(k => holes[k].finger === h.finger && !!holes[k].sub === !!h.sub);
+  return same.length > 1 ? `${name} (${same.indexOf(i) + 1})` : name;
+}
+
+// ── Cropping an instrument photo ─────────────────────────────────────────────
+// The part of an iw × ih image inside a frame of width/height `ratio`, at
+// zoom ≥ 1 (1: the frame as large as the image allows) and centred on
+// (cx, cy) as fractions of the image, kept inside the image. Image pixels.
+export function cropRect({ iw, ih, ratio, zoom = 1, cx = 0.5, cy = 0.5 }) {
+  const z = Math.max(1, zoom);
+  let sw, sh;
+  if (iw / ih > ratio) { sh = ih / z; sw = sh * ratio; } else { sw = iw / z; sh = sw / ratio; }
+  const sx = Math.min(Math.max(cx * iw - sw / 2, 0), iw - sw);
+  const sy = Math.min(Math.max(cy * ih - sh / 2, 0), ih - sh);
+  return { sx, sy, sw, sh };
+}

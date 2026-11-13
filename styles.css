@@ -1658,3 +1658,45 @@ html { touch-action: manipulation; }
   .chord-row .icon-btn { width: 40px; height: 40px; }
   html:has(.hp-stage) { scroll-padding-top: calc(var(--appbar-h) + var(--chords-stage-h, 36dvh) + 60px); }
 }
+.s-finger-row { display: flex; align-items: flex-end; gap: var(--space-2); }
+.s-finger-row .field { flex: 1; min-width: 0; }
+.s-finger-map { width: 64px; flex: none; margin-bottom: 4px; }
+.s-finger-map .hm-svg { border-radius: 6px; }
+
+/* Fit the photo: the photo under a fixed-shape frame */
+.crop-stage { position: relative; width: 100%; overflow: hidden; border-radius: var(--r-md, 12px); background: #000;
+  touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; margin-top: var(--space-2);
+}
+.crop-stage::after { content: ''; position: absolute; inset: 0; border: 2px solid var(--accent); border-radius: inherit; pointer-events: none; }
+.crop-stage:active { cursor: grabbing; }
+.crop-img { position: absolute; max-width: none; pointer-events: none; }
+.crop-zoom-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); color: var(--text-3); }
+.crop-zoom-row .crop-zoom { flex: 1; accent-color: var(--accent); }
+
+/* Set-up readings in a row: the guide sits on the tuner strip */
+.rec-guide {
+  position: fixed; left: 0; right: 0; z-index: var(--z-tuner);
+  bottom: calc(var(--tuner-h) + env(safe-area-inset-bottom));
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  background: var(--surface-2); border-top: 2px solid var(--accent); box-shadow: var(--e-2);
+}
+body.has-tabbar .rec-guide { bottom: calc(var(--tabbar-h) + var(--tuner-h) + env(safe-area-inset-bottom)); }
+.rec-guide-row { display: flex; align-items: center; gap: var(--space-3); }
+.rec-guide-map { width: 72px; flex: none; }
+.rec-guide-map .hm-svg { border-radius: 6px; }
+.rec-guide-text { flex: 1; min-width: 0; }
+.rec-guide-step { font-size: 12px; line-height: 16px; color: var(--text-3); }
+.rec-guide-now { font-size: 17px; line-height: 22px; color: var(--text-1); }
+.rec-guide-now strong { color: var(--accent-text); }
+.rec-guide-done { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 14px; color: var(--success);
+  animation: rec-done-fade 4s ease forwards; }
+.rec-guide-done .ico { width: 18px; height: 18px; }
+@keyframes rec-done-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .rec-guide-done { animation: none; } }
+body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) + 110px + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .rec-guide, body.has-tabbar .rec-guide {
+    left: 50%; right: auto; transform: translateX(-50%); bottom: calc(var(--space-4) + var(--tuner-h) + 8px);
+    width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-top: 2px solid var(--accent); border-radius: var(--r-md);
+  }
+}

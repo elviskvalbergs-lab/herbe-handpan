@@ -218,3 +218,30 @@ test('a charted ocarina can be drawn on its photo too', async () => {
   const inst = { family: 'ocarina', kind: 'traditional', chambers: [{ holes: [{ finger: 'L1', side: 'top' }, { finger: 'LT', side: 'bottom' }] }], holeMap: [{ x: 0.5, y: 0.5 }, null] };
   assert.equal(usesHoleMap(inst), true);
 });
+
+test('holes are listed and named by finger', async () => {
+  const { holeDisplayOrder, holeLabel } = await import('../js/builder.js');
+  const holes = defaultCustomHoles(5);                      // stored: R4 R3 R2 R1 L4
+  assert.deepEqual(holes.map(h => h.finger), ['R4', 'R3', 'R2', 'R1', 'L4']);
+  assert.deepEqual(holeDisplayOrder(holes).map(i => holes[i].finger), ['R1', 'R2', 'R3', 'R4', 'L4']);
+  const twelve = defaultCustomHoles(12);
+  assert.deepEqual(holeDisplayOrder(twelve).map(i => holeLabel(twelve, i)),
+    ['R1', 'R2', 'R2 sub-hole', 'R3', 'R4', 'L1', 'L2', 'L2 sub-hole', 'L3', 'L4', 'RT', 'LT']);
+  const pair = [{ finger: 'R4' }, { finger: 'R4' }, { finger: 'R3' }];
+  assert.deepEqual([0, 1, 2].map(i => holeLabel(pair, i)), ['R4 (1)', 'R4 (2)', 'R3']);
+});
+
+test('cropping a photo to a fixed ratio', async () => {
+  const { cropRect } = await import('../js/builder.js');
+  // A 4000 × 3000 photo in a 4:3 frame: all of it.
+  assert.deepEqual(cropRect({ iw: 4000, ih: 3000, ratio: 4 / 3 }), { sx: 0, sy: 0, sw: 4000, sh: 3000 });
+  // A portrait photo in a 4:3 frame: full width, a band in the middle.
+  const p = cropRect({ iw: 3000, ih: 4000, ratio: 4 / 3 });
+  assert.equal(p.sw, 3000); assert.equal(p.sh, 2250); assert.equal(p.sy, 875);
+  // Zoom 2 centred far right stays inside the image.
+  const z = cropRect({ iw: 4000, ih: 3000, ratio: 4 / 3, zoom: 2, cx: 1, cy: 0.5 });
+  assert.deepEqual(z, { sx: 2000, sy: 750, sw: 2000, sh: 1500 });
+  // A flute frame (3:1) on a 4:3 photo.
+  const f = cropRect({ iw: 4000, ih: 3000, ratio: 3 });
+  assert.ok(Math.abs(f.sh - 4000 / 3) < 1e-9 && f.sw === 4000);
+});
