@@ -1701,3 +1701,6 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
     width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-top: 2px solid var(--accent); border-radius: var(--r-md);
   }
 }
+.s-warn { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--fs-13); margin: 0 0 var(--space-3); }
+.s-warn .ico { width: 18px; height: 18px; flex: none; }
+.s-subs { margin: var(--space-2) 0 var(--space-3); }

@@ -1721,6 +1721,9 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
     width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-top: 2px solid var(--accent); border-radius: var(--r-md);
   }
 }
+.s-warn { display: flex; gap: var(--space-2); align-items: flex-start; font-size: var(--fs-13); margin: 0 0 var(--space-3); }
+.s-warn .ico { width: 18px; height: 18px; flex: none; }
+.s-subs { margin: var(--space-2) 0 var(--space-3); }
 
   </style>
 </head>
@@ -4593,12 +4596,46 @@ function withHoleCount(inst, count) {
     out.setup = { holes: fluteHoles(n), readings: [] };
   } else {
     const old = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
-    const holes = defaultCustomHoles(n).map((h, i) => (old.holes[i] ? { ...old.holes[i] } : h));
-    out.setup = { holes, f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
+    out.setup = { holes: resizeHoles(old.holes, n), f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
     if (inst.holeMap) out.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap[i] ?? null);
   }
   return out;
 }
+
+// The holes for a new count. Fingers still as first guessed: the first
+// guess for the new count. Fingers the owner set: theirs kept, and each
+// added hole gets a finger nobody uses yet, in the new count's guess order
+// (so going 5 → 12 one step at a time doesn't put four holes on L1).
+function resizeHoles(holes, n) {
+  const key = h => `${h.finger}${h.sub ? 's' : ''}`;
+  const guessed = defaultCustomHoles(holes.length).every((h, i) => key(h) === key(holes[i]));
+  const fresh = defaultCustomHoles(n);
+  if (guessed) return fresh;
+  const kept = holes.slice(0, n).map(h => ({ ...h }));
+  const used = new Set(kept.map(key));
+  const spare = fresh.filter(h => !used.has(key(h)));
+  while (kept.length < n) kept.push(spare.shift() ?? fresh[kept.length]);
+  return kept;
+}
+
+// Fingers covering more than one (non-sub) hole: probably a mistake.
+function duplicateFingers(holes) {
+  const seen = {};
+  for (const h of holes) if (!h.sub) seen[h.finger] = (seen[h.finger] ?? 0) + 1;
+  return Object.keys(seen).filter(f => seen[f] > 1);
+}
+
+// Sub-hole layouts of a two-sub-hole (12-hole) ocarina, after Pure Ocarinas
+// (https://pureocarinas.com/ocarina-fingering-system): 'taiwanese', one
+// beside each middle finger (R2, L2); 'japanese', beside the right index and
+// middle fingers (R1, R2). The right-hand one beside R2 is covered first.
+const SUB_LAYOUTS = { taiwanese: ['R2', 'L2'], japanese: ['R2', 'R1'] };
+function withSubLayout(holes, layout) {
+  const fingers = SUB_LAYOUTS[layout];
+  let k = 0;
+  return holes.map(h => (h.sub && fingers[k] ? { ...h, finger: fingers[k++] } : { ...h }));
+}
+
 
 // Where hole i sits on the instrument's photo: { x, y } as fractions of the
 // photo's width and height, or null when it isn't marked or is underneath
@@ -9183,6 +9220,7 @@ function viewSetup(inst) {
             <button type="button" class="btn btn-secondary btn-sm" data-action="s-fingers-open" aria-haspopup="dialog">${icon('pencil')} Edit</button>
           </div>
           <p class="b-fingers">${holeDisplayOrder(setup.holes).map(i => escHtml(holeLabel(setup.holes, i))).join(' · ')}</p>
+          ${duplicateFingers(setup.holes).length ? `<p class="b-meta is-warning">More than one hole is on ${duplicateFingers(setup.holes).join(', ')}: tap Edit to check.</p>` : ''}
         </div>
         <div class="card b-card">
           <div class="b-card-head">
@@ -9703,6 +9741,20 @@ function setupFingersSheet() {
     key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
     body: `
       <p class="sheet-text">Check which finger covers each hole. ${inst.family === 'flute' ? 'Holes count from the mouthpiece down: hole 1 is nearest your mouth.' : 'Holes are listed by finger, right hand first.'}</p>
+      ${(() => {
+        const dup = duplicateFingers(setup.holes);
+        return dup.length ? `<p class="s-warn is-warning">${icon('hand')} More than one hole is on ${dup.join(', ')}. Each finger usually covers one hole: check the fingers below.</p>` : '';
+      })()}
+      ${inst.kind === 'custom' && inst.family === 'ocarina' ? `
+        <button type="button" class="btn btn-secondary btn-sm s-reverse" data-action="s-fingers-reset">${icon('rotate')} Back to the first guess for ${setup.holes.length} holes</button>` : ''}
+      ${inst.kind === 'custom' && inst.family === 'ocarina' && setup.holes.filter(h => h.sub).length === 2 ? `
+        <div class="field s-subs">
+          <span class="field-label">Sub-holes</span>
+          ${uiSeg([{ value: 'taiwanese', label: 'Beside R2 and L2' }, { value: 'japanese', label: 'Beside R1 and R2' }],
+            setup.holes.filter(h => h.sub).map(h => h.finger).sort().join() === [...SUB_LAYOUTS.japanese].sort().join() ? 'japanese' : 'taiwanese',
+            { action: 's-sub-layout', label: 'Sub-hole layout' })}
+          <div class="field-help">Beside each middle finger is the Taiwanese layout; both on the right hand is the Japanese one. Pick the one your ocarina has.</div>
+        </div>` : ''}
       ${['R', 'L'].filter(hand => handSwapText(setup.holes, hand)).map(hand => `
         <button type="button" class="btn btn-secondary btn-sm s-reverse" data-action="s-fingers-reverse" data-hand="${hand}">
           ${icon('refresh')} Reverse ${hand === 'R' ? 'right' : 'left'} hand (${handSwapText(setup.holes, hand)})</button>`).join('')}
@@ -12268,6 +12320,20 @@ document.addEventListener('click', e => {
     saveInstrument(inst);
     refreshInstruments();
     if (action === 'hm-place') state.oc.holeMap.sel = hmFirstUnmarked(inst);
+    render();
+    return;
+  }
+  if (action === 's-fingers-reset' || action === 's-sub-layout') {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const setup = setupOf(inst);
+    setup.holes = action === 's-fingers-reset' ? defaultCustomHoles(setup.holes.length) : withSubLayout(setup.holes, el.dataset.value);
+    inst.setup = setup;
+    if (inst.chambers?.[0]?.holes?.length === setup.holes.length) {
+      inst.chambers[0] = { ...inst.chambers[0], holes: inst.chambers[0].holes.map((h, i) => ({ ...h, finger: setup.holes[i].finger, side: setup.holes[i].side, sub: setup.holes[i].sub })) };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
     render();
     return;
   }

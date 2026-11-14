@@ -320,3 +320,12 @@ This is the shape every song page should take: the chord, what to hit at the pla
 Parked on purpose; not planned for a phase yet.
 
 - **Identify a chord by ear (handpan).** A microphone button in Identify mode: the app listens and checks, for each note on the pan, whether its tone (with the overtones a handpan note always has) is ringing. The notes it hears light up on the pan, you tap to fix any it got wrong, and Identify names the chord. Easier than general chord recognition because the candidates are only the pan's own 9–17 notes; notes an octave apart (a D3's strong D4 overtone against a struck D4) are the hard case. Parked by the owner: tapping the notes already works well.
+
+### Sub-holes (12-hole ocarinas)
+
+Source: Pure Ocarinas, "The ocarina's fingering system" (https://pureocarinas.com/ocarina-fingering-system).
+- Two layouts. **Taiwanese:** one sub-hole beside each middle finger (R2 and L2). **Japanese:** both on the right hand, beside the index and middle fingers (R1 and R2).
+- They extend the range down below the "all finger holes closed" note: on an alto C, B with the right sub-hole closed, A with both closed. A finger slides forward so its pad covers its own hole and the sub-hole at once.
+- An 11-hole ocarina has one sub-hole, beside either middle finger; the left one shares the work between the hands.
+- The app's first guess for 11–12 holes is the Taiwanese layout (as on the STL 12-hole chart). Hole fingers offers both layouts for a bought ocarina.
+- **Idea for later:** the builder doesn't make sub-holes yet. Adding them means: the lowest one or two notes of the design come from sub-holes, sized from the same Helmholtz maths as the other holes (they're small, since each only lowers the note by a step), placed beside R2 (and L2 or R1), and cut and tuned last.

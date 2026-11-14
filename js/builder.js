@@ -269,12 +269,46 @@ export function withHoleCount(inst, count) {
     out.setup = { holes: fluteHoles(n), readings: [] };
   } else {
     const old = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
-    const holes = defaultCustomHoles(n).map((h, i) => (old.holes[i] ? { ...old.holes[i] } : h));
-    out.setup = { holes, f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
+    out.setup = { holes: resizeHoles(old.holes, n), f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
     if (inst.holeMap) out.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap[i] ?? null);
   }
   return out;
 }
+
+// The holes for a new count. Fingers still as first guessed: the first
+// guess for the new count. Fingers the owner set: theirs kept, and each
+// added hole gets a finger nobody uses yet, in the new count's guess order
+// (so going 5 → 12 one step at a time doesn't put four holes on L1).
+function resizeHoles(holes, n) {
+  const key = h => `${h.finger}${h.sub ? 's' : ''}`;
+  const guessed = defaultCustomHoles(holes.length).every((h, i) => key(h) === key(holes[i]));
+  const fresh = defaultCustomHoles(n);
+  if (guessed) return fresh;
+  const kept = holes.slice(0, n).map(h => ({ ...h }));
+  const used = new Set(kept.map(key));
+  const spare = fresh.filter(h => !used.has(key(h)));
+  while (kept.length < n) kept.push(spare.shift() ?? fresh[kept.length]);
+  return kept;
+}
+
+// Fingers covering more than one (non-sub) hole: probably a mistake.
+export function duplicateFingers(holes) {
+  const seen = {};
+  for (const h of holes) if (!h.sub) seen[h.finger] = (seen[h.finger] ?? 0) + 1;
+  return Object.keys(seen).filter(f => seen[f] > 1);
+}
+
+// Sub-hole layouts of a two-sub-hole (12-hole) ocarina, after Pure Ocarinas
+// (https://pureocarinas.com/ocarina-fingering-system): 'taiwanese', one
+// beside each middle finger (R2, L2); 'japanese', beside the right index and
+// middle fingers (R1, R2). The right-hand one beside R2 is covered first.
+export const SUB_LAYOUTS = { taiwanese: ['R2', 'L2'], japanese: ['R2', 'R1'] };
+export function withSubLayout(holes, layout) {
+  const fingers = SUB_LAYOUTS[layout];
+  let k = 0;
+  return holes.map(h => (h.sub && fingers[k] ? { ...h, finger: fingers[k++] } : { ...h }));
+}
+
 
 // Where hole i sits on the instrument's photo: { x, y } as fractions of the
 // photo's width and height, or null when it isn't marked or is underneath

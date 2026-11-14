@@ -251,3 +251,21 @@ test('cropping a photo to a fixed ratio', async () => {
   const f = cropRect({ iw: 4000, ih: 3000, ratio: 3 });
   assert.ok(Math.abs(f.sh - 4000 / 3) < 1e-9 && f.sw === 4000);
 });
+
+test('changing the hole count one step at a time keeps one hole per finger', async () => {
+  const { withHoleCount, duplicateFingers, withSubLayout } = await import('../js/builder.js');
+  let oc = { family: 'ocarina', kind: 'custom', holeCount: 5, setup: { holes: defaultCustomHoles(5), f0: null, singles: [] } };
+  for (let n = 6; n <= 12; n++) oc = withHoleCount(oc, n);
+  assert.deepEqual(oc.setup.holes.map(h => h.finger + (h.sub ? 's' : '')), defaultCustomHoles(12).map(h => h.finger + (h.sub ? 's' : '')));
+  assert.deepEqual(duplicateFingers(oc.setup.holes), []);
+  // Fingers the owner set are kept; added holes get unused fingers.
+  const mine = { family: 'ocarina', kind: 'custom', holeCount: 3,
+    setup: { holes: [{ finger: 'L1', side: 'top' }, { finger: 'L2', side: 'top' }, { finger: 'R1', side: 'top' }], f0: null, singles: [] } };
+  const five = withHoleCount(mine, 5).setup.holes.map(h => h.finger);
+  assert.deepEqual(five.slice(0, 3), ['L1', 'L2', 'R1']);
+  assert.deepEqual(duplicateFingers(withHoleCount(mine, 5).setup.holes), []);
+  assert.deepEqual(duplicateFingers([{ finger: 'L1' }, { finger: 'L1' }, { finger: 'L2', sub: true }, { finger: 'L2' }]), ['L1']);
+  // Japanese sub-holes: beside R2 and R1.
+  const jp = withSubLayout(defaultCustomHoles(12), 'japanese').filter(h => h.sub).map(h => h.finger);
+  assert.deepEqual(jp, ['R2', 'R1']);
+});
