@@ -2552,6 +2552,16 @@ function viewBuilder(inst) {
           ${uiSeg(Array.from({ length: plan.needed }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })), String(plan.chambers), { action: 'b-design-chambers', key: 'n', label: 'Chambers' })}
         </div>
         ${(() => {
+          // Notes added inside big steps (not the scale's own, not sub-holes).
+          const subNotes = inst.chambers[0].notes.slice(0, d.subHoles ?? 0);
+          const fill = inst.chambers.flatMap(ch => ch.notes).filter(m => !plan.notes.includes(m) && !subNotes.includes(m));
+          return `<div class="list b-inset">${uiSwitchRow({
+            label: 'Fill big gaps', help: 'Notes of the key inside steps bigger than a tone',
+            on: !!d.fillGaps, action: 'b-design-fill',
+          })}</div>
+          <p class="b-meta">Smaller steps make smaller, easier holes. Every note of the scale stays; up to ${DESIGN_MAX_HOLES} holes a chamber (8 fingers and 2 thumbs).${d.fillGaps ? (fill.length ? ` Adds ${fill.map(nn).join(', ')}.` : ' No step here is bigger than a tone.') : ''}</p>`;
+        })()}
+        ${(() => {
           // Sub-holes: notes added below the scale, a semitone or a tone
           // each, played by a finger sliding over its own hole and the
           // small one beside it. The scale stays on the finger holes.
@@ -3401,6 +3411,9 @@ function setReading(inst, path, value) {
   }
 }
 
+// Fill big gaps: at most this many holes a chamber (8 fingers + 2 thumbs).
+const DESIGN_MAX_HOLES = 10;
+
 function applyDesign(inst) {
   const plan = planOcarina(inst.design);
   inst.scaleId = plan.scale.id;
@@ -3409,8 +3422,11 @@ function applyDesign(inst) {
   // Sub-holes add notes below the scale, from its key (the full scale's
   // pitch classes, transposed).
   const pcs = new Set(scaleToMidis(plan.scale, { transpose: inst.transpose, includeGu: true }).map(m => ((m % 12) + 12) % 12));
-  inst.chambers = buildScaleChambers(plan.notes, { subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese', pcs });
-  inst.notes = [...new Set([...inst.chambers[0].notes.filter((m, i) => inst.chambers[0].holes[i]?.sub), ...plan.notes])].sort((a, b) => a - b);
+  inst.chambers = buildScaleChambers(plan.notes, {
+    subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese', pcs,
+    fill: inst.design.fillGaps ? DESIGN_MAX_HOLES : 0,
+  });
+  inst.notes = [...new Set(inst.chambers.flatMap(ch => ch.notes))].sort((a, b) => a - b);
   inst.fullChambers = plan.needed;
 }
 
@@ -5767,11 +5783,12 @@ document.addEventListener('click', e => {
     render();
     return;
   }
-  if (action === 'b-design-subs' || action === 'b-design-sublayout') {
+  if (action === 'b-design-subs' || action === 'b-design-sublayout' || action === 'b-design-fill') {
     const inst = currentInstrument();
     if (!inst) return;
     const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
     if (action === 'b-design-subs') d.subHoles = parseInt(el.dataset.n, 10) || 0;
+    else if (action === 'b-design-fill') d.fillGaps = !d.fillGaps;
     else d.subLayout = el.dataset.v;
     applyDesign(inst);
     saveInstrument(inst);

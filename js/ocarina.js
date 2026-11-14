@@ -190,13 +190,36 @@ export function subExtensionNotes(lowest, pcs, count) {
   return out;
 }
 
+// A chamber's notes with big steps filled: while it has fewer than maxHoles
+// holes (notes − 1) and a step bigger than a tone, a note goes into the
+// biggest step: the note of the key (pitch classes `pcs`) nearest its
+// middle, or the chromatic middle when the key has none there. Every
+// original note stays. Smaller steps mean smaller holes.
+export function fillGaps(notes, pcs, maxHoles = 10) {
+  const out = [...new Set(notes)].sort((a, b) => a - b);
+  const inKey = m => pcs.has(((m % 12) + 12) % 12);
+  while (out.length - 1 < maxHoles) {
+    let gi = -1, gap = 2;
+    for (let i = 1; i < out.length; i++) if (out[i] - out[i - 1] > gap) { gap = out[i] - out[i - 1]; gi = i; }
+    if (gi < 0) break;
+    const lo = out[gi - 1], hi = out[gi], mid = (lo + hi) / 2;
+    const inside = [];
+    for (let m = lo + 1; m < hi; m++) inside.push(m);
+    const keyed = inside.filter(inKey);
+    const pick = (keyed.length ? keyed : inside).sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid) || a - b)[0];
+    out.splice(gi, 0, pick);
+  }
+  return out;
+}
+
 // subs / layout: sub-holes on the lowest chamber. They don't take any of the
 // scale's notes: they add `subs` notes below it (subExtensionNotes, from the
 // scale's pitch classes `pcs`), so the finger holes play the scale as before.
-export function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese', pcs = null } = {}) {
-  const chambers = splitChambers(midis);
+// fill: maxHoles per chamber (fillGaps) before the sub-holes are added.
+export function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese', pcs = null, fill = 0 } = {}) {
+  const keyPcs = pcs ?? new Set(midis.map(m => ((m % 12) + 12) % 12));
+  const chambers = splitChambers(midis).map(c => (fill > 0 ? fillGaps(c, keyPcs, fill) : c));
   if (subs > 0 && chambers.length) {
-    const keyPcs = pcs ?? new Set(midis.map(m => ((m % 12) + 12) % 12));
     chambers[0] = [...subExtensionNotes(chambers[0][0], keyPcs, Math.min(subs, 2)), ...chambers[0]];
   }
   return chambers.map((c, i) => buildChamber(c, i === 0 ? { subs, layout } : {}));

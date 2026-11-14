@@ -372,3 +372,21 @@ test('sub-holes extend a scale downwards, a semitone or a tone at a time', async
   assert.ok(!ext[1]?.holes.some(h => h.sub));
   assert.equal(splitChambers(kurd).length, plain.length);
 });
+
+test('filling big steps with notes of the key', async () => {
+  const { fillGaps, buildScaleChambers } = await import('../js/ocarina.js');
+  const dMinor = new Set([2, 4, 5, 7, 9, 10, 0]);
+  // D Kurd's lowest chamber: the D3 → A3 jump gets F3, then G3 and E3.
+  assert.deepEqual(fillGaps([50, 57, 58, 60, 62], dMinor, 10), [50, 52, 53, 55, 57, 58, 60, 62]);
+  // Never past the hole budget, never dropping a note.
+  const tight = fillGaps([50, 57, 58, 60, 62], dMinor, 5);
+  assert.equal(tight.length, 6);
+  for (const m of [50, 57, 58, 60, 62]) assert.ok(tight.includes(m));
+  // Already small steps: unchanged.
+  assert.deepEqual(fillGaps([60, 62, 64], dMinor, 10), [60, 62, 64]);
+  // Every scale note is still there after filling and splitting.
+  const kurd = [50, 57, 58, 60, 62, 64, 65, 67, 69];
+  const ch = buildScaleChambers(kurd, { fill: 10, pcs: dMinor });
+  for (const m of kurd) assert.ok(ch.some(c => c.notes.includes(m)), m);
+  assert.ok(ch.every(c => c.holes.length <= 10));
+});

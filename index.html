@@ -3315,13 +3315,36 @@ function subExtensionNotes(lowest, pcs, count) {
   return out;
 }
 
+// A chamber's notes with big steps filled: while it has fewer than maxHoles
+// holes (notes − 1) and a step bigger than a tone, a note goes into the
+// biggest step: the note of the key (pitch classes `pcs`) nearest its
+// middle, or the chromatic middle when the key has none there. Every
+// original note stays. Smaller steps mean smaller holes.
+function fillGaps(notes, pcs, maxHoles = 10) {
+  const out = [...new Set(notes)].sort((a, b) => a - b);
+  const inKey = m => pcs.has(((m % 12) + 12) % 12);
+  while (out.length - 1 < maxHoles) {
+    let gi = -1, gap = 2;
+    for (let i = 1; i < out.length; i++) if (out[i] - out[i - 1] > gap) { gap = out[i] - out[i - 1]; gi = i; }
+    if (gi < 0) break;
+    const lo = out[gi - 1], hi = out[gi], mid = (lo + hi) / 2;
+    const inside = [];
+    for (let m = lo + 1; m < hi; m++) inside.push(m);
+    const keyed = inside.filter(inKey);
+    const pick = (keyed.length ? keyed : inside).sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid) || a - b)[0];
+    out.splice(gi, 0, pick);
+  }
+  return out;
+}
+
 // subs / layout: sub-holes on the lowest chamber. They don't take any of the
 // scale's notes: they add `subs` notes below it (subExtensionNotes, from the
 // scale's pitch classes `pcs`), so the finger holes play the scale as before.
-function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese', pcs = null } = {}) {
-  const chambers = splitChambers(midis);
+// fill: maxHoles per chamber (fillGaps) before the sub-holes are added.
+function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese', pcs = null, fill = 0 } = {}) {
+  const keyPcs = pcs ?? new Set(midis.map(m => ((m % 12) + 12) % 12));
+  const chambers = splitChambers(midis).map(c => (fill > 0 ? fillGaps(c, keyPcs, fill) : c));
   if (subs > 0 && chambers.length) {
-    const keyPcs = pcs ?? new Set(midis.map(m => ((m % 12) + 12) % 12));
     chambers[0] = [...subExtensionNotes(chambers[0][0], keyPcs, Math.min(subs, 2)), ...chambers[0]];
   }
   return chambers.map((c, i) => buildChamber(c, i === 0 ? { subs, layout } : {}));
@@ -9030,6 +9053,16 @@ function viewBuilder(inst) {
           ${uiSeg(Array.from({ length: plan.needed }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })), String(plan.chambers), { action: 'b-design-chambers', key: 'n', label: 'Chambers' })}
         </div>
         ${(() => {
+          // Notes added inside big steps (not the scale's own, not sub-holes).
+          const subNotes = inst.chambers[0].notes.slice(0, d.subHoles ?? 0);
+          const fill = inst.chambers.flatMap(ch => ch.notes).filter(m => !plan.notes.includes(m) && !subNotes.includes(m));
+          return `<div class="list b-inset">${uiSwitchRow({
+            label: 'Fill big gaps', help: 'Notes of the key inside steps bigger than a tone',
+            on: !!d.fillGaps, action: 'b-design-fill',
+          })}</div>
+          <p class="b-meta">Smaller steps make smaller, easier holes. Every note of the scale stays; up to ${DESIGN_MAX_HOLES} holes a chamber (8 fingers and 2 thumbs).${d.fillGaps ? (fill.length ? ` Adds ${fill.map(nn).join(', ')}.` : ' No step here is bigger than a tone.') : ''}</p>`;
+        })()}
+        ${(() => {
           // Sub-holes: notes added below the scale, a semitone or a tone
           // each, played by a finger sliding over its own hole and the
           // small one beside it. The scale stays on the finger holes.
@@ -9879,6 +9912,9 @@ function setReading(inst, path, value) {
   }
 }
 
+// Fill big gaps: at most this many holes a chamber (8 fingers + 2 thumbs).
+const DESIGN_MAX_HOLES = 10;
+
 function applyDesign(inst) {
   const plan = planOcarina(inst.design);
   inst.scaleId = plan.scale.id;
@@ -9887,8 +9923,11 @@ function applyDesign(inst) {
   // Sub-holes add notes below the scale, from its key (the full scale's
   // pitch classes, transposed).
   const pcs = new Set(scaleToMidis(plan.scale, { transpose: inst.transpose, includeGu: true }).map(m => ((m % 12) + 12) % 12));
-  inst.chambers = buildScaleChambers(plan.notes, { subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese', pcs });
-  inst.notes = [...new Set([...inst.chambers[0].notes.filter((m, i) => inst.chambers[0].holes[i]?.sub), ...plan.notes])].sort((a, b) => a - b);
+  inst.chambers = buildScaleChambers(plan.notes, {
+    subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese', pcs,
+    fill: inst.design.fillGaps ? DESIGN_MAX_HOLES : 0,
+  });
+  inst.notes = [...new Set(inst.chambers.flatMap(ch => ch.notes))].sort((a, b) => a - b);
   inst.fullChambers = plan.needed;
 }
 
@@ -12245,11 +12284,12 @@ document.addEventListener('click', e => {
     render();
     return;
   }
-  if (action === 'b-design-subs' || action === 'b-design-sublayout') {
+  if (action === 'b-design-subs' || action === 'b-design-sublayout' || action === 'b-design-fill') {
     const inst = currentInstrument();
     if (!inst) return;
     const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
     if (action === 'b-design-subs') d.subHoles = parseInt(el.dataset.n, 10) || 0;
+    else if (action === 'b-design-fill') d.fillGaps = !d.fillGaps;
     else d.subLayout = el.dataset.v;
     applyDesign(inst);
     saveInstrument(inst);
