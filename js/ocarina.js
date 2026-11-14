@@ -174,9 +174,32 @@ export function buildChamber(notes, { subs = 0, layout = 'taiwanese' } = {}) {
 }
 
 // Chambers, holes and fingerings for a scale-built ocarina from MIDI notes.
-// subs / layout: sub-holes on the lowest chamber (they give its lowest notes).
-export function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese' } = {}) {
-  return splitChambers(midis).map((c, i) => buildChamber(c, i === 0 ? { subs, layout } : {}));
+// Notes the sub-holes add below a scale: from its lowest note down, `count`
+// notes, each a semitone or a tone lower. A note of the scale's key (pitch
+// classes `pcs`) is taken when one is that close; otherwise a tone down.
+// Sub-holes are small, so they never take a bigger step than that.
+export function subExtensionNotes(lowest, pcs, count) {
+  const inKey = m => pcs.has(((m % 12) + 12) % 12);
+  const out = [];
+  let cur = lowest;
+  for (let i = 0; i < count; i++) {
+    const next = inKey(cur - 1) ? cur - 1 : cur - 2;
+    out.unshift(next);
+    cur = next;
+  }
+  return out;
+}
+
+// subs / layout: sub-holes on the lowest chamber. They don't take any of the
+// scale's notes: they add `subs` notes below it (subExtensionNotes, from the
+// scale's pitch classes `pcs`), so the finger holes play the scale as before.
+export function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese', pcs = null } = {}) {
+  const chambers = splitChambers(midis);
+  if (subs > 0 && chambers.length) {
+    const keyPcs = pcs ?? new Set(midis.map(m => ((m % 12) + 12) % 12));
+    chambers[0] = [...subExtensionNotes(chambers[0][0], keyPcs, Math.min(subs, 2)), ...chambers[0]];
+  }
+  return chambers.map((c, i) => buildChamber(c, i === 0 ? { subs, layout } : {}));
 }
 
 // ── Hole sizes ───────────────────────────────────────────────────────────────

@@ -351,7 +351,24 @@ test('buildChamber: sub-holes give the lowest notes', async () => {
   assert.deepEqual(ch.fingerings[60].slice(0, 2), ['o', 'o']);   // C4: sub-holes open
   assert.deepEqual(buildChamber(notes, { subs: 2, layout: 'japanese' }).holes.slice(0, 2).map(h => h.finger), ['R1', 'R2']);
   assert.deepEqual(buildChamber(notes, { subs: 1 }).holes.slice(0, 1).map(h => h.finger), ['L2']);
-  // Only the lowest chamber gets them.
-  const two = buildScaleChambers([50, 52, 53, 55, 57, 58, 60, 62, 64, 65, 67, 69, 70, 72, 74, 76], { subs: 2 });
-  assert.ok(two.length > 1 && two[0].holes[0].sub && !two[1].holes.some(h => h.sub));
+});
+
+test('sub-holes extend a scale downwards, a semitone or a tone at a time', async () => {
+  const { subExtensionNotes, buildScaleChambers, splitChambers } = await import('../js/ocarina.js');
+  // D Kurd (D E F G A Bb C): below D3 come C3 (a tone) and Bb2 (a tone).
+  const dMinor = new Set([2, 4, 5, 7, 9, 10, 0]);
+  assert.deepEqual(subExtensionNotes(50, dMinor, 2), [46, 48]);
+  // C major below C4: B3 (a semitone), then A3 (a tone), as on an alto C.
+  assert.deepEqual(subExtensionNotes(60, new Set([0, 2, 4, 5, 7, 9, 11]), 2), [57, 59]);
+  // Nothing of the key that close: a tone down.
+  assert.deepEqual(subExtensionNotes(60, new Set([0, 7]), 1), [58]);
+  // The scale keeps its finger holes; the sub-holes add the notes below.
+  const kurd = [50, 57, 58, 60, 62, 64, 65, 67, 69];
+  const plain = buildScaleChambers(kurd);
+  const ext = buildScaleChambers(kurd, { subs: 2, pcs: dMinor });
+  assert.equal(ext.length, plain.length);
+  assert.deepEqual(ext[0].notes, [46, 48, ...plain[0].notes]);
+  assert.deepEqual(ext[0].holes.filter(h => !h.sub).map(h => h.finger), plain[0].holes.map(h => h.finger));
+  assert.ok(!ext[1]?.holes.some(h => h.sub));
+  assert.equal(splitChambers(kurd).length, plain.length);
 });

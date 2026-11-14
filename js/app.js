@@ -2552,20 +2552,22 @@ function viewBuilder(inst) {
           ${uiSeg(Array.from({ length: plan.needed }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })), String(plan.chambers), { action: 'b-design-chambers', key: 'n', label: 'Chambers' })}
         </div>
         ${(() => {
-          // Sub-holes: the lowest notes of the first chamber, played by a
-          // finger sliding over its own hole and the small one beside it.
+          // Sub-holes: notes added below the scale, a semitone or a tone
+          // each, played by a finger sliding over its own hole and the
+          // small one beside it. The scale stays on the finger holes.
           const subs = d.subHoles ?? 0;
-          const low = inst.chambers[0].notes;
-          const steps = low.slice(1, subs + 1).map((m, i) => m - low[i]);
-          const big = steps.some(s => s > 2);
+          const ch0 = inst.chambers[0];
+          const added = ch0.notes.slice(0, subs);
+          const steps = ch0.notes.slice(0, subs + 1).map((m, i, a) => (i ? m - a[i - 1] : null)).slice(1);
+          const stepName = n => (n === 1 ? 'a semitone' : 'a tone');
           return `
         <div class="field">
           <div class="field-label">Sub-holes</div>
-          <p class="b-text">Small holes beside a finger's hole that play the lowest notes, as on 12-hole ocarinas: the finger slides forward to cover both.${subs ? ` Here: ${low.slice(0, subs + 1).map(nn).join(', ')}.` : ''}</p>
+          <p class="b-text">Small holes beside a finger's hole that add notes below the scale, as on 12-hole ocarinas: the finger slides forward to cover both. The scale itself stays on the finger holes.</p>
           ${uiSeg([{ value: '0', label: 'None' }, { value: '1', label: '1' }, { value: '2', label: '2' }], String(subs), { action: 'b-design-subs', key: 'n', label: 'Sub-holes' })}
+          ${subs ? `<p class="b-meta">Adds ${added.map(nn).join(' and ')} below ${nn(ch0.notes[subs])}: ${steps.reverse().map(stepName).join(', then ')} down, in the scale's key where it can.</p>` : ''}
           ${subs === 2 ? `<div class="b-subs-layout">${uiSeg([{ value: 'taiwanese', label: 'Beside R2 and L2' }, { value: 'japanese', label: 'Beside R1 and R2' }], d.subLayout ?? 'taiwanese', { action: 'b-design-sublayout', key: 'v', label: 'Sub-hole layout' })}</div>` : ''}
           ${subs === 1 ? '<p class="b-meta">Beside the left middle finger (L2), which shares the work between the hands.</p>' : ''}
-          ${big ? `<p class="b-meta is-warning">The step${subs > 1 ? 's' : ''} at the bottom ${steps.length > 1 ? `are ${steps.join(' and ')}` : `is ${steps[0]}`} semitones: sub-holes work best for a semitone or a tone, larger steps make them nearly as big as finger holes.</p>` : ''}
         </div>`;
         })()}
         <div class="field">
@@ -3404,8 +3406,11 @@ function applyDesign(inst) {
   inst.scaleId = plan.scale.id;
   inst.transpose = inst.design.transpose ?? 0;
   inst.includeGu = inst.design.includeGu ?? true;
-  inst.notes = plan.notes;
-  inst.chambers = buildScaleChambers(plan.notes, { subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese' });
+  // Sub-holes add notes below the scale, from its key (the full scale's
+  // pitch classes, transposed).
+  const pcs = new Set(scaleToMidis(plan.scale, { transpose: inst.transpose, includeGu: true }).map(m => ((m % 12) + 12) % 12));
+  inst.chambers = buildScaleChambers(plan.notes, { subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese', pcs });
+  inst.notes = [...new Set([...inst.chambers[0].notes.filter((m, i) => inst.chambers[0].holes[i]?.sub), ...plan.notes])].sort((a, b) => a - b);
   inst.fullChambers = plan.needed;
 }
 
