@@ -2426,6 +2426,9 @@ function bChamberSwitch(inst, nn) {
     String(bChamberIdx(inst)), { action: 'b-chamber', key: 'ci', label: 'Chamber' });
 }
 
+// A hole in the build steps: its finger, or "R2 sub-hole".
+function bHoleName(h) { return h.sub ? `${h.finger} sub-hole` : h.finger; }
+
 // Has every hole and reading of a chamber been filled in at this stage?
 function bChamberComplete(inst, ci, stage) {
   const ch = inst.chambers[ci];
@@ -2548,6 +2551,23 @@ function viewBuilder(inst) {
           <p class="b-text">The full scale needs ${plan.needed} chamber${plan.needed !== 1 ? 's' : ''}.</p>
           ${uiSeg(Array.from({ length: plan.needed }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })), String(plan.chambers), { action: 'b-design-chambers', key: 'n', label: 'Chambers' })}
         </div>
+        ${(() => {
+          // Sub-holes: the lowest notes of the first chamber, played by a
+          // finger sliding over its own hole and the small one beside it.
+          const subs = d.subHoles ?? 0;
+          const low = inst.chambers[0].notes;
+          const steps = low.slice(1, subs + 1).map((m, i) => m - low[i]);
+          const big = steps.some(s => s > 2);
+          return `
+        <div class="field">
+          <div class="field-label">Sub-holes</div>
+          <p class="b-text">Small holes beside a finger's hole that play the lowest notes, as on 12-hole ocarinas: the finger slides forward to cover both.${subs ? ` Here: ${low.slice(0, subs + 1).map(nn).join(', ')}.` : ''}</p>
+          ${uiSeg([{ value: '0', label: 'None' }, { value: '1', label: '1' }, { value: '2', label: '2' }], String(subs), { action: 'b-design-subs', key: 'n', label: 'Sub-holes' })}
+          ${subs === 2 ? `<div class="b-subs-layout">${uiSeg([{ value: 'taiwanese', label: 'Beside R2 and L2' }, { value: 'japanese', label: 'Beside R1 and R2' }], d.subLayout ?? 'taiwanese', { action: 'b-design-sublayout', key: 'v', label: 'Sub-hole layout' })}</div>` : ''}
+          ${subs === 1 ? '<p class="b-meta">Beside the left middle finger (L2), which shares the work between the hands.</p>' : ''}
+          ${big ? `<p class="b-meta is-warning">The step${subs > 1 ? 's' : ''} at the bottom ${steps.length > 1 ? `are ${steps.join(' and ')}` : `is ${steps[0]}`} semitones: sub-holes work best for a semitone or a tone, larger steps make them nearly as big as finger holes.</p>` : ''}
+        </div>`;
+        })()}
         <div class="field">
           <div class="field-label">${plan.windows.length ? 'Which notes?' : 'Notes'}</div>
           <p class="b-text">${plan.windows.length ? `${plan.chambers === 1 ? 'One chamber holds' : `${plan.chambers} chambers hold`} ${plan.windows.find(w => w.chosen).notes.length}. ` : ''}Tap a note to leave it out.</p>
@@ -2638,7 +2658,7 @@ function viewBuilder(inst) {
       </div>
       <div class="card b-card">
         <h3 class="b-card-title">2 · Test hole</h3>
-        <p class="b-text">Drill a test hole where ${escHtml(ch.holes[0].finger)} goes.</p>
+        <p class="b-text">Drill a test hole where ${escHtml((ch.holes.find(h => !h.sub) ?? ch.holes[0]).finger)} goes.</p>
         ${uiField({ label: 'Diameter', control: unitInput({ value: r.d ?? cb.testHoleMm, unit: 'mm', label: 'Test hole diameter, mm', attrs: `data-action="b-input" data-path="${ci}:leather:d"` }) })}
         <p class="b-text">Blow with only that hole open:</p>
         ${uiHzField(`${ci}:leather:f1`, r.f1, { label: 'Test hole pitch, Hz' })}
@@ -2647,6 +2667,7 @@ function viewBuilder(inst) {
         <h3 class="b-card-title">3 · Drill the holes${plan ? ` <span class="b-card-count">${done}/${plan.holes.length}</span>` : ''}</h3>
         ${plan ? `
           <p class="b-text">In this order. Sizes are at leather-hard; targets are ${(shrink * 100).toFixed(1)}% lower for shrinkage.</p>
+          ${plan.holes.some(h => h.sub) ? `<p class="b-text">Sub-holes first: each sits right beside its finger's hole, just past it toward the fingertip, so the finger covers its own hole and then slides forward to cover both. Leave the finger holes for the next steps.</p>` : ''}
           <div class="b-holes">
             ${plan.holes.map(h => {
               const midi = ch.notes[h.index + 1];
@@ -2657,12 +2678,12 @@ function viewBuilder(inst) {
               return `
               <div class="b-hole${isDone ? ' is-done' : ''}">
                 <button type="button" class="b-check" role="checkbox" aria-checked="${isDone ? 'true' : 'false'}"
-                  data-action="b-hole-done" data-ci="${ci}" data-index="${h.index}" aria-label="${escHtml(h.finger)} drilled">
+                  data-action="b-hole-done" data-ci="${ci}" data-index="${h.index}" aria-label="${escHtml(bHoleName(h))} drilled">
                   <span class="checkbox" aria-hidden="true">${isDone ? icon('check') : ''}</span>
                 </button>
                 <div class="b-hole-main">
                   <div class="b-hole-head">
-                    <span class="b-finger">${escHtml(h.finger)}</span><span class="b-size">${size}</span>
+                    <span class="b-finger">${escHtml(bHoleName(h))}</span><span class="b-size">${size}</span>
                     ${h.index === plan.testHoleIndex ? uiBadge('Your test hole', 'accent') : ''}
                   </div>
                   <div class="b-meta">${nn(midi)} → ${targets[midi].toFixed(1)} Hz</div>
@@ -2706,7 +2727,7 @@ function viewBuilder(inst) {
           const byFinger = [];
           ch.holes.forEach(h => {
             const last = byFinger[byFinger.length - 1];
-            if (last && last.finger === h.finger) last.n++; else byFinger.push({ finger: h.finger, n: 1, mm: h.sizeMm });
+            if (last && last.finger === bHoleName(h)) last.n++; else byFinger.push({ finger: bHoleName(h), n: 1, mm: h.sizeMm });
           });
           return `
             <table class="b-table">
@@ -3384,7 +3405,7 @@ function applyDesign(inst) {
   inst.transpose = inst.design.transpose ?? 0;
   inst.includeGu = inst.design.includeGu ?? true;
   inst.notes = plan.notes;
-  inst.chambers = buildScaleChambers(plan.notes);
+  inst.chambers = buildScaleChambers(plan.notes, { subs: inst.design.subHoles ?? 0, layout: inst.design.subLayout ?? 'taiwanese' });
   inst.fullChambers = plan.needed;
 }
 
@@ -5738,6 +5759,18 @@ document.addEventListener('click', e => {
     }
     applyDesign(inst);
     saveInstrument(inst);
+    render();
+    return;
+  }
+  if (action === 'b-design-subs' || action === 'b-design-sublayout') {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    if (action === 'b-design-subs') d.subHoles = parseInt(el.dataset.n, 10) || 0;
+    else d.subLayout = el.dataset.v;
+    applyDesign(inst);
+    saveInstrument(inst);
+    refreshInstruments();
     render();
     return;
   }

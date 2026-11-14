@@ -137,20 +137,35 @@ export function fingersForHoleCount(holeCount) {
   return [...OC_FINGER_ORDER.slice(0, holeCount - 2), ...OC_THUMBS];
 }
 
+// Sub-holes (12-hole style, see docs/ocarina-mode.md "Sub-holes"): small
+// holes beside a finger's hole that give the chamber's lowest notes. In
+// opening order: going up from the lowest note the first one opens, then the
+// second. Two sub-holes: 'taiwanese' beside each middle finger, 'japanese'
+// beside the right index and middle fingers; one: beside the left middle
+// finger (Pure Ocarinas: it shares the work between the hands).
+export const OC_SUB_LAYOUTS = { taiwanese: ['L2', 'R2'], japanese: ['R1', 'R2'] };
+
 // One chamber of a scale-built ocarina: holes in opening order and a
-// cumulative fingering per note (note k = first k holes open).
+// cumulative fingering per note (note k = first k holes open). With
+// subs: 1 or 2, the first holes are sub-holes, the rest finger holes.
 // Hole positions (x, y) and sizes are filled in later by the UI / builder.
-export function buildChamber(notes) {
+export function buildChamber(notes, { subs = 0, layout = 'taiwanese' } = {}) {
   const sorted = [...notes].sort((a, b) => a - b);
-  const fingers = fingersForHoleCount(sorted.length - 1);
-  const holes = fingers.map(f => ({
-    id: f,
-    finger: f,
-    side: OC_THUMBS.includes(f) ? 'bottom' : 'top',
-    x: null,
-    y: null,
-    sizeMm: null,
-  }));
+  const n = sorted.length - 1;
+  const k = Math.max(0, Math.min(subs, 2, n));
+  const subFingers = k === 1 ? ['L2'] : k === 2 ? (OC_SUB_LAYOUTS[layout] ?? OC_SUB_LAYOUTS.taiwanese) : [];
+  const fingers = fingersForHoleCount(n - k);
+  const holes = [
+    ...subFingers.map(f => ({ id: `${f}s`, finger: f, side: 'top', sub: true, x: null, y: null, sizeMm: null })),
+    ...fingers.map(f => ({
+      id: f,
+      finger: f,
+      side: OC_THUMBS.includes(f) ? 'bottom' : 'top',
+      x: null,
+      y: null,
+      sizeMm: null,
+    })),
+  ];
   const fingerings = {};
   sorted.forEach((midi, k) => {
     fingerings[midi] = holes.map((_, h) => (h < k ? 'o' : 'c'));
@@ -159,8 +174,9 @@ export function buildChamber(notes) {
 }
 
 // Chambers, holes and fingerings for a scale-built ocarina from MIDI notes.
-export function buildScaleChambers(midis) {
-  return splitChambers(midis).map(buildChamber);
+// subs / layout: sub-holes on the lowest chamber (they give its lowest notes).
+export function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese' } = {}) {
+  return splitChambers(midis).map((c, i) => buildChamber(c, i === 0 ? { subs, layout } : {}));
 }
 
 // ── Hole sizes ───────────────────────────────────────────────────────────────

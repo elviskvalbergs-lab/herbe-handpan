@@ -337,3 +337,21 @@ test('parsePitch: notes in letters or solfège, with cents, or Hz', () => {
   const hz = 246.9 * 2 ** (7 / 1200);
   close(parsePitch(pitchLabel(hz).text), hz, 0.2);    // display → parse keeps it within a cent
 });
+
+test('buildChamber: sub-holes give the lowest notes', async () => {
+  const { buildChamber, buildScaleChambers } = await import('../js/ocarina.js');
+  // Alto C with two sub-holes: A3 B3 below C4, then C major up to C5.
+  const notes = [57, 59, 60, 62, 64, 65, 67, 69, 71, 72];
+  const ch = buildChamber(notes, { subs: 2 });
+  assert.deepEqual(ch.holes.slice(0, 2).map(h => [h.finger, !!h.sub]), [['L2', true], ['R2', true]]);
+  assert.equal(ch.holes.length, notes.length - 1);
+  assert.ok(ch.holes.slice(2).every(h => !h.sub));
+  assert.deepEqual(ch.fingerings[57].slice(0, 2), ['c', 'c']);   // A3: both covered
+  assert.deepEqual(ch.fingerings[59].slice(0, 2), ['o', 'c']);   // B3: the right one (beside R2) covered
+  assert.deepEqual(ch.fingerings[60].slice(0, 2), ['o', 'o']);   // C4: sub-holes open
+  assert.deepEqual(buildChamber(notes, { subs: 2, layout: 'japanese' }).holes.slice(0, 2).map(h => h.finger), ['R1', 'R2']);
+  assert.deepEqual(buildChamber(notes, { subs: 1 }).holes.slice(0, 1).map(h => h.finger), ['L2']);
+  // Only the lowest chamber gets them.
+  const two = buildScaleChambers([50, 52, 53, 55, 57, 58, 60, 62, 64, 65, 67, 69, 70, 72, 74, 76], { subs: 2 });
+  assert.ok(two.length > 1 && two[0].holes[0].sub && !two[1].holes.some(h => h.sub));
+});

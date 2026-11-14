@@ -75,11 +75,16 @@ export function leatherHolePlan(chamber, reading, shrink, a4 = 440) {
     f0: reading.f0, d: reading.d, f1: reading.f1,
     targets: chamber.notes.slice(1).map(m => targets[m]),
   });
+  // The test hole is drilled where a finger hole goes, never a sub-hole:
+  // it becomes the first finger hole at least as big as it.
+  const testAt = chamber.holes.some(h => h.sub)
+    ? holes.findIndex((mm, i) => !chamber.holes[i].sub && mm >= reading.d)
+    : testHoleIndex;
   return {
     W,
-    testHoleIndex,
+    testHoleIndex: testAt,
     holes: holes.map((mm, i) => ({
-      index: i, finger: chamber.holes[i].finger, mm,
+      index: i, finger: chamber.holes[i].finger, sub: !!chamber.holes[i].sub, mm,
       parts: splitHole(mm),
     })),
   };

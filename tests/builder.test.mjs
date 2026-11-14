@@ -269,3 +269,11 @@ test('changing the hole count one step at a time keeps one hole per finger', asy
   const jp = withSubLayout(defaultCustomHoles(12), 'japanese').filter(h => h.sub).map(h => h.finger);
   assert.deepEqual(jp, ['R2', 'R1']);
 });
+
+test('leather plan: the test hole is never a sub-hole', async () => {
+  const { buildChamber } = await import('../js/ocarina.js');
+  const ch = buildChamber([57, 59, 60, 62, 64, 65, 67], { subs: 2 });
+  const plan = leatherHolePlan(ch, { f0: 196, d: 6, f1: 215 }, 0.11);
+  assert.ok(plan.holes[0].sub && plan.holes[1].sub);
+  assert.ok(plan.testHoleIndex === -1 || !plan.holes[plan.testHoleIndex].sub);
+});
