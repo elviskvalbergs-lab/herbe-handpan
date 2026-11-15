@@ -3,6 +3,8 @@
 Design for review. No production code until the owner approves it.
 Wireframes: `docs/free-to-play-wireframes.html`.
 
+**Review round 1 is done:** the owner's answers are in "Owner's decisions" at the end, and the sections below are updated to match.
+
 Everything in the app stays free. Anyone can play every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
 
 ---
@@ -99,7 +101,7 @@ Listen step 1 (in [elviskvalbergs-lab/herbe-handpan#14](https://github.com/elvis
 Nothing else needs an account.
 
 ### What this means for the redesign
-1. **Today guests can save and play offline.** Under the new model both need an account, so current users without an account lose something. They must keep what they already saved (see Migration).
+1. **Today guests can save and play offline.** Under the new model both need an account. There are no current users (owner's decision), so nobody loses anything.
 2. **Ocarinas and flutes can only be played after they are *saved*.** The redesign needs a "visiting" instrument for them, like the one shared links already use (`SHARED_ID`).
 3. **The current sync stores blobs and merges by timestamp,** with no offline queue and no real conflict handling. That's good enough to build on in the first steps, but not for the "edited offline on two devices" case.
 
@@ -129,7 +131,7 @@ Real paths, so the website links read well and work as shared links:
 - **Unknown slug:** the instrument picker opens, with "We couldn't find *d-kurdd*, pick one below" and the closest match on top.
 - **Vercel:** rewrites `/handpan/*`, `/ocarina/*`, `/flute/*`, `/s/*` to `index.html`. The old hash links (`#scale=`, `#custom?`, `#p/`) keep working: they're read the same way and the URL is replaced with the new path.
 - **A deep link opens a *visiting* instrument:** the normal interface with all tabs, not added to My instruments, with a quiet **Save** in the app bar. For ocarinas and flutes this is new (today they're always saved). For handpans it is how scales already behave.
-- **Link previews on the website / social:** the page title is set per instrument in the browser. Proper preview cards (Open Graph per link) need a small server step (Vercel Edge Middleware rewriting `<title>`/`og:` tags). I've left that out of the first version (open question 7).
+- **Link previews on the website / social:** each link gets its own preview card (title, description, picture of the instrument), added by a small Vercel Routing Middleware in step 1 (owner's decision).
 
 **Sharing custom tunings**
 - **Custom handpan:** the long link above. It's stateless, works for guests, and needs no server.
@@ -145,7 +147,7 @@ Real paths, so the website links read well and work as shared links:
   - one tap to playing
 
   The full wizard stays for building an ocarina from a scale.
-- **A guest keeps a few things on this device** (see Carry-over): the last instrument, a setup in progress, recent chords. That way, opening the app again lands where they left off. These aren't saves: they aren't synced, they're listed as "Recent", and they expire.
+- **A guest keeps nothing between visits** (owner's decision: push for sign-up). Opening the app again without a link shows the Play screen. Only the current browser tab remembers its work (in `sessionStorage`), so a sign-in, including the Google redirect, never loses it.
 - **The only account mention a guest sees:**
   - a small "Sign in" text button in the app bar on the Play screen
   - the save sheet when they tap save
@@ -162,7 +164,6 @@ Any save action by a guest opens one **light bottom sheet**, the same shared `ui
 |---|---|---|
 | ☆ a chord / add to Favourites | Keep this chord | Keep your favourite chords one tap away, on any device. |
 | add a chord to a playlist / new playlist | Start a playlist | Put the chords for a song together and play them on any device. |
-| bookmark an arpeggio (see open question 2) | Start your arpeggio collection | Keep the arpeggios you're learning, in their playing order. |
 | Save a handpan / ocarina / flute, Add a shared instrument | Save your instrument | Set up your instrument once. It's ready every time, on every device. |
 | Save a heard progression (Listen) | Keep what you heard | Save this progression and play along with it any time. |
 | Import a chord sheet / new progression | Save this song | Keep the song's chords and play along any time, on any device. |
@@ -173,6 +174,8 @@ Any save action by a guest opens one **light bottom sheet**, the same shared `ui
   - A toast confirms it ("Saved to Favourites"), with the same toast as today and an Undo where it makes sense.
   - The intent is kept as `{action, payload, path}` in `sessionStorage`, so it survives the Google redirect or a magic link opened in the same browser.
 - **"Not now":** closes the sheet; nothing is lost and the screen stays as it was. If they tap save again, the sheet shows again (no nagging beyond that).
+- **Arpeggios are saved with their chord.** A playlist keeps the chord, and its arpeggio and playing order come with it (owner's decision). The arpeggio player gets the same ☆ / add-to-playlist button as the chord card, so it uses the playlist text above.
+- **Leaving unsaved work:** a guest who built something (custom notes, a measured ocarina or flute, a scale-built ocarina) and leaves it (back to Play, or closes the tab) sees the save sheet once: "Save your instrument? Without a free account it's gone when you close this page." Closing the tab only gets the browser's own "Leave site?" prompt.
 - **Settings, theme and clay bodies aren't save actions.** They stay on the device for guests and sync for accounts.
 
 ### 4. Offline, for accounts only
@@ -192,7 +195,7 @@ Any save action by a guest opens one **light bottom sheet**, the same shared `ui
 - **On sign-out:**
   - unregister the service worker and delete its caches
   - clear the saved data from this device (after warning if changes haven't synced yet)
-- **Guests on the new version:** a guest who still has the old service worker has it removed on their next online visit (see Migration).
+- **Guests on the new version:** a guest who still has the old service worker has it removed on their next online visit (a cleanup step in `offline.js`; there are no existing users to migrate).
 
 **Status, clear but quiet**
 - **While offline:** a small `cloud-off` "Offline" pill sits in the app bar. It isn't a banner and doesn't cover anything.
@@ -215,17 +218,16 @@ Any save action by a guest opens one **light bottom sheet**, the same shared `ui
 - **Honest limit:** if a guest *reloads* while offline, the browser shows its own error page, because there is no service worker to show ours.
 
 ### 5. Carry-over (guest → account)
-A guest's device keeps **guest data** (`hp-guest` in `localStorage`, 30 days since last use, never synced):
-- the last instrument and tab (so returning lands there)
-- instruments they built but didn't save: custom handpan notes, an ocarina or flute set up with readings, a scale-built ocarina in progress
-- recent chords (last 20) and the last heard progressions from Listen (last 3)
+Guests keep nothing between visits. **Within one visit**, the current tab holds the guest's work in memory, mirrored to `sessionStorage` (cleared when the tab closes):
+- the instrument on screen, and any instrument built in this visit (custom notes, set-up readings, a scale-built ocarina)
+- a progression heard with Listen, and a chord sheet being imported
+- the action they started (§3)
 
-On sign-up or sign-in **on that device**:
+On sign-up or sign-in in that tab:
 1. the started action is completed (§3)
-2. then everything the guest built (instruments in progress, heard progressions) is **moved into the account automatically**, and a toast says "Also saved: Low D ocarina, 1 heard progression"
-3. recents become the account's recents
+2. then everything built in this visit is **moved into the account automatically**, and a toast says "Also saved: Low D ocarina"
 
-Nothing is asked and nothing is lost. If the account already has an item with the same id, both are kept.
+If the account already has an item with the same id, both are kept.
 
 ### 6. Sign-up methods (no passwords)
 - **Email code (already built), plus a link in the same email.**
@@ -233,19 +235,18 @@ Nothing is asked and nothing is lost. If the account already has an item with th
   - The link is for people on the same browser.
   - It's one field, then 6 digits.
 - **Continue with Google:** one tap on Android and desktop. Supabase supports it; it needs a Google Cloud OAuth client (owner task).
-- **Continue with Apple:** natural on iPhone, but it needs a paid Apple Developer account and Apple's key setup. I suggest adding it in a later step if the numbers show iPhone users dropping off at sign-up (open question 4).
+- **Continue with Apple:** natural on iPhone. The owner has access to an Apple Developer account, so it goes in step 2 next to Google once the owner has created the Services ID and key in Apple's developer site (the steps go in `supabase/README.md`). If that isn't ready, step 2 ships with Google and email, and Apple follows without design changes.
 - **Passkeys:** later.
-- **One sheet holds all of it:** [Continue with Google], [Continue with Apple] (later), a separator, an email field with [Send code], then the code field in the same sheet. A new account and a returning account go through exactly the same steps; there's no "sign up" vs "log in" choice.
+- **One sheet holds all of it:** [Continue with Google], [Continue with Apple], a separator, an email field with [Send code], then the code field in the same sheet. A new account and a returning account go through exactly the same steps; there's no "sign up" vs "log in" choice.
 
 ### 7. Signed in: where things live
 - **My instruments (home) stays the hub.** In order:
   1. **Continue: <last instrument>**, a big row at the top
   2. **My instruments**
   3. **Favourites**: chords; as today, a pinned playlist with its own row
-  4. **Arpeggios**, if open question 2 is yes
-  5. **Playlists**
-  6. **Progressions & songs**
-  7. **Play something else** (the catalogue)
+  4. **Playlists**
+  5. **Progressions & songs**
+  6. **Play something else** (the catalogue)
 
   Inside an instrument, the Playlists tab shows the items for that instrument, as today.
 - **Returning user:** the app opens straight into the **last instrument and tab**. It's stored in the synced prefs, so a second device also opens where you left off, with the first sync shown as "Getting your things…" in the app bar for a moment.
@@ -256,9 +257,9 @@ Nothing is asked and nothing is lost. If the account already has an item with th
 - **Legal basis:** creating an account is a contract ("to keep your things and sync them"), so no consent box is needed. The sign-up sheet says, under the buttons: "Free. We only keep your email and what you save. Privacy notice." It's a link, not a checkbox.
 - **Privacy notice** (`/privacy`, plain language), covering:
   - what we keep and why
-  - processors: Supabase (database and auth, EU region to be confirmed, open question 6), Vercel (hosting), Google (only if you sign in with Google), the analytics tool
+  - processors: Supabase (database and auth, EU region, confirmed), Vercel (hosting), Google (only if you sign in with Google), the analytics tool
   - how long data is kept: until you delete the account; accounts with no use for 24 months are deleted after an email warning
-  - your rights, and a contact address
+  - your rights, and the contact: Elvis Kvalbergs (the owner), with a contact email he chooses
 - **Export my data:** downloads one JSON file of everything the account holds (instruments with photos, playlists, progressions, prefs). It's built in the browser from the person's own rows.
 - **Delete account:**
   1. confirm in a sheet (type DELETE)
@@ -268,32 +269,38 @@ Nothing is asked and nothing is lost. If the account already has an item with th
 - **Analytics:** no cookies or personal data, so it needs no consent banner (§9).
 
 ### 9. Measurement (privacy-friendly)
-**Tool: Plausible Analytics (EU-hosted, cookieless, no personal data).**
-- **Why Plausible:**
-  - It has custom events with properties, funnels, and `utm` / deep-link sources.
-  - It needs no consent banner.
-  - It costs about €9 a month.
-- **Alternatives:**
-  - Umami, self-hosted: free, but someone has to run it.
-  - Vercel Web Analytics: custom events need the Pro plan, and it has no funnels.
+**Tool: our own Supabase database (free, EU, no third party).** The owner asked why we'd pay for a tool, and we don't need to.
+- **How it works:** the app sends each event to a database function, `log_event(name, props)`. The function checks the name against the event list, keeps only known properties under a small size, and writes one row to an `events` table.
+  - **Insert-only:** nobody can read the table through the app.
+  - **Reading the numbers:** the owner reads them with saved SQL queries (funnel, sources, returns) in the Supabase dashboard. A small read-only Stats page for the owner can come later.
+- **Why this over a hosted tool:**
+  - It's free and already in the EU.
+  - No new processor appears in the privacy notice.
+  - The data is ours.
+  - Funnels are simple SQL.
+- **What it doesn't give us:** a ready-made dashboard, and bot filtering. Bots don't run the app's JavaScript events, so only the page-load count is affected.
+- **Rejected:**
+  - Plausible: about €9 a month.
+  - Umami self-hosted: free, but something more to run.
+  - Vercel Web Analytics: custom events need the Pro plan.
 
 **Events** (no ids, no email; `account` = guest or signed in):
 
 | Event | Properties | Answers |
 |---|---|---|
-| pageview | path (the deep link), referrer, utm | which links bring people in |
+| `open` | path (the deep link), referrer domain, utm | which links bring people in |
 | `first_play` | instrument family, seconds from landing | how short landing → playing is |
 | `feature` | name (chords, arpeggio, listen, play-along, tuner, chord-sheet, custom-notes), account | which features guests use |
-| `save_tap` | what (chord, playlist, arpeggio, instrument, progression, song, share), account | how many tap save |
+| `save_tap` | what (chord, playlist, instrument, progression, song, share, leave-unsaved), account | how many tap save |
 | `signup_shown` / `signup_method` | what · method (google, email, apple) | where they drop |
 | `signup_done` | what, method, new or returning | how many complete |
 | `save_completed` | what | that the started action finished |
-| `return_visit` | account, days since last (bucket: 1, 2–7, 8–30, 30+) | how many come back |
+| `return_visit` | days since last (bucket: 1, 2–7, 8–30, 30+), accounts only | how many come back |
 | `offline_session` | (signed in) | how many use it offline; queued and sent when back online |
 | `guest_offline` | shown, remind tapped | |
 
 - **Returns:** for accounts, a daily `last_seen_on` date in `profiles` gives exact return counts in SQL, without tracking anyone.
-- **Guest returns** come from the `days since last` bucket, which the device works out from its own guest data. Nothing that identifies the device is sent.
+- **Guest returns** can't be counted, because guests keep nothing between visits and we don't use identifiers. That's by design: the number that matters is sign-ups, and returns are counted for accounts.
 
 ### User flows
 See the wireframes for each screen.
@@ -340,7 +347,7 @@ profiles (
 -- Everything a person saves, one row per item.
 saved_items (
   owner_id   uuid references auth.users on delete cascade default auth.uid(),
-  kind       text check (kind in ('playlist','progression','layout','instrument','arpeggio','prefs','recents')),
+  kind       text check (kind in ('playlist','progression','layout','instrument','prefs')),
   id         text,
   data       jsonb not null,
   version    bigint not null default 1,         -- bumped by the server on every write
@@ -355,28 +362,29 @@ save_item(kind, id, data, base_version, deleted) returns (ok, version, current_r
   -- writes only if base_version matches; otherwise returns the current row for merging
 delete_my_account()  -- deletes auth.users row for auth.uid(); cascades
 touch_last_seen()    -- sets profiles.last_seen_on = today
+
+-- Measurement (§9): insert-only through log_event; no select policy.
+events (
+  at        timestamptz default now(),
+  name      text,                 -- from the fixed event list
+  props     jsonb,                -- known keys only, small
+  signed_in boolean               -- no user id, no device id
+)
+log_event(name, props)           -- validates and inserts; callable by anon and authenticated
 ```
 
 - **Favourites:** a playlist with id `favorites`, as today.
-- **Arpeggio bookmarks** (if wanted): `kind = 'arpeggio'`, each holding `{instrumentId, chordId, notes, order}`.
 - **Shared codes keep working:** an instrument shared by code stays in the existing `instruments` table (that's what `get_shared_instrument` reads). It is written to both tables until all clients use `saved_items`.
 
-### Open questions for the owner
-1. **Current users without an account** have instruments and playlists on their device today. **Proposal:**
-   - Their data stays usable on that device.
-   - One quiet card on My instruments: "Your instruments are only on this phone. A free account keeps them safe and on all your devices."
-   - New saves need an account.
-   - They lose offline unless they sign up.
-
-   OK, or should existing users keep offline too?
-2. **"Bookmarked arpeggios" don't exist yet** (you can save the chord, and the arpeggio is worked out from it). Shall I add an **Arpeggios** collection (a ☆ in the arpeggio player), or should "bookmark an arpeggio" mean saving the chord to Favourites?
-3. **Guest "recents" on the device** (last instrument, setup in progress, recent chords, 30 days): OK? They aren't saves, but they make a returning guest land where they left off and make carry-over possible.
-4. **Sign-in methods for the first version: email code + Google, Apple later.** Google needs an OAuth client in Google Cloud; Apple needs the Apple Developer account. Do you have one?
-5. **Analytics: Plausible (paid, EU) or self-hosted Umami (free)?**
-6. **Which region is the Supabase project in?** For the privacy notice it should be in the EU (if not, a new EU project and a move).
-7. **Do link previews on social media and messaging (Open Graph cards per instrument) matter for the website launch?** If so, I add a small Vercel Edge Middleware step.
-8. **Who is the contact for the privacy notice** (name/company and email)?
-9. **Sharing a measured ocarina needs an account** (it's stored on the server). OK?
+### Owner's decisions (review round 1)
+1. **There are no current users,** so nothing needs migrating. The old offline mode is simply removed for guests.
+2. **Arpeggios are saved through playlists.** A saved chord carries its arpeggio, so there's no separate collection.
+3. **No guest recents.** Push for sign-up: guests keep nothing between visits, only within the open tab (§2, §5), and leaving unsaved work shows the save sheet once.
+4. **Apple sign-in is possible** (the owner has access to a developer account). It's planned for step 2 if the Apple keys are ready.
+5. **No paid analytics:** events go into our own Supabase database (§9).
+6. **The Supabase project is in the EU.**
+7. **Link preview cards per instrument: yes** (step 1).
+8. **The privacy contact is the owner,** Elvis Kvalbergs. The contact email is to be confirmed before step 3 publishes the notice.
 
 ---
 
@@ -394,7 +402,7 @@ account.exportData() / deleteAccount()
 
 // js/store.js — the only way features save
 await save(intent, apply)
-//   intent: { what: 'chord' | 'playlist' | 'arpeggio' | 'instrument' | 'progression' | 'song' | 'share', payload, path }
+//   intent: { what: 'chord' | 'playlist' | 'instrument' | 'progression' | 'song' | 'share', payload, path }
 //   apply:  () => the local change (the existing storage.js / instruments.js call)
 //   guest  → opens the save sheet; resolves after sign-in and apply(), or rejects on Not now
 //   signed → apply(), queue the change, resolve at once (online or not)
@@ -415,7 +423,7 @@ Every save action in the table above changes from `toggleChord(...)` to `save({w
 **Keep Supabase Auth** (already used, EU-hostable, free tier).
 - **Email:** OTP code plus a link in the same email template.
 - **Google:** OAuth.
-- **Apple:** later.
+- **Apple:** in step 2 if the keys are ready.
 - **No passwords.**
 - **supabase-js:** pinned to an exact version and precached by the service worker.
 
@@ -436,10 +444,10 @@ Every save action in the table above changes from `toggleChord(...)` to `save({w
   - It's registered only when `account.state === 'signed-in'`.
   - On every app start as a guest, any existing registration is removed and its caches deleted. That covers guests from the old version, and a sign-out in another tab.
 
-### Migration (no one loses anything)
-- **Signed-in users:** on first run of the new version, their `user_data` blobs and `instruments` rows are copied into `saved_items` once (marked done in `profiles`). The old columns stay untouched (additive rule).
-- **Users without an account:** their local data is kept and usable (open question 1). On sign-up it's moved in, like carry-over.
+### Migration
+- **There are no existing users** (owner's decision), so there's no data migration. `user_data` and `instruments` stay as they are (the additive rule) and are no longer written by the new code, except `instruments` for shared codes.
 - **Old links:** hash links (`#scale=`, `#custom?`, `#p/`, `#i/`) keep working.
+- **Old offline mode:** a browser that still has the old service worker as a guest has it removed on its next visit.
 
 ---
 
@@ -455,21 +463,21 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - a visiting ocarina or flute with a Save button
      - the Play screen instead of the first-run wizard
      - the URL kept in sync while playing
-     - Plausible pageview and `first_play`
-   - Tests: every catalogue scale and chart key round-trips `linkFor` ↔ `parseLink`; aliases (`alto-c-12`, `celtic-minor`); unknown slugs; custom handpan links; old hash links; opening `/handpan/d-kurd/chords/a-min` gives D Kurd on Chords with A minor selected (e2e).
+     - preview cards per link: a Vercel Routing Middleware (`middleware.js`, works without a framework) that puts the instrument's title, description and an image into `<title>` and the `og:` tags of `index.html`
+     - the `events` table, `log_event`, and the `open` / `first_play` / `feature` events
+   - Tests: preview tags for a scale, a chart and an unknown slug; every catalogue scale and chart key round-trips `linkFor` ↔ `parseLink`; aliases (`alto-c-12`, `celtic-minor`); unknown slugs; custom handpan links; old hash links; opening `/handpan/d-kurd/chords/a-min` gives D Kurd on Chords with A minor selected (e2e).
 2. **Save sheet, starting with favourite chords**
    - Build:
-     - `store.save` / `account` (email code + Google)
+     - `store.save` / `account` (email code + Google, plus Apple if the keys are ready)
      - the save sheet with its per-action text
      - the started action completed after sign-in, including after the Google redirect
      - the profile row
      - the `save_tap` / `signup_*` events
-     - migration of existing local data (kept)
    - Tests: a guest ☆ → sheet → (stubbed) sign-in → the chord is in Favourites; Not now changes nothing; the pending action survives a reload.
 3. **All save actions, carry-over and account basics**
    - Build:
      - every save action in the table goes through `save`
-     - guest data (`hp-guest`) and carry-over on sign-up
+     - work from this visit (`sessionStorage`) and carry-over on sign-up, plus the save sheet on leaving unsaved work
      - Settings › Account
      - export, delete account, privacy notice
      - sign-out clears the device
@@ -479,7 +487,6 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - `saved_items` + `save_item`
      - IndexedDB store + outbox
      - three-way merge
-     - migration from `user_data`
      - last instrument synced
    - Tests (pure, on `merge3` and the outbox, with two simulated sessions):
      - adds on both devices are both kept
@@ -501,6 +508,6 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - edit offline, go online: it syncs
      - sign out: no service worker, no caches, no saved data
      - guest goes offline: the card shows and the screen keeps its state
-6. **Later:** Apple sign-in, Open Graph cards per link, passkeys.
+6. **Later:** passkeys, and a read-only Stats page for the owner.
 
 **Stop here for the owner's review.**
