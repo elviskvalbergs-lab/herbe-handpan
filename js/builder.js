@@ -75,11 +75,16 @@ export function leatherHolePlan(chamber, reading, shrink, a4 = 440) {
     f0: reading.f0, d: reading.d, f1: reading.f1,
     targets: chamber.notes.slice(1).map(m => targets[m]),
   });
+  // The test hole is drilled where a finger hole goes, never a sub-hole:
+  // it becomes the first finger hole at least as big as it.
+  const testAt = chamber.holes.some(h => h.sub)
+    ? holes.findIndex((mm, i) => !chamber.holes[i].sub && mm >= reading.d)
+    : testHoleIndex;
   return {
     W,
-    testHoleIndex,
+    testHoleIndex: testAt,
     holes: holes.map((mm, i) => ({
-      index: i, finger: chamber.holes[i].finger, mm,
+      index: i, finger: chamber.holes[i].finger, sub: !!chamber.holes[i].sub, mm,
       parts: splitHole(mm),
     })),
   };
@@ -139,14 +144,21 @@ export function updateClayBody(body, learned) {
 
 // ── Bought ocarinas: calibration ─────────────────────────────────────────────
 
-// Default finger for each hole of an ocarina with `count` holes: the
-// standard opening order, thumbs underneath above 8 holes; holes beyond 10
-// are sub-holes (on a 12-hole ocarina, small holes next to a finger hole):
-// beside the right then the left middle finger, as on the STL 12-hole
-// chart in charts.js. The user checks and changes these.
+// First guess at which finger covers each hole of a bought ocarina with
+// `count` holes, by the hands: the holes are split between them, the right
+// hand taking the odd one (3 → R1 R2 + L1, 5 → R1–R3 + L1 L2, 7 → R1–R4 +
+// L1–L3, 8 → both hands), each hand counted out from the index finger; then
+// the thumbs (left first) and, past ten, sub-holes beside the right then the
+// left middle finger (as on the STL 12-hole chart in charts.js). Stored in
+// opening order (each hand's outer finger first, the right hand before the
+// left), which the fingering choices rely on. The user checks and changes it.
 export function defaultCustomHoles(count) {
-  const main = fingersForHoleCount(Math.min(count, OC_FINGER_ORDER.length));
-  const holes = main.map(f => ({ id: f, finger: f, side: f.endsWith('T') ? 'bottom' : 'top' }));
+  const fingers = Math.min(count, 8);
+  const right = Math.min(4, Math.ceil(fingers / 2)), left = fingers - right;
+  const holes = [];
+  for (let k = right; k >= 1; k--) holes.push({ id: `R${k}`, finger: `R${k}`, side: 'top' });
+  for (let k = left; k >= 1; k--) holes.push({ id: `L${k}`, finger: `L${k}`, side: 'top' });
+  for (const t of ['LT', 'RT'].slice(0, Math.max(0, Math.min(2, count - 8)))) holes.push({ id: t, finger: t, side: 'bottom' });
   const subFingers = ['R2', 'L2'];
   for (let i = 0; holes.length < count; i++) {
     const f = subFingers[i % subFingers.length];
@@ -262,12 +274,46 @@ export function withHoleCount(inst, count) {
     out.setup = { holes: fluteHoles(n), readings: [] };
   } else {
     const old = inst.setup ?? { holes: defaultCustomHoles(inst.holeCount), f0: null, singles: [] };
-    const holes = defaultCustomHoles(n).map((h, i) => (old.holes[i] ? { ...old.holes[i] } : h));
-    out.setup = { holes, f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
+    out.setup = { holes: resizeHoles(old.holes, n), f0: old.f0 ?? null, singles: (old.singles ?? []).slice(0, n) };
     if (inst.holeMap) out.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap[i] ?? null);
   }
   return out;
 }
+
+// The holes for a new count. Fingers still as first guessed: the first
+// guess for the new count. Fingers the owner set: theirs kept, and each
+// added hole gets a finger nobody uses yet, in the new count's guess order
+// (so going 5 → 12 one step at a time doesn't put four holes on L1).
+function resizeHoles(holes, n) {
+  const key = h => `${h.finger}${h.sub ? 's' : ''}`;
+  const guessed = defaultCustomHoles(holes.length).every((h, i) => key(h) === key(holes[i]));
+  const fresh = defaultCustomHoles(n);
+  if (guessed) return fresh;
+  const kept = holes.slice(0, n).map(h => ({ ...h }));
+  const used = new Set(kept.map(key));
+  const spare = fresh.filter(h => !used.has(key(h)));
+  while (kept.length < n) kept.push(spare.shift() ?? fresh[kept.length]);
+  return kept;
+}
+
+// Fingers covering more than one (non-sub) hole: probably a mistake.
+export function duplicateFingers(holes) {
+  const seen = {};
+  for (const h of holes) if (!h.sub) seen[h.finger] = (seen[h.finger] ?? 0) + 1;
+  return Object.keys(seen).filter(f => seen[f] > 1);
+}
+
+// Sub-hole layouts of a two-sub-hole (12-hole) ocarina, after Pure Ocarinas
+// (https://pureocarinas.com/ocarina-fingering-system): 'taiwanese', one
+// beside each middle finger (R2, L2); 'japanese', beside the right index and
+// middle fingers (R1, R2). The right-hand one beside R2 is covered first.
+export const SUB_LAYOUTS = { taiwanese: ['R2', 'L2'], japanese: ['R2', 'R1'] };
+export function withSubLayout(holes, layout) {
+  const fingers = SUB_LAYOUTS[layout];
+  let k = 0;
+  return holes.map(h => (h.sub && fingers[k] ? { ...h, finger: fingers[k++] } : { ...h }));
+}
+
 
 // Where hole i sits on the instrument's photo: { x, y } as fractions of the
 // photo's width and height, or null when it isn't marked or is underneath
@@ -311,4 +357,39 @@ export function reverseHandFingers(holes, hand) {
     const m = re.exec(h.finger);
     return m ? { ...h, finger: `${hand}${swap[m[1]]}` } : { ...h };
   });
+}
+
+// ── How holes are shown ──────────────────────────────────────────────────────
+// A bought ocarina's holes are stored in the order they open going up the
+// scale (the right little finger first): fingering choices rely on that.
+// On screen they are listed and named by finger instead: right hand R1–R4,
+// left hand L1–L4, the thumbs, each sub-hole after its finger's hole.
+const HOLE_FINGER_RANK = { R1: 0, R2: 1, R3: 2, R4: 3, L1: 4, L2: 5, L3: 6, L4: 7, RT: 8, LT: 9 };
+
+// Indexes of `holes` in the order they are shown.
+export function holeDisplayOrder(holes) {
+  const rank = h => (HOLE_FINGER_RANK[h.finger] ?? 10) + (h.sub ? 0.5 : 0);
+  return holes.map((h, i) => i).sort((a, b) => rank(holes[a]) - rank(holes[b]) || a - b);
+}
+
+// What hole i is called: its finger ("R1", "R2 sub-hole"), numbered when a
+// finger covers more than one ("R4 (2)").
+export function holeLabel(holes, i) {
+  const h = holes[i];
+  const name = h.sub ? `${h.finger} sub-hole` : h.finger;
+  const same = holes.map((x, k) => k).filter(k => holes[k].finger === h.finger && !!holes[k].sub === !!h.sub);
+  return same.length > 1 ? `${name} (${same.indexOf(i) + 1})` : name;
+}
+
+// ── Cropping an instrument photo ─────────────────────────────────────────────
+// The part of an iw × ih image inside a frame of width/height `ratio`, at
+// zoom ≥ 1 (1: the frame as large as the image allows) and centred on
+// (cx, cy) as fractions of the image, kept inside the image. Image pixels.
+export function cropRect({ iw, ih, ratio, zoom = 1, cx = 0.5, cy = 0.5 }) {
+  const z = Math.max(1, zoom);
+  let sw, sh;
+  if (iw / ih > ratio) { sh = ih / z; sw = sh * ratio; } else { sw = iw / z; sh = sw / ratio; }
+  const sx = Math.min(Math.max(cx * iw - sw / 2, 0), iw - sw);
+  const sy = Math.min(Math.max(cy * ih - sh / 2, 0), ih - sh);
+  return { sx, sy, sw, sh };
 }

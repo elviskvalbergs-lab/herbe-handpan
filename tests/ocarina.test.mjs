@@ -337,3 +337,56 @@ test('parsePitch: notes in letters or solfège, with cents, or Hz', () => {
   const hz = 246.9 * 2 ** (7 / 1200);
   close(parsePitch(pitchLabel(hz).text), hz, 0.2);    // display → parse keeps it within a cent
 });
+
+test('buildChamber: sub-holes give the lowest notes', async () => {
+  const { buildChamber, buildScaleChambers } = await import('../js/ocarina.js');
+  // Alto C with two sub-holes: A3 B3 below C4, then C major up to C5.
+  const notes = [57, 59, 60, 62, 64, 65, 67, 69, 71, 72];
+  const ch = buildChamber(notes, { subs: 2 });
+  assert.deepEqual(ch.holes.slice(0, 2).map(h => [h.finger, !!h.sub]), [['L2', true], ['R2', true]]);
+  assert.equal(ch.holes.length, notes.length - 1);
+  assert.ok(ch.holes.slice(2).every(h => !h.sub));
+  assert.deepEqual(ch.fingerings[57].slice(0, 2), ['c', 'c']);   // A3: both covered
+  assert.deepEqual(ch.fingerings[59].slice(0, 2), ['o', 'c']);   // B3: the right one (beside R2) covered
+  assert.deepEqual(ch.fingerings[60].slice(0, 2), ['o', 'o']);   // C4: sub-holes open
+  assert.deepEqual(buildChamber(notes, { subs: 2, layout: 'japanese' }).holes.slice(0, 2).map(h => h.finger), ['R1', 'R2']);
+  assert.deepEqual(buildChamber(notes, { subs: 1 }).holes.slice(0, 1).map(h => h.finger), ['L2']);
+});
+
+test('sub-holes extend a scale downwards, a semitone or a tone at a time', async () => {
+  const { subExtensionNotes, buildScaleChambers, splitChambers } = await import('../js/ocarina.js');
+  // D Kurd (D E F G A Bb C): below D3 come C3 (a tone) and Bb2 (a tone).
+  const dMinor = new Set([2, 4, 5, 7, 9, 10, 0]);
+  assert.deepEqual(subExtensionNotes(50, dMinor, 2), [46, 48]);
+  // C major below C4: B3 (a semitone), then A3 (a tone), as on an alto C.
+  assert.deepEqual(subExtensionNotes(60, new Set([0, 2, 4, 5, 7, 9, 11]), 2), [57, 59]);
+  // Nothing of the key that close: a tone down.
+  assert.deepEqual(subExtensionNotes(60, new Set([0, 7]), 1), [58]);
+  // The scale keeps its finger holes; the sub-holes add the notes below.
+  const kurd = [50, 57, 58, 60, 62, 64, 65, 67, 69];
+  const plain = buildScaleChambers(kurd);
+  const ext = buildScaleChambers(kurd, { subs: 2, pcs: dMinor });
+  assert.equal(ext.length, plain.length);
+  assert.deepEqual(ext[0].notes, [46, 48, ...plain[0].notes]);
+  assert.deepEqual(ext[0].holes.filter(h => !h.sub).map(h => h.finger), plain[0].holes.map(h => h.finger));
+  assert.ok(!ext[1]?.holes.some(h => h.sub));
+  assert.equal(splitChambers(kurd).length, plain.length);
+});
+
+test('filling big steps with notes of the key', async () => {
+  const { fillGaps, buildScaleChambers } = await import('../js/ocarina.js');
+  const dMinor = new Set([2, 4, 5, 7, 9, 10, 0]);
+  // D Kurd's lowest chamber: the D3 → A3 jump gets F3, then G3 and E3.
+  assert.deepEqual(fillGaps([50, 57, 58, 60, 62], dMinor, 10), [50, 52, 53, 55, 57, 58, 60, 62]);
+  // Never past the hole budget, never dropping a note.
+  const tight = fillGaps([50, 57, 58, 60, 62], dMinor, 5);
+  assert.equal(tight.length, 6);
+  for (const m of [50, 57, 58, 60, 62]) assert.ok(tight.includes(m));
+  // Already small steps: unchanged.
+  assert.deepEqual(fillGaps([60, 62, 64], dMinor, 10), [60, 62, 64]);
+  // Every scale note is still there after filling and splitting.
+  const kurd = [50, 57, 58, 60, 62, 64, 65, 67, 69];
+  const ch = buildScaleChambers(kurd, { fill: 10, pcs: dMinor });
+  for (const m of kurd) assert.ok(ch.some(c => c.notes.includes(m)), m);
+  assert.ok(ch.every(c => c.holes.length <= 10));
+});
