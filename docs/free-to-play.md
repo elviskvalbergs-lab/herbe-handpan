@@ -120,8 +120,8 @@ Real paths, so the website links read well and work as shared links:
 | `/handpan/celtic-minor` | the default key (D Celtic Minor) of a scale named without a key |
 | `/handpan/f-low-pygmy-11` | scales with a note count keep it in the slug |
 | `/ocarina/alto-c-12` | 12-hole ocarina in C (chart `ocarina-12-stl-c`, key `C-A4`) |
-| `/ocarina/12-hole/g` | the same chart in another key |
-| `/flute/tin-whistle-d`, `/flute/naf-6/a4`, `/flute/naf-5-pentatonic/e3` | flutes from the charts |
+| `/ocarina/alto-g-12`, `/ocarina/soprano-c-12`, `/ocarina/bass-c-12` | the same chart in another key and voice (the voice is the octave of the lowest note); `/ocarina/12-hole-g` and `/ocarina/alto-g` are aliases |
+| `/flute/tin-whistle-d`, `/flute/naf-6-a4`, `/flute/naf-5-e3`, `/flute/naf-6-in-a-a4` | flutes from the charts (`/flute/naf-6` opens its default key) |
 | `/handpan/custom?ding=D3&top=A3,Bb3,C4,D4,E4,F4,G4,A4&bottom=&name=My+pan` | a custom handpan, fully in the link |
 | `/s/7KQ2PM` | a shared instrument (any kind, including a measured ocarina with its photo) |
 
@@ -455,7 +455,7 @@ Every save action in the table above changes from `toggleChord(...)` to `save({w
 
 Each step is its own branch and PR into `preview`, with tests, `python3 build.py`, and docs updated.
 
-1. **Deep links and visiting instruments**
+1. **Deep links and visiting instruments**: **built** (`js/links.js`, `middleware.js`, `og/`, `supabase/migrations/20261115_events.sql`, `tests/links.test.mjs`)
    - Build:
      - `js/links.js` with slugs and aliases
      - Vercel rewrites

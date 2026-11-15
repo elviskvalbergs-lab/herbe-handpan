@@ -26,6 +26,7 @@ never changes to existing ones. Name new files `YYYYMMDD_short_name.sql`.
 | --- | --- |
 | `20261111_instruments.sql` | `instruments` table (sync of ocarinas and other instruments, owner-only by row-level security) and `get_shared_instrument(public_id)` for read-only sharing by public ID |
 | `20261111_progressions.sql` | nullable `progressions` jsonb column on `user_data` (sync of chord progressions, read and written in requests of their own) |
+| `20261115_events.sql` | `event_names` and `events` tables and `log_event(name, props)` for privacy-friendly measurement: no user or device ids, known event names and keys only, no read access through the app (docs/free-to-play.md §9) |
 
 Until a migration has been applied, the features that need it fail quietly:
 the app keeps working, instruments and progressions stay on the device and

@@ -9,6 +9,8 @@ let _saveTimer = null;
 export function initSupabase(onAuthChange) {
   if (!window.supabase) return;
   _sb = window.supabase.createClient(_SUPA_URL, _SUPA_KEY);
+  // After the stored session is read, so signed-in events say so.
+  _sb.auth.getSession().finally(_flushEvents);
   _sb.auth.onAuthStateChange((event, session) => {
     _session = session;
     onAuthChange(event, session);
@@ -16,6 +18,19 @@ export function initSupabase(onAuthChange) {
   _sb.auth.getSession().then(({ data: { session } }) => {
     if (session) { _session = session; onAuthChange('INITIAL_SESSION', session); }
   });
+}
+
+// ── Measurement (needs supabase/migrations/20261115_events.sql) ─────────────
+// docs/free-to-play.md §9: an event name and a few known properties, no ids.
+// Events before Supabase is ready wait in a short queue; every failure is
+// silent, so measuring never gets in the way of playing.
+const _eventQueue = [];
+export function logEvent(name, props = {}) {
+  if (!_sb) { if (_eventQueue.length < 50) _eventQueue.push([name, props]); return; }
+  _sb.rpc('log_event', { p_name: name, p_props: props }).then(() => {}, () => {});
+}
+function _flushEvents() {
+  while (_eventQueue.length) { const [n, p] = _eventQueue.shift(); logEvent(n, p); }
 }
 
 export function isLoggedIn() { return !!_session; }
