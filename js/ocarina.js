@@ -137,20 +137,35 @@ export function fingersForHoleCount(holeCount) {
   return [...OC_FINGER_ORDER.slice(0, holeCount - 2), ...OC_THUMBS];
 }
 
+// Sub-holes (12-hole style, see docs/ocarina-mode.md "Sub-holes"): small
+// holes beside a finger's hole that give the chamber's lowest notes. In
+// opening order: going up from the lowest note the first one opens, then the
+// second. Two sub-holes: 'taiwanese' beside each middle finger, 'japanese'
+// beside the right index and middle fingers; one: beside the left middle
+// finger (Pure Ocarinas: it shares the work between the hands).
+export const OC_SUB_LAYOUTS = { taiwanese: ['L2', 'R2'], japanese: ['R1', 'R2'] };
+
 // One chamber of a scale-built ocarina: holes in opening order and a
-// cumulative fingering per note (note k = first k holes open).
+// cumulative fingering per note (note k = first k holes open). With
+// subs: 1 or 2, the first holes are sub-holes, the rest finger holes.
 // Hole positions (x, y) and sizes are filled in later by the UI / builder.
-export function buildChamber(notes) {
+export function buildChamber(notes, { subs = 0, layout = 'taiwanese' } = {}) {
   const sorted = [...notes].sort((a, b) => a - b);
-  const fingers = fingersForHoleCount(sorted.length - 1);
-  const holes = fingers.map(f => ({
-    id: f,
-    finger: f,
-    side: OC_THUMBS.includes(f) ? 'bottom' : 'top',
-    x: null,
-    y: null,
-    sizeMm: null,
-  }));
+  const n = sorted.length - 1;
+  const k = Math.max(0, Math.min(subs, 2, n));
+  const subFingers = k === 1 ? ['L2'] : k === 2 ? (OC_SUB_LAYOUTS[layout] ?? OC_SUB_LAYOUTS.taiwanese) : [];
+  const fingers = fingersForHoleCount(n - k);
+  const holes = [
+    ...subFingers.map(f => ({ id: `${f}s`, finger: f, side: 'top', sub: true, x: null, y: null, sizeMm: null })),
+    ...fingers.map(f => ({
+      id: f,
+      finger: f,
+      side: OC_THUMBS.includes(f) ? 'bottom' : 'top',
+      x: null,
+      y: null,
+      sizeMm: null,
+    })),
+  ];
   const fingerings = {};
   sorted.forEach((midi, k) => {
     fingerings[midi] = holes.map((_, h) => (h < k ? 'o' : 'c'));
@@ -159,8 +174,55 @@ export function buildChamber(notes) {
 }
 
 // Chambers, holes and fingerings for a scale-built ocarina from MIDI notes.
-export function buildScaleChambers(midis) {
-  return splitChambers(midis).map(buildChamber);
+// Notes the sub-holes add below a scale: from its lowest note down, `count`
+// notes, each a semitone or a tone lower. A note of the scale's key (pitch
+// classes `pcs`) is taken when one is that close; otherwise a tone down.
+// Sub-holes are small, so they never take a bigger step than that.
+export function subExtensionNotes(lowest, pcs, count) {
+  const inKey = m => pcs.has(((m % 12) + 12) % 12);
+  const out = [];
+  let cur = lowest;
+  for (let i = 0; i < count; i++) {
+    const next = inKey(cur - 1) ? cur - 1 : cur - 2;
+    out.unshift(next);
+    cur = next;
+  }
+  return out;
+}
+
+// A chamber's notes with big steps filled: while it has fewer than maxHoles
+// holes (notes − 1) and a step bigger than a tone, a note goes into the
+// biggest step: the note of the key (pitch classes `pcs`) nearest its
+// middle, or the chromatic middle when the key has none there. Every
+// original note stays. Smaller steps mean smaller holes.
+export function fillGaps(notes, pcs, maxHoles = 10) {
+  const out = [...new Set(notes)].sort((a, b) => a - b);
+  const inKey = m => pcs.has(((m % 12) + 12) % 12);
+  while (out.length - 1 < maxHoles) {
+    let gi = -1, gap = 2;
+    for (let i = 1; i < out.length; i++) if (out[i] - out[i - 1] > gap) { gap = out[i] - out[i - 1]; gi = i; }
+    if (gi < 0) break;
+    const lo = out[gi - 1], hi = out[gi], mid = (lo + hi) / 2;
+    const inside = [];
+    for (let m = lo + 1; m < hi; m++) inside.push(m);
+    const keyed = inside.filter(inKey);
+    const pick = (keyed.length ? keyed : inside).sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid) || a - b)[0];
+    out.splice(gi, 0, pick);
+  }
+  return out;
+}
+
+// subs / layout: sub-holes on the lowest chamber. They don't take any of the
+// scale's notes: they add `subs` notes below it (subExtensionNotes, from the
+// scale's pitch classes `pcs`), so the finger holes play the scale as before.
+// fill: maxHoles per chamber (fillGaps) before the sub-holes are added.
+export function buildScaleChambers(midis, { subs = 0, layout = 'taiwanese', pcs = null, fill = 0 } = {}) {
+  const keyPcs = pcs ?? new Set(midis.map(m => ((m % 12) + 12) % 12));
+  const chambers = splitChambers(midis).map(c => (fill > 0 ? fillGaps(c, keyPcs, fill) : c));
+  if (subs > 0 && chambers.length) {
+    chambers[0] = [...subExtensionNotes(chambers[0][0], keyPcs, Math.min(subs, 2)), ...chambers[0]];
+  }
+  return chambers.map((c, i) => buildChamber(c, i === 0 ? { subs, layout } : {}));
 }
 
 // ── Hole sizes ───────────────────────────────────────────────────────────────

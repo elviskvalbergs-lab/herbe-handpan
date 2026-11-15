@@ -320,3 +320,13 @@ This is the shape every song page should take: the chord, what to hit at the pla
 Parked on purpose; not planned for a phase yet.
 
 - **Identify a chord by ear (handpan).** A microphone button in Identify mode: the app listens and checks, for each note on the pan, whether its tone (with the overtones a handpan note always has) is ringing. The notes it hears light up on the pan, you tap to fix any it got wrong, and Identify names the chord. Easier than general chord recognition because the candidates are only the pan's own 9–17 notes; notes an octave apart (a D3's strong D4 overtone against a struck D4) are the hard case. Parked by the owner: tapping the notes already works well.
+
+### Sub-holes (12-hole ocarinas)
+
+Source: Pure Ocarinas, "The ocarina's fingering system" (https://pureocarinas.com/ocarina-fingering-system).
+- Two layouts. **Taiwanese:** one sub-hole beside each middle finger (R2 and L2). **Japanese:** both on the right hand, beside the index and middle fingers (R1 and R2).
+- They extend the range down below the "all finger holes closed" note: on an alto C, B with the right sub-hole closed, A with both closed. A finger slides forward so its pad covers its own hole and the sub-hole at once.
+- An 11-hole ocarina has one sub-hole, beside either middle finger; the left one shares the work between the hands.
+- The app's first guess for 11–12 holes is the Taiwanese layout (as on the STL 12-hole chart). Hole fingers offers both layouts for a bought ocarina.
+- **Built:** the Build tab's Design step has **Sub-holes: None / 1 / 2** (two: beside R2 and L2, or beside R1 and R2). They don't take any of the scale's notes: the scale stays on the finger holes, and the sub-holes **add notes below it**, each a semitone or a tone lower than the one above, a note of the scale's key where one is that close, otherwise a tone (`subExtensionNotes`). D Kurd gets C3 and Bb2 below its D3 ding; a C major scale gets B3 and A3 below C4, as on an alto C. They are the lowest chamber's first holes in opening order and are sized by the same Helmholtz maths, so they come out small; the chamber is sized for the new lowest note. In the drilling plan they come first, named "L2 sub-hole" / "R2 sub-hole", placed just past their finger's hole toward the fingertip; the test hole is always a finger hole.
+- **Fill big gaps** (Design switch): in each chamber, a step bigger than a tone gets a note of the scale's key inside it (the biggest step first, the key's note nearest its middle), up to 10 holes a chamber (8 fingers + 2 thumbs), keeping every note of the scale (`fillGaps`). On D Kurd the D3 → A3 jump becomes D3 E3 F3 G3 A3, so the lowest finger hole goes from nine 11 mm holes to two 10.4 mm ones. Sub-holes are added below after that.
