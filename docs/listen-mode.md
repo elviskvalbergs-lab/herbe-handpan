@@ -193,6 +193,15 @@ Each step is a pull request, smallest useful version first:
 5. **Play along**: focus view, follow by the clock, Wake Lock. Tests: following a loop with noisy evidence.
 6. **One-note instruments** (case c): chord notes I can play and notes that fit the song, on ocarina and flute. Tests: the alto C ocarina and a 6-hole flute.
 
+## Owner's decisions (review round 1)
+
+- **Play along by the clock: explained, to confirm.** In Play along the app moves Now → Next on a timer at the detected tempo (like the progression player), instead of re-detecting every moment; it still listens at each bar start and re-syncs or pauses when the friend clearly changes or stops.
+- **Where:** a third segment on the Chords screen: **Browse / Identify / Listen**. All instruments share the Chords screen, so ocarinas and flutes get Identify and Listen too.
+- **Chords:** only what's reliable. Root first (right 94–100% in the spike, even in noise), then major/minor; 7ths and sus only when clearly there, otherwise the root and major/minor, never a confident wrong extension. Uncertain = root plus "?".
+- **A song that doesn't fit:** say so plainly ("This song doesn't fit your instrument well; try another one"); no capo or transposition advice.
+- **Ocarina:** "notes that fit" (play / avoid) only; the point is matching the key, not copying the melody.
+- **Recordings:** the owner records clips with the phone's own recorder (any format; converted with ffmpeg) and uploads them. Most important: the chords one by one with their names said, the G Em C D loop, and the loop with the owner's handpan playing along.
+
 ## Open questions for the owner
 
 1. **Listen, then Play along**: is it OK that following a song while I play is by the clock (re-checking at bar lines), rather than truly listening every moment? The spike says the latter isn't reliable with my own instrument in the mic.
