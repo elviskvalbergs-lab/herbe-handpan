@@ -33,6 +33,8 @@ What's **new**: hearing chords (several notes at once), following a song over ti
 | **At a glance** | Big chord name and the notes lit on my instrument | The chord now, the next one, the key; where we are in the loop | The 2–4 notes I can play over this chord, big; a calm "safe notes" set for the song | The note name and where it is on my instrument, the last few notes in order |
 | **Phone** | On my lap or a stand, 0.5–1 m away | On a stand, 1–2 m away, often not touched for minutes | On a stand, can't be touched while playing | Close |
 
+**e) A recording (radio, a record, a phone speaker), to learn the song on my own.** Who plays: a band, with drums, bass and a voice. Around: usually quiet, but the speaker may be small. I'm holding: nothing yet, I'm learning. At a glance: the song's chords and key, then Play along at my own pace. Extra: **Choose a song file** analyses a downloaded track faster than real time, without the microphone. (Telling *which* song is playing, as SoundHound does, needs a music database and isn't part of this.)
+
 ## Phase 2 · Modes
 
 **Option A: two modes**, "Single chord" and "Follow a song". Simple to explain, but you have to choose first, and a "single chord" is usually the start of a song anyway.
@@ -70,6 +72,15 @@ Wireframes 2–5 in `docs/listen-wireframes.html`.
 - **Phone, Play along**: a **focus view**: Now and Next only, huge (chord name 56 px, the instrument picture large), a bar progress line, the key small. Readable from 1–2 m. Screen stays awake (Wake Lock). A tap anywhere pauses or resumes.
 - **Tablet and desktop**: picture and Now on the right, timeline and key on the left (the Chords two-column layout).
 - **Not a bottom sheet**: a sheet hides the instrument, and Listen is long-running; a sheet is used only for "Correct this chord".
+
+### Checking and editing what was heard
+
+The person playing (or I) can correct the result, and the corrected version is what's used and saved:
+- After Listen, a **Check** step shows the loop as a row of chords before Play along: *"Are these the chords?"*
+- Tap a chord to change it: root and type (Am → A), or pick from the top guesses; **delete** it, **insert** one before/after, change its **length in bars**, or merge it with its neighbour.
+- The whole timeline (not just the loop) can be edited the same way, and the key is recomputed from the edited chords.
+- A correction is remembered for the rest of the session, so the same misreading on the next round is fixed automatically.
+- **Save progression** saves the edited version.
 
 ### Hard cases
 
@@ -137,12 +148,15 @@ The spike is a throwaway Python script, separate from the app. **I couldn't fetc
 - **My handpan bleeding in** while the friend strums: free detection is useless (D Kurd notes everywhere). Following with the loop locked gets 8/16 bars right with my pan as loud as the guitar, 12/16 when it's quieter, 14/16 with babble and quiet bleed, but with many short flickers. Hence the design change: **Listen, then Play along by the clock**.
 - **Latency**: a chord is shown about 0.3 s after it starts (FFT 8192 at 22 kHz, hop 93 ms, 3–4 frames).
 
+- **Recorded music** (`spike4.py`: strummed chords + bass + drums + a sung melody, also through a phone speaker at 10 dB, and with loud drums and voice): with the live settings the voice's melody notes turn chords into sus2/sus4 and the loop isn't found. With **longer smoothing (≈0.8 s) and locking to the key**, all three mixes come out exactly **Am F C G** (the loop found every time). Key: A minor / C major, the relative pair, as expected.
+
 ### Design changes from the spike
 
 1. **Listen, then Play along**: follow a locked loop by the clock while I play (above).
 2. **Root first in noise**: when the type is uncertain, show the root big and the type as "?" (the root is right 94–100% even at 5 dB).
 3. **Arpeggiated playing** (handpan, harp-like guitar) needs longer smoothing (about 1 bar) to see the whole chord; the app uses longer smoothing when it hears separate onsets.
 4. **Same-note names**: pick by key and bass, show the other as the second guess.
+5. **Recorded music and song files** use the slower setting (≈0.8 s smoothing, key-locked once the key is known); a live friend uses the faster one (≈0.3 s). The app picks the slow one for a file, and offers "Steady (recordings)" / "Quick (live)" in Listen's ⋯ menu.
 
 ### Recording kit (to rerun the spike on real sound)
 
@@ -190,8 +204,9 @@ Each step is a pull request, smallest useful version first:
 2. **Single notes** (case d): note mode with YIN, last notes row, likely scale. Tests: note naming, chord/notes decision.
 3. **Song timeline and key** (case b, Listen phase): `listen-song.js` timeline, key with confidence, uncertainty and the Correct sheet. Tests: key detection on chord histories (incl. relative keys and a key change).
 4. **Loop and saving**: `findLoop`, tempo, Save progression / ♡. Tests: progression detection with misreadings, roots-only fallback.
-5. **Play along**: focus view, follow by the clock, Wake Lock. Tests: following a loop with noisy evidence.
-6. **One-note instruments** (case c): chord notes I can play and notes that fit the song, on ocarina and flute. Tests: the alto C ocarina and a 6-hole flute.
+5. **Check and edit, then Play along**: the Check step and timeline editing; the focus view following the edited loop by the clock with the microphone off, Wake Lock. Tests: editing operations and following a loop.
+6. **One-note instruments** (case c): notes that fit the song (play / avoid) and the chord's notes, on ocarina and flute. Tests: the alto C ocarina and a 6-hole flute.
+7. **Recordings and song files** (case e): the steady setting, Choose a song file (decoded on the device, analysed faster than real time, nothing uploaded).
 
 ## Owner's decisions (review round 1)
 
