@@ -50,11 +50,11 @@ html = f'''<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Handpan Chords</title>
+  <title>Oakhum</title>
   <meta name="description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Handpan Chords">
-  <meta property="og:title" content="Handpan Chords">
+  <meta property="og:site_name" content="Oakhum">
+  <meta property="og:title" content="Oakhum">
   <meta property="og:description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
   <meta property="og:image" content="/og/app.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -63,7 +63,7 @@ html = f'''<!DOCTYPE html>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Handpan">
+  <meta name="apple-mobile-web-app-title" content="Oakhum">
   <meta name="theme-color" content="#090F0D">
   <script>
     // The theme pref before first paint (applyTheme() in app.js keeps it in step).

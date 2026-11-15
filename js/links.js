@@ -14,6 +14,9 @@
 import { SCALES } from './data.js';
 import { TRADITIONAL_CHARTS, getChart, instrumentFromChart } from './charts.js';
 
+// The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
+export const APP_NAME = 'Oakhum';
+
 export const LINK_FAMILIES = ['handpan', 'ocarina', 'flute'];
 export const LINK_TABS = {
   handpan: ['pan', 'chords', 'playlists', 'listen'],
@@ -244,13 +247,13 @@ export function linkPreview(pathname, search = '') {
   const link = parseLink(pathname, search);
   const title = linkTitle(link);
   if (!title || link.kind === 'unknown') {
-    return { title: 'Handpan Chords', description: 'Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.', image: '/og/app.png' };
+    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.', image: '/og/app.png' };
   }
   const what = link.tab === 'listen' ? 'Listen to a song and play along'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
     : 'Notes, chords, arpeggios and play-along';
   const family = link.family ?? 'app';
-  return { title: `${title} · Handpan Chords`, description: `${what} on the ${linkLower(title)}. Free, in your browser: open it and play.`, image: `/og/${family}.png` };
+  return { title: `${title} · ${APP_NAME}`, description: `${what} on the ${linkLower(title)}. Free, in your browser: open it and play.`, image: `/og/${family}.png` };
 }
 
 // "a-min" → "A min", "cs-maj7" → "C# maj7": readable enough for a card.

@@ -107,7 +107,7 @@ test('names and preview cards', () => {
   assert.equal(linkTitle(parseLink('/ocarina/alto-c-12')), 'Alto C 12-hole ocarina');
   assert.equal(linkTitle(parseLink('/flute/tin-whistle-d')), 'Tin whistle in D');
   const p = linkPreview('/handpan/d-kurd/chords/a-min');
-  assert.equal(p.title, 'D Kurd handpan · Handpan Chords');
+  assert.equal(p.title, 'D Kurd handpan · Oakhum');
   assert.match(p.description, /A min chord/);
   assert.equal(p.image, '/og/handpan.png');
   assert.equal(linkPreview('/ocarina/alto-c-12').image, '/og/ocarina.png');
@@ -115,9 +115,9 @@ test('names and preview cards', () => {
 });
 
 test('the preview card goes into index.html', () => {
-  const html = `<html><head>\n  <title>Handpan Chords</title>\n  <meta name="description" content="x">\n  <meta property="og:title" content="Handpan Chords">\n  <meta property="og:image" content="/og/app.png">\n</head><body><script>const t = '<title>not this</title>';</script></body></html>`;
+  const html = `<html><head>\n  <title>Oakhum</title>\n  <meta name="description" content="x">\n  <meta property="og:title" content="Oakhum">\n  <meta property="og:image" content="/og/app.png">\n</head><body><script>const t = '<title>not this</title>';</script></body></html>`;
   const out = withLinkPreview(html, linkPreview('/ocarina/alto-c-12'), 'https://example.app', 'https://example.app/ocarina/alto-c-12');
-  assert.match(out, /<title>Alto C 12-hole ocarina · Handpan Chords<\/title>/);
+  assert.match(out, /<title>Alto C 12-hole ocarina · Oakhum<\/title>/);
   assert.match(out, /<meta property="og:image" content="https:\/\/example.app\/og\/ocarina.png">/);
   assert.match(out, /<meta property="og:url" content="https:\/\/example.app\/ocarina\/alto-c-12">/);
   assert.match(out, /<meta name="description" content="Notes, chords, arpeggios and play-along on the alto C 12-hole ocarina/);

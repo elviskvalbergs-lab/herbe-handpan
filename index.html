@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Handpan Chords</title>
+  <title>Oakhum</title>
   <meta name="description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Handpan Chords">
-  <meta property="og:title" content="Handpan Chords">
+  <meta property="og:site_name" content="Oakhum">
+  <meta property="og:title" content="Oakhum">
   <meta property="og:description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
   <meta property="og:image" content="/og/app.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -16,7 +16,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Handpan">
+  <meta name="apple-mobile-web-app-title" content="Oakhum">
   <meta name="theme-color" content="#090F0D">
   <script>
     // The theme pref before first paint (applyTheme() in app.js keeps it in step).
@@ -4112,6 +4112,9 @@ function detectLowestKey(chart, hz, { a4 = 440 } = {}) {
 // A slug never changes or disappears once published: a rename only adds an
 // alias. Every slug is lower case; '#' is written 's' (F# Kurd → fs-kurd).
 
+// The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
+const APP_NAME = 'Oakhum';
+
 const LINK_FAMILIES = ['handpan', 'ocarina', 'flute'];
 const LINK_TABS = {
   handpan: ['pan', 'chords', 'playlists', 'listen'],
@@ -4342,13 +4345,13 @@ function linkPreview(pathname, search = '') {
   const link = parseLink(pathname, search);
   const title = linkTitle(link);
   if (!title || link.kind === 'unknown') {
-    return { title: 'Handpan Chords', description: 'Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.', image: '/og/app.png' };
+    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.', image: '/og/app.png' };
   }
   const what = link.tab === 'listen' ? 'Listen to a song and play along'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
     : 'Notes, chords, arpeggios and play-along';
   const family = link.family ?? 'app';
-  return { title: `${title} · Handpan Chords`, description: `${what} on the ${linkLower(title)}. Free, in your browser: open it and play.`, image: `/og/${family}.png` };
+  return { title: `${title} · ${APP_NAME}`, description: `${what} on the ${linkLower(title)}. Free, in your browser: open it and play.`, image: `/og/${family}.png` };
 }
 
 // "a-min" → "A min", "cs-maj7" → "C# maj7": readable enough for a card.
@@ -6956,7 +6959,7 @@ function render() {
   // Everything after the app bar goes into <main>, the page's content column.
   // The tab title names the instrument on screen (preview cards: middleware.js).
   const titled = state.layout?.name ?? (state.view === 'instrument' ? currentInstrument()?.name : null);
-  document.title = titled ? `${titled} · Handpan Chords` : 'Handpan Chords';
+  document.title = titled ? `${titled} · ${APP_NAME}` : APP_NAME;
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
