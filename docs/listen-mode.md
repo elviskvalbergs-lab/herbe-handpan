@@ -195,7 +195,7 @@ Each step is a pull request, smallest useful version first:
 
 ## Owner's decisions (review round 1)
 
-- **Play along by the clock: explained, to confirm.** In Play along the app moves Now → Next on a timer at the detected tempo (like the progression player), instead of re-detecting every moment; it still listens at each bar start and re-syncs or pauses when the friend clearly changes or stops.
+- **Play along by the clock: confirmed, and without listening.** The app listens only in the Listen phase, to the other instrument on its own. In Play along the **microphone is off**: the app shows the learned loop on my instrument in time (Now / Next, bar by bar at the learned tempo, like the progression player). Controls instead of re-syncing by ear: tap to pause/resume, ◀ ▶ a chord back/forward, a tempo nudge, and **Listen again** to relearn. This replaces the "re-check at bar lines" idea elsewhere in this document.
 - **Where:** a third segment on the Chords screen: **Browse / Identify / Listen**. All instruments share the Chords screen, so ocarinas and flutes get Identify and Listen too.
 - **Chords:** only what's reliable. Root first (right 94–100% in the spike, even in noise), then major/minor; 7ths and sus only when clearly there, otherwise the root and major/minor, never a confident wrong extension. Uncertain = root plus "?".
 - **A song that doesn't fit:** say so plainly ("This song doesn't fit your instrument well; try another one"); no capo or transposition advice.
