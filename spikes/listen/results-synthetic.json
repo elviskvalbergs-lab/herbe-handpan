@@ -1,0 +1,395 @@
+{
+ "guitar": [
+  {
+   "set": "guitar strum",
+   "noise": "none",
+   "snr_db": null,
+   "exact": "18/18",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "guitar strum",
+   "noise": "pink",
+   "snr_db": 20,
+   "exact": "16/18",
+   "pct": 89,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": [
+    "Cmaj7\u2192C",
+    "Gsus4\u2192G7"
+   ]
+  },
+  {
+   "set": "guitar strum",
+   "noise": "pink",
+   "snr_db": 10,
+   "exact": "13/18",
+   "pct": 72,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": [
+    "G\u2192G7",
+    "Am\u2192A",
+    "Cmaj7\u2192C",
+    "Gsus4\u2192G7",
+    "Am7\u2192A7"
+   ]
+  },
+  {
+   "set": "guitar strum",
+   "noise": "pink",
+   "snr_db": 5,
+   "exact": "12/18",
+   "pct": 67,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": [
+    "G\u2192G7",
+    "Am\u2192A",
+    "F\u2192Fmaj7",
+    "Cmaj7\u2192C",
+    "Gsus4\u2192G7",
+    "Am7\u2192A7"
+   ]
+  },
+  {
+   "set": "guitar strum",
+   "noise": "babble",
+   "snr_db": 20,
+   "exact": "16/18",
+   "pct": 89,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": [
+    "Cmaj7\u2192C",
+    "Gsus4\u2192G7"
+   ]
+  },
+  {
+   "set": "guitar strum",
+   "noise": "babble",
+   "snr_db": 10,
+   "exact": "14/18",
+   "pct": 78,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": [
+    "F\u2192Fmaj7",
+    "Em\u2192E",
+    "Gsus4\u2192G7",
+    "Dsus2\u2192D"
+   ]
+  },
+  {
+   "set": "guitar strum",
+   "noise": "babble",
+   "snr_db": 5,
+   "exact": "9/18",
+   "pct": 50,
+   "root_pct": 94,
+   "latency_s": 0.28,
+   "misses": [
+    "Am\u2192A",
+    "F\u2192Fmaj7",
+    "Em\u2192Emaj7",
+    "E\u2192E7",
+    "Dm\u2192D",
+    "Dm7\u2192D",
+    "Gsus4\u2192None",
+    "Bdim\u2192Bm",
+    "Am7\u2192A7"
+   ]
+  }
+ ],
+ "piano": [
+  {
+   "set": "piano",
+   "noise": "none",
+   "snr_db": null,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "piano",
+   "noise": "pink",
+   "snr_db": 20,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "piano",
+   "noise": "pink",
+   "snr_db": 10,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "piano",
+   "noise": "pink",
+   "snr_db": 5,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "piano",
+   "noise": "babble",
+   "snr_db": 20,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "piano",
+   "noise": "babble",
+   "snr_db": 10,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  },
+  {
+   "set": "piano",
+   "noise": "babble",
+   "snr_db": 5,
+   "exact": "12/12",
+   "pct": 100,
+   "root_pct": 100,
+   "latency_s": 0.28,
+   "misses": []
+  }
+ ],
+ "handpan": [
+  {
+   "set": "handpan arpeggio",
+   "noise": "none",
+   "snr_db": null,
+   "exact": "8/10",
+   "pct": 80,
+   "root_pct": 80,
+   "latency_s": 0.28,
+   "misses": [
+    "Fmaj7\u2192Am",
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan arpeggio",
+   "noise": "pink",
+   "snr_db": 20,
+   "exact": "8/10",
+   "pct": 80,
+   "root_pct": 80,
+   "latency_s": 0.28,
+   "misses": [
+    "Fmaj7\u2192Am",
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan arpeggio",
+   "noise": "pink",
+   "snr_db": 10,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.28,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan arpeggio",
+   "noise": "pink",
+   "snr_db": 5,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.28,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan arpeggio",
+   "noise": "babble",
+   "snr_db": 20,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.28,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan arpeggio",
+   "noise": "babble",
+   "snr_db": 10,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.28,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan arpeggio",
+   "noise": "babble",
+   "snr_db": 5,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.42,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  }
+ ],
+ "handpan_block": [
+  {
+   "set": "handpan struck together",
+   "noise": "none",
+   "snr_db": null,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.28,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  },
+  {
+   "set": "handpan struck together",
+   "noise": "pink",
+   "snr_db": 10,
+   "exact": "9/10",
+   "pct": 90,
+   "root_pct": 90,
+   "latency_s": 0.28,
+   "misses": [
+    "Csus2\u2192Gsus4"
+   ]
+  }
+ ],
+ "songs": {
+  "guitar Am F C G x4, 100 bpm": {
+   "detected": "Am Fmaj7 F C Gmaj7 Am Fmaj7 F C Gmaj7 G Am F C Gmaj7 G Am Fmaj7 F C Gmaj7 G",
+   "simple": "Am F C G Am F C G Am F C G Am F C G",
+   "progression": [
+    "Am",
+    "F",
+    "C",
+    "G"
+   ],
+   "key": "A minor",
+   "key2": "C major",
+   "key_margin": 0.014
+  },
+  "same, babble 10 dB": {
+   "detected": "Am Asus2 Fmaj7 F7 Fmaj7 Cmaj7 Gmaj7 Bm7 Gmaj7 Am Asus2 A Fmaj7 F7 Fmaj7 Cmaj7 Gmaj7 Am7 Am Asus2 Fmaj7 F7 Fmaj7 Cmaj7 C Bm7 Gmaj7 Bm7 Gmaj7 Am Asus2 Fmaj7 F7 Fmaj7 Cmaj7 Gmaj7 B7 Bm7 Gmaj7",
+   "simple": "Am Asus2 F C G Bm G Am Asus2 A F C G Am Asus2 F C Bm G Bm G Am Asus2 F C G B Bm G",
+   "progression": null,
+   "key": "C major",
+   "key2": "A minor",
+   "key_margin": 0.01
+  },
+  "same, 2 chords a bar (fast changes)": {
+   "detected": "Am F Cmaj7 G Am F Cmaj7 G Am F Cmaj7 G Am F Cmaj7 G",
+   "simple": "Am F C G Am F C G Am F C G Am F C G",
+   "progression": [
+    "Am",
+    "F",
+    "C",
+    "G"
+   ],
+   "key": "C major",
+   "key2": "A minor",
+   "key_margin": 0.004
+  },
+  "same, my handpan bleeding in": {
+   "detected": "Asus4 Bbmaj7 Gm7 Bb Bbmaj7 Am7 Em7 Am7 C7 Am Em7 A7 Gsus2 A7 Am Asus4 Am7 Fmaj7 Dm C7 Fmaj7 Bbmaj7 Gsus2 A7 Asus4 Am7 Asus4 Bbmaj7 F Dm7 Em7 C7 Gm G Gsus2 G Gsus2 Am7 Am Fmaj7 Dm7 F Bbmaj7 C7 Am7 C7 Am7 G7 Cmaj7 G7",
+   "simple": "Asus4 Bb Gm Bb Am Em Am C Am Em A Gsus2 A Am Asus4 Am F Dm C F Bb Gsus2 A Asus4 Am Asus4 Bb F Dm Em C Gm G Gsus2 G Gsus2 Am F Dm F Bb C Am C Am G C G",
+   "progression": null,
+   "key": "A minor",
+   "key2": "D minor",
+   "key_margin": 0.045
+  },
+  "piano C G Am F x3, 90 bpm": {
+   "detected": "C G Am F C G Am F C G Am F",
+   "simple": "C G Am F C G Am F C G Am F",
+   "progression": [
+    "C",
+    "G",
+    "Am",
+    "F"
+   ],
+   "key": "C major",
+   "key2": "A minor",
+   "key_margin": 0.063
+  },
+  "handpan Dm Bb F C x3 (arpeggiated), 80 bpm": {
+   "detected": "Dm Bb Am F C Dm Bb Am F C Dm Bbmaj7 Bb Am F C",
+   "simple": "Dm Bb Am F C Dm Bb Am F C Dm Bb Am F C",
+   "progression": [
+    "Dm",
+    "Bb",
+    "Am",
+    "F",
+    "C"
+   ],
+   "key": "D minor",
+   "key2": "F major",
+   "key_margin": 0.03
+  }
+ },
+ "melody": {
+  "guitar": {
+   "pct": 100,
+   "n": 15,
+   "errors": []
+  },
+  "piano": {
+   "pct": 100,
+   "n": 15,
+   "errors": []
+  },
+  "handpan": {
+   "pct": 100,
+   "n": 15,
+   "errors": []
+  },
+  "guitar, pink 10 dB": {
+   "pct": 87,
+   "n": 15,
+   "errors": [
+    "76\u219277",
+    "78\u2192None"
+   ]
+  },
+  "handpan, pink 10 dB": {
+   "pct": 100,
+   "n": 15,
+   "errors": []
+  }
+ }
+}
