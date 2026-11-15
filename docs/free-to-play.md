@@ -259,7 +259,7 @@ If the account already has an item with the same id, both are kept.
   - what we keep and why
   - processors: Supabase (database and auth, EU region, confirmed), Vercel (hosting), Google (only if you sign in with Google), the analytics tool
   - how long data is kept: until you delete the account; accounts with no use for 24 months are deleted after an email warning
-  - your rights, and the contact: Elvis Kvalbergs (the owner), with a contact email he chooses
+  - your rights, and the contact: Elvis Kvalbergs (the owner), elvis.kvalbergs@gmail.com
 - **Export my data:** downloads one JSON file of everything the account holds (instruments with photos, playlists, progressions, prefs). It's built in the browser from the person's own rows.
 - **Delete account:**
   1. confirm in a sheet (type DELETE)
@@ -384,7 +384,7 @@ log_event(name, props)           -- validates and inserts; callable by anon and 
 5. **No paid analytics:** events go into our own Supabase database (§9).
 6. **The Supabase project is in the EU.**
 7. **Link preview cards per instrument: yes** (step 1).
-8. **The privacy contact is the owner,** Elvis Kvalbergs. The contact email is to be confirmed before step 3 publishes the notice.
+8. **The privacy contact is the owner,** Elvis Kvalbergs. The contact email is elvis.kvalbergs@gmail.com.
 
 ---
 
