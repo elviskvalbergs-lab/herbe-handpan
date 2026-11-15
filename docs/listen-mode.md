@@ -197,10 +197,15 @@ mic ─▶ audio pipeline ─▶ detection ─▶ song analysis ─▶ Listen vi
 - **CPU and battery**: FFT 16384 ten times a second is light; YIN runs only when a single note is likely.
 - **Expectations**: complex jazz chords, fast changes (more than 2 a bar) and very quiet playing will be missed. The empty state says what works best.
 
+## Confidence (owner's request)
+
+- **Each chord**: sure / likely / unsure, from how well it fits, how far ahead of the next guess it is, and how steadily it held while it rang (`listenTracker`). Shown as a three-step bar with the word under the chord name; unsure chords show the root with "?" when the root is clear, and the second guess ("or Cmaj7?") when not sure.
+- **Overall**: "Heard clearly" / "Mostly clear" / "Hard to hear: ask them to play it again, closer to the phone": the chords' confidence weighted by how long each was heard (`listenOverallConfidence`). Step 4 adds whether the loop repeated the same way.
+
 ## Implementation plan (after approval)
 
 Each step is a pull request, smallest useful version first:
-1. **Single chord, shown on my instrument** (case a): audio pipeline, `listen-detect.js` (chroma, templates, tracker), the Now card on the shared Chords layout for handpan and ocarina, privacy note and mic flow, and the **debug view**. Unit tests: chord matching on synthetic chroma, closest version on D Kurd 9, D Celtic Minor 9, a custom layout with bottom notes, and the 12-hole alto C ocarina.
+1. **Single chord, shown on my instrument** (case a) — **built** (`js/listen-detect.js`, `js/listen-audio.js`, Chords › Listen on handpan, ocarina and flute, Settings › Listen debug; `tests/listen.test.mjs`): audio pipeline, `listen-detect.js` (chroma, templates, tracker), the Now card on the shared Chords layout for handpan and ocarina, privacy note and mic flow, and the **debug view**. Unit tests: chord matching on synthetic chroma, closest version on D Kurd 9, D Celtic Minor 9, a custom layout with bottom notes, and the 12-hole alto C ocarina.
 2. **Single notes** (case d): note mode with YIN, last notes row, likely scale. Tests: note naming, chord/notes decision.
 3. **Song timeline and key** (case b, Listen phase): `listen-song.js` timeline, key with confidence, uncertainty and the Correct sheet. Tests: key detection on chord histories (incl. relative keys and a key change).
 4. **Loop and saving**: `findLoop`, tempo, Save progression / ♡. Tests: progression detection with misreadings, roots-only fallback.
