@@ -266,23 +266,18 @@ If the account already has an item with the same id, both are kept.
   2. a database function (`delete_my_account`, security definer, only `auth.uid()`) deletes the user, and every row goes with it (`on delete cascade`)
   3. this device is cleared and the service worker removed
 - **Sign out:** clears this device (§4). If changes haven't synced, it says so and offers to wait.
-- **Analytics:** no cookies or personal data, so it needs no consent banner (§9).
+- **Analytics:** no cookies and no stored id, so it needs no consent banner (§9). Session replays, later, only with an opt-in.
 
 ### 9. Measurement (privacy-friendly)
-**Tool: our own Supabase database (free, EU, no third party).** The owner asked why we'd pay for a tool, and we don't need to.
-- **How it works:** the app sends each event to a database function, `log_event(name, props)`. The function checks the name against the event list, keeps only known properties under a small size, and writes one row to an `events` table.
-  - **Insert-only:** nobody can read the table through the app.
-  - **Reading the numbers:** the owner reads them with saved SQL queries (funnel, sources, returns) in the Supabase dashboard. A small read-only Stats page for the owner can come later.
-- **Why this over a hosted tool:**
-  - It's free and already in the EU.
-  - No new processor appears in the privacy notice.
-  - The data is ours.
-  - Funnels are simple SQL.
-- **What it doesn't give us:** a ready-made dashboard, and bot filtering. Bots don't run the app's JavaScript events, so only the page-load count is affected.
-- **Rejected:**
-  - Plausible: about €9 a month.
-  - Umami self-hosted: free, but something more to run.
-  - Vercel Web Analytics: custom events need the Pro plan.
+**Tool: PostHog, EU cloud (Frankfurt), free tier** (owner's decision, review round 2). It replaces the first plan, our own `events` table, which was never merged: it gave counts but no heatmaps, and the owner wants to see where people tap.
+- **Free tier:** about 1M events and 100,000 errors a month, far above what we need.
+- **Set up for no consent banner:** memory-only persistence (no cookie, no stored id; each visit counts on its own), no person profiles for guests, session recording off. In the PostHog project settings, turn on "Discard client IP data".
+- **What we get:** the events below, autocaptured taps (heatmaps per screen; every instrument and tab has its own URL), funnels and sources, and error tracking with stack traces.
+- **Claude reads it** through the PostHog MCP connector: errors to fix, a weekly usage review, and later feature flags and experiments (each started only with the owner's OK).
+- **Not yet:** session replays. They need consent; an opt-in comes with Settings › Account (step 3), recording sessions with an error plus a small sample.
+- **Return visits** can't be seen without a stored id; for accounts, `profiles.last_seen_on` counts them.
+- **Privacy notice:** names PostHog (a US company, data stored in the EU) as a processor.
+- **Code:** `logEvent(name, props)` in `js/auth.js`. It does nothing until `_PH_KEY` (the project's public key) is filled in.
 
 **Events** (no ids, no email; `account` = guest or signed in):
 
@@ -363,14 +358,7 @@ save_item(kind, id, data, base_version, deleted) returns (ok, version, current_r
 delete_my_account()  -- deletes auth.users row for auth.uid(); cascades
 touch_last_seen()    -- sets profiles.last_seen_on = today
 
--- Measurement (§9): insert-only through log_event; no select policy.
-events (
-  at        timestamptz default now(),
-  name      text,                 -- from the fixed event list
-  props     jsonb,                -- known keys only, small
-  signed_in boolean               -- no user id, no device id
-)
-log_event(name, props)           -- validates and inserts; callable by anon and authenticated
+-- Measurement (§9) is in PostHog, not in the database.
 ```
 
 - **Favourites:** a playlist with id `favorites`, as today.
@@ -381,7 +369,7 @@ log_event(name, props)           -- validates and inserts; callable by anon and 
 2. **Arpeggios are saved through playlists.** A saved chord carries its arpeggio, so there's no separate collection.
 3. **No guest recents.** Push for sign-up: guests keep nothing between visits, only within the open tab (§2, §5), and leaving unsaved work shows the save sheet once.
 4. **Apple sign-in is possible** (the owner has access to a developer account). It's planned for step 2 if the Apple keys are ready.
-5. **No paid analytics:** events go into our own Supabase database (§9).
+5. **No paid analytics:** PostHog's free tier, EU cloud (§9; round 2 replaced the own-database plan).
 6. **The Supabase project is in the EU.**
 7. **Link preview cards per instrument: yes** (step 1).
 8. **The privacy contact is the owner,** Elvis Kvalbergs. The contact email is oakhummusic@gmail.com.
@@ -464,7 +452,7 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - the Play screen instead of the first-run wizard
      - the URL kept in sync while playing
      - preview cards per link: a Vercel Routing Middleware (`middleware.js`, works without a framework) that puts the instrument's title, description and an image into `<title>` and the `og:` tags of `index.html`
-     - the `events` table, `log_event`, and the `open` / `first_play` / `feature` events
+     - the `open` / `first_play` / `feature` events through `logEvent` (PostHog, off until the key is set)
    - Tests: preview tags for a scale, a chart and an unknown slug; every catalogue scale and chart key round-trips `linkFor` ↔ `parseLink`; aliases (`alto-c-12`, `celtic-minor`); unknown slugs; custom handpan links; old hash links; opening `/handpan/d-kurd/chords/a-min` gives D Kurd on Chords with A minor selected (e2e).
 2. **Save sheet, starting with favourite chords**
    - Build:
