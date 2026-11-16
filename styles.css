@@ -1712,3 +1712,25 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .brand-about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
 .brand-about .brand-horizontal { height: 28px; }
 .brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
+
+/* Accounts (docs/free-to-play.md §3, §4): the save sheet, the Offline pill, the guest offline card */
+.save-line { margin: 0; }
+.save-free { margin: var(--space-1) 0 var(--space-4); font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.sheet-root[data-sheet="save"] .sheet-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.sheet-root[data-sheet="save"] .field { margin: 0; }
+.save-or { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-2) 0; color: var(--text-3); font-size: var(--fs-13); }
+.save-or::before, .save-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.save-legal { margin: var(--space-2) 0 0; font-size: var(--fs-12); line-height: var(--lh-12); color: var(--text-3); }
+.save-legal a { color: inherit; }
+.offline-pill {
+  display: inline-flex; align-items: center; gap: var(--space-1); height: 28px; padding: 0 var(--space-2); margin-right: var(--space-1);
+  border-radius: 14px; background: var(--surface-2); color: var(--text-2); font: var(--fw-medium) var(--fs-12)/var(--lh-12) var(--font);
+}
+.offline-pill .ico { width: 14px; height: 14px; }
+.offline-card {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: var(--z-toast);
+  bottom: calc(var(--toast-base) + env(safe-area-inset-bottom) + var(--space-3));
+  width: min(420px, calc(100% - 32px)); display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-4); box-shadow: var(--e-2);
+}
+.offline-card .set-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; }

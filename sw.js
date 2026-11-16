@@ -1,40 +1,56 @@
-const CACHE = 'handpan-v1';
-const SHELL = ['/'];
+// Offline for accounts (docs/free-to-play.md §4). Registered by js/offline.js
+// only while an account is on the device, as /sw.js?v=<build hash>: a new
+// build is a new worker with its own cache, and the old cache is deleted.
+const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
+const CACHE = `oakhum-${VERSION}`;
+// Must match the pinned supabase-js in build.py.
+const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js';
+const PRECACHE = [
+  '/', '/index.html', '/manifest.json', '/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-180.png',
+  '/fonts/oakhum-text-400.woff2', '/fonts/oakhum-text-500.woff2', '/fonts/oakhum-text-600.woff2', '/fonts/oakhum-text-700.woff2',
+  SUPABASE_JS,
+];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)));
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(PRECACHE.map(url =>
+    c.add(new Request(url, { cache: 'reload', mode: url.startsWith('http') ? 'cors' : 'same-origin' })).catch(() => {}),
+  ))));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
-  );
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
-  // Navigation: network-first, fall back to cache
-  if (e.request.mode === 'navigate') {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Page loads, deep links included (/handpan/…, /s/…): network first, then
+  // the cached app, which reads the path itself.
+  if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(e.request)
-        .then(r => {
-          caches.open(CACHE).then(c => c.put(e.request, r.clone()));
-          return r;
+      fetch(req)
+        .then(res => {
+          if (res.ok && url.origin === self.location.origin) {
+            const copy = res.clone();
+            caches.open(CACHE).then(c => c.put('/index.html', copy));
+          }
+          return res;
         })
-        .catch(() => caches.match(e.request).then(r => r || caches.match('/')))
+        .catch(() => caches.match('/index.html').then(r => r || caches.match('/'))),
     );
     return;
   }
-  // Fonts (Google's and our own /fonts/): cache-first
-  if (e.request.url.includes('fonts.g') || new URL(e.request.url).pathname.startsWith('/fonts/')) {
-    e.respondWith(
-      caches.match(e.request).then(r => r || fetch(e.request).then(res => {
-        caches.open(CACHE).then(c => c.put(e.request, res.clone()));
-        return res;
-      }))
-    );
-  }
+  // The app's own files, fonts and the pinned supabase-js: cache first.
+  const cacheable = (url.origin === self.location.origin && !url.pathname.startsWith('/api/'))
+    || req.url === SUPABASE_JS || url.hostname === 'fonts.gstatic.com' || url.hostname === 'fonts.googleapis.com';
+  if (!cacheable) return; // Supabase API, analytics, Sentry: always the network
+  e.respondWith(
+    caches.match(req).then(hit => hit || fetch(req).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+      return res;
+    })),
+  );
 });

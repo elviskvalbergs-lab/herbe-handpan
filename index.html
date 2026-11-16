@@ -1755,6 +1755,28 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .brand-about .brand-horizontal { height: 28px; }
 .brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
 
+/* Accounts (docs/free-to-play.md §3, §4): the save sheet, the Offline pill, the guest offline card */
+.save-line { margin: 0; }
+.save-free { margin: var(--space-1) 0 var(--space-4); font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.sheet-root[data-sheet="save"] .sheet-body { display: flex; flex-direction: column; gap: var(--space-2); }
+.sheet-root[data-sheet="save"] .field { margin: 0; }
+.save-or { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-2) 0; color: var(--text-3); font-size: var(--fs-13); }
+.save-or::before, .save-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.save-legal { margin: var(--space-2) 0 0; font-size: var(--fs-12); line-height: var(--lh-12); color: var(--text-3); }
+.save-legal a { color: inherit; }
+.offline-pill {
+  display: inline-flex; align-items: center; gap: var(--space-1); height: 28px; padding: 0 var(--space-2); margin-right: var(--space-1);
+  border-radius: 14px; background: var(--surface-2); color: var(--text-2); font: var(--fw-medium) var(--fs-12)/var(--lh-12) var(--font);
+}
+.offline-pill .ico { width: 14px; height: 14px; }
+.offline-card {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: var(--z-toast);
+  bottom: calc(var(--toast-base) + env(safe-area-inset-bottom) + var(--space-3));
+  width: min(420px, calc(100% - 32px)); display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-4); box-shadow: var(--e-2);
+}
+.offline-card .set-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; }
+
 /* The handpan drawing's notes (js/pan.js renderPan): shared by the app
    (build.py appends this file to styles.css) and the website (site/src/app/
    globals.css imports it). Colours come from the --pan-*, --note-*, --chord-*,
@@ -1829,7 +1851,7 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 </head>
 <body>
   <div id="app"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
   <script>
 // ── js/data.js ──
 // Note name → semitone offset (0–11)
@@ -2435,6 +2457,12 @@ const ICON_PATHS = {
   mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   ellipsis: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  // Accounts (Lucide 0.460, ISC licence)
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+  'log-out': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+  'cloud-off': '<path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/>',
   'chevron-left': '<path d="m15 18-6-6 6-6"/>',
   'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   'sliders-horizontal': '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
@@ -4805,11 +4833,385 @@ function withLinkPreview(html, preview, origin, url) {
 }
 
 
+// ── js/datastore.js ──
+// Where saved things live on this device (docs/free-to-play.md §2, §5).
+//
+// With an account on this device, playlists, layouts, instruments and
+// progressions are kept in localStorage (and synced, js/sync.js). A guest
+// keeps nothing between visits: the same keys live in sessionStorage, so
+// the work of this visit survives a reload or the sign-in redirect in this
+// tab, and is gone when the tab closes. On sign-in it is carried over into
+// the account (carryOverVisit). Settings and clay bodies stay in
+// localStorage for everyone; they aren't save actions.
+
+const DATA_KEYS = ['hp-playlists', 'hp-layouts', 'hp-instruments', 'hp-progressions'];
+const ACCOUNT_FLAG = 'hp-account';
+
+function dsLocal() { try { return globalThis.localStorage ?? null; } catch { return null; } }
+function dsSession() { try { return globalThis.sessionStorage ?? null; } catch { return null; } }
+
+// An account is on this device: set at sign-in, cleared at sign-out. It
+// stays set while offline or while a token refreshes, so a signed-in
+// person never loses their things to a dropped connection.
+function hasAccountOnDevice() {
+  return dsLocal()?.getItem(ACCOUNT_FLAG) === '1';
+}
+
+// A session from before this flag existed (supabase-js keeps it under
+// sb-…-auth-token) counts as an account on this device. Checked once, as
+// the page loads, before supabase-js can write a new session: a sign-in in
+// this tab goes through carryOverVisit instead.
+(function adoptEarlierSession() {
+  const ls = dsLocal();
+  if (!ls || ls.getItem(ACCOUNT_FLAG) === '1') return;
+  for (let i = 0; i < ls.length; i++) {
+    const k = ls.key(i);
+    if (k && /^sb-.*-auth-token$/.test(k)) { ls.setItem(ACCOUNT_FLAG, '1'); return; }
+  }
+})();
+
+function setAccountOnDevice(on) {
+  const ls = dsLocal();
+  if (!ls) return;
+  if (on) ls.setItem(ACCOUNT_FLAG, '1'); else ls.removeItem(ACCOUNT_FLAG);
+}
+
+// The storage the data keys use right now.
+function dataStore() {
+  const ls = dsLocal();
+  if (hasAccountOnDevice()) return ls;
+  return dsSession() ?? ls;
+}
+
+// Did this visit build or keep anything (a guest's unsaved work)?
+function visitHasWork() {
+  if (hasAccountOnDevice()) return false;
+  const ss = dsSession();
+  if (!ss) return false;
+  return ['hp-layouts', 'hp-instruments', 'hp-progressions'].some(k => {
+    try { return (JSON.parse(ss.getItem(k) || '[]') || []).some(x => !x.deletedAt); } catch { return false; }
+  });
+}
+
+// Pure: merges a visit's list into the account's. An item whose id the
+// account already has is kept as well, under a new id (§5: both are kept),
+// except Favourites, whose chords join the account's.
+function mergeVisitList(account = [], visit = [], newId = id => `${id}-${Math.random().toString(36).slice(2, 6)}`) {
+  const out = account.map(x => ({ ...x }));
+  const moved = [];
+  for (const item of visit) {
+    if (item.deletedAt) continue;
+    const same = out.find(x => x.id === item.id);
+    if (!same) { out.push({ ...item }); moved.push(item); continue; }
+    if (item.id === 'favorites' && Array.isArray(item.chords)) {
+      const have = new Set((same.chords || []).map(c => c.id));
+      const add = item.chords.filter(c => !have.has(c.id));
+      if (add.length) { same.chords = [...add, ...(same.chords || [])]; same.updatedAt = item.updatedAt; }
+      continue;
+    }
+    if (JSON.stringify(same) === JSON.stringify(item)) continue;
+    const copy = { ...item, id: newId(item.id) };
+    out.push(copy);
+    moved.push(copy);
+  }
+  return { list: out, moved };
+}
+
+// Moves everything this tab built into the account's storage and marks
+// the device as having an account. Returns the moved items by key.
+function carryOverVisit() {
+  const ls = dsLocal(), ss = dsSession();
+  const moved = {};
+  if (ls && ss && ss !== ls) {
+    for (const key of DATA_KEYS) {
+      let visit = [];
+      try { visit = JSON.parse(ss.getItem(key) || '[]') || []; } catch { visit = []; }
+      if (!visit.length) continue;
+      let account = [];
+      try { account = JSON.parse(ls.getItem(key) || '[]') || []; } catch { account = []; }
+      // A handpan layout keeps its id: its instrument id is made from it.
+      const { list, moved: m } = mergeVisitList(account, visit, key === 'hp-layouts' ? id => `c-${Date.now()}-${id}` : undefined);
+      ls.setItem(key, JSON.stringify(list));
+      ss.removeItem(key);
+      moved[key] = m;
+    }
+  }
+  setAccountOnDevice(true);
+  return moved;
+}
+
+// Sign-out and account deletion: this device forgets the account's things.
+function clearAccountData() {
+  const ls = dsLocal(), ss = dsSession();
+  for (const key of DATA_KEYS) { ls?.removeItem(key); ss?.removeItem(key); }
+  ls?.removeItem('hp-updated-at');
+  setAccountOnDevice(false);
+}
+
+
+// ── js/sync.js ──
+// Sync by item (docs/free-to-play.md §4 "Edits on two devices while
+// offline", Phase 3 "Storage and sync"). Pure: no DOM, no storage, no
+// network. The app gives it three adapters:
+//
+//   local  — the items on this device:  items() → Map(key → { kind, id, data })
+//            write(kind, id, data) · add(kind, data) (a kept copy)
+//   bases  — the last synced copy of each item (IndexedDB in the browser):
+//            async getAll() → Map(key → { version, data }) · put(key, rec) ·
+//            async getMeta() / setMeta({ lastPull })
+//   api    — the server: pull(sinceIso) → rows · saveItem({ kind, id, data,
+//            baseVersion, deleted, editedAt }) → { ok, version } | { ok: false, current }
+//
+// The outbox is what differs between an item and its base: every local edit
+// (online or not) shows up there until the server has taken it, so nothing
+// needs to remember to queue a change and an edit made offline survives a
+// reload. Writes are ordered by the server's version; device time
+// (updatedAt) only breaks ties between two edits of the same field.
+
+// Fields that never count as an edit (playing an instrument reorders My
+// instruments but isn't a change worth syncing).
+const SYNC_VOLATILE = ['lastPlayedAt'];
+// The id field of items inside arrays that merge item by item.
+const SYNC_ARRAY_IDS = ['id', 'stepId'];
+// Instrument fields two devices may both change without making a copy.
+const SYNC_SOFT_FIELDS = ['name', 'updatedAt', 'lastPlayedAt', 'deletedAt'];
+
+function syncKey(kind, id) { return `${kind}:${id}`; }
+
+function syncStable(v) {
+  if (Array.isArray(v)) return v.map(syncStable);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v).sort()) if (v[k] !== undefined) out[k] = syncStable(v[k]);
+    return out;
+  }
+  return v;
+}
+
+function syncSame(a, b) {
+  return JSON.stringify(syncStable(a ?? null)) === JSON.stringify(syncStable(b ?? null));
+}
+
+// The item without the fields that don't count as edits.
+function syncComparable(data) {
+  if (!data || typeof data !== 'object') return data ?? null;
+  const out = { ...data };
+  for (const f of SYNC_VOLATILE) delete out[f];
+  return out;
+}
+
+function syncChanged(data, base) { return !syncSame(syncComparable(data), syncComparable(base)); }
+
+function syncIsObj(v) { return v != null && typeof v === 'object' && !Array.isArray(v); }
+
+function syncArrayIdKey(arr) {
+  if (!Array.isArray(arr) || !arr.length) return null;
+  return SYNC_ARRAY_IDS.find(k => arr.every(x => syncIsObj(x) && x[k] != null)) ?? null;
+}
+
+// Two lists of items with ids, both changed since base: adds on both sides
+// are kept, a removal on either side applies, items on both sides merge
+// field by field. Order follows the side that reordered (mine if both did).
+function syncMergeArrays(base, mine, theirs, idKey, ctx) {
+  const ids = arr => (arr || []).map(x => x[idKey]);
+  const byId = arr => new Map((arr || []).map(x => [x[idKey], x]));
+  const b = byId(base), m = byId(mine), t = byId(theirs);
+  // Did mine reorder the items all three sides share?
+  const shared = list => ids(list).filter(id => b.has(id) && m.has(id) && t.has(id));
+  const mineReordered = !syncSame(shared(mine), shared(base));
+  const [first, second] = mineReordered ? [mine, theirs] : [theirs, mine];
+  const f = byId(first), s = byId(second);
+  const removedIn = (side, id) => b.has(id) && !side.has(id);
+  const out = [];
+  for (const item of first) {
+    const id = item[idKey];
+    if (removedIn(s, id)) continue;
+    if (s.has(id)) out.push(syncMergeValues(b.get(id), m.get(id), t.get(id), ctx).value);
+    else out.push(item); // added on the first side
+  }
+  // Items added on the second side, after the item they follow there.
+  const secondIds = ids(second);
+  secondIds.forEach((id, i) => {
+    if (f.has(id) || b.has(id)) return;
+    const prev = secondIds.slice(0, i).reverse().find(p => out.some(x => x[idKey] === p));
+    const at = prev == null ? 0 : out.findIndex(x => x[idKey] === prev) + 1;
+    out.splice(at, 0, s.get(id));
+  });
+  return out;
+}
+
+// Field-by-field three-way merge of two values. ctx.later is 'mine' or
+// 'theirs' (whose edit is later); ctx.clashes collects the paths both sides
+// changed to different values.
+function syncMergeValues(base, mine, theirs, ctx, path = '') {
+  if (syncSame(mine, theirs)) return { value: mine };
+  if (syncSame(mine, base)) return { value: theirs };
+  if (syncSame(theirs, base)) return { value: mine };
+  const idKey = Array.isArray(mine) && Array.isArray(theirs) ? (syncArrayIdKey([...mine, ...theirs]) ?? null) : null;
+  if (idKey) return { value: syncMergeArrays(Array.isArray(base) ? base : [], mine, theirs, idKey, ctx) };
+  if (syncIsObj(mine) && syncIsObj(theirs)) {
+    const b = syncIsObj(base) ? base : {};
+    const out = {};
+    for (const k of new Set([...Object.keys(mine), ...Object.keys(theirs)])) {
+      const v = syncMergeValues(b[k], mine[k], theirs[k], ctx, path ? `${path}.${k}` : k).value;
+      if (v !== undefined) out[k] = v;
+    }
+    return { value: out };
+  }
+  ctx.clashes.push(path);
+  return { value: ctx.later === 'mine' ? mine : theirs };
+}
+
+function syncTime(data) { return (data && (data.deletedAt || data.updatedAt)) || ''; }
+
+// Three-way merge of one item (§4):
+// - different fields changed on each device: both apply
+// - lists of chords / steps: adds on both kept, removals apply
+// - the same field changed on both: the later edit wins
+// - deleted on one, edited later on the other: the edit wins (it comes
+//   back); deleted after the edit: it stays deleted
+// - instrument setups where both changed the same readings: nothing is
+//   thrown away; the newer stays and the older comes back as a copy
+//   (`copy`), named "… (from your <device>)".
+// Returns { data, copy } (copy is null unless an instrument clashed).
+function merge3(kind, base, mine, theirs, { mineDevice = 'device', theirsDevice = 'other device', newId } = {}) {
+  if (!mine) return { data: theirs, copy: null };
+  if (!theirs) return { data: mine, copy: null };
+  const later = syncTime(mine) >= syncTime(theirs) ? 'mine' : 'theirs';
+  const mDel = !!mine.deletedAt, tDel = !!theirs.deletedAt;
+  if (mDel || tDel) {
+    if (mDel && tDel) return { data: later === 'mine' ? mine : theirs, copy: null };
+    const [del, kept] = mDel ? [mine, theirs] : [theirs, mine];
+    const keptEdited = !base || syncChanged(kept, base);
+    // The edit wins when it is later than the delete; otherwise it stays deleted.
+    if (keptEdited && (kept.updatedAt || '') > del.deletedAt) {
+      const { deletedAt, ...alive } = kept;
+      return { data: alive, copy: null };
+    }
+    return { data: del, copy: null };
+  }
+  const ctx = { later, clashes: [] };
+  const { value } = syncMergeValues(base ?? {}, mine, theirs, ctx);
+  const data = { ...value, updatedAt: later === 'mine' ? mine.updatedAt : theirs.updatedAt };
+  if (data.updatedAt === undefined) delete data.updatedAt;
+  const hard = ctx.clashes.filter(p => !SYNC_SOFT_FIELDS.includes(p.split('.')[0]));
+  if (kind === 'instrument' && hard.length) {
+    const [newer, older, olderDevice] = later === 'mine' ? [mine, theirs, theirsDevice] : [theirs, mine, mineDevice];
+    const id = newId ? newId(older.id) : `${older.id}-${Math.random().toString(36).slice(2, 6)}`;
+    const { publicId, ...rest } = older;
+    return { data: newer, copy: { ...rest, id, name: `${older.name ?? 'Instrument'} (from your ${olderDevice})` } };
+  }
+  return { data, copy: null };
+}
+
+// The outbox: every item that differs from what the server last confirmed.
+// Items the device doesn't have are left alone (a missing item is never a
+// delete; deletes are soft, with deletedAt).
+function pendingChanges(localItems, bases) {
+  const out = [];
+  for (const [key, item] of localItems) {
+    const base = bases.get(key);
+    if (!base) { if (!item.data?.deletedAt) out.push({ ...item, key, base: null }); continue; }
+    if (syncChanged(item.data, base.data)) out.push({ ...item, key, base });
+  }
+  return out;
+}
+
+// A server row as the item the app stores.
+function rowToItem(row) {
+  const data = { ...(row.data || {}) };
+  if (row.deleted_at && !data.deletedAt) data.deletedAt = row.deleted_at;
+  if (!row.deleted_at) delete data.deletedAt;
+  return data;
+}
+
+// One round of sync: pull what other devices wrote, merge it in, then push
+// this device's changes, merging and retrying when another device got there
+// first. Returns { pulled, pushed, copies, pending } (counts, and the
+// names of kept copies for the one-time note).
+async function syncRound({ local, bases, api, device = 'device', newId }) {
+  const baseMap = await bases.getAll();
+  const meta = (await bases.getMeta()) || {};
+  const result = { pulled: 0, pushed: 0, copies: [], pending: 0 };
+  const mergeIn = (kind, id, base, mine, row) => {
+    const theirs = rowToItem(row);
+    const { data, copy } = merge3(kind, base?.data ?? null, mine, theirs, { mineDevice: device, theirsDevice: row.device_kind || 'other device', newId });
+    local.write(kind, id, data);
+    if (copy) { local.add(kind, copy); result.copies.push(copy.name); }
+    return theirs;
+  };
+
+  // Pull. A little overlap guards against rows committed out of order;
+  // versions already seen are skipped.
+  const since = meta.lastPull ? new Date(Date.parse(meta.lastPull) - 10000).toISOString() : null;
+  const rows = await api.pull(since);
+  let newest = meta.lastPull || null;
+  const items = local.items();
+  for (const row of rows) {
+    if (!newest || row.updated_at > newest) newest = row.updated_at;
+    const key = syncKey(row.kind, row.id);
+    const base = baseMap.get(key);
+    if (base && row.version <= base.version) continue;
+    const mine = items.get(key)?.data ?? null;
+    const unchangedHere = mine && base && !syncChanged(mine, base.data);
+    let stored;
+    if (!mine || unchangedHere) {
+      // Unchanged here (or not here at all): take theirs, keeping what never syncs.
+      stored = rowToItem(row);
+      const keep = {};
+      for (const f of SYNC_VOLATILE) if (mine?.[f] !== undefined) keep[f] = mine[f];
+      local.write(row.kind, row.id, { ...stored, ...keep });
+    } else {
+      stored = mergeIn(row.kind, row.id, base, mine, row);
+    }
+    const rec = { version: row.version, data: stored };
+    baseMap.set(key, rec);
+    await bases.put(key, rec);
+    result.pulled++;
+  }
+  if (newest) await bases.setMeta({ ...meta, lastPull: newest });
+
+  // Push the outbox.
+  for (let pass = 0; pass < 3; pass++) {
+    const changes = pendingChanges(local.items(), baseMap);
+    if (!changes.length) break;
+    let conflicted = false;
+    for (const ch of changes) {
+      const res = await api.saveItem({
+        kind: ch.kind, id: ch.id, data: ch.data, baseVersion: ch.base?.version ?? 0,
+        deleted: !!ch.data.deletedAt, editedAt: ch.data.deletedAt || ch.data.updatedAt || null,
+      });
+      if (res?.ok) {
+        const rec = { version: res.version, data: ch.data };
+        baseMap.set(ch.key, rec);
+        await bases.put(ch.key, rec);
+        result.pushed++;
+      } else if (res?.current) {
+        const row = res.current;
+        const stored = mergeIn(ch.kind, ch.id, ch.base, ch.data, row);
+        const rec = { version: row.version, data: stored };
+        baseMap.set(ch.key, rec);
+        await bases.put(ch.key, rec);
+        conflicted = true;
+      } else {
+        // Offline or the server said no: stays in the outbox for next time.
+        result.pending = pendingChanges(local.items(), baseMap).length;
+        return result;
+      }
+    }
+    if (!conflicted) break;
+  }
+  result.pending = pendingChanges(local.items(), baseMap).length;
+  return result;
+}
+
+
 // ── js/instruments.js ──
 // My instruments: the saved instruments a user plays (handpans, ocarinas,
 // later flutes). See docs/ocarina-mode.md, "Instruments first".
 //
-// Stored in localStorage under hp-instruments (soft deletes, like layouts).
+// Stored under hp-instruments (soft deletes, like layouts) in dataStore():
+// localStorage with an account, this tab's sessionStorage for a guest.
 // Not synced to Supabase yet (phase 7).
 //
 // Handpan instruments mirror the saved layouts in hp-layouts one to one
@@ -4984,12 +5386,12 @@ function instrumentStatus(inst) {
 // ── Storage ──────────────────────────────────────────────────────────────────
 
 function getAllInstrumentsRaw() {
-  try { return JSON.parse(localStorage.getItem(INSTRUMENTS_KEY) || '[]'); }
+  try { return JSON.parse(dataStore().getItem(INSTRUMENTS_KEY) || '[]'); }
   catch { return []; }
 }
 
 function writeInstruments(list) {
-  localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(list));
+  dataStore().setItem(INSTRUMENTS_KEY, JSON.stringify(list));
   // Lets the app schedule a cloud sync without every caller remembering to.
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-instruments-changed'));
 }
@@ -6762,7 +7164,7 @@ const FAVS_KEY = 'hp-favorites'; // legacy, migrated into hp-playlists on first 
 const PLAYLISTS_KEY = 'hp-playlists';
 
 function safeParse(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); }
+  try { return JSON.parse(dataStore().getItem(key) || '[]'); }
   catch { return []; }
 }
 
@@ -6783,7 +7185,7 @@ function saveLayout(entry) {
   const stamped = { ...entry, updatedAt: now() };
   if (idx >= 0) all[idx] = stamped;
   else all.unshift(stamped);
-  localStorage.setItem(LAYOUTS_KEY, JSON.stringify(all));
+  dataStore().setItem(LAYOUTS_KEY, JSON.stringify(all));
 }
 
 function deleteLayout(id) {
@@ -6793,7 +7195,7 @@ function deleteLayout(id) {
     const ts = now();
     layout.deletedAt = ts;
     layout.updatedAt = ts;
-    localStorage.setItem(LAYOUTS_KEY, JSON.stringify(all));
+    dataStore().setItem(LAYOUTS_KEY, JSON.stringify(all));
   }
 }
 
@@ -6801,14 +7203,14 @@ function deleteLayout(id) {
 
 // Raw: includes soft-deleted entries (needed for cloud sync)
 function getAllPlaylistsRaw() {
-  const raw = localStorage.getItem(PLAYLISTS_KEY);
+  const raw = dataStore().getItem(PLAYLISTS_KEY);
   if (raw !== null) {
     try { return JSON.parse(raw); } catch { /* fall through */ }
   }
   // First run: create default Favorites playlist, migrate old favorites if any
   const old = safeParse(FAVS_KEY);
   const playlists = [{ id: 'favorites', name: 'Favorites', chords: old, updatedAt: now() }];
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return playlists;
 }
 
@@ -6820,14 +7222,14 @@ function addPlaylist(name) {
   const playlists = getAllPlaylistsRaw();
   const id = 'pl-' + Date.now();
   playlists.push({ id, name, chords: [], updatedAt: now() });
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return id;
 }
 
 function renamePlaylist(id, name) {
   const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === id);
-  if (pl) { pl.name = name; pl.updatedAt = now(); localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists)); }
+  if (pl) { pl.name = name; pl.updatedAt = now(); dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists)); }
 }
 
 function deletePlaylist(id) {
@@ -6838,7 +7240,7 @@ function deletePlaylist(id) {
     const ts = now();
     pl.deletedAt = ts;
     pl.updatedAt = ts;
-    localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+    dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   }
 }
 
@@ -6848,7 +7250,7 @@ function addChordToPlaylist(playlistId, chord) {
   if (!pl || pl.chords.some(c => c.id === chord.id)) return false;
   pl.chords.unshift(chord);
   pl.updatedAt = now();
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
@@ -6863,7 +7265,7 @@ function updatePlaylistChordVoicing(playlistId, oldFavId, updates) {
   if (idx < 0) return false;
   pl.chords[idx] = { ...pl.chords[idx], ...updates };
   pl.updatedAt = now();
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
@@ -6873,7 +7275,7 @@ function removeChordFromPlaylist(playlistId, chordFavId) {
   if (!pl) return;
   pl.chords = pl.chords.filter(c => c.id !== chordFavId);
   pl.updatedAt = now();
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
@@ -6883,7 +7285,7 @@ function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
   const [item] = pl.chords.splice(fromIdx, 1);
   pl.chords.splice(toIdx, 0, item);
   pl.updatedAt = now();
-  localStorage.setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 function isChordInPlaylist(playlistId, chordFavId) {
@@ -7020,7 +7422,7 @@ function getProgressionsRaw() {
 }
 
 function writeProgressionsRaw(list) {
-  localStorage.setItem(PROGRESSIONS_KEY, JSON.stringify(list));
+  dataStore().setItem(PROGRESSIONS_KEY, JSON.stringify(list));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-progressions-changed'));
 }
 
@@ -7150,7 +7552,6 @@ const _SUPA_KEY = 'sb_publishable_WGLxN9-CFdCrlEPiqNn7Dg_T1wKKluA';
 
 let _sb = null;
 let _session = null;
-let _saveTimer = null;
 
 function initSupabase(onAuthChange) {
   if (!window.supabase) return;
@@ -7207,7 +7608,8 @@ function getUserEmail() { return _session?.user?.email ?? null; }
 
 async function sendOtp(email) {
   if (!_sb) return 'No connection';
-  const { error } = await _sb.auth.signInWithOtp({ email });
+  // The same email has a link too, for someone on this browser (§6).
+  const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
   return error?.message ?? null;
 }
 
@@ -7218,53 +7620,117 @@ async function verifyOtp(email, token) {
 }
 
 async function signOut() {
-  if (_sb) await _sb.auth.signOut();
+  // 'local' ends this device's session only, and still clears it offline.
+  if (_sb) { try { await _sb.auth.signOut({ scope: 'local' }); } catch { /* cleared below */ } }
   _session = null;
 }
 
-async function loadCloudData() {
-  if (!_sb || !_session) return null;
-  const { data, error } = await _sb
-    .from('user_data')
-    .select('playlists,layouts,prefs,updated_at')
-    .single();
-  if (error) return null; // PGRST116 = no row yet; others = real error
-  return data;
-}
-
+// Something saved changed: the app's sync (js/sync.js) picks it up a moment
+// later. The name stays from the old whole-blob sync, so callers don't change.
 function scheduleSave() {
-  // Stamp local immediately so the timestamp reflects when data changed,
-  // not when the cloud write eventually fires.
-  const ts = new Date().toISOString();
-  localStorage.setItem('hp-updated-at', ts);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-data-changed'));
+}
 
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
-    _saveTimer = null;
-    if (!_sb || !_session) return;
-    _sb.from('user_data').upsert({
-      user_id: _session.user.id,
-      playlists: JSON.parse(localStorage.getItem('hp-playlists') || '[]'),
-      layouts:   JSON.parse(localStorage.getItem('hp-layouts')   || '[]'),
-      prefs:     JSON.parse(localStorage.getItem('hp-prefs')     || '{}'),
-      updated_at: localStorage.getItem('hp-updated-at'),
-    }, { onConflict: 'user_id' }).then(({ error }) => {
-      if (error) console.error('Sync error:', error);
+// ── Sign-in methods (docs/free-to-play.md §6) ───────────────────────────────
+// Google and Apple are offered only when switched on in Supabase (the owner
+// sets up the OAuth clients; supabase/README.md). Supabase lists the enabled
+// providers in its public auth settings.
+let _providers = null;
+async function getAuthProviders() {
+  if (_providers) return _providers;
+  try {
+    const res = await fetch(`${_SUPA_URL}/auth/v1/settings`, { headers: { apikey: _SUPA_KEY } });
+    const ext = (await res.json())?.external ?? {};
+    _providers = { google: !!ext.google, apple: !!ext.apple };
+  } catch {
+    return { google: false, apple: false };
+  }
+  return _providers;
+}
+
+// Google or Apple: leaves the page and comes back to it signed in (the
+// started save waits in sessionStorage, js/store.js).
+async function signInWithProvider(provider) {
+  if (!_sb) return 'No connection';
+  const { error } = await _sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.href } });
+  return error?.message ?? null;
+}
+
+function getUserId() { return _session?.user?.id ?? null; }
+
+// ── This device ─────────────────────────────────────────────────────────────
+// A random id per install, and what kind of device it is, only so a kept
+// copy can be named "… (from your tablet)".
+function deviceId() {
+  try {
+    let id = localStorage.getItem('hp-device-id');
+    if (!id) { id = Math.random().toString(36).slice(2, 12); localStorage.setItem('hp-device-id', id); }
+    return id;
+  } catch { return null; }
+}
+function deviceKind(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return 'tablet';
+  if (/Mobi|iPhone|Android/i.test(ua)) return 'phone';
+  return 'computer';
+}
+
+// ── Sync by item (supabase/migrations/20261116_accounts.sql) ────────────────
+// The api js/sync.js's syncRound talks to. pull() throws when the server
+// can't be reached (the round stops, nothing changes); saveItem() returns
+// null then, so the change stays in the outbox.
+const syncApi = {
+  async pull(since) {
+    if (!_sb || !_session) throw new Error('signed out');
+    let q = _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at,device_kind').order('updated_at');
+    if (since) q = q.gt('updated_at', since);
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+  async saveItem({ kind, id, data, baseVersion, deleted, editedAt }) {
+    if (!_sb || !_session) return null;
+    const { data: res, error } = await _sb.rpc('save_item', {
+      p_kind: kind, p_id: id, p_data: data, p_base_version: baseVersion, p_deleted: !!deleted,
+      p_edited_at: editedAt, p_device_id: deviceId(), p_device_kind: deviceKind(),
     });
-  }, 1500);
+    if (error) { console.warn('Sync error:', error.message); return null; }
+    return res;
+  },
+};
+
+// The account was used today (profiles.last_seen_on), and on the first
+// call where and why they signed up. Fails soft.
+async function touchLastSeen({ privacyVersion = null, source = null, intent = null } = {}) {
+  if (!_sb || !_session) return;
+  const { error } = await _sb.rpc('touch_last_seen', { p_privacy_version: privacyVersion, p_signup_source: source, p_signup_intent: intent });
+  if (error) console.warn('touch_last_seen:', error.message);
 }
 
-// ── Instruments (needs supabase/migrations/20261111_instruments.sql) ─────────
-// Every call fails soft: null / false when signed out, offline, or before the
-// migration has been run, so the rest of sync is never affected.
-
-async function loadCloudInstruments() {
+// Export my data: every row the account holds, as the server has it.
+async function exportAccountRows() {
   if (!_sb || !_session) return null;
-  const { data, error } = await _sb.from('instruments').select('id,public_id,data,updated_at,deleted_at');
-  if (error) { console.warn('Instruments sync unavailable:', error.message); return null; }
-  return data;
+  const [items, profile] = await Promise.all([
+    _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at'),
+    _sb.from('profiles').select('created_at,privacy_version,signup_source,signup_intent,last_seen_on').maybeSingle(),
+  ]);
+  if (items.error) return null;
+  return { email: getUserEmail(), profile: profile.data ?? null, items: items.data ?? [] };
 }
 
+// Deletes the account and everything in it (delete_my_account cascades).
+async function deleteMyAccount() {
+  if (!_sb || !_session) return 'Not signed in';
+  const { error } = await _sb.rpc('delete_my_account');
+  if (error) return error.message;
+  await _sb.auth.signOut().catch(() => {});
+  _session = null;
+  return null;
+}
+
+// ── Shared instruments (supabase/migrations/20261111_instruments.sql) ────────
+// A shared code is served from the instruments table (get_shared_instrument),
+// so a shared instrument is also written there, on sharing and on every
+// change after that. Fails soft: false or the error code.
 async function saveCloudInstruments(list) {
   if (!_sb || !_session || list.length === 0) return true;
   const rows = list.map(inst => ({
@@ -7288,23 +7754,226 @@ async function fetchSharedInstrument(publicId) {
   return data;
 }
 
-// ── Progressions (needs supabase/migrations/20261111_progressions.sql) ───────
-// Kept in their own user_data column and their own requests, so the main
-// upsert above never names it: until the migration has been run these fail
-// soft (null / false) and nothing else in sync is affected.
 
-async function loadCloudProgressions() {
-  if (!_sb || !_session) return null;
-  const { data, error } = await _sb.from('user_data').select('progressions').single();
-  if (error) { console.warn('Progressions sync unavailable:', error.message); return null; }
-  return Array.isArray(data?.progressions) ? data.progressions : [];
+// ── js/localdb.js ──
+// The sync bases in IndexedDB (docs/free-to-play.md, Phase 3 "Storage and
+// sync"): for every saved item, the copy and version the server last
+// confirmed. What differs from it is the outbox (js/sync.js), so it has to
+// outlive a reload or a week offline. IndexedDB, not localStorage, because
+// instrument photos would make two copies of everything too big for
+// localStorage. Without IndexedDB (some private windows) it falls back to
+// memory: sync still works, a reload just merges everything once more.
+
+const LDB_NAME = 'oakhum';
+const LDB_STORE = 'bases';
+const LDB_META = '__meta';
+
+let _ldb = null;
+function ldbOpen() {
+  if (_ldb) return _ldb;
+  _ldb = new Promise(resolve => {
+    try {
+      const req = indexedDB.open(LDB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(LDB_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch { resolve(null); }
+  });
+  return _ldb;
 }
 
-async function saveCloudProgressions(list) {
-  if (!_sb || !_session) return false;
-  const { error } = await _sb.from('user_data').update({ progressions: list }).eq('user_id', _session.user.id);
-  if (error) { console.warn('Progressions sync error:', error.message); return false; }
-  return true;
+const _ldbMemory = new Map();
+
+function ldbReq(mode, fn) {
+  return ldbOpen().then(db => new Promise(resolve => {
+    if (!db) { resolve(fn(null)); return; }
+    try {
+      const tx = db.transaction(LDB_STORE, mode);
+      const r = fn(tx.objectStore(LDB_STORE));
+      tx.oncomplete = () => resolve(r && 'result' in r ? r.result : undefined);
+      tx.onerror = tx.onabort = () => resolve(undefined);
+    } catch { resolve(undefined); }
+  }));
+}
+
+// The bases adapter syncRound() uses.
+const syncBases = {
+  async getAll() {
+    const db = await ldbOpen();
+    if (!db) return new Map([..._ldbMemory].filter(([k]) => k !== LDB_META));
+    const keys = await ldbReq('readonly', s => s.getAllKeys());
+    const vals = await ldbReq('readonly', s => s.getAll());
+    const out = new Map();
+    (keys || []).forEach((k, i) => { if (k !== LDB_META) out.set(k, vals[i]); });
+    return out;
+  },
+  async put(key, rec) {
+    const db = await ldbOpen();
+    if (!db) { _ldbMemory.set(key, rec); return; }
+    await ldbReq('readwrite', s => s.put(rec, key));
+  },
+  async getMeta() {
+    const db = await ldbOpen();
+    if (!db) return _ldbMemory.get(LDB_META) ?? {};
+    return (await ldbReq('readonly', s => s.get(LDB_META))) ?? {};
+  },
+  async setMeta(meta) {
+    const db = await ldbOpen();
+    if (!db) { _ldbMemory.set(LDB_META, meta); return; }
+    await ldbReq('readwrite', s => s.put(meta, LDB_META));
+  },
+  // Sign-out and account deletion.
+  async clear() {
+    _ldbMemory.clear();
+    const db = await ldbOpen();
+    if (db) await ldbReq('readwrite', s => s.clear());
+  },
+};
+
+
+// ── js/offline.js ──
+// Offline, for accounts only (docs/free-to-play.md §4).
+//
+// The service worker (sw.js) is registered only while an account is on
+// this device. A guest's browser never keeps it: on every start as a guest
+// any registration is removed and its caches deleted, which also covers
+// guests from the old version (when everyone got one) and a sign-out in
+// another tab. The page itself works offline either way once loaded,
+// because everything is worked out on the device.
+
+const offline = {
+  // 'online' | 'offline'
+  get status() { return typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'online'; },
+
+  // Registers sw.js (its ?v= is the build's hash, so a new build installs a
+  // new worker with a new precache). Resolves true when it is ready.
+  async enable(version = '') {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return false;
+    try {
+      await navigator.serviceWorker.register(`/sw.js${version ? `?v=${version}` : ''}`);
+      await navigator.serviceWorker.ready;
+      return true;
+    } catch { return false; }
+  },
+
+  // Unregisters every service worker of this site and deletes their caches.
+  async disable() {
+    try {
+      const regs = await navigator.serviceWorker?.getRegistrations?.() ?? [];
+      await Promise.all(regs.map(r => r.unregister()));
+    } catch { /* nothing registered */ }
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    } catch { /* no Cache API */ }
+  },
+
+  // Is a worker controlling or installed for this page (offline "Ready")?
+  async ready() {
+    try { return !!(await navigator.serviceWorker?.getRegistration?.()); } catch { return false; }
+  },
+};
+
+
+// ── js/store.js ──
+// The save moment (docs/free-to-play.md §3). Every action that saves goes
+// through the app's save(intent, apply): with an account it just applies;
+// a guest gets the save sheet, and the started action is completed after
+// sign-in. The pieces here are pure so they can be tested; the sheet and
+// the sign-in live in app.js.
+
+// What each tap is saving, by data-action (§"Every action that saves
+// something today"). Edits of things a guest can't have (a playlist, a
+// progression) need no entry: only the first save of each kind does.
+// Building an instrument (the wizard, set-up readings) isn't a save: a
+// guest builds it in this visit, and Save keeps it.
+const SAVE_ACTIONS = {
+  'save-layout': 'instrument',
+  'shared-add': 'instrument',
+  'visit-save': 'instrument',
+  'pl-new-open': 'playlist',
+  'prog-new-open': 'progression',
+  'show-new-progression-input': 'progression',
+  'confirm-new-progression': 'progression',
+  'add-to-progression': 'progression',
+  'pl-copy-progression': 'progression',
+  'cs-save': 'song',
+  'share-instrument': 'share',
+};
+// Chords (☆ / add to playlist, Identify's bookmark) all open the playlist
+// picker; for a guest the app turns that into the save sheet, and after
+// sign-in the chord goes into Favourites (the picker's entry is plain data,
+// so it survives the Google redirect: { what: 'chord', entry }).
+
+// The headline and line of the sheet for each intent (§3's table).
+const SAVE_TEXTS = {
+  chord: { title: 'Keep this chord', line: 'Keep your favourite chords one tap away, on any device.' },
+  playlist: { title: 'Start a playlist', line: 'Put the chords for a song together and play them on any device.' },
+  instrument: { title: 'Save your instrument', line: 'Set up your instrument once. It’s ready every time, on every device.' },
+  heard: { title: 'Keep what you heard', line: 'Save this progression and play along with it any time.' },
+  progression: { title: 'Save this song', line: 'Keep the song’s chords and play along any time, on any device.' },
+  song: { title: 'Save this song', line: 'Keep the song’s chords and play along any time, on any device.' },
+  share: { title: 'Share your instrument', line: 'Anyone with the link can play it. Your setup stays yours.' },
+  leave: { title: 'Save your instrument?', line: 'Without a free account it’s gone when you close this page.' },
+  offline: { title: 'Play offline', line: 'With a free account the app opens without a connection, with everything you saved.' },
+  signin: { title: 'Sign in', line: 'Your instruments, chords and songs on every device, and offline.' },
+};
+
+function saveText(what) { return SAVE_TEXTS[what] ?? SAVE_TEXTS.signin; }
+
+// What a tap saves for a guest, or null when it needs no account.
+function saveIntentFor(action, { guest }) {
+  if (!guest) return null;
+  return SAVE_ACTIONS[action] ?? null;
+}
+
+// The started action survives a reload, a magic link or the Google
+// redirect in this tab: { what, action, data, entry, path }. Cleared once done.
+const PENDING_KEY = 'hp-pending-save';
+function stSession() { try { return globalThis.sessionStorage ?? null; } catch { return null; } }
+
+function keepPendingSave(intent) {
+  const ss = stSession();
+  if (!ss) return;
+  ss.setItem(PENDING_KEY, JSON.stringify({ what: intent.what, action: intent.action ?? null, data: intent.data ?? {}, entry: intent.entry ?? null, path: intent.path ?? null, at: Date.now() }));
+}
+
+// The waiting intent, or null; older than an hour counts as abandoned.
+function takePendingSave(now = Date.now()) {
+  const ss = stSession();
+  if (!ss) return null;
+  const raw = ss.getItem(PENDING_KEY);
+  ss.removeItem(PENDING_KEY);
+  try {
+    const p = JSON.parse(raw);
+    if (!p || now - (p.at ?? 0) > 3600000) return null;
+    return p;
+  } catch { return null; }
+}
+
+function peekPendingSave() {
+  try { return JSON.parse(stSession()?.getItem(PENDING_KEY) || 'null'); } catch { return null; }
+}
+
+function dropPendingSave() { stSession()?.removeItem(PENDING_KEY); }
+
+// The data-* attributes of a tapped element worth replaying (no functions,
+// no DOM): a plain copy of its dataset.
+function plainDataset(ds = {}) {
+  const out = {};
+  for (const k of Object.keys(ds)) if (k !== 'action' && typeof ds[k] === 'string') out[k] = ds[k];
+  return out;
+}
+
+// "Also saved: Low D ocarina and D Kurd" after a carry-over (§5).
+function alsoSavedText(names) {
+  const list = names.filter(Boolean);
+  if (!list.length) return '';
+  const shown = list.slice(0, 3);
+  const more = list.length - shown.length;
+  const joined = shown.length > 1 ? `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}` : shown[0];
+  return `Also saved: ${joined}${more > 0 ? ` and ${more} more` : ''}`;
 }
 
 
@@ -7318,7 +7987,6 @@ const state = {
   tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
   rec: newRecState(),      // the armed record field, see uiHzField()
   theme: 'auto',           // 'dark' | 'light' | 'auto' (follows the OS; the default)
-  syncTipHidden: false,    // the "Sync across devices" tip on Home was dismissed
   clayEdit: null,          // { id, name, pct, error } while a clay body is edited
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
   sharedStatus: null,      // 'loading' | 'missing' while a share link loads
@@ -7350,8 +8018,18 @@ const state = {
   chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
   authEmail: '',
-  authLinkSent: false,
   authCode: '',
+  saveSheet: null,         // the save sheet (§3): { what, step, email, error, busy, providers }, see saveSheetHtml()
+  accountConfirm: null,    // 'signout' | 'delete' while Settings › Account confirms
+  accountError: null,
+  syncPending: 0,          // changes waiting for the server
+  lastSynced: null,
+  syncError: null,
+  offlineReady: false,     // the service worker is installed (accounts only)
+  isOffline: false,
+  guestOfflineCard: false, // "You're offline" card for a guest
+  remindSignup: false,     // show the save sheet when the connection is back
+  leaveWarned: false,      // the "leaving unsaved work" sheet was shown this visit
   autoplayOn: false,
   autoplayPlaylistId: null,
   autoplaySeconds: 4,
@@ -7385,6 +8063,7 @@ const state = {
 // ── Render ───────────────────────────────────────────────────────────────────
 let _lastScreen = null;
 function render() {
+  guestPickerToSave();
   const app = document.getElementById('app');
   const screen = [state.view, state.wizard?.step, state.wizard?.oc?.path, state.view === 'instrument' ? state.oc.tab : '', state.currentInstrumentId].join('|');
   if (screen !== _lastScreen && !_toastFresh) hideToast();
@@ -7417,6 +8096,9 @@ function render() {
   if (guide) app.insertAdjacentHTML('beforeend', guide);
   document.body.classList.toggle('rec-guide-on', !!guide);
   app.insertAdjacentHTML('beforeend', sheetHtml());
+  const offlineCard = guestOfflineCardHtml();
+  if (offlineCard) app.insertAdjacentHTML('beforeend', offlineCard);
+  rememberLastPath();
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on);
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
@@ -7661,51 +8343,13 @@ function viewSettings() {
         ${uiRow({ title: 'Clay bodies', meta: `${clays.length} clay bod${clays.length === 1 ? 'y' : 'ies'} · shrinkage used by the builder`, action: 'open-clay-bodies', chevron: true })}
       </div>
 
-      <h2 class="list-title">Sync</h2>
-      <div class="list">${syncSettingsHtml()}</div>
+      <h2 class="list-title">Account</h2>
+      <div class="list">${accountSettingsHtml()}</div>
 
       <h2 class="list-title">About</h2>
       <div class="list">
         <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute.</span></div>
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
-      </div>
-    </div>`;
-}
-
-// Settings › Sync: the sign-in flow (email → code → verify), or who is
-// signed in with Sync now and Sign out.
-function syncSettingsHtml() {
-  if (isLoggedIn()) {
-    return `
-      ${uiRow({ title: getUserEmail() ?? 'Signed in', meta: 'Playlists, layouts, instruments and settings sync to this account' })}
-      <div class="set-actions">
-        <button type="button" class="btn btn-secondary" data-action="auth-sync">${icon('refresh')} Sync now</button>
-        <button type="button" class="btn btn-ghost" data-action="auth-signout">Sign out</button>
-      </div>`;
-  }
-  if (state.authLinkSent) {
-    return `
-      <div class="set-form">
-        ${uiField({
-          label: 'Code from the email', id: 'auth-code-input', help: `Sent to ${escHtml(state.authEmail)}`,
-          control: `<input class="input" id="auth-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8"
-            placeholder="6–8 digits" value="${escHtml(state.authCode)}" autocomplete="one-time-code">`,
-        })}
-        <div class="set-actions">
-          <button type="button" class="btn btn-primary" data-action="auth-verify">Verify</button>
-          <button type="button" class="btn btn-ghost" data-action="auth-cancel">Cancel</button>
-        </div>
-      </div>`;
-  }
-  return `
-    <div class="set-form">
-      ${uiField({
-        label: 'Email', id: 'auth-email-input', help: 'Sync playlists, layouts and instruments across your devices. We email you a sign-in code.',
-        control: `<input class="input" id="auth-email-input" type="email" autocomplete="email"
-          placeholder="you@example.com" value="${escHtml(state.authEmail)}">`,
-      })}
-      <div class="set-actions">
-        <button type="button" class="btn btn-secondary" data-action="auth-send-link">Send code</button>
       </div>
     </div>`;
 }
@@ -7791,7 +8435,7 @@ function uiAppBar({ title = '', back = null, switcher = null, badge = '', action
       <div class="appbar-inner">
         <div class="appbar-left">${left}</div>
         <div class="appbar-mid">${tabs}</div>
-        <div class="appbar-right">${actions.join('')}</div>
+        <div class="appbar-right">${offlinePillHtml()}${actions.join('')}</div>
       </div>
     </header><!--appbar-end-->`;
 }
@@ -8423,12 +9067,11 @@ function viewHome() {
       trail: n ? uiIconBtn('play', `Play ${pl.name}`, { action: 'open-playlist-chords', data: { id: pl.id } }) : '',
     });
   }).join('');
-  const hasData = insts.length > 0 || state.playlists.some(p => p.chords.length);
-  const tip = !isLoggedIn() && !state.syncTipHidden && hasData ? `
+  // A guest's instruments are this visit's only (§2): say so, and offer Save.
+  const tip = !accountOn() && visitHasWork() ? `
     <div class="card tip-card">
-      <div class="tip-text"><div class="tip-title">Sync across devices</div><div class="tip-body">Keep your instruments and playlists on every device.</div></div>
-      <button type="button" class="btn btn-secondary btn-sm" data-action="open-settings">Set up</button>
-      ${uiIconBtn('x', 'Hide this tip', { action: 'hide-sync-tip', cls: 'is-dense' })}
+      <div class="tip-text"><div class="tip-title">Not saved yet</div><div class="tip-body">What you set up here is gone when you close this page. Saving is free.</div></div>
+      <button type="button" class="btn btn-primary btn-sm" data-action="visit-save">Save</button>
     </div>` : '';
 
   return `
@@ -8937,9 +9580,11 @@ function ocTabs(inst) {
 // instrument (a handpan scale or custom notes, an ocarina or flute opened
 // from a link), with its Save.
 function notSavedBannerHtml(action) {
+  // visit-save: a guest's own instrument, built in this visit (§2).
+  const text = action === 'visit-save' ? 'Not saved · gone when you close this page' : 'Not saved · try it, then keep it in My instruments';
   return `
       <div class="banner">
-        <span>Not saved · try it, then keep it in My instruments</span>
+        <span>${text}</span>
         <button type="button" class="btn btn-primary btn-sm" data-action="${action}">Save</button>
       </div>`;
 }
@@ -8955,7 +9600,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
       actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
     })}
-    ${inst.link && !practice ? notSavedBannerHtml('shared-add') : shared && !inst.link ? `
+    ${inst.link && !practice ? notSavedBannerHtml('shared-add') : !shared && !practice && !accountOn() ? notSavedBannerHtml('visit-save') : shared && !inst.link ? `
       <div class="banner">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
         <button type="button" class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
@@ -9571,7 +10216,8 @@ function loadQrLib() {
 async function shareInstrument(id = null) {
   const inst = id ? getInstrument(id) : currentInstrument();
   if (!inst || inst.id === SHARED_ID) return;
-  if (!isLoggedIn()) { showToast('Sign in under Settings › Sync to share', { action: { label: 'Settings', run: () => openSettings() } }); return; }
+  // A guest got the save sheet first (store.js); an account needs the connection.
+  if (!isLoggedIn()) { showToast('Sharing needs a connection'); return; }
   if (!inst.publicId) {
     let ok = false;
     for (let attempt = 0; attempt < 3 && ok !== true; attempt++) {
@@ -9614,68 +10260,6 @@ function shareModalHtml() {
       <button class="btn btn-primary" data-action="share-copy">${icon('link')} Copy link</button>`,
   });
 }
-
-// ── Instruments sync ─────────────────────────────────────────────────────────
-// Two-way sync of ocarinas (not handpans, which come from the synced
-// layouts) through the instruments table. Quietly does nothing until the
-// migration has been run.
-
-let _instrSyncTimer = null;
-let _instrSyncing = false;
-
-async function syncInstrumentsNow() {
-  if (!isLoggedIn() || _instrSyncing) return;
-  _instrSyncing = true;
-  try {
-    const rows = await loadCloudInstruments();
-    if (!rows) return;
-    const { local, toPush, changed } = mergeInstruments(getInstrumentsRaw(), rows);
-    if (changed) writeInstrumentsRaw(local);
-    if (toPush.length) await saveCloudInstruments(toPush);
-    if (changed) { refreshInstruments(); render(); }
-  } finally {
-    _instrSyncing = false;
-  }
-}
-
-window.addEventListener('hp-instruments-changed', () => {
-  if (_instrSyncing || !isLoggedIn()) return;
-  clearTimeout(_instrSyncTimer);
-  _instrSyncTimer = setTimeout(syncInstrumentsNow, 2000);
-});
-
-// ── Progressions sync ────────────────────────────────────────────────────────
-// Progressions travel in their own user_data column (see auth.js), merged
-// per progression by updatedAt like playlists. Each sync reads the cloud
-// first, so a device that has none never overwrites another's. Quietly does
-// nothing until the migration has been run.
-
-let _progSyncTimer = null;
-let _progSyncing = false;
-
-async function syncProgressionsNow() {
-  if (!isLoggedIn() || _progSyncing) return;
-  _progSyncing = true;
-  try {
-    const cloud = await loadCloudProgressions();
-    if (!cloud) return;
-    const { merged, changedLocal, needPush } = mergeProgressionLists(getProgressionsRaw(), cloud);
-    if (changedLocal) {
-      writeProgressionsRaw(merged); // its change event is ignored while syncing
-      state.progressions = getProgressions();
-    }
-    if (needPush) await saveCloudProgressions(merged);
-    if (changedLocal) render();
-  } finally {
-    _progSyncing = false;
-  }
-}
-
-window.addEventListener('hp-progressions-changed', () => {
-  if (_progSyncing || !isLoggedIn()) return;
-  clearTimeout(_progSyncTimer);
-  _progSyncTimer = setTimeout(syncProgressionsNow, 2000);
-});
 
 // ── Builder ──────────────────────────────────────────────────────────────────
 // A step-by-step project per scale-built ocarina. Each instrument remembers
@@ -11099,6 +11683,13 @@ function openInstrument(id, { push = true } = {}) {
 // Where the app opens with no link: the Play screen when nothing is saved
 // yet, otherwise My instruments, or straight into the only instrument.
 function openStartView() {
+  // An account opens where it left off, on this or another device (§7).
+  const last = accountOn() ? syncReadPrefs().lastPath : null;
+  if (last && last !== '/' && last !== location.pathname + location.hash) {
+    history.replaceState(history.state, '', last);
+    if (urlIsLink()) { loadFromUrl(); if (state.view !== 'play') return; }
+    history.replaceState(history.state, '', '/');
+  }
   // Nothing saved yet: the Play screen, one tap from playing
   // (docs/free-to-play.md, "2. Guest experience").
   if (state.instruments.length === 0) { state.view = 'play'; return; }
@@ -11146,7 +11737,7 @@ function viewEditor() {
 
   return `
     ${handpanAppBar(handpanTabs('editor'))}
-    ${state.currentInstrumentId ? '' : notSavedBannerHtml('save-layout')}
+    ${state.currentInstrumentId ? (accountOn() ? '' : notSavedBannerHtml('visit-save')) : notSavedBannerHtml('save-layout')}
 
     <div class="editor-layout">
       <div class="editor-main">
@@ -11794,6 +12385,8 @@ function panRotateBtn() {
 // ── Sheets ───────────────────────────────────────────────────────────────────
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
+  if (state.saveSheet) return saveSheetHtml();
+  if (state.accountConfirm) return accountConfirmSheet();
   if (state.confirm) return confirmSheet();
   if (state.menu) return menuSheet();
   if (state.photoCrop) return photoCropSheet();
@@ -13089,7 +13682,6 @@ function loadPrefs() {
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
     if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
-    if (typeof p.syncTipHidden === 'boolean') state.syncTipHidden = p.syncTipHidden;
   } catch {}
   applyTheme();
   setPlaybackSpeed(state.playbackSpeed);
@@ -13106,8 +13698,14 @@ function applyTheme() {
 }
 _themeQuery?.addEventListener?.('change', applyTheme);
 
+// Settings sync with an account (as the 'prefs' item): updatedAt stamps the
+// edit, and lastPath (rememberLastPath) is kept.
 function savePrefs() {
+  let kept = {};
+  try { const p = JSON.parse(localStorage.getItem('hp-prefs') || '{}'); if (p.lastPath) kept = { lastPath: p.lastPath }; } catch {}
   localStorage.setItem('hp-prefs', JSON.stringify({
+    ...kept,
+    updatedAt: new Date().toISOString(),
     ringRotated: state.ringRotated,
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
@@ -13118,109 +13716,550 @@ function savePrefs() {
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
     theme: state.theme,
-    syncTipHidden: state.syncTipHidden,
   }));
   scheduleSave();
 }
 
-// ── Auth sync ─────────────────────────────────────────────────────────────────
+// ── Accounts: save, sync and offline (docs/free-to-play.md) ─────────────────
+// A guest plays everything and keeps nothing between visits (js/datastore.js
+// puts their work in this tab only). Saving opens the save sheet; signing in
+// moves this visit's work into the account, completes the started save,
+// syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-// Merge two arrays of objects by id, keeping the newest version of each item.
-// Items with deletedAt propagate deletes to the other device.
-function mergeById(local, cloud) {
-  const byId = new Map();
-  for (const item of [...(local || []), ...(cloud || [])]) {
-    const existing = byId.get(item.id);
-    if (!existing || (item.updatedAt || '') > (existing.updatedAt || '')) {
-      byId.set(item.id, item);
-    }
-  }
-  return [...byId.values()];
+const BUILD_HASH = '2ea9f46c9554'; // build.py writes the build's hash: the offline cache version
+const PRIVACY_URL = 'https://oakhum-site.vercel.app/privacy';
+const PRIVACY_VERSION = '2026-11';
+
+function accountOn() { return hasAccountOnDevice(); }
+
+// Every saved list read again (after a sync, a carry-over or a sign-out).
+function reloadSaved() {
+  state.savedLayouts = getSavedLayouts();
+  state.playlists = getPlaylists();
+  state.favorites = getFavorites();
+  state.progressions = getProgressions();
+  refreshInstruments();
 }
 
-// Returns true if two arrays have the same ids and updatedAt timestamps (order-independent).
-function sameByTimestamp(a, b) {
-  if (a.length !== b.length) return false;
-  const bMap = new Map(b.map(x => [x.id, x.updatedAt || '']));
-  return a.every(x => bMap.get(x.id) === (x.updatedAt || ''));
+// ── The save sheet (§3, §6) ─────────────────────────────────────────────────
+// state.saveSheet = { what, step: 'start' | 'code', email, error, busy, providers }
+
+// A guest's save: keep what they started (it survives the Google redirect
+// in this tab) and show the sheet. Returns true when it went ahead.
+function guestSave(intent) {
+  if (accountOn()) return true;
+  logEvent('save_tap', { what: intent.what, account: 'guest' });
+  keepPendingSave({ ...intent, path: location.pathname + location.search + location.hash });
+  openSaveSheet(intent.what);
+  return false;
 }
 
-// Merge cloud data into local — per-item union, newest version of each wins.
-// Returns true if anything changed locally (triggers re-render).
-// Also uploads the merged result so the other device eventually sees our items.
-function mergeCloudData(cloud) {
-  if (!cloud) return false;
+function openSaveSheet(what) {
+  state.saveSheet = { what, step: 'start', email: state.authEmail || '', error: '', busy: false, providers: null };
+  logEvent('signup_shown', { what });
+  getAuthProviders().then(p => { if (state.saveSheet) { state.saveSheet.providers = p; render(); } });
+  render();
+}
 
-  const localPlaylists = JSON.parse(localStorage.getItem('hp-playlists') || '[]');
-  const localLayouts   = JSON.parse(localStorage.getItem('hp-layouts')   || '[]');
+// The playlist picker for a guest becomes the save sheet; after sign-in the
+// chord goes into Favourites. Called at the start of render().
+function guestPickerToSave() {
+  if (accountOn() || !state.pickerChordFavId || !state.pickerChordObj || state.saveSheet) return;
+  const entry = playlistEntryFor(state.pickerChordObj, state.pickerChordFavId);
+  Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewPlaylist: false, pickerNewProgression: false });
+  guestSave({ what: 'chord', entry });
+}
 
-  const mergedPlaylists = mergeById(localPlaylists, cloud.playlists);
-  const mergedLayouts   = mergeById(localLayouts,   cloud.layouts);
-
-  const playlistsSame = sameByTimestamp(mergedPlaylists, localPlaylists);
-  const layoutsSame   = sameByTimestamp(mergedLayouts,   localLayouts);
-
-  if (!playlistsSame) {
-    localStorage.setItem('hp-playlists', JSON.stringify(mergedPlaylists));
-    state.playlists    = mergedPlaylists.filter(p => !p.deletedAt);
-    state.favorites    = getFavorites();
+function saveSheetHtml() {
+  const s = state.saveSheet;
+  const t = saveText(s.what);
+  const p = s.providers ?? {};
+  const legal = `<p class="save-legal">Free. We only keep your email and what you save. <a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy notice</a></p>`;
+  let body;
+  if (s.step === 'code') {
+    body = `
+      <p class="sheet-text">We sent a code to <strong>${escHtml(s.email)}</strong>. Type it here, or open the link in the same email.</p>
+      ${uiField({
+        label: 'Code from the email', id: 'save-code-input', error: s.error,
+        control: `<input class="input" id="save-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8"
+          placeholder="6–8 digits" value="${escHtml(state.authCode)}" autocomplete="one-time-code">`,
+      })}
+      <button type="button" class="btn btn-primary btn-block" data-action="save-verify"${s.busy ? ' disabled' : ''}>${s.busy ? 'Checking…' : 'Continue'}</button>
+      <button type="button" class="btn btn-ghost btn-block" data-action="save-other-email">Use another email</button>`;
+  } else {
+    const providers = [
+      p.google ? `<button type="button" class="btn btn-secondary btn-block" data-action="save-provider" data-provider="google">Continue with Google</button>` : '',
+      p.apple ? `<button type="button" class="btn btn-secondary btn-block" data-action="save-provider" data-provider="apple">Continue with Apple</button>` : '',
+    ].join('');
+    body = `
+      <p class="sheet-text save-line">${escHtml(t.line)}</p>
+      <p class="save-free">Free · takes seconds · also lets you play offline</p>
+      ${providers}
+      ${providers ? '<div class="save-or" role="separator"><span>or</span></div>' : ''}
+      ${uiField({
+        label: 'Email', id: 'save-email-input', error: s.error,
+        control: `<input class="input" id="save-email-input" type="email" autocomplete="email" placeholder="you@example.com" value="${escHtml(s.email)}">`,
+      })}
+      <button type="button" class="btn btn-primary btn-block" data-action="save-send-code"${s.busy ? ' disabled' : ''}>${s.busy ? 'Sending…' : 'Send code'}</button>
+      ${legal}`;
   }
-  if (!layoutsSame) {
-    localStorage.setItem('hp-layouts', JSON.stringify(mergedLayouts));
-    state.savedLayouts = getSavedLayouts();
-    refreshInstruments();
-  }
+  return uiSheet({
+    key: 'save', title: t.title, close: 'save-not-now', body,
+    footer: `<button type="button" class="btn btn-ghost" data-action="save-not-now">Not now</button>`,
+  });
+}
 
-  if (cloud.prefs && Object.keys(cloud.prefs).length > 0) {
-    const localTs = localStorage.getItem('hp-updated-at') || '1970';
-    if ((cloud.updated_at || '') > localTs) {
-      localStorage.setItem('hp-prefs', JSON.stringify(cloud.prefs));
-      loadPrefs();
-    }
+// The sheet's buttons. Returns true when it handled the action.
+function saveSheetAction(action, el) {
+  const s = state.saveSheet;
+  if (action === 'open-sign-in') { openSaveSheet('signin'); return true; }
+  if (!s) return false;
+  if (action === 'save-not-now') {
+    // Nothing is lost: the screen stays as it was.
+    state.saveSheet = null;
+    state.authCode = '';
+    dropPendingSave();
+    render();
+    return true;
   }
-
-  if (!playlistsSame || !layoutsSame) {
-    // Push merged result back so other device sees our items too.
-    scheduleSave();
+  if (action === 'save-send-code') {
+    const email = (document.getElementById('save-email-input')?.value || s.email || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { s.error = 'Type your email address'; render(); return true; }
+    Object.assign(s, { email, error: '', busy: true });
+    state.authEmail = email;
+    logEvent('signup_method', { what: s.what, method: 'email' });
+    render();
+    sendOtp(email).then(err => {
+      if (state.saveSheet !== s) return;
+      s.busy = false;
+      if (err) { s.error = navigator.onLine === false ? 'You\'re offline. Try again when you\'re connected.' : err; render(); return; }
+      s.step = 'code';
+      state.authCode = '';
+      render();
+    });
+    return true;
+  }
+  if (action === 'save-verify') {
+    const code = (document.getElementById('save-code-input')?.value || state.authCode).replace(/\D/g, '');
+    if (code.length < 6) { s.error = 'Type the code from the email'; render(); return true; }
+    Object.assign(s, { error: '', busy: true });
+    _signInMethod = 'email';
+    render();
+    verifyOtp(s.email, code).then(err => {
+      if (state.saveSheet !== s) return;
+      s.busy = false;
+      if (err) { s.error = 'That code didn\'t work. Check it, or send a new one.'; render(); }
+      // On success handleLogin() takes over.
+    });
+    return true;
+  }
+  if (action === 'save-other-email') { Object.assign(s, { step: 'start', error: '' }); render(); return true; }
+  if (action === 'save-provider') {
+    const provider = el.dataset.provider;
+    logEvent('signup_method', { what: s.what, method: provider });
+    try { sessionStorage.setItem('hp-signin-method', provider); } catch { /* fine */ }
+    signInWithProvider(provider).then(err => { if (err) { s.error = err; render(); } });
     return true;
   }
   return false;
 }
 
-// Check cloud for changes — called on login, visibility restore, and poll.
-async function checkForUpdates() {
-  if (!isLoggedIn()) return;
-  const cloud = await loadCloudData();
-  if (mergeCloudData(cloud)) render();
-  syncInstrumentsNow();
-  syncProgressionsNow();
+let _signInMethod = null;
+
+// Completes the started save after sign-in: a chord into Favourites, or the
+// tapped action once more (now with an account, so it goes through).
+function completePendingSave(pending) {
+  if (!pending) return false;
+  if (pending.what === 'chord' && pending.entry) {
+    const added = addChordToPlaylist('favorites', pending.entry);
+    reloadSaved();
+    scheduleSave();
+    showToast(added === false ? 'Already in Favourites' : 'Saved to Favourites');
+    return true;
+  }
+  if (!pending.action) return false;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.hidden = true;
+  btn.dataset.action = pending.action;
+  Object.assign(btn.dataset, pending.data || {});
+  document.getElementById('app').appendChild(btn);
+  btn.click();
+  btn.remove();
+  return true;
+}
+
+// ── Signing in ──────────────────────────────────────────────────────────────
+// A guest who signs in (this tab, a magic link or back from Google): their
+// visit moves into the account (§5), the started save completes, and the
+// account starts syncing. An account that was already here just starts.
+async function handleLogin(event, session) {
+  if (!session) { render(); return; }
+  if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
+  if (!accountOn()) becomeAccount(session);
+  startAccount();
+  syncSoon(0);
+}
+
+function becomeAccount(session) {
+  const pending = takePendingSave();
+  const what = state.saveSheet?.what ?? pending?.what ?? 'signin';
+  let method = _signInMethod;
+  try { method = method ?? sessionStorage.getItem('hp-signin-method') ?? 'link'; sessionStorage.removeItem('hp-signin-method'); } catch { method = method ?? 'link'; }
+  state.saveSheet = null;
+  state.authCode = '';
+  const moved = carryOverVisit();
+  reloadSaved();
+  const fresh = Date.now() - Date.parse(session.user?.created_at || 0) < 10 * 60 * 1000;
+  logEvent('signup_done', { what, method, account: fresh ? 'new' : 'returning' });
+  const done = completePendingSave(pending);
+  if (done) logEvent('save_completed', { what });
+  else render();
+  // Everything else built in this visit came along too.
+  const names = (moved['hp-instruments'] || []).map(i => i.name)
+    .concat((moved['hp-progressions'] || []).map(p => p.name));
+  const also = alsoSavedText(names.filter(n => !(pending?.what === 'instrument' && n === currentInstrument()?.name)));
+  if (also) setTimeout(() => showToast(also), done ? 3200 : 0);
+  else if (!done) showToast('Signed in');
+  touchLastSeen({ privacyVersion: PRIVACY_VERSION, source: measurePathOf(pending?.path ?? location.pathname), intent: what });
+}
+
+let _accountStarted = false;
+function startAccount() {
+  if (_accountStarted) return;
+  _accountStarted = true;
+  touchLastSeen();
+  syncSoon(0);
+  startSyncPoll();
+  enableOffline();
+  render();
+}
+
+// ── Sync ────────────────────────────────────────────────────────────────────
+// The items on this device, for syncRound (js/sync.js). Handpan instruments
+// are left out: they're made from the saved layouts, which sync themselves.
+const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'playbackSpeed', 'showFingers', 'showSizes', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+
+function syncReadList(key) {
+  try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function syncReadPrefs() {
+  try { return JSON.parse(localStorage.getItem('hp-prefs') || '{}') || {}; } catch { return {}; }
+}
+
+const syncLocal = {
+  items() {
+    const m = new Map();
+    for (const [kind, key] of Object.entries(SYNC_LISTS)) {
+      for (const data of syncReadList(key)) {
+        if (!data?.id || (kind === 'instrument' && data.family === 'handpan')) continue;
+        m.set(syncKey(kind, data.id), { kind, id: data.id, data });
+      }
+    }
+    const p = syncReadPrefs();
+    if (p.updatedAt) {
+      const data = { id: 'prefs' };
+      for (const f of SYNC_PREFS) if (p[f] !== undefined) data[f] = p[f];
+      m.set(syncKey('prefs', 'prefs'), { kind: 'prefs', id: 'prefs', data });
+    }
+    return m;
+  },
+  write(kind, id, data) {
+    if (kind === 'prefs') {
+      const { id: _id, ...rest } = data;
+      localStorage.setItem('hp-prefs', JSON.stringify({ ...syncReadPrefs(), ...rest }));
+      return;
+    }
+    const key = SYNC_LISTS[kind];
+    if (!key) return;
+    const list = syncReadList(key);
+    const i = list.findIndex(x => x.id === id);
+    if (i >= 0) list[i] = data; else list.push(data);
+    dataStore().setItem(key, JSON.stringify(list));
+  },
+  add(kind, data) { this.write(kind, data.id, data); },
+};
+
+let _syncTimer = null;
+let _syncRunning = false;
+let _syncAgain = false;
+
+function syncSoon(ms = 2000) {
+  if (!accountOn()) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(syncNow, ms);
+}
+
+async function syncNow() {
+  if (!accountOn()) return;
+  if (!isLoggedIn()) { state.syncPending = await pendingCount(); return; }
+  if (_syncRunning) { _syncAgain = true; return; }
+  _syncRunning = true;
+  const before = state.syncPending;
+  try {
+    const r = await syncRound({ local: syncLocal, bases: syncBases, api: syncApi, device: deviceKind() });
+    state.syncPending = r.pending;
+    state.syncError = null;
+    state.lastSynced = Date.now();
+    if (r.pulled || r.copies.length) {
+      const prevTheme = state.theme;
+      loadPrefs();
+      if (state.theme !== prevTheme) applyTheme();
+      reloadSaved();
+      render();
+    } else if (before !== r.pending) render();
+    if (r.copies.length) showToast(`Changed on two devices, so both are kept: ${r.copies[0]}`);
+    else if (before > 0 && r.pending === 0 && r.pushed) showToast('Synced');
+    if (r.pushed) pushSharedInstruments();
+  } catch (err) {
+    state.syncError = navigator.onLine === false ? 'offline' : 'error';
+    state.syncPending = await pendingCount();
+  } finally {
+    _syncRunning = false;
+    if (_syncAgain) { _syncAgain = false; syncSoon(500); }
+  }
+}
+
+// Changes waiting for the server (Settings › Account, the Offline pill).
+async function pendingCount() {
+  try { return pendingChanges(syncLocal.items(), await syncBases.getAll()).length; } catch { return 0; }
+}
+
+// A shared code is read from the instruments table, so shared instruments
+// are written there as well after they change (docs/free-to-play.md, data model).
+let _sharedPushed = new Map();
+function pushSharedInstruments() {
+  const shared = getInstrumentsRaw().filter(i => i.publicId && _sharedPushed.get(i.id) !== i.updatedAt);
+  if (!shared.length) return;
+  saveCloudInstruments(shared).then(ok => { if (ok === true) shared.forEach(i => _sharedPushed.set(i.id, i.updatedAt)); });
+}
+
+for (const ev of ['hp-data-changed', 'hp-instruments-changed', 'hp-progressions-changed']) {
+  window.addEventListener(ev, () => {
+    if (!accountOn()) return;
+    pendingCount().then(n => { if (n !== state.syncPending) { state.syncPending = n; if (state.view === 'settings') render(); else refreshStatusUi(); } });
+    syncSoon();
+  });
 }
 
 let _syncPoll = null;
 function startSyncPoll() {
   if (_syncPoll) return;
-  _syncPoll = setInterval(() => {
-    if (document.visibilityState === 'visible') checkForUpdates();
-  }, 30000);
+  _syncPoll = setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
 }
 function stopSyncPoll() {
   if (_syncPoll) { clearInterval(_syncPoll); _syncPoll = null; }
 }
 
-async function handleLogin(event, session) {
-  if (!session || event === 'TOKEN_REFRESHED') { render(); return; }
-  const cloud = await loadCloudData();
-  mergeCloudData(cloud);
-  scheduleSave(); // always push local on login — ensures cloud has our data
-  syncInstrumentsNow();
-  syncProgressionsNow();
-  startSyncPoll();
+// ── Offline (§4) ────────────────────────────────────────────────────────────
+function enableOffline() {
+  if (!accountOn()) return;
+  offline.enable(BUILD_HASH).then(ok => { state.offlineReady = ok; if (state.view === 'settings') render(); });
+}
+
+// The Offline pill in the app bar, accounts only: quiet, never covering anything.
+function offlinePillHtml() {
+  if (!state.isOffline || !accountOn()) return '';
+  const n = state.syncPending;
+  return `<span class="offline-pill" role="status" title="${n ? `${n} change${n !== 1 ? 's' : ''} will sync when you're online` : 'Everything you saved works offline'}">${icon('cloud-off')}<span>Offline</span></span>`;
+}
+
+// A guest who loses the connection: a friendly card, once per drop.
+function guestOfflineCardHtml() {
+  if (!state.guestOfflineCard || accountOn()) return '';
+  return `
+    <div class="card offline-card" role="status">
+      <div class="tip-title">You're offline</div>
+      <div class="tip-body">You can keep playing here. To open the app offline any time, create a free account; it takes seconds.</div>
+      <div class="set-actions">
+        <button type="button" class="btn btn-secondary btn-sm" data-action="offline-remind">Remind me when I'm back online</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="offline-card-ok">OK</button>
+      </div>
+    </div>`;
+}
+
+// The pill and card change without a full render (they don't move focus).
+function refreshStatusUi() {
+  const right = document.querySelector('.appbar-right');
+  if (right) {
+    right.querySelector('.offline-pill')?.remove();
+    const pill = offlinePillHtml();
+    if (pill) right.insertAdjacentHTML('afterbegin', pill);
+  }
+  document.querySelector('.offline-card')?.remove();
+  const card = guestOfflineCardHtml();
+  if (card) document.getElementById('app')?.insertAdjacentHTML('beforeend', card);
+}
+
+window.addEventListener('offline', () => {
+  state.isOffline = true;
+  if (!accountOn()) { state.guestOfflineCard = true; logEvent('guest_offline', { step: 'shown' }); }
+  else if (!_offlineSessionLogged) { _offlineSessionLogged = true; logEvent('offline_session'); }
+  refreshStatusUi();
+});
+window.addEventListener('online', () => {
+  state.isOffline = false;
+  state.guestOfflineCard = false;
+  refreshStatusUi();
+  if (state.remindSignup && !accountOn()) { state.remindSignup = false; openSaveSheet('offline'); }
+  syncSoon(0);
+});
+let _offlineSessionLogged = false;
+
+// ── Settings › Account (§7, §8) ─────────────────────────────────────────────
+function accountSettingsHtml() {
+  if (!accountOn()) {
+    return `
+      ${uiRow({ lead: 'user', title: 'Sign in', meta: 'Save your instruments, chords and songs, on every device and offline. Free.', action: 'open-sign-in', chevron: true })}
+      ${uiRow({ lead: 'shield', title: 'Privacy notice', meta: 'What we keep and why', action: 'open-privacy', chevron: true })}`;
+  }
+  const n = state.syncPending;
+  const status = state.isOffline
+    ? (n ? `${n} change${n !== 1 ? 's' : ''} will sync when you're online` : 'Offline · everything is on this device')
+    : !isLoggedIn() ? 'Connecting…'
+    : n ? `${n} change${n !== 1 ? 's' : ''} waiting to sync`
+    : state.lastSynced ? 'Everything is synced' : 'Getting your things…';
+  return `
+    ${uiRow({ lead: 'user', title: getUserEmail() ?? 'Signed in', meta: escHtml(status), trail: isLoggedIn() ? uiIconBtn('refresh', 'Sync now', { action: 'account-sync' }) : '' })}
+    ${uiRow({ lead: 'cloud-off', title: 'Offline', meta: state.offlineReady ? 'Ready: the app opens without a connection on this device' : 'Getting ready on this device…' })}
+    ${uiRow({ lead: 'download', title: 'Export my data', meta: 'Everything in your account, as one file', action: 'account-export', chevron: true })}
+    ${uiRow({ lead: 'shield', title: 'Privacy notice', meta: 'What we keep and why', action: 'open-privacy', chevron: true })}
+    ${uiRow({ lead: 'log-out', title: 'Sign out', meta: 'This device forgets your things; your account keeps them', action: 'account-signout' })}
+    ${uiRow({ lead: 'trash-2', title: 'Delete account', meta: 'Deletes your account and everything in it', action: 'account-delete', cls: 'is-danger' })}`;
+}
+
+// Sign out or delete: confirm first (state.accountConfirm = 'signout' | 'delete').
+function accountConfirmSheet() {
+  const kind = state.accountConfirm;
+  if (kind === 'delete') {
+    return uiSheet({
+      key: 'account-delete', title: 'Delete your account?', close: 'account-confirm-cancel', variant: 'confirm',
+      body: `
+        <p class="sheet-text">Your instruments, playlists, progressions and settings are deleted from the server and this device. This can't be undone. Export your data first if you want a copy.</p>
+        ${uiField({ label: 'Type DELETE to confirm', id: 'account-delete-input', error: state.accountError ?? '',
+          control: '<input class="input" id="account-delete-input" autocomplete="off" autocapitalize="characters">' })}`,
+      footer: `
+        <button type="button" class="btn btn-ghost" data-action="account-confirm-cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" data-action="account-delete-ok">Delete account</button>`,
+    });
+  }
+  const n = state.syncPending;
+  return uiSheet({
+    key: 'account-signout', title: 'Sign out?', close: 'account-confirm-cancel', variant: 'confirm',
+    body: `<p class="sheet-text">${n
+      ? `${n} change${n !== 1 ? 's haven\'t' : ' hasn\'t'} synced yet${state.isOffline ? ' (you\'re offline)' : ''}. If you sign out now, ${n !== 1 ? 'they\'re' : 'it\'s'} lost.`
+      : 'Your things stay in your account. This device forgets them, and the app no longer opens offline here.'}</p>`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="account-confirm-cancel">${n ? 'Wait' : 'Cancel'}</button>
+      <button type="button" class="btn ${n ? 'btn-danger' : 'btn-primary'}" data-action="account-signout-ok">${n ? 'Sign out anyway' : 'Sign out'}</button>`,
+  });
+}
+
+// This device forgets the account: saved data, sync bases, the offline
+// cache and the service worker (§4 "On sign-out", §8).
+async function forgetAccountOnDevice() {
+  stopSyncPoll();
+  clearTimeout(_syncTimer);
+  _accountStarted = false;
+  clearAccountData();
+  await syncBases.clear();
+  await offline.disable();
+  Object.assign(state, { syncPending: 0, lastSynced: null, offlineReady: false, accountConfirm: null, accountError: null });
+  reloadSaved();
+  goHome({ push: false });
+  navReplace('/');
   render();
+}
+
+async function exportMyData() {
+  if (!isLoggedIn() || state.isOffline) { showToast('Export needs a connection'); return; }
+  await syncNow();
+  const rows = await exportAccountRows();
+  if (!rows) { showToast('Couldn\'t right now. Try again in a moment.'); return; }
+  const file = { exportedAt: new Date().toISOString(), app: APP_NAME, ...rows };
+  const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `oakhum-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showToast('Exported');
+}
+
+function accountAction(action) {
+  if (action === 'open-privacy') { window.open(PRIVACY_URL, '_blank', 'noopener'); return true; }
+  if (action === 'account-sync') { syncNow().then(() => showToast(state.syncPending ? 'Some changes are still waiting' : 'Synced')); return true; }
+  if (action === 'account-export') { exportMyData(); return true; }
+  if (action === 'account-signout') {
+    pendingCount().then(n => { state.syncPending = n; state.accountConfirm = 'signout'; render(); });
+    return true;
+  }
+  if (action === 'account-delete') {
+    if (!isLoggedIn() || state.isOffline) { showToast('Deleting your account needs a connection'); return true; }
+    state.accountConfirm = 'delete'; state.accountError = null; render(); return true;
+  }
+  if (action === 'account-confirm-cancel') { state.accountConfirm = null; state.accountError = null; render(); return true; }
+  if (action === 'account-signout-ok') {
+    state.accountConfirm = null;
+    signOut().then(forgetAccountOnDevice).then(() => showToast('Signed out'));
+    return true;
+  }
+  if (action === 'account-delete-ok') {
+    const typed = (document.getElementById('account-delete-input')?.value || '').trim().toUpperCase();
+    if (typed !== 'DELETE') { state.accountError = 'Type DELETE'; render(); return true; }
+    deleteMyAccount().then(err => {
+      if (err) { state.accountError = `Couldn't delete it: ${err}`; render(); return; }
+      forgetAccountOnDevice().then(() => showToast('Your account is deleted'));
+    });
+    return true;
+  }
+  if (action === 'offline-remind') { state.remindSignup = true; state.guestOfflineCard = false; logEvent('guest_offline', { step: 'remind' }); refreshStatusUi(); return true; }
+  if (action === 'offline-card-ok') { state.guestOfflineCard = false; refreshStatusUi(); return true; }
+  return false;
+}
+
+// ── Leaving unsaved work (§3) ───────────────────────────────────────────────
+// A guest who built something and goes back to Home or Play sees the save
+// sheet once; closing the tab gets the browser's own "Leave site?".
+function guestLeaving() {
+  if (accountOn() || state.leaveWarned || !visitHasWork()) return false;
+  state.leaveWarned = true;
+  logEvent('save_tap', { what: 'leave-unsaved', account: 'guest' });
+  openSaveSheet('leave');
+  return true;
+}
+window.addEventListener('beforeunload', e => {
+  if (!accountOn() && visitHasWork()) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// The path of a link without anything personal (custom notes, share codes).
+function measurePathOf(pathname) {
+  const link = parseLink((pathname || '/').split(/[?#]/)[0], '');
+  return !link ? '/' : link.kind === 'custom' ? '/handpan/custom' : link.kind === 'shared' ? '/s' : link.kind === 'unknown' ? `/${link.family}/?` : link.path;
+}
+
+// The screen on show, kept in the synced prefs so a second device opens
+// where you left off (§7). Only instruments and their tabs count.
+function rememberLastPath() {
+  if (!accountOn()) return;
+  const path = location.pathname + location.hash;
+  const p = syncReadPrefs();
+  const isPlace = state.view === 'instrument' || state.layout;
+  if (!isPlace || p.lastPath === path) return;
+  localStorage.setItem('hp-prefs', JSON.stringify({ ...p, lastPath: path, updatedAt: new Date().toISOString() }));
+  syncSoon(5000);
 }
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 loadPrefs();
 refreshInstruments();
+state.isOffline = navigator.onLine === false;
+// Guests never keep a service worker (§4): one left from the old version,
+// or from a sign-out in another tab, is removed.
+if (!accountOn()) offline.disable();
 if (urlIsLink()) loadFromUrl();
 else openStartView();
 render();
@@ -13231,12 +14270,14 @@ render();
 // trigger on older iOS while pointerdown covers desktop and modern iOS.
 // initAudio() is idempotent so firing both for the same touch is harmless.
 initSupabase(handleLogin);
+// An account works offline before (or without) its session coming back.
+if (accountOn()) startAccount();
 measureOpen();
 
 // Sync when the user brings the app back to the foreground (tab switch, PWA resume).
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && state.tuner.on) toggleTuner();
-  if (document.visibilityState === 'visible') checkForUpdates();
+  if (document.visibilityState === 'visible') syncSoon(0);
 });
 
 document.addEventListener('pointerdown', () => initAudio(), { once: true });
@@ -13295,6 +14336,10 @@ document.addEventListener('click', e => {
   if (!el) return;
   const action = el.dataset.action;
   measureFeature(action, el);
+  // The save moment (§3): a guest's save opens the save sheet instead, and
+  // the tap is completed after sign-in.
+  const saveWhat = saveIntentFor(action, { guest: !accountOn() });
+  if (saveWhat) { guestSave({ what: saveWhat, action, data: plainDataset(el.dataset) }); return; }
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
   if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
   if (action === 'picker-open') { openPicker(el.dataset.picker); return; }
@@ -13302,7 +14347,14 @@ document.addEventListener('click', e => {
   // ── Sheets: the ⋯ menu and confirm ────────────────────────────────────────
   if (action === 'menu-open') { state.menu = true; render(); return; }
   if (action === 'row-menu') { e.stopPropagation(); state.menu = { id: el.dataset.id }; render(); return; }
-  if (action === 'hide-sync-tip') { state.syncTipHidden = true; savePrefs(); render(); return; }
+  if (action === 'visit-save') {
+    // Reached with an account only (a guest gets the save sheet first, and
+    // signing in moved this visit's work into the account).
+    reloadSaved();
+    showToast('Saved to My instruments');
+    render();
+    return;
+  }
   if (action === 'menu-close') { state.menu = false; render(); return; }
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
@@ -13350,7 +14402,7 @@ document.addEventListener('click', e => {
     render();
     return;
   }
-  if (action === 'back-home') { goHome(); return; }
+  if (action === 'back-home') { goHome(); guestLeaving(); return; }
   if (action === 'nav-back') {
     if (history.state?.hp) history.back();
     else if (el.dataset.fallback === 'selector') goSelector();
@@ -13365,6 +14417,7 @@ document.addEventListener('click', e => {
     state.playNotice = null;
     navPush('#play');
     render();
+    guestLeaving();
     return;
   }
   if (action === 'play-family') {
@@ -14032,49 +15085,9 @@ document.addEventListener('click', e => {
     return;
   }
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  if (action === 'auth-send-link') {
-    const email = (document.getElementById('auth-email-input')?.value || '').trim();
-    if (!email) return;
-    state.authEmail = email;
-    sendOtp(email).then(err => {
-      if (err) { showToast(err); return; }
-      state.authLinkSent = true;
-      state.authCode = '';
-      render();
-      setTimeout(() => document.getElementById('auth-code-input')?.focus(), 0);
-    });
-    return;
-  }
-
-  if (action === 'auth-verify') {
-    const code = (document.getElementById('auth-code-input')?.value || state.authCode).trim();
-    if (code.length < 6) { showToast('Enter the code from the email'); return; }
-    verifyOtp(state.authEmail, code).then(err => {
-      if (err) { showToast('Invalid code — ' + err); return; }
-      state.authLinkSent = false;
-      state.authCode = '';
-    });
-    return;
-  }
-
-  if (action === 'auth-cancel') {
-    state.authLinkSent = false;
-    state.authCode = '';
-    render();
-    return;
-  }
-
-  if (action === 'auth-sync') {
-    checkForUpdates();
-    return;
-  }
-
-  if (action === 'auth-signout') {
-    stopSyncPoll();
-    signOut().then(() => { state.authLinkSent = false; render(); });
-    return;
-  }
+  // ── Save sheet and Settings › Account ─────────────────────────────────────
+  if (saveSheetAction(action, el)) return;
+  if (accountAction(action)) return;
 
   // ── Selector ──────────────────────────────────────────────────────────────
   if (action === 'filter-notes') {
@@ -14625,8 +15638,8 @@ document.addEventListener('click', e => {
   }
   if (action === 'check-updates') {
     navigator.serviceWorker?.getRegistration?.().then(r => r?.update()).catch(() => {});
-    if (isLoggedIn()) checkForUpdates();
-    showToast(isLoggedIn() ? 'Checked for updates and synced' : 'Checked for updates');
+    if (accountOn()) syncNow();
+    showToast(accountOn() ? 'Checked for updates and synced' : 'Checked for updates');
     return;
   }
 
@@ -15196,14 +16209,15 @@ document.addEventListener('input', e => {
   if (e.target.id === 'cs-name' && state.chordSheet) { state.chordSheet.name = e.target.value; return; }
   if (e.target.id === 'clay-name-input' && state.clayEdit) { state.clayEdit.name = e.target.value; return; }
   if (e.target.id === 'clay-pct-input' && state.clayEdit) { state.clayEdit.pct = e.target.value; return; }
-  if (e.target.id === 'auth-email-input') {
+  if (e.target.id === 'save-email-input' && state.saveSheet) {
+    state.saveSheet.email = e.target.value;
     state.authEmail = e.target.value;
   }
-  if (e.target.id === 'auth-code-input') {
+  if (e.target.id === 'save-code-input') {
     state.authCode = e.target.value.replace(/\D/g, '').slice(0, 8);
     e.target.value = state.authCode;
     if (state.authCode.length === 8) {
-      document.querySelector('[data-action="auth-verify"]')?.click();
+      document.querySelector('[data-action="save-verify"]')?.click();
     }
   }
 });
@@ -15216,7 +16230,7 @@ document.addEventListener('keydown', e => {
     e.target.click();
     return;
   }
-  const enterAction = { 'auth-email-input': 'auth-send-link', 'auth-code-input': 'auth-verify', 'clay-name-input': 'clay-save', 'clay-pct-input': 'clay-save', 'pl-name-input': 'pl-name-save', 'cs-name': 'cs-save' }[e.target.id];
+  const enterAction = { 'save-email-input': 'save-send-code', 'save-code-input': 'save-verify', 'account-delete-input': 'account-delete-ok', 'clay-name-input': 'clay-save', 'clay-pct-input': 'clay-save', 'pl-name-input': 'pl-name-save', 'cs-name': 'cs-save' }[e.target.id];
   if (e.key === 'Enter' && enterAction) {
     e.preventDefault();
     document.querySelector(`[data-action="${enterAction}"]`)?.click();
@@ -15265,11 +16279,6 @@ window.addEventListener('popstate', () => {
   render();
 });
 
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
   </script>
 </body>
 </html>
