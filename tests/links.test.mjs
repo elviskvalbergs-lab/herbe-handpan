@@ -118,7 +118,7 @@ test('the preview card goes into index.html', () => {
   const html = `<html><head>\n  <title>Oakhum</title>\n  <meta name="description" content="x">\n  <meta property="og:title" content="Oakhum">\n  <meta property="og:image" content="/og/app.jpg">\n</head><body><script>const t = '<title>not this</title>';</script></body></html>`;
   const out = withLinkPreview(html, linkPreview('/ocarina/alto-c-12'), 'https://example.app', 'https://example.app/ocarina/alto-c-12');
   assert.match(out, /<title>Alto C 12-hole ocarina · Oakhum<\/title>/);
-  assert.match(out, /<meta property="og:image" content="https:\/\/example.app\/og\/ocarina.png">/);
+  assert.match(out, /<meta property="og:image" content="https:\/\/example.app\/og\/ocarina.jpg">/);
   assert.match(out, /<meta property="og:url" content="https:\/\/example.app\/ocarina\/alto-c-12">/);
   assert.match(out, /<meta name="description" content="Notes, chords, arpeggios and play-along on the alto C 12-hole ocarina/);
   assert.match(out, /'<title>not this<\/title>'/, 'only the head changes');
