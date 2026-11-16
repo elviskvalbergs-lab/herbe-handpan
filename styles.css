@@ -1,8 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+/* Oakhum Text: Lato 2.0, subset and renamed (fonts/README.md). */
+@font-face { font-family: 'Oakhum Text'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-400.woff2') format('woff2'); }
+@font-face { font-family: 'Oakhum Text'; font-weight: 500; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-500.woff2') format('woff2'); }
+@font-face { font-family: 'Oakhum Text'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-600.woff2') format('woff2'); }
+@font-face { font-family: 'Oakhum Text'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-700.woff2') format('woff2'); }
 
 :root {
   /* ── Type ─────────────────────────────────────────────── */
-  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font: 'Oakhum Text', 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --fs-12: 12px;  --lh-12: 16px;   /* minimum: captions, badges, tab labels */
   --fs-13: 13px;  --lh-13: 18px;   /* meta, helper text */
   --fs-15: 15px;  --lh-15: 22px;   /* body, buttons, list titles */
@@ -45,42 +49,43 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
 
-  /* ── Colour: dark (default) ───────────────────────────── */
-  --bg:           #090F0D;
-  --surface-0:    #0C1713;   /* sunken: inside cards, fingering mouthpiece */
-  --surface-1:    #111F19;   /* cards, list groups, sheets, tab bar */
-  --surface-2:    #172A21;   /* inputs, secondary buttons, hover */
-  --surface-3:    #1E372B;   /* pressed, switch track off, meter track */
-  --border:       #1F3B2E;
-  --border-strong:#2F5544;   /* inputs, secondary buttons, dividers you must see */
+  /* ── Colour: dark (ink, Oakhum) ─────────────────────────── */
+  --bg:           #1C1B16;
+  --surface-0:    #171611;   /* sunken: inside cards, fingering mouthpiece */
+  --surface-1:    #252419;   /* cards, list groups, sheets, tab bar */
+  --surface-2:    #2E2C21;   /* inputs, secondary buttons, hover */
+  --surface-3:    #38362A;   /* pressed, switch track off, meter track */
+  --border:       #34322A;
+  --border-strong:#575240;   /* inputs, secondary buttons, dividers you must see */
 
-  --text-1:       #E4F2EA;   /* titles, values, covered holes        ~16:1 */
-  --text-2:       #B8D0C4;   /* body                                  ~11:1 */
-  --text-3:       #8BA898;   /* meta, helper, captions                 ~7:1 */
-  --text-disabled:#56705F;   /* disabled only, never for information   */
+  --text-1:       #F2E6D3;   /* titles, values, covered holes        ~16:1 */
+  --text-2:       #D8CCB6;   /* body                                  ~11:1 */
+  --text-3:       #A99F88;   /* meta, helper, captions                 ~7:1 */
+  --text-disabled:#6B6552;   /* disabled only, never for information   */
 
-  --accent:            #CD4C38;   /* brand mark: blow, changed holes, indicators */
-  --accent-fill:       #C2412E;   /* primary button background (white text 5.1:1) */
-  --accent-fill-hover: #CD4C38;
-  --accent-fill-press: #A9382A;
+  --accent:            #D07C55;   /* brand mark: blow, changed holes, indicators */
+  --accent-fill:       #A65A37;   /* primary button background (white text 5.1:1) */
+  --accent-fill-hover: #B3633F;
+  --accent-fill-press: #8C4729;
   --on-accent:         #FFFFFF;
-  --accent-text:       #EE7A66;   /* accent as text/icon on dark (7:1) */
-  --accent-soft:       rgba(205, 76, 56, 0.16);
+  --accent-text:       #E0936B;   /* accent as text/icon on dark (7:1) */
+  --accent-soft:       rgba(208, 124, 85, 0.16);
 
-  --selected-bg:  #E4F2EA;   /* selected chip / segment: neutral, not red */
-  --on-selected:  #0B1A14;
+  --selected-bg:  #F2E6D3;   /* selected chip / segment: neutral, not red */
+  --on-selected:  #28271F;
+  --brand:        #F2E6D3;   /* the logo: Cream on ink */
 
-  --success:      #4CC38A;  --success-soft: rgba(76, 195, 138, 0.16);  /* in tune */
-  --warning:      #E8B33A;  --warning-soft: rgba(232, 179, 58, 0.16);  /* near (10–50 ¢) */
-  --danger:       #F07563;  --danger-soft:  rgba(240, 117, 99, 0.14);  /* delete, errors */
+  --success:      #8DB86A;  --success-soft: rgba(141, 184, 106, 0.16);  /* in tune */
+  --warning:      #E2B24A;  --warning-soft: rgba(226, 178, 74, 0.16);  /* near (10–50 ¢) */
+  --danger:       #EE8270;  --danger-soft:  rgba(238, 130, 112, 0.14);  /* delete, errors */
   --on-danger:    #1A0B08;  /* text on a filled danger button (white on #F07563 is only 2.6:1) */
-  --focus:        #7FD6D4;  /* 2px focus ring, distinct from accent and selection */
+  --focus:        #8CC8C4;  /* 2px focus ring, distinct from accent and selection */
 
-  --move-lift:    #6FD0CE;  /* lift arrow + "lift" word */
-  --move-cover:   #E8B33A;  /* cover arrow + "cover" word */
+  --move-lift:    #8CC8C4;  /* lift arrow + "lift" word */
+  --move-cover:   #E2B24A;  /* cover arrow + "cover" word */
   --hole-covered: var(--text-1);
   --hole-open:    var(--bg);
-  --pan-stage:    #090F0D;  /* card behind the pan drawing */
+  --pan-stage:    #1C1B16;  /* card behind the pan drawing */
   --scrim:        rgba(0, 0, 0, 0.6);
 
   --e-1: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -88,82 +93,84 @@
   --e-3: 0 -12px 40px rgba(0, 0, 0, 0.55); /* bottom sheet */
 
   /* Chord colours (pan) — unchanged */
-  --chord-c0: #CD4C38; --chord-c0-stroke: #e8906e; --chord-c0-text: #fff;
-  --chord-c1: #D9A62E; --chord-c1-stroke: #f0c866; --chord-c1-text: #241c05;
-  --chord-c2: #3FA7A6; --chord-c2-stroke: #7fd6d4; --chord-c2-text: #04211f;
-  --chord-c3: #9B6FD4; --chord-c3-stroke: #c6a3f0; --chord-c3-text: #1c0d2e;
-  --note-rest-bg: #162c22; --note-rest-text: #5a9878;
-  --note-active-bg: #CD4C38; --note-active-text: #fff; --note-empty-border: #224838;
-  --pan-playing: #FFFFFF;    /* ring around a sounding note */
+  --chord-c0: #B3633F; --chord-c0-stroke: #D9946F; --chord-c0-text: #fff;
+  --chord-c1: #C9962E; --chord-c1-stroke: #E6BE6A; --chord-c1-text: #2A1F06;
+  --chord-c2: #5A968B; --chord-c2-stroke: #94C8BE; --chord-c2-text: #08201C;
+  --chord-c3: #9A7DB6; --chord-c3-stroke: #C4AEDC; --chord-c3-text: #1C1226;
+  --note-rest-bg: #2E2B20; --note-rest-text: #A99F78;
+  --note-active-bg: #B3633F; --note-active-text: #fff; --note-empty-border: #4A4635;
+  --pan-playing: #FFF8EC;    /* ring around a sounding note */
   /* The pan drawing (js/pan.js), dark; light values with the light theme below. */
-  --pan-g0: #1a3828; --pan-g1: #0d2018; --pan-g2: #060f0c; --pan-i0: #183028; --pan-i1: #0d1e18;
-  --pan-rim: #2a5040; --pan-groove: #1c3828; --pan-guide: #183028; --pan-note-stroke: #1F3B2E;
-  --pan-glow: rgba(255, 255, 255, 0.55);
-  --alt-c0-text: rgba(232,190,160,0.75); --alt-c1-text: rgba(240,216,150,0.75);
-  --alt-c2-text: rgba(170,224,222,0.75); --alt-c3-text: rgba(214,190,240,0.75);
-  --faint-stroke: #7fd6d4; --faint-text: #9fc9bb;
+  --pan-g0: #3C3626; --pan-g1: #26231A; --pan-g2: #14130E; --pan-i0: #332E22; --pan-i1: #221F17;
+  --pan-rim: #5A5240; --pan-groove: #3C3828; --pan-guide: #332E22; --pan-note-stroke: #3A372B;
+  --pan-glow: rgba(255, 248, 236, 0.55);
+  --alt-c0-text: rgba(232,170,140,0.75); --alt-c1-text: rgba(240,210,140,0.75);
+  --alt-c2-text: rgba(170,214,206,0.75); --alt-c3-text: rgba(205,185,230,0.75);
+  --faint-stroke: #94C8BE; --faint-text: #A9C9BF;
   --qr-bg: #FFFFFF;          /* QR codes need a white quiet zone in both themes */
 }
 
-/* ── Colour: light (daylight) ───────────────────────────── */
+/* ── Colour: light (cream) ─────────────────────────────── */
 :root[data-theme="light"] {
-  --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
-  --border: #D3DED7; --border-strong: #A9BDB1;
-  --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
-  --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
-  --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
-  --selected-bg: #0F231A; --on-selected: #FFFFFF;
-  --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
+  --bg: #F2E6D3; --surface-0: #EADBC3; --surface-1: #FBF6EC; --surface-2: #F3E9D8; --surface-3: #E7D9C2;
+  --border: #E0CFB4; --border-strong: #BBA584;
+  --text-1: #28271F; --text-2: #46432F; --text-3: #66614B; --text-disabled: #A89D84;
+  --accent: #B3633F; --accent-fill: #A65A37; --accent-fill-hover: #9E5232; --accent-fill-press: #8C4729;
+  --on-accent: #FFFFFF; --accent-text: #9A5333; --accent-soft: rgba(179, 99, 63, 0.12);
+  --selected-bg: #4E4B2E; --on-selected: #FBF6EC;
+  --brand: #4E4B2E;          /* the logo: Oak Olive on cream */
+  --success: #4A6B2A; --success-soft: rgba(74, 107, 42, 0.12);
   --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
-  --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10); --on-danger: #FFFFFF;
-  --focus: #0B6E6C;
-  --move-lift: #0E7C7B; --move-cover: #9A6700;
-  --hole-covered: #0F231A; --hole-open: #FFFFFF;
-  --pan-stage: #E4EBE6; --scrim: rgba(15, 35, 26, 0.45);
-  --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
-  --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
-  --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+  --danger: #A3311F;  --danger-soft: rgba(163, 49, 31, 0.10); --on-danger: #FFFFFF;
+  --focus: #2F6F73;
+  --move-lift: #2F6F73; --move-cover: #8A5A00;
+  --hole-covered: #28271F; --hole-open: #FBF6EC;
+  --pan-stage: #EADBC3; --scrim: rgba(40, 39, 31, 0.45);
+  --e-1: 0 1px 2px rgba(40, 39, 31, 0.10);
+  --e-2: 0 8px 24px rgba(40, 39, 31, 0.16);
+  --e-3: 0 -12px 40px rgba(40, 39, 31, 0.20);
 }
 /* Auto: the same values as light when the OS asks for it. Keep this block identical to the one above. */
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
-    --border: #D3DED7; --border-strong: #A9BDB1;
-    --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
-    --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
-    --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
-    --selected-bg: #0F231A; --on-selected: #FFFFFF;
-    --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
+    --bg: #F2E6D3; --surface-0: #EADBC3; --surface-1: #FBF6EC; --surface-2: #F3E9D8; --surface-3: #E7D9C2;
+    --border: #E0CFB4; --border-strong: #BBA584;
+    --text-1: #28271F; --text-2: #46432F; --text-3: #66614B; --text-disabled: #A89D84;
+    --accent: #B3633F; --accent-fill: #A65A37; --accent-fill-hover: #9E5232; --accent-fill-press: #8C4729;
+    --on-accent: #FFFFFF; --accent-text: #9A5333; --accent-soft: rgba(179, 99, 63, 0.12);
+    --selected-bg: #4E4B2E; --on-selected: #FBF6EC;
+    --brand: #4E4B2E;
+    --success: #4A6B2A; --success-soft: rgba(74, 107, 42, 0.12);
     --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
-    --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10); --on-danger: #FFFFFF;
-    --focus: #0B6E6C;
-    --move-lift: #0E7C7B; --move-cover: #9A6700;
-    --hole-covered: #0F231A; --hole-open: #FFFFFF;
-    --pan-stage: #E4EBE6; --scrim: rgba(15, 35, 26, 0.45);
-    --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
-    --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
-    --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+    --danger: #A3311F;  --danger-soft: rgba(163, 49, 31, 0.10); --on-danger: #FFFFFF;
+    --focus: #2F6F73;
+    --move-lift: #2F6F73; --move-cover: #8A5A00;
+    --hole-covered: #28271F; --hole-open: #FBF6EC;
+    --pan-stage: #EADBC3; --scrim: rgba(40, 39, 31, 0.45);
+    --e-1: 0 1px 2px rgba(40, 39, 31, 0.10);
+    --e-2: 0 8px 24px rgba(40, 39, 31, 0.16);
+    --e-3: 0 -12px 40px rgba(40, 39, 31, 0.20);
   }
 }
 
-/* The pan drawing in daylight: a light steel shell, darker lines. The chord
-   colours stay the same in both themes. (Two blocks, like the theme above.) */
+/* The pan drawing in daylight: a warm bronze shell on cream, darker lines.
+   The chord colours stay the same in both themes. (Two blocks, like the theme above.) */
 :root[data-theme="light"] {
-  --pan-g0: #FBFDFB; --pan-g1: #E2EAE5; --pan-g2: #C6D4CB; --pan-i0: #F5F9F6; --pan-i1: #DAE4DE;
-  --pan-rim: #93AA9D; --pan-groove: #A9BDB1; --pan-guide: #A9BDB1; --pan-note-stroke: #9DB2A6;
-  --note-rest-bg: #FFFFFF; --note-rest-text: #3F6253; --note-empty-border: #93AA9D;
-  --pan-playing: #0F231A; --pan-glow: rgba(15, 35, 26, 0.35);
-  --alt-c0-text: #9C3222; --alt-c1-text: #7A5A00; --alt-c2-text: #0B6E6C; --alt-c3-text: #5B3A8C;
-  --faint-stroke: #0B6E6C; --faint-text: #2C6B63;
+  --pan-g0: #FBF6EC; --pan-g1: #E9DCC5; --pan-g2: #D1BE9F; --pan-i0: #F6EEDF; --pan-i1: #E2D3B9;
+  --pan-rim: #A48F6E; --pan-groove: #BBA584; --pan-guide: #BBA584; --pan-note-stroke: #B09A78;
+  --note-rest-bg: #FBF6EC; --note-rest-text: #5A553F; --note-empty-border: #A48F6E;
+  --pan-playing: #28271F; --pan-glow: rgba(40, 39, 31, 0.35);
+  --alt-c0-text: #8C4729; --alt-c1-text: #7A5A00; --alt-c2-text: #2F6F73; --alt-c3-text: #6A4A7E;
+  --faint-stroke: #2F6F73; --faint-text: #3E6A64;
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --pan-g0: #FBFDFB; --pan-g1: #E2EAE5; --pan-g2: #C6D4CB; --pan-i0: #F5F9F6; --pan-i1: #DAE4DE;
-    --pan-rim: #93AA9D; --pan-groove: #A9BDB1; --pan-guide: #A9BDB1; --pan-note-stroke: #9DB2A6;
-    --note-rest-bg: #FFFFFF; --note-rest-text: #3F6253; --note-empty-border: #93AA9D;
-    --pan-playing: #0F231A; --pan-glow: rgba(15, 35, 26, 0.35);
-    --alt-c0-text: #9C3222; --alt-c1-text: #7A5A00; --alt-c2-text: #0B6E6C; --alt-c3-text: #5B3A8C;
-    --faint-stroke: #0B6E6C; --faint-text: #2C6B63;
+    --pan-g0: #FBF6EC; --pan-g1: #E9DCC5; --pan-g2: #D1BE9F; --pan-i0: #F6EEDF; --pan-i1: #E2D3B9;
+    --pan-rim: #A48F6E; --pan-groove: #BBA584; --pan-guide: #BBA584; --pan-note-stroke: #B09A78;
+    --note-rest-bg: #FBF6EC; --note-rest-text: #5A553F; --note-empty-border: #A48F6E;
+    --pan-playing: #28271F; --pan-glow: rgba(40, 39, 31, 0.35);
+    --alt-c0-text: #8C4729; --alt-c1-text: #7A5A00; --alt-c2-text: #2F6F73; --alt-c3-text: #6A4A7E;
+    --faint-stroke: #2F6F73; --faint-text: #3E6A64;
   }
 }
 @media (min-width: 1024px) { :root { --gutter: 24px; } }
@@ -567,13 +574,13 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 /* Alt-highlight — same pitch class as a chord note, alternate position on the
    pan. Same hue as its degree's highlight color, dimmed and dashed. */
 .pan-note.alt-highlight circle { stroke-width: 1.5; stroke-dasharray: 3 3; }
-.pan-note.alt-highlight-0 circle { fill: rgba(205,76,56,0.12) !important; stroke: rgba(205,76,56,0.5) !important; }
+.pan-note.alt-highlight-0 circle { fill: rgba(179,99,63,0.12) !important; stroke: rgba(179,99,63,0.5) !important; }
 .pan-note.alt-highlight-0 text { fill: var(--alt-c0-text) !important; }
-.pan-note.alt-highlight-1 circle { fill: rgba(217,166,46,0.12) !important; stroke: rgba(217,166,46,0.5) !important; }
+.pan-note.alt-highlight-1 circle { fill: rgba(201,150,46,0.12) !important; stroke: rgba(201,150,46,0.5) !important; }
 .pan-note.alt-highlight-1 text { fill: var(--alt-c1-text) !important; }
-.pan-note.alt-highlight-2 circle { fill: rgba(63,167,166,0.12) !important; stroke: rgba(63,167,166,0.5) !important; }
+.pan-note.alt-highlight-2 circle { fill: rgba(90,150,139,0.12) !important; stroke: rgba(90,150,139,0.5) !important; }
 .pan-note.alt-highlight-2 text { fill: var(--alt-c2-text) !important; }
-.pan-note.alt-highlight-3 circle { fill: rgba(155,111,212,0.12) !important; stroke: rgba(155,111,212,0.5) !important; }
+.pan-note.alt-highlight-3 circle { fill: rgba(154,125,182,0.12) !important; stroke: rgba(154,125,182,0.5) !important; }
 .pan-note.alt-highlight-3 text { fill: var(--alt-c3-text) !important; }
 
 /* Playing animation — ring + pulse only, keeps whatever fill/text color the
@@ -597,9 +604,9 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .pan-note.faint text { fill: var(--faint-text) !important; }
 .pan-strike { pointer-events: none; }
 .pan-strike rect { stroke: #060f0c; stroke-width: 1.5; }
-.pan-strike-r rect { fill: #E4F2EA; }
+.pan-strike-r rect { fill: #F2E6D3; }
 .pan-strike-r text { fill: #0B1A14; }
-.pan-strike-l rect { fill: #7FD6D4; }
+.pan-strike-l rect { fill: #8CC8C4; }
 .pan-strike-l text { fill: #04211f; }
 
 .chord-count {
@@ -701,8 +708,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   background: none; border: 0; border-radius: var(--r-sm); cursor: pointer;
   color: var(--accent-fill); font: var(--fw-semibold) 14px/20px var(--font);
 }
-:root[data-theme="light"] .toast-action { color: #EE7A66; }
-@media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #EE7A66; } }
+:root[data-theme="light"] .toast-action { color: #E0936B; }
+@media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #E0936B; } }
 
 /* Playlists tab and playlist detail (§6.9) */
 .playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
@@ -1219,7 +1226,7 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 .share-code { font: var(--fw-bold) var(--fs-32)/var(--lh-32) var(--font); letter-spacing: 0.18em; text-align: center; color: var(--text-1); margin: var(--space-2) 0; }
 .share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--r-sm); padding: 8px; min-height: 60px; align-items: center; }
 .share-qr svg { width: 224px; height: 224px; }
-.share-loading { font-size: var(--fs-13); color: #557064; }
+.share-loading { font-size: var(--fs-13); color: var(--text-3); }
 .share-url { margin-top: var(--space-3); font-size: var(--fs-13); }
 
 /* Settings (§6.19): grouped list rows, the control at the right of each */
@@ -1526,7 +1533,7 @@ html { touch-action: manipulation; }
 .hm-svg { width: 100%; height: auto; display: block; border-radius: 12px; }
 .hm-svg .hm-blank { fill: var(--surface-2); stroke: var(--border); stroke-width: 4; }
 .hm-spot circle { fill: rgba(255, 255, 255, 0.18); stroke: #fff; stroke-width: 6; }
-.hm-spot.is-sel circle { stroke: var(--accent); stroke-width: 10; fill: rgba(205, 76, 56, 0.25); }
+.hm-spot.is-sel circle { stroke: var(--accent); stroke-width: 10; fill: rgba(179, 99, 63, 0.25); }
 .hm-spot.is-closed circle { fill: rgba(0, 0, 0, 0.75); stroke: #fff; stroke-width: 8; }
 .hm-spot.is-open circle { fill: #fff; stroke: var(--accent); stroke-width: 16; }
 .hm-num { fill: #fff; font-size: 30px; font-weight: 700; text-anchor: middle; dominant-baseline: central;
@@ -1745,3 +1752,27 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .ld-sliders { display: flex; flex-direction: column; gap: var(--space-3); }
 .ld-slider-row { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-13); }
 .ld-slider-row input { accent-color: var(--accent); }
+
+/* Play (docs/free-to-play.md): where the app opens with nothing saved. */
+.play { display: flex; flex-direction: column; gap: var(--space-3); }
+.play .list-title { margin-bottom: 0; }
+.play-notice { display: flex; flex-direction: column; gap: var(--space-2); }
+.play-brand { padding: var(--space-2) 0 var(--space-1); }
+
+/* Brand (docs/design-system.md, "Brand"): the Oakhum logo and the landscape
+   artwork. The logo is drawn in currentColor (js/brand.js); --brand is Oak
+   Olive on cream and Cream on ink. */
+.brand-logo { display: block; color: var(--brand); flex-shrink: 0; }
+.brand-horizontal { height: 32px; width: auto; aspect-ratio: 670 / 220; }
+.brand-leaf { height: 24px; width: auto; aspect-ratio: 100 / 150; }
+/* The quiet hero: the artwork with no logo baked in, the logo below it. */
+.brand-hero { display: grid; gap: var(--space-4); margin-bottom: var(--space-6); }
+.brand-hero-art {
+  display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: 60% 40%;
+  border-radius: var(--r-md); background: var(--surface-0);
+}
+.brand-hero .brand-horizontal { height: 40px; }
+.brand-hero-line { color: var(--text-2); max-width: 36ch; }
+.brand-about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
+.brand-about .brand-horizontal { height: 28px; }
+.brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }

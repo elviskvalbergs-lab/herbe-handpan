@@ -18,6 +18,43 @@ export function initSupabase(onAuthChange) {
   });
 }
 
+// ── Measurement: PostHog EU (docs/free-to-play.md §9) ───────────────────────
+// Off until _PH_KEY is filled in (the project's public key, like _SUPA_KEY).
+// Set up for no consent banner: memory-only persistence (no cookie, no stored
+// id, each visit counts on its own), no person profiles for guests, session
+// recording off. Errors are captured for bug fixing; taps are autocaptured for
+// heatmaps. Events before PostHog has loaded wait in a short queue, and every
+// failure is silent, so measuring never gets in the way of playing.
+const _PH_KEY = '';
+const _PH_HOST = 'https://eu.i.posthog.com';
+const _eventQueue = [];
+let _phState = 'off'; // 'off' | 'loading' | 'ready'
+function _loadPosthog() {
+  if (!_PH_KEY || _phState !== 'off' || typeof document === 'undefined') return;
+  _phState = 'loading';
+  const s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://eu-assets.i.posthog.com/static/array.js';
+  s.onload = () => {
+    try {
+      window.posthog.init(_PH_KEY, {
+        api_host: _PH_HOST, persistence: 'memory', person_profiles: 'identified_only',
+        autocapture: true, capture_pageview: 'history_change', capture_exceptions: true,
+        disable_session_recording: true,
+      });
+      _phState = 'ready';
+      while (_eventQueue.length) { const [n, p] = _eventQueue.shift(); logEvent(n, p); }
+    } catch (e) { _phState = 'off'; }
+  };
+  s.onerror = () => { _phState = 'off'; };
+  document.head.appendChild(s);
+}
+export function logEvent(name, props = {}) {
+  if (!_PH_KEY) return;
+  if (_phState !== 'ready') { if (_eventQueue.length < 50) _eventQueue.push([name, props]); _loadPosthog(); return; }
+  try { window.posthog.capture(name, { ...props, signed_in: !!_session }); } catch (e) { /* never in the way */ }
+}
+
 export function isLoggedIn() { return !!_session; }
 export function getUserEmail() { return _session?.user?.email ?? null; }
 

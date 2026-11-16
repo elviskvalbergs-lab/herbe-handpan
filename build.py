@@ -27,7 +27,7 @@ if os.environ.get('DATABASE_URL'):
 css = read('styles.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
+js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/links.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -46,24 +46,32 @@ if _supa_url and _supa_key:
     print('Using Supabase project from HP_SUPABASE_URL')
 
 html = f'''<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="auto">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Handpan Chords</title>
+  <title>Oakhum</title>
+  <meta name="description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Oakhum">
+  <meta property="og:title" content="Oakhum">
+  <meta property="og:description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
+  <meta property="og:image" content="/og/app.jpg">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-180.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Handpan">
-  <meta name="theme-color" content="#090F0D">
+  <meta name="apple-mobile-web-app-title" content="Oakhum">
+  <meta name="theme-color" content="#1C1B16">
   <script>
     // The theme pref before first paint (applyTheme() in app.js keeps it in step).
-    try {{ var t = JSON.parse(localStorage.getItem('hp-prefs') || '{{}}').theme; if (t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; }} catch (e) {{}}
+    try {{ var t = JSON.parse(localStorage.getItem('hp-prefs') || '{{}}').theme; if (t === 'dark' || t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; }} catch (e) {{}}
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" href="/fonts/oakhum-text-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/oakhum-text-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
 {css}
   </style>

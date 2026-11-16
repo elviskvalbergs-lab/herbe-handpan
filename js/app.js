@@ -1,3 +1,4 @@
+import { brandLogo } from './brand.js';
 import {
   SCALES, CHORD_TYPES, CHORD_CATEGORIES, createLayoutFromScale,
   getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote,
@@ -20,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
-import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice } from './audio.js';
+import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
@@ -41,6 +42,7 @@ import {
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
+import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME } from './links.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
@@ -57,7 +59,7 @@ const state = {
   wizard: null,            // add-instrument wizard state, see viewWizard()
   tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
   rec: newRecState(),      // the armed record field, see uiHzField()
-  theme: 'dark',           // 'dark' | 'light' | 'auto' (follows the OS)
+  theme: 'auto',           // 'dark' | 'light' | 'auto' (follows the OS; the default)
   syncTipHidden: false,    // the "Sync across devices" tip on Home was dismissed
   clayEdit: null,          // { id, name, pct, error } while a clay body is edited
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
@@ -132,7 +134,8 @@ function render() {
   const prevSheet = app.querySelector('.sheet-root')?.dataset.sheet ?? null;
   const focusKey = focusKeyOf(document.activeElement);
   let html = '';
-  if (state.view === 'home') html = viewHome();
+  if (state.view === 'home') html = homeIsEmpty() ? viewPlay() : viewHome();
+  else if (state.view === 'play') html = viewPlay();
   else if (state.view === 'wizard') html = viewWizard();
   else if (state.view === 'instrument') html = viewInstrument();
   else if (state.view === 'selector') html = viewSelector();
@@ -145,6 +148,9 @@ function render() {
   else if (state.view === 'clay') html = viewClayBodies();
   else if (state.view === 'listen-debug') html = viewListenDebug();
   // Everything after the app bar goes into <main>, the page's content column.
+  // The tab title names the instrument on screen (preview cards: middleware.js).
+  const titled = state.layout?.name ?? (state.view === 'instrument' ? currentInstrument()?.name : null);
+  document.title = titled ? `${titled} · ${APP_NAME}` : APP_NAME;
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
@@ -242,10 +248,13 @@ function settleFocus(app, prevSheet, focusKey) {
 // Entries the app pushes carry { hp: 1 }, so the app bar's back button knows
 // it can step back through the browser history; without one (a deep link)
 // it goes to the screen's logical parent instead.
-function navPush(url) { history.pushState({ hp: 1 }, '', url); }
-function navReplace(url, extra = {}) { history.replaceState({ ...(history.state ?? {}), ...extra }, '', url); }
+// URLs are paths (deep links, docs/free-to-play.md) or '#…' screens, which
+// always hang off the root so a deep-link path never sticks to them.
+function navUrl(url) { return !url ? '/' : url[0] === '#' ? '/' + url : url; }
+function navPush(url) { history.pushState({ hp: 1 }, '', navUrl(url)); }
+function navReplace(url, extra = {}) { history.replaceState({ ...(history.state ?? {}), ...extra }, '', navUrl(url)); }
 
-function goHome() {
+function goHome({ push = true } = {}) {
   stopAutoplay();
   Object.assign(state, {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
@@ -254,7 +263,8 @@ function goHome() {
     menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false,
   });
   refreshInstruments();
-  navPush(location.pathname);
+  if (!push) return;
+  navPush('/');
   render();
 }
 
@@ -303,7 +313,7 @@ function removePlaylist(id) {
   if (state.view === 'playlist' && state.activePlaylistId === id) {
     state.view = 'home';
     state.activePlaylistId = null;
-    navPush(location.pathname);
+    navPush('/');
   }
   scheduleSave();
   render();
@@ -398,6 +408,7 @@ function viewSettings() {
 
       <h2 class="list-title">About</h2>
       <div class="list">
+        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute.</span></div>
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
       </div>
     </div>`;
@@ -1089,6 +1100,60 @@ function instrumentRowHtml(inst) {
   });
 }
 
+// ── Play (docs/free-to-play.md, "2. Guest experience") ─────────────────────
+// Where the app opens with nothing saved: pick a family, then a tuning, and
+// it opens ready to play through its deep link. Also "Play something else"
+// on My instruments.
+const PLAY_POPULAR = {
+  handpan: ['D-Kurd', 'D-Celtic-Minor', 'F-Low-Pygmy', 'D-Integral', 'D-Hijaz', 'E-Equinox'].map(scaleId => ({ scaleId })),
+  ocarina: ['C-A4', 'G-E4', 'F-D4', 'C-A5', 'G-E5', 'C-A3'].map(keyId => ({ chartId: 'ocarina-12-stl-c', keyId })),
+  flute: chartsForFamily('flute').map(c => ({ chartId: c.id, keyId: c.defaultKey ?? c.keys[0].id })),
+};
+
+// Home has nothing on it yet: show Play instead.
+function homeIsEmpty() {
+  return state.instruments.length === 0 && !state.playlists.some(p => p.chords.length) && state.progressions.length === 0;
+}
+
+function playRowHtml(target) {
+  const path = linkFor(target);
+  const link = parseLink(path);
+  if (!link) return '';
+  const scale = target.scaleId ? SCALES.find(s => s.id === target.scaleId) : null;
+  return uiRow({
+    lead: FAMILY_ICONS[link.family], title: linkTitle(link).replace(/ handpan$/, ''),
+    meta: scale ? scale.desc ?? '' : '', chevron: true, action: 'open-link', data: { path },
+  });
+}
+
+function viewPlay() {
+  const fam = state.playFamily ?? 'handpan';
+  const n = state.playNotice;
+  const notice = n ? `
+    <div class="card play-notice" role="status">
+      <div class="tip-title">We couldn't find “${escHtml(n.slug)}”</div>
+      <div class="tip-body">Is it one of these?</div>
+      <div class="list">${n.closest.map(p => { const l = parseLink(p); return uiRow({ lead: FAMILY_ICONS[l.family], title: linkTitle(l), chevron: true, action: 'open-link', data: { path: p } }); }).join('')}</div>
+    </div>` : '';
+  const more = fam === 'handpan'
+    ? uiRow({ lead: 'search', title: `All ${SCALES.length} scales`, meta: 'Every scale, by notes and name', chevron: true, action: 'other-instrument' })
+      + uiRow({ lead: 'pencil', title: 'Your own notes', meta: 'Set the notes of your handpan', chevron: true, action: 'play-custom-handpan' })
+    : uiRow({ lead: 'plus', title: fam === 'ocarina' ? 'Other keys, or your own ocarina' : 'Other keys, or your own flute', meta: fam === 'ocarina' ? 'Every key, ocarinas you made, building one from a scale' : 'Every key, and flutes you made', chevron: true, action: 'add-instrument' });
+  const bar = homeIsEmpty()
+    ? uiAppBar({ title: 'Play', actions: [tunerAppBtn(), settingsAppBtn()] })
+    : backAppBar('Play something else', { actions: [tunerAppBtn(), settingsAppBtn()] });
+  return `
+    ${bar}
+    <div class="play">
+      ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute. Free, no sign-up to play.</span></div>` : ''}
+      ${notice}
+      ${uiSeg(INSTRUMENT_FAMILIES.map(f => ({ value: f.id, label: escHtml(f.name) })), fam, { action: 'play-family', label: 'Instrument' })}
+      <h2 class="list-title">Popular</h2>
+      <div class="list">${PLAY_POPULAR[fam].map(playRowHtml).join('')}</div>
+      <div class="list">${more}</div>
+    </div>`;
+}
+
 function viewHome() {
   const insts = state.instruments;
   const playlists = state.playlists.map(pl => {
@@ -1121,7 +1186,7 @@ function viewHome() {
           : `<div class="list home-instruments">${insts.map(instrumentRowHtml).join('')}</div>
              <button type="button" class="btn btn-secondary btn-block home-add" data-action="add-instrument">${icon('plus')} Add instrument</button>`}
         <div class="list home-try">
-          ${uiRow({ lead: 'search', title: 'Try another scale', meta: 'Browse every scale without saving', chevron: true, action: 'other-instrument' })}
+          ${uiRow({ lead: 'search', title: 'Play something else', meta: 'Any handpan, ocarina or flute, without saving it', chevron: true, action: 'open-play' })}
         </div>
       </section>
       <section class="home-side" aria-label="Playlists">
@@ -1171,7 +1236,7 @@ function wizardNext() {
   state.wizard = null;
   refreshInstruments();
   state.view = 'home';
-  navReplace(location.pathname);
+  navReplace('/');
   render();
   if (w.added.length) {
     const names = w.added.map(a => a.name);
@@ -1228,8 +1293,17 @@ function wizardFrame(w, { title, sub = '', body, bar }) {
   const header = w.firstRun
     ? uiAppBar({ title: 'Welcome' })
     : uiAppBar({ title: 'Add instrument', back: { action: 'back-home', label: 'My instruments' } });
+  // First run, first step: the quiet hero (artwork, then the logo), docs/design-system.md "Brand".
+  const hero = w.firstRun && at === 1 ? `
+      <div class="brand-hero">
+        <img class="brand-hero-art" src="/brand/hero-wide-800.webp" srcset="/brand/hero-wide-800.webp 800w, /brand/hero-wide.webp 1600w"
+          sizes="(min-width: 640px) 640px, 100vw" width="800" height="450" alt="">
+        ${brandLogo()}
+        <p class="brand-hero-line">Notes, chords and scales for handpan, ocarina and flute.</p>
+      </div>` : '';
   return `${header}
     <div class="wizard">
+      ${hero}
       ${w.notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(w.notice)}</p>` : ''}
       <div class="wizard-count">Step ${Math.max(1, at)} of ${Math.max(total, at)}</div>
       <h2 class="wizard-title">${escHtml(title)}</h2>
@@ -1601,18 +1675,29 @@ function ocTabs(inst) {
   return tabs;
 }
 
+// An instrument being tried, not in My instruments: the same banner on every
+// instrument (a handpan scale or custom notes, an ocarina or flute opened
+// from a link), with its Save.
+function notSavedBannerHtml(action) {
+  return `
+      <div class="banner">
+        <span>Not saved · try it, then keep it in My instruments</span>
+        <button type="button" class="btn btn-primary btn-sm" data-action="${action}">Save</button>
+      </div>`;
+}
+
 // App bar of an ocarina or flute, with its tabs (none in practice mode).
 function ocHeader(inst, view, { practice = false } = {}) {
   const shared = inst.id === SHARED_ID;
   const tabs = practice ? '' : uiTabBar(ocTabs(inst).map(([id, label, ic]) => ({ id, label, icon: ic, action: 'oc-tab', data: { tab: id } })), view);
   return `
     ${uiAppBar({
-      switcher: { name: inst.name, action: 'back-home', title: 'My instruments' },
-      badge: shared ? uiBadge(inst.publicId) : '',
+      switcher: inst.link ? { name: inst.name, action: 'open-play', title: 'Other instruments' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
+      badge: inst.link ? uiBadge('Not saved') : shared ? uiBadge(inst.publicId) : '',
       actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
     })}
-    ${shared ? `
+    ${inst.link && !practice ? notSavedBannerHtml('shared-add') : shared && !inst.link ? `
       <div class="banner">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
         <button type="button" class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
@@ -2244,7 +2329,7 @@ async function shareInstrument(id = null) {
       return;
     }
   }
-  const url = `${location.origin}${location.pathname}#p/${inst.publicId}`;
+  const url = `${location.origin}${linkFor({ code: inst.publicId })}`;
   state.shareModal = { code: inst.publicId, url, qr: null };
   render();
   try {
@@ -3753,14 +3838,12 @@ function openInstrument(id, { push = true } = {}) {
   return true;
 }
 
-// Where the app opens with no URL hash: the wizard on first run, otherwise
-// My instruments — or straight into the only instrument there is.
+// Where the app opens with no link: the Play screen when nothing is saved
+// yet, otherwise My instruments, or straight into the only instrument.
 function openStartView() {
-  if (state.instruments.length === 0 && !isOnboarded()) {
-    state.wizard = newWizard(true);
-    state.view = 'wizard';
-    return;
-  }
+  // Nothing saved yet: the Play screen, one tap from playing
+  // (docs/free-to-play.md, "2. Guest experience").
+  if (state.instruments.length === 0) { state.view = 'play'; return; }
   state.view = 'home';
   if (state.instruments.length === 1) openInstrument(state.instruments[0].id, { push: false });
 }
@@ -3805,11 +3888,7 @@ function viewEditor() {
 
   return `
     ${handpanAppBar(handpanTabs('editor'))}
-    ${state.currentInstrumentId ? '' : `
-      <div class="banner">
-        <span>Not saved · try it, then keep it in My instruments</span>
-        <button type="button" class="btn btn-primary btn-sm" data-action="save-layout">Save</button>
-      </div>`}
+    ${state.currentInstrumentId ? '' : notSavedBannerHtml('save-layout')}
 
     <div class="editor-layout">
       <div class="editor-main">
@@ -4546,6 +4625,7 @@ function menuSheet() {
     title = inst?.name ?? title;
     if (inst && !shared) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
     if (inst && !shared) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument' }));
+    if (inst?.link) rows.push(uiRow({ lead: 'link', title: 'Copy link', action: 'copy-url' }));
     if (inst) rows.push(uiRow({ lead: 'hand', title: 'Which finger is which', action: 'oc-hand-open' }));
     rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
     if (inst && !shared) rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
@@ -5142,7 +5222,7 @@ function removeProgression(id) {
     if (history.state?.hp) { history.back(); return; }
     state.view = 'home';
     state.activeProgressionId = null;
-    navPush(location.pathname);
+    navPush('/');
   }
   render();
 }
@@ -5487,12 +5567,16 @@ function startAutoplay(pl) {
 }
 
 // ── URL serialization ────────────────────────────────────────────────────────
+// The handpan on screen as a link (/handpan/d-kurd/chords/a-min, or
+// /handpan/custom?… with every note), so the address bar always shows a
+// link to what's on screen. (The name is from when these were '#…' hashes.)
 function stateToHash() {
   if (!state.layout) return '';
-  const chordSuffix = state.selectedChord ? `&chord=${state.selectedChord.id}` : '';
+  const tab = state.view === 'chords' ? 'chords' : state.view === 'hp-playlists' ? 'playlists' : null;
+  const chord = state.view === 'chords' ? state.selectedChord?.id ?? null : null;
 
   if (!state.layout.isCustom) {
-    return `#scale=${state.layout.id}${chordSuffix}`;
+    return linkFor({ scaleId: state.layout.id }, { tab, chord }) ?? `#scale=${state.layout.id}${chord ? `&chord=${chord}` : ''}`;
   }
 
   const topSlots = state.layout.top.slots.map(s => s.note ?? 'null').join(',');
@@ -5505,7 +5589,107 @@ function stateToHash() {
     bc: state.layout.bottom.capacity,
     name: state.layout.name,
   });
-  return `#custom?${params}${chordSuffix}`;
+  return linkFor({ custom: params }, { tab, chord });
+}
+
+// An ocarina or flute tab as a URL: a visiting or shared one by its link,
+// one of mine by its id.
+function instUrl(id, tab) {
+  if (id !== SHARED_ID) return `#i/${id}/${tab}`;
+  const sh = state.shared;
+  if (sh?.link) return linkFor(sh.link, { tab });
+  if (sh?.publicId) return linkFor({ code: sh.publicId }, { tab: tab === 'notes' ? null : tab });
+  return location.pathname;
+}
+
+// The URL of the screen on show, for Copy link.
+function currentPath() {
+  if (state.view === 'instrument' && state.currentInstrumentId) return instUrl(state.currentInstrumentId, state.oc.tab);
+  if (state.layout) return stateToHash();
+  return location.pathname + location.hash;
+}
+
+// Opens what the URL points at: a deep link (/handpan/d-kurd, /ocarina/…,
+// /s/CODE, docs/free-to-play.md) or one of the app's '#…' screens. Old
+// '#scale=', '#custom?' and '#p/' links still open, and the address bar is
+// then changed to the new link.
+function loadFromUrl() {
+  const link = parseLink(location.pathname, location.search);
+  if (link) {
+    openLink(link);
+    // An alias or old spelling shows its canonical link.
+    if ((link.kind === 'scale' || link.kind === 'chart' || link.kind === 'shared') && location.pathname !== link.path) navReplace(link.path);
+    return;
+  }
+  loadFromHash();
+  const h = location.hash;
+  if (state.layout && (h.startsWith('#scale=') || h.startsWith('#custom?'))) navReplace(stateToHash());
+  else if (h.startsWith('#p/')) navReplace(linkFor({ code: decodeURIComponent(h.slice(3)) }));
+}
+
+function urlIsLink() {
+  return !!parseLink(location.pathname, location.search) || (!!location.hash && location.hash !== '#');
+}
+
+// A handpan from the catalogue: my saved copy of it when I have one, so it
+// opens as that instrument.
+function openScaleLayout(scale) {
+  const owned = getInstrument(handpanInstrumentId(scale.id));
+  const saved = owned && state.savedLayouts.find(l => l.id === scale.id);
+  state.layout = saved ? JSON.parse(JSON.stringify(saved.layout)) : createLayoutFromScale(scale);
+  state.currentInstrumentId = saved ? owned.id : null;
+  state.chords = findAllChords(state.layout);
+}
+
+function layoutFromCustomParams(params) {
+  const slots = key => (params.get(key) || '').split(',').map(n => ({ note: n === 'null' ? null : n }));
+  return {
+    id: 'custom',
+    name: params.get('name') || 'Custom Layout',
+    isCustom: true,
+    top: { ding: params.get('ding') || 'D3', slots: slots('top'), capacity: parseInt(params.get('tc') || '8') },
+    bottom: { slots: slots('bottom'), capacity: parseInt(params.get('bc') || '3') },
+  };
+}
+
+// Opens a parsed deep link (links.js) as a visiting instrument, ready to
+// play: nothing is added to My instruments until Save.
+function openLink(link) {
+  stopAutoplay();
+  Object.assign(state, { selectedChord: null, pendingSlot: null, sourcePlaylistId: null, sourceEntryId: null, wizard: null, playNotice: null });
+  if (link.kind === 'unknown') {
+    state.view = 'play';
+    state.layout = null;
+    state.currentInstrumentId = null;
+    state.playFamily = link.family;
+    state.playNotice = { slug: link.slug, closest: link.closest };
+    return;
+  }
+  if (link.kind === 'shared') {
+    openSharedLink(link.code);
+    if (link.tab === 'chords' || link.tab === 'listen') state.oc.tab = 'chords';
+    return;
+  }
+  if (link.kind === 'chart') {
+    const inst = instrumentFromChart(link.chartId, link.keyId, { name: linkTitle(link) });
+    Object.assign(state, {
+      view: 'instrument', layout: null, currentInstrumentId: SHARED_ID, sharedStatus: null, oc: newOcState(),
+      shared: { ...inst, id: SHARED_ID, link: { chartId: link.chartId, keyId: link.keyId } },
+    });
+    if (link.tab === 'chords' || link.tab === 'listen') state.oc.tab = 'chords';
+    return;
+  }
+  // Handpans: a scale, or custom notes carried in the link.
+  if (link.kind === 'scale') openScaleLayout(SCALES.find(s => s.id === link.scaleId));
+  else {
+    state.layout = layoutFromCustomParams(link.params);
+    state.currentInstrumentId = null;
+    state.chords = findAllChords(state.layout);
+  }
+  state.shellMode = 'both';
+  state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+  state.view = link.tab === 'chords' || link.tab === 'listen' || link.chord ? 'chords' : link.tab === 'playlists' ? 'hp-playlists' : 'editor';
+  if (link.chord) state.selectedChord = state.chords.find(c => linkSlug(c.id) === link.chord) || null;
 }
 
 function loadFromHash() {
@@ -5515,6 +5699,7 @@ function loadFromHash() {
   let chordId = null;
 
   if (hash === '#scales') { state.view = 'selector'; return; }
+  if (hash === '#play') { state.view = 'play'; return; }
   if (hash === '#settings') { state.view = 'settings'; return; }
   if (hash === '#settings/clay') { state.view = 'clay'; return; }
   if (hash === '#settings/listen') { state.view = 'listen-debug'; return; }
@@ -5543,12 +5728,7 @@ function loadFromHash() {
     chordId = rest[0] || null;
     const scale = SCALES.find(s => s.id === scaleId);
     if (scale) {
-      // Prefer the user's own saved copy, so it opens as that instrument.
-      const owned = getInstrument(handpanInstrumentId(scaleId));
-      const saved = owned && state.savedLayouts.find(l => l.id === scaleId);
-      state.layout = saved ? JSON.parse(JSON.stringify(saved.layout)) : createLayoutFromScale(scale);
-      state.currentInstrumentId = saved ? owned.id : null;
-      state.chords = findAllChords(state.layout);
+      openScaleLayout(scale);
       state.view = chordId ? 'chords' : 'editor';
     }
   } else if (hash.startsWith('#custom?')) {
@@ -5557,23 +5737,7 @@ function loadFromHash() {
     const paramStr = chordMarker >= 0 ? rawParams.slice(0, chordMarker) : rawParams;
     chordId = chordMarker >= 0 ? rawParams.slice(chordMarker + 7) : null;
 
-    const params = new URLSearchParams(paramStr);
-    const topSlots = (params.get('top') || '').split(',').map(n => ({ note: n === 'null' ? null : n }));
-    const bottomSlots = (params.get('bottom') || '').split(',').map(n => ({ note: n === 'null' ? null : n }));
-    state.layout = {
-      id: 'custom',
-      name: params.get('name') || 'Custom Layout',
-      isCustom: true,
-      top: {
-        ding: params.get('ding') || 'D3',
-        slots: topSlots,
-        capacity: parseInt(params.get('tc') || '8'),
-      },
-      bottom: {
-        slots: bottomSlots,
-        capacity: parseInt(params.get('bc') || '3'),
-      },
-    };
+    state.layout = layoutFromCustomParams(new URLSearchParams(paramStr));
     state.chords = findAllChords(state.layout);
     state.view = chordId ? 'chords' : 'editor';
   }
@@ -5581,6 +5745,50 @@ function loadFromHash() {
   if (chordId && state.chords.length) {
     state.selectedChord = state.chords.find(c => c.id === chordId) || null;
   }
+}
+
+// ── Measurement (docs/free-to-play.md §9) ──────────────────────────────────
+// Which link brought someone in, how long until the first sound, and which
+// features get used: event names and a few properties, no ids (auth.js
+// logEvent). Each feature is counted once per visit.
+const MEASURE_START = Date.now();
+
+function measureFamily() {
+  if (state.layout) return 'handpan';
+  return currentInstrument()?.family ?? null;
+}
+
+function measureOpen() {
+  const link = parseLink(location.pathname, location.search);
+  // The link, without anything personal: custom notes and share codes stay out.
+  const path = !link ? (location.pathname === '/' ? '/' : 'other')
+    : link.kind === 'custom' ? '/handpan/custom'
+    : link.kind === 'shared' ? '/s'
+    : link.kind === 'unknown' ? `/${link.family}/?`
+    : link.path;
+  const q = new URLSearchParams(location.search);
+  let referrer = null;
+  try { const r = document.referrer && new URL(document.referrer); if (r && r.host !== location.host) referrer = r.host; } catch (_) {}
+  const props = { path };
+  if (referrer) props.referrer = referrer;
+  for (const k of ['utm_source', 'utm_medium', 'utm_campaign']) if (q.get(k)) props[k] = q.get(k);
+  logEvent('open', props);
+  onFirstSound(() => logEvent('first_play', { family: measureFamily(), seconds: Math.round((Date.now() - MEASURE_START) / 1000) }));
+}
+
+const MEASURE_FEATURES = {
+  'go-chords': 'chords', 'play-chord': 'chords', 'toggle-discover-mode': 'identify', 'oc-play-arp': 'arpeggio',
+  'tuner-toggle': 'tuner', 'listen-start': 'listen-scale', 'cs-open': 'chord-sheet',
+  'oc-practice-start': 'practice', 'prog-practice': 'practice', 'hp-play-playlist': 'playlist-play',
+  'play-custom-handpan': 'custom-notes', 'clone-layout': 'custom-notes', 'add-instrument': 'add-instrument',
+};
+const _measured = new Set();
+function measureFeature(action, el) {
+  let name = MEASURE_FEATURES[action];
+  if (action === 'oc-tab' && el.dataset.tab === 'chords') name = 'chords';
+  if (!name || _measured.has(name)) return;
+  _measured.add(name);
+  logEvent('feature', { name, family: measureFamily() });
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────────
@@ -5642,7 +5850,7 @@ function loadPrefs() {
 
 // The theme pref on <html data-theme> (the CSS does the rest) and the
 // browser chrome colour to match. Auto follows the OS as it changes.
-const THEME_COLORS = { dark: '#090F0D', light: '#F3F6F4' };
+const THEME_COLORS = { dark: '#1C1B16', light: '#F2E6D3' };
 const _themeQuery = window.matchMedia?.('(prefers-color-scheme: light)');
 function applyTheme() {
   document.documentElement.dataset.theme = state.theme;
@@ -5766,7 +5974,7 @@ async function handleLogin(event, session) {
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 loadPrefs();
 refreshInstruments();
-if (location.hash && location.hash !== '#') loadFromHash();
+if (urlIsLink()) loadFromUrl();
 else openStartView();
 render();
 
@@ -5776,6 +5984,7 @@ render();
 // trigger on older iOS while pointerdown covers desktop and modern iOS.
 // initAudio() is idempotent so firing both for the same touch is harmless.
 initSupabase(handleLogin);
+measureOpen();
 
 // Sync when the user brings the app back to the foreground (tab switch, PWA resume).
 document.addEventListener('visibilitychange', () => {
@@ -5838,6 +6047,7 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const action = el.dataset.action;
+  measureFeature(action, el);
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
   if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
   if (action === 'picker-open') { openPicker(el.dataset.picker); return; }
@@ -5902,6 +6112,37 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'open-settings') { openSettings(); return; }
+  if (action === 'open-play') {
+    goHome({ push: false });
+    state.view = 'play';
+    state.playNotice = null;
+    navPush('#play');
+    render();
+    return;
+  }
+  if (action === 'play-family') {
+    state.playFamily = el.dataset.value;
+    state.playNotice = null;
+    render();
+    return;
+  }
+  if (action === 'open-link') {
+    const link = parseLink(el.dataset.path);
+    if (!link) return;
+    openLink(link);
+    navPush(link.path ?? el.dataset.path);
+    render();
+    return;
+  }
+  if (action === 'play-custom-handpan') {
+    // An empty custom handpan: a D3 ding and eight notes to set on the Pan.
+    const params = new URLSearchParams({ ding: 'D3', top: Array(8).fill('null').join(','), bottom: '', tc: '8', bc: '3', name: 'My handpan' });
+    const link = parseLink('/handpan/custom', '?' + params);
+    openLink(link);
+    navPush(stateToHash());
+    render();
+    return;
+  }
   if (action === 'other-instrument') {
     state.currentInstrumentId = null;
     state.view = 'selector';
@@ -5966,7 +6207,9 @@ document.addEventListener('click', e => {
   }
   if (action === 'shared-add') {
     if (!state.shared) return;
-    const copy = copySharedInstrument(state.shared);
+    // A visiting chart instrument (a deep link) is made afresh; a shared
+    // one is copied with its setup.
+    const copy = state.shared.link ? instrumentFromChart(state.shared.link.chartId, state.shared.link.keyId, { name: state.shared.name }) : copySharedInstrument(state.shared);
     saveInstrument(copy);
     refreshInstruments();
     state.shared = null;
@@ -6274,7 +6517,7 @@ document.addEventListener('click', e => {
   if (action === 'oc-tab') {
     state.oc.tab = el.dataset.tab;
     state.oc.practice = null;
-    navReplace(`#i/${state.currentInstrumentId}/${state.oc.tab}`);
+    navReplace(instUrl(state.currentInstrumentId, state.oc.tab));
     render();
     return;
   }
@@ -6766,7 +7009,7 @@ document.addEventListener('click', e => {
     } else if (state.currentInstrumentId) {
       state.view = 'instrument';
       state.oc.tab = 'chords';
-      navPush(`#i/${state.currentInstrumentId}/chords`);
+      navPush(instUrl(state.currentInstrumentId, 'chords'));
     }
     render();
     return;
@@ -7446,7 +7689,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'copy-url') {
-    const url = location.origin + location.pathname + stateToHash();
+    const url = location.origin + navUrl(currentPath());
     navigator.clipboard.writeText(url).then(() => showToast('URL copied!'), () => showToast('Copy the link from the address bar'));
     return;
   }
@@ -7769,7 +8012,8 @@ window.addEventListener('popstate', () => {
     currentInstrumentId: null, wizard: null, chordSheet: null,
   });
   refreshInstruments();
-  loadFromHash();
+  if (urlIsLink()) loadFromUrl();
+  else state.view = state.instruments.length ? 'home' : 'play';
   if (history.state?.hpTab === 'playlists' && state.layout && (state.view === 'editor' || state.view === 'chords')) state.view = 'hp-playlists';
   render();
 });
