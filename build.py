@@ -56,7 +56,7 @@ html = f'''<!DOCTYPE html>
   <meta property="og:site_name" content="Oakhum">
   <meta property="og:title" content="Oakhum">
   <meta property="og:description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
-  <meta property="og:image" content="/og/app.png">
+  <meta property="og:image" content="/og/app.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
