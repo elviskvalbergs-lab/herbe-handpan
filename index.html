@@ -571,71 +571,7 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .pan-wrap { display: flex; justify-content: center; }
 .pan-wrap svg { max-width: min(100%, 65vh); height: auto; }
 
-/* SVG pan note base styles */
-.pan-note { cursor: pointer; }
-.pan-note rect, .pan-note circle, .pan-note ellipse { transition: fill 0.12s, opacity 0.12s; }
-.pan-note text { pointer-events: none; transition: fill 0.12s; }
-.pan-note.dimmed { opacity: 0.2; pointer-events: none; }
-
-/* Empty slot */
-.pan-note.empty rect, .pan-note.empty circle {
-  fill: transparent !important;
-  stroke: var(--note-empty-border) !important;
-  stroke-dasharray: 5 4;
-  stroke-width: 1.5;
-}
-.pan-note.empty text { fill: var(--note-empty-border) !important; font-size: 18px !important; }
-
-/* Highlighted (in chord) — colored per scale degree (root, 3rd, 5th…) so the
-   same pitch class reads as the same color everywhere it appears on the pan. */
-.pan-note.highlight rect, .pan-note.highlight circle { stroke-width: 2; }
-.pan-note.highlight text { font-weight: 700; }
-.pan-note.highlight-0 rect, .pan-note.highlight-0 circle { fill: var(--chord-c0) !important; stroke: var(--chord-c0-stroke) !important; }
-.pan-note.highlight-0 text { fill: var(--chord-c0-text) !important; }
-.pan-note.highlight-1 rect, .pan-note.highlight-1 circle { fill: var(--chord-c1) !important; stroke: var(--chord-c1-stroke) !important; }
-.pan-note.highlight-1 text { fill: var(--chord-c1-text) !important; }
-.pan-note.highlight-2 rect, .pan-note.highlight-2 circle { fill: var(--chord-c2) !important; stroke: var(--chord-c2-stroke) !important; }
-.pan-note.highlight-2 text { fill: var(--chord-c2-text) !important; }
-.pan-note.highlight-3 rect, .pan-note.highlight-3 circle { fill: var(--chord-c3) !important; stroke: var(--chord-c3-stroke) !important; }
-.pan-note.highlight-3 text { fill: var(--chord-c3-text) !important; }
-
-/* Alt-highlight — same pitch class as a chord note, alternate position on the
-   pan. Same hue as its degree's highlight color, dimmed and dashed. */
-.pan-note.alt-highlight circle { stroke-width: 1.5; stroke-dasharray: 3 3; }
-.pan-note.alt-highlight-0 circle { fill: rgba(179,99,63,0.12) !important; stroke: rgba(179,99,63,0.5) !important; }
-.pan-note.alt-highlight-0 text { fill: var(--alt-c0-text) !important; }
-.pan-note.alt-highlight-1 circle { fill: rgba(201,150,46,0.12) !important; stroke: rgba(201,150,46,0.5) !important; }
-.pan-note.alt-highlight-1 text { fill: var(--alt-c1-text) !important; }
-.pan-note.alt-highlight-2 circle { fill: rgba(90,150,139,0.12) !important; stroke: rgba(90,150,139,0.5) !important; }
-.pan-note.alt-highlight-2 text { fill: var(--alt-c2-text) !important; }
-.pan-note.alt-highlight-3 circle { fill: rgba(154,125,182,0.12) !important; stroke: rgba(154,125,182,0.5) !important; }
-.pan-note.alt-highlight-3 text { fill: var(--alt-c3-text) !important; }
-
-/* Playing animation — ring + pulse only, keeps whatever fill/text color the
-   note already has (default or per-degree highlight color) unchanged. */
-@keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
-.pan-note.playing rect, .pan-note.playing circle {
-  stroke: var(--pan-playing) !important;
-  stroke-width: 2.5;
-  filter: drop-shadow(0 0 8px var(--pan-glow));
-}
-.pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
-@media (prefers-reduced-motion: reduce) {
-  .pan-note rect, .pan-note circle, .pan-note ellipse, .pan-note text { transition: none; }
-  .pan-note.playing { animation: none; }
-}
-
-/* Progression play levels: the next chord drawn faintly, and strike-order
-   badges (number + hand). The pan stays dark in both themes, so these are
-   fixed colours like the rest of the drawing. */
-.pan-note.faint circle { stroke: var(--faint-stroke); stroke-width: 1.5; stroke-dasharray: 2 4; }
-.pan-note.faint text { fill: var(--faint-text) !important; }
-.pan-strike { pointer-events: none; }
-.pan-strike rect { stroke: #060f0c; stroke-width: 1.5; }
-.pan-strike-r rect { fill: #F2E6D3; }
-.pan-strike-r text { fill: #0B1A14; }
-.pan-strike-l rect { fill: #8CC8C4; }
-.pan-strike-l text { fill: #04211f; }
+/* The pan drawing's notes: css/pan-drawing.css (shared with the website). */
 
 .chord-count {
   min-width: 28px; padding: 0 4px; text-align: center; flex-shrink: 0;
@@ -1764,6 +1700,76 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .brand-about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
 .brand-about .brand-horizontal { height: 28px; }
 .brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
+
+/* The handpan drawing's notes (js/pan.js renderPan): shared by the app
+   (build.py appends this file to styles.css) and the website (site/src/app/
+   globals.css imports it). Colours come from the --pan-*, --note-*, --chord-*,
+   --alt-c*, --faint-* tokens, which each side defines. */
+/* SVG pan note base styles */
+.pan-note { cursor: pointer; }
+.pan-note rect, .pan-note circle, .pan-note ellipse { transition: fill 0.12s, opacity 0.12s; }
+.pan-note text { pointer-events: none; transition: fill 0.12s; }
+.pan-note.dimmed { opacity: 0.2; pointer-events: none; }
+
+/* Empty slot */
+.pan-note.empty rect, .pan-note.empty circle {
+  fill: transparent !important;
+  stroke: var(--note-empty-border) !important;
+  stroke-dasharray: 5 4;
+  stroke-width: 1.5;
+}
+.pan-note.empty text { fill: var(--note-empty-border) !important; font-size: 18px !important; }
+
+/* Highlighted (in chord) — colored per scale degree (root, 3rd, 5th…) so the
+   same pitch class reads as the same color everywhere it appears on the pan. */
+.pan-note.highlight rect, .pan-note.highlight circle { stroke-width: 2; }
+.pan-note.highlight text { font-weight: 700; }
+.pan-note.highlight-0 rect, .pan-note.highlight-0 circle { fill: var(--chord-c0) !important; stroke: var(--chord-c0-stroke) !important; }
+.pan-note.highlight-0 text { fill: var(--chord-c0-text) !important; }
+.pan-note.highlight-1 rect, .pan-note.highlight-1 circle { fill: var(--chord-c1) !important; stroke: var(--chord-c1-stroke) !important; }
+.pan-note.highlight-1 text { fill: var(--chord-c1-text) !important; }
+.pan-note.highlight-2 rect, .pan-note.highlight-2 circle { fill: var(--chord-c2) !important; stroke: var(--chord-c2-stroke) !important; }
+.pan-note.highlight-2 text { fill: var(--chord-c2-text) !important; }
+.pan-note.highlight-3 rect, .pan-note.highlight-3 circle { fill: var(--chord-c3) !important; stroke: var(--chord-c3-stroke) !important; }
+.pan-note.highlight-3 text { fill: var(--chord-c3-text) !important; }
+
+/* Alt-highlight — same pitch class as a chord note, alternate position on the
+   pan. Same hue as its degree's highlight color, dimmed and dashed. */
+.pan-note.alt-highlight circle { stroke-width: 1.5; stroke-dasharray: 3 3; }
+.pan-note.alt-highlight-0 circle { fill: rgba(179,99,63,0.12) !important; stroke: rgba(179,99,63,0.5) !important; }
+.pan-note.alt-highlight-0 text { fill: var(--alt-c0-text) !important; }
+.pan-note.alt-highlight-1 circle { fill: rgba(201,150,46,0.12) !important; stroke: rgba(201,150,46,0.5) !important; }
+.pan-note.alt-highlight-1 text { fill: var(--alt-c1-text) !important; }
+.pan-note.alt-highlight-2 circle { fill: rgba(90,150,139,0.12) !important; stroke: rgba(90,150,139,0.5) !important; }
+.pan-note.alt-highlight-2 text { fill: var(--alt-c2-text) !important; }
+.pan-note.alt-highlight-3 circle { fill: rgba(154,125,182,0.12) !important; stroke: rgba(154,125,182,0.5) !important; }
+.pan-note.alt-highlight-3 text { fill: var(--alt-c3-text) !important; }
+
+/* Playing animation — ring + pulse only, keeps whatever fill/text color the
+   note already has (default or per-degree highlight color) unchanged. */
+@keyframes noteplay { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
+.pan-note.playing rect, .pan-note.playing circle {
+  stroke: var(--pan-playing) !important;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 8px var(--pan-glow));
+}
+.pan-note.playing { animation: noteplay 0.3s ease-in-out 5; }
+@media (prefers-reduced-motion: reduce) {
+  .pan-note rect, .pan-note circle, .pan-note ellipse, .pan-note text { transition: none; }
+  .pan-note.playing { animation: none; }
+}
+
+/* Progression play levels: the next chord drawn faintly, and strike-order
+   badges (number + hand). The pan stays dark in both themes, so these are
+   fixed colours like the rest of the drawing. */
+.pan-note.faint circle { stroke: var(--faint-stroke); stroke-width: 1.5; stroke-dasharray: 2 4; }
+.pan-note.faint text { fill: var(--faint-text) !important; }
+.pan-strike { pointer-events: none; }
+.pan-strike rect { stroke: #060f0c; stroke-width: 1.5; }
+.pan-strike-r rect { fill: #F2E6D3; }
+.pan-strike-r text { fill: #0B1A14; }
+.pan-strike-l rect { fill: #8CC8C4; }
+.pan-strike-l text { fill: #04211f; }
 
   </style>
 </head>

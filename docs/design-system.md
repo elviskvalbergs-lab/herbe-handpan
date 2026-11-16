@@ -37,6 +37,9 @@ The four **chord colours** are earth tones that stay apart from each other in bo
 - **The quiet hero:** an oak on a hill over a river valley, a figure playing under the tree. Supplied without a logo (`brand/hero-wide.webp` 1600 × 900, `hero-wide-800.webp`, `hero-tall.webp` for portrait crops).
 - It is used once, at the top of the first-run Welcome (`.brand-hero`: artwork, then the logo, then one line). Keep it quiet: no text on the picture, no second use on working screens.
 
+### The website
+The website (`site/`, Next.js + Sanity) uses the same brand: Oakhum Text, the cream page, ink bands, Oak Olive buttons on cream and a lighter Clay (`#D98A63`, ink text) for the call to action on ink. Its tokens are in `site/src/app/globals.css`, with contrast checked by its tests. The handpan picture on the site is the app's own drawing (`js/pan.js` + `css/pan-drawing.css`, shared), so a change to the pan shows on both.
+
 ### Theme
 - Both themes are brand themes: **cream** (light) and **ink** (dark). New users get `auto`, which follows the phone's setting. A saved choice still wins.
 

@@ -1,0 +1,197 @@
+// The site's first content. `pnpm seed` writes it to Sanity (deterministic ids,
+// so a re-run updates instead of duplicating). Until a Sanity project is
+// connected, the site reads this same content so it can be built and reviewed;
+// once connected, Sanity is the only source and edits happen in /studio.
+//
+// Every claim here matches what the app does today (handpan.herbe.app,
+// docs/free-to-play.md in the repository root). "On the way" lists only work
+// that is planned in the repository's design docs.
+import type { FeatureDoc, HomePage, InstrumentDoc, PageDoc, SiteSettings } from "@/sanity/lib/types";
+
+export const settings: SiteSettings = {
+  title: "Oakhum",
+  description: "Chords, arpeggios and play-along for handpan, ocarina and flute. Free in your browser, nothing to install.",
+  storyTitle: "Why “oakhum”?",
+  story:
+    "Oakhum is made in Latvia, on a street lined with old oaks. In Latvian folklore the oak is the tree of strength, and it has stood for as long as people have made music. The hum is what handpans, ocarinas and flutes share: hollow bodies that sing when you play them.",
+  contactEmail: "oakhummusic@gmail.com",
+};
+
+export const home: HomePage = {
+  heroTitle: "Find the music hiding in your instrument",
+  heroText:
+    "Tell Oakhum which handpan, ocarina or flute you play. It shows every chord your notes can make, how to finger and strike them, and how to join in when a friend brings a guitar.",
+  heroNote: "Free. Works in your browser, nothing to install. No sign-up needed to play.",
+  demoCaption: "D Kurd handpan. Tap a chord to see where it lives.",
+  howTitle: "From “now what?” to playing in three steps",
+  steps: [
+    { title: "Pick your instrument", text: "Choose your handpan scale, ocarina or flute from the list, or enter the notes of your own." },
+    { title: "See what your notes can do", text: "Every chord your instrument can make, drawn on its own layout, with arpeggios to play note by note." },
+    { title: "Play, practise, play along", text: "Put chords in a playlist, paste a song's chord sheet to play it on your notes, and tell a guitarist which key to use." },
+  ],
+  instrumentsText: "Each instrument has its own page with its tunings and chords. More are added as people ask for them.",
+  whyTitle: "Made for instruments with their own set of notes",
+  why: [
+    { title: "No music theory needed", text: "You don't need to know what a scale or a chord is. You see where to put your hands." },
+    { title: "Built around your exact tuning", text: "Most music apps assume a piano or a guitar. Oakhum starts from the notes your instrument really has, and nothing more." },
+    { title: "Easier to play with friends", text: "A handpan and a guitar sound wonderful together once you agree on a key. The app does that part." },
+  ],
+  accountTitle: "Free to play. Sign up only to save.",
+  accountText: "Open any instrument and use every feature straight away. When you find something worth keeping, a free account keeps it for you.",
+  guestTitle: "Just playing",
+  guestPoints: [
+    "Every instrument and tuning, including your own notes",
+    "Every chord, with arpeggios and autoplay",
+    "Chord sheets, play levels and the built-in tuner",
+    "Fingering charts for ocarina and flute",
+  ],
+  guestNote: "Nothing to fill in. What you set up stays until you close the tab.",
+  memberTitle: "With a free account",
+  memberPoints: [
+    { title: "Your instruments, set up once", text: "Save each instrument you own with its exact tuning and layout. Open the app and it's ready." },
+    { title: "On every device", text: "Your instruments and playlists sync between your phone, tablet and computer." },
+    { title: "Favourite chords and playlists", text: "Star the chords you love and keep sets of chords and progressions for practice or a jam." },
+    { title: "Sign in with a code", text: "No password: we email you a sign-in code." },
+  ],
+  memberNote: "Free. Delete your account and data any time.",
+  featuresTitle: "What the app does",
+  requestTitle: "Missing an instrument or a feature?",
+  requestText: "Tell us what you play and which notes it has. The most requested ones are built first, and we'll email you when yours is ready.",
+  faqTitle: "Questions",
+  faqs: [
+    { question: "Do I need to read music?", answer: "No. Oakhum shows the notes on a picture of your instrument, so you can follow it with no theory at all." },
+    { question: "My handpan has a custom tuning. Will it work?", answer: "Yes. Pick the closest scale from the list, or enter your own notes, bottom notes included. The app works from exactly those notes." },
+    { question: "Is Oakhum free?", answer: "Yes. Every instrument and feature is free." },
+    { question: "Do I need an account?", answer: "Not to play. You can open any instrument and use every feature without signing up. A free account is only needed to keep things: your instruments, favourite chords and playlists, on all your devices." },
+    { question: "Which phones and computers does it run on?", answer: "Any phone, tablet or computer with a modern browser, such as Chrome, Safari, Firefox or Edge. There's nothing to install, and you can add it to your home screen so it opens like an app." },
+    { question: "Does it work offline?", answer: "Not yet. Offline use for account holders is being built: sign in once while connected, and your instruments and playlists will keep working with no signal." },
+    { question: "My instrument isn't listed. What can I do?", answer: "Ask for it on the request page with its name and notes. Popular requests are built first." },
+  ],
+};
+
+export const instruments: InstrumentDoc[] = [
+  {
+    _id: "instrument-handpan",
+    name: "Handpan",
+    slug: "handpan",
+    family: "handpan",
+    status: "available",
+    order: 1,
+    tuningsLine: "62 scales: Kurd, Celtic minor, Pygmy, Integral, Hijaz and more, plus your own notes",
+    title: "Handpan chords",
+    intro: "A handpan plays only the notes it was tuned with, so the chords that work depend on your scale. Pick your scale to see what it can do.",
+    featuredTunings: ["d-kurd", "d-celtic-minor", "f-low-pygmy", "d-integral", "d-hijaz", "e-equinox"],
+    playAlongTitle: "Playing with a guitar or piano",
+    playAlongText: "Show this to your friend. Staying on these chords keeps you in tune with each other.",
+    ctaTitle: "Play your handpan in the app, free",
+    ctaText: "Opens straight on your scale with every feature ready, no account needed.",
+    faqs: [
+      { question: "Can a handpan really play chords?", answer: "Yes: play two or three notes together, or one after another as an arpeggio. The app colours each note of a chord so you can find it quickly." },
+      { question: "What if my handpan has bottom notes?", answer: "Choose “Your own notes” in the app and add every note, bottom ones included. The chords update to include them." },
+      { question: "How do I find my scale?", answer: "It's usually on the label or the maker's certificate. If not, the app's tuner shows each note as you play it." },
+    ],
+  },
+  {
+    _id: "instrument-ocarina",
+    name: "Ocarina",
+    slug: "ocarina",
+    family: "ocarina",
+    status: "available",
+    order: 2,
+    tuningsLine: "12-hole ocarinas in every key (alto, soprano and bass), and ocarinas you made",
+    title: "Ocarina fingerings and chords",
+    intro: "Fingering charts for 12-hole ocarinas in every key, from a published chart. Chords play as arpeggios, note by note, with the fingering for each.",
+    featuredTunings: ["alto-c-12", "alto-g-12", "alto-f-12", "soprano-c-12", "soprano-g-12", "bass-c-12"],
+    playAlongTitle: "Making your own ocarina?",
+    playAlongText: "The app also designs one from a scale: chambers, hole sizes and the clay's shrinkage. Then tune it hole by hole with the built-in tuner.",
+    ctaTitle: "Play your ocarina in the app, free",
+    ctaText: "Opens straight on your key with the fingering for every note.",
+    faqs: [
+      { question: "Which ocarinas are covered?", answer: "12-hole transverse ocarinas in every key, as alto, soprano and bass. Ocarinas you made yourself can be added with their own notes." },
+      { question: "Where do the fingerings come from?", answer: "From a published 12-hole chart, noted in the app with its source. We never fill fingerings in from memory." },
+    ],
+  },
+  {
+    _id: "instrument-flute",
+    name: "Flute",
+    slug: "flute",
+    family: "flute",
+    status: "available",
+    order: 3,
+    tuningsLine: "Tin whistle in D and Native American flutes with 5 or 6 holes",
+    title: "Tin whistle and Native American flute fingerings",
+    intro: "Fingering charts for the tin whistle and Native American flutes, from published charts. Every note's fingering, and chords as arpeggios.",
+    featuredTunings: ["tin-whistle-d", "naf-6-a4", "naf-5-a4"],
+    playAlongTitle: "Playing with others",
+    playAlongText: "A Native American flute plays a pentatonic minor scale, so a guitarist can stay on the minor chord of your key and its relatives.",
+    ctaTitle: "Play your flute in the app, free",
+    ctaText: "Opens straight on your flute with the fingering for every note.",
+    faqs: [
+      { question: "My flute is in another key. Does it work?", answer: "Native American flute charts cover every key. Pick your flute's key in the app." },
+    ],
+  },
+  {
+    _id: "instrument-kalimba",
+    name: "Kalimba",
+    slug: "kalimba",
+    family: "none",
+    status: "soon",
+    order: 4,
+    tuningsLine: "17-key in C, 21-key and custom",
+    title: "Kalimba chords",
+    intro: "Kalimba support is on the list. Tell us which kalimba you play and its notes, and vote for it to move it up.",
+    featuredTunings: [],
+    faqs: [],
+  },
+  {
+    _id: "instrument-tongue-drum",
+    name: "Steel tongue drum",
+    slug: "steel-tongue-drum",
+    family: "none",
+    status: "soon",
+    order: 5,
+    tuningsLine: "8, 11 and 15-tongue drums in common scales",
+    title: "Steel tongue drum chords",
+    intro: "Steel tongue drums share a lot with handpans: a fixed set of notes. Tell us your drum's notes and vote for it.",
+    featuredTunings: [],
+    faqs: [],
+  },
+];
+
+export const features: FeatureDoc[] = [
+  { _id: "feature-instruments", title: "My instruments", text: "Every handpan, ocarina and flute you own, with its exact setup, one tap apart.", status: "ready", order: 1 },
+  { _id: "feature-chords", title: "Chord finder", text: "Every chord your notes can make, drawn on your instrument's own layout. Or tap notes to name the chord they make.", status: "ready", order: 2 },
+  { _id: "feature-arpeggios", title: "Arpeggios and autoplay", text: "Play any chord note by note, or let the app step through chords at your pace.", status: "ready", order: 3 },
+  { _id: "feature-playlists", title: "Playlists and progressions", text: "Sets of chords and progressions in order, for practice, a jam or a gig.", status: "ready", order: 4 },
+  { _id: "feature-chordsheet", title: "Chord sheets", text: "Paste a song's chords and the app fits them to your instrument, then teaches it in levels: roots, arpeggio, groove.", status: "ready", order: 5 },
+  { _id: "feature-fingerings", title: "Fingering charts", text: "Ocarina and flute fingerings for every note, from published charts.", status: "ready", order: 6 },
+  { _id: "feature-tuner", title: "Tuner", text: "A built-in tuner, also for tuning an ocarina you made hole by hole.", status: "ready", order: 7 },
+  { _id: "feature-builder", title: "Ocarina builder", text: "Design an ocarina from a scale: chambers, hole sizes and clay shrinkage.", status: "ready", order: 8 },
+  { _id: "feature-share", title: "Share an instrument", text: "Send your exact setup as a link, a code or a QR code.", status: "ready", order: 9 },
+  { _id: "feature-listen", title: "Hear a chord, see it on your instrument", text: "When a friend plays a chord on guitar or piano, the app listens and shows it on your instrument, or the closest version your notes allow.", status: "next", order: 20 },
+  { _id: "feature-offline", title: "Play offline", text: "With a free account, your instruments, chords and playlists keep working with no signal.", status: "next", order: 21 },
+  { _id: "feature-signin", title: "Sign in with Google or Apple", text: "Besides the email code.", status: "next", order: 22 },
+  { _id: "feature-more", title: "More instruments", text: "Kalimba and steel tongue drum are next. Vote for what you play.", status: "next", order: 23 },
+];
+
+export const pages: PageDoc[] = [
+  {
+    _id: "page-privacy",
+    title: "Privacy",
+    slug: "privacy",
+    updated: "2026-11-16",
+    body: [
+      { style: "normal", text: "Oakhum is free to use without an account. This page explains what we keep and why, in plain words." },
+      { style: "h2", text: "Who we are" },
+      { style: "normal", text: "Oakhum is made by Elvis Kvalbergs in Latvia. For anything about your data, write to oakhummusic@gmail.com." },
+      { style: "h2", text: "Playing without an account" },
+      { style: "normal", text: "We don't ask who you are. What you set up stays in your browser until you close the tab. To see which parts of the app are used, we count visits and taps without cookies and without storing an id on your device (PostHog, with data stored in the EU). We don't record your screen." },
+      { style: "h2", text: "With an account" },
+      { style: "normal", text: "We keep your email address and what you save: instruments, favourite chords and playlists. They are stored with Supabase in the EU. You can delete your account and everything in it from the app's settings, any time." },
+      { style: "h2", text: "Requests on this website" },
+      { style: "normal", text: "If you send a request and leave your email, we use it only to tell you when your request is ready, then delete it. Your email is never shown on the site." },
+      { style: "h2", text: "Your rights" },
+      { style: "normal", text: "You can ask us for a copy of your data, to correct it or to delete it, and you can complain to the Latvian Data State Inspectorate (dvi.gov.lv)." },
+    ],
+  },
+];

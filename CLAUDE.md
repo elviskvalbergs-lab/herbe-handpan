@@ -2,6 +2,9 @@
 
 Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starting a phase.
 
+## The website
+- The public website (Next.js + Sanity) is in `site/`, with its own rules in `site/CLAUDE.md`. It imports the app's engine from `js/` and `css/pan-drawing.css`, so changes there must keep `site/` building (`cd site && pnpm test && pnpm build`).
+
 ## Branches and pull requests
 - Work on one feature branch per phase from the brief's Build order (for example `ocarina/phase-1-maths`), branched off `preview`, and open a pull request into `preview`.
 - Never push to `preview` directly. Never merge pull requests yourself.
