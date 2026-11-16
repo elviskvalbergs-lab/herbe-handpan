@@ -22,7 +22,7 @@ export const home: HomePage = {
   heroText:
     "Tell Oakhum which handpan, ocarina or flute you play. It shows every chord your notes can make, how to finger and strike them, and how to join in when a friend brings a guitar.",
   heroNote: "Free. Works in your browser, nothing to install. No sign-up needed to play.",
-  demoCaption: "D Kurd handpan. Tap a chord to see where it lives.",
+  demoCaption: "D Kurd handpan. Tap a chord to hear it and see where it lives.",
   howTitle: "From “now what?” to playing in three steps",
   steps: [
     { title: "Pick your instrument", text: "Choose your handpan scale, ocarina or flute from the list, or enter the notes of your own." },
