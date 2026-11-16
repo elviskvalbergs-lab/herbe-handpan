@@ -1,3 +1,4 @@
+import { brandLogo } from './brand.js';
 import {
   SCALES, CHORD_TYPES, CHORD_CATEGORIES, createLayoutFromScale,
   getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote,
@@ -53,7 +54,7 @@ const state = {
   wizard: null,            // add-instrument wizard state, see viewWizard()
   tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
   rec: newRecState(),      // the armed record field, see uiHzField()
-  theme: 'dark',           // 'dark' | 'light' | 'auto' (follows the OS)
+  theme: 'auto',           // 'dark' | 'light' | 'auto' (follows the OS; the default)
   syncTipHidden: false,    // the "Sync across devices" tip on Home was dismissed
   clayEdit: null,          // { id, name, pct, error } while a clay body is edited
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
@@ -385,6 +386,7 @@ function viewSettings() {
 
       <h2 class="list-title">About</h2>
       <div class="list">
+        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute.</span></div>
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
       </div>
     </div>`;
@@ -1215,8 +1217,17 @@ function wizardFrame(w, { title, sub = '', body, bar }) {
   const header = w.firstRun
     ? uiAppBar({ title: 'Welcome' })
     : uiAppBar({ title: 'Add instrument', back: { action: 'back-home', label: 'My instruments' } });
+  // First run, first step: the quiet hero (artwork, then the logo), docs/design-system.md "Brand".
+  const hero = w.firstRun && at === 1 ? `
+      <div class="brand-hero">
+        <img class="brand-hero-art" src="/brand/hero-wide-800.webp" srcset="/brand/hero-wide-800.webp 800w, /brand/hero-wide.webp 1600w"
+          sizes="(min-width: 640px) 640px, 100vw" width="800" height="450" alt="">
+        ${brandLogo()}
+        <p class="brand-hero-line">Notes, chords and scales for handpan, ocarina and flute.</p>
+      </div>` : '';
   return `${header}
     <div class="wizard">
+      ${hero}
       ${w.notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(w.notice)}</p>` : ''}
       <div class="wizard-count">Step ${Math.max(1, at)} of ${Math.max(total, at)}</div>
       <h2 class="wizard-title">${escHtml(title)}</h2>
@@ -5406,7 +5417,7 @@ function loadPrefs() {
 
 // The theme pref on <html data-theme> (the CSS does the rest) and the
 // browser chrome colour to match. Auto follows the OS as it changes.
-const THEME_COLORS = { dark: '#090F0D', light: '#F3F6F4' };
+const THEME_COLORS = { dark: '#1C1B16', light: '#F2E6D3' };
 const _themeQuery = window.matchMedia?.('(prefers-color-scheme: light)');
 function applyTheme() {
   document.documentElement.dataset.theme = state.theme;
