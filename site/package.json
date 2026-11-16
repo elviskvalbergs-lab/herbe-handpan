@@ -5,7 +5,7 @@
   "scripts": {
     "sync-assets": "node scripts/sync-assets.mjs",
     "predev": "node scripts/sync-assets.mjs",
-    "prebuild": "node scripts/sync-assets.mjs",
+    "prebuild": "node scripts/sync-assets.mjs && tsx scripts/seed.ts --on-build",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
