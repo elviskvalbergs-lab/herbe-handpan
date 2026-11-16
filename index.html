@@ -7130,8 +7130,9 @@ function initSupabase(onAuthChange) {
 
 // ── Measurement: PostHog EU (docs/free-to-play.md §9) ───────────────────────
 // _PH_KEY is the project's public key (like _SUPA_KEY); empty turns it off.
-// Set up for no consent banner: memory-only persistence (no cookie, no stored
-// id, each visit counts on its own), no person profiles for guests, session
+// Set up for no consent banner: cookieless mode (nothing stored on the device;
+// PostHog's server counts a visitor with a daily hash of IP and browser, and
+// the project discards IPs), no person profiles for guests, session
 // recording off. PostHog is for usage only: taps are autocaptured for
 // heatmaps, while errors and performance go to Sentry, not here. Events before PostHog has loaded wait in a short queue, and every
 // failure is silent, so measuring never gets in the way of playing.
@@ -7148,7 +7149,7 @@ function _loadPosthog() {
   s.onload = () => {
     try {
       window.posthog.init(_PH_KEY, {
-        api_host: _PH_HOST, persistence: 'memory', person_profiles: 'identified_only',
+        api_host: _PH_HOST, cookieless_mode: 'always', persistence: 'memory', person_profiles: 'identified_only',
         autocapture: true, capture_pageview: 'history_change', capture_exceptions: false,
         capture_performance: false, disable_session_recording: true,
       });

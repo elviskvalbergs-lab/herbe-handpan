@@ -271,7 +271,7 @@ If the account already has an item with the same id, both are kept.
 ### 9. Measurement (privacy-friendly)
 **Tool: PostHog, EU cloud (Frankfurt), free tier** (owner's decision, review round 2). It replaces the first plan, our own `events` table, which was never merged: it gave counts but no heatmaps, and the owner wants to see where people tap.
 - **Free tier:** about 1M events a month for the whole PostHog organisation (all its projects share it), far above what we need. Project: Oakhum (EU, id 352395).
-- **Set up for no consent banner:** memory-only persistence (no cookie, no stored id; each visit counts on its own), no person profiles for guests, session recording off. In the PostHog project settings, turn on "Discard client IP data".
+- **Set up for no consent banner:** cookieless mode (`cookieless_mode: 'always'`, also switched on in the project settings): nothing is stored on the device, and PostHog's server counts unique visitors with a hash of IP and browser that changes daily. "Discard client IP data" is on, so no IPs are kept; the cost is no country data. No person profiles for guests, session recording off.
 - **What we get:** the events below, autocaptured taps (heatmaps per screen; every instrument and tab has its own URL), funnels and sources. Errors, replays and performance are **not** in PostHog: they go to Sentry, which the owner uses everywhere else (round 3). In PostHog, error capture, web vitals and session replay are off.
 - **Claude reads it** through the PostHog MCP connector: a weekly usage review, and later feature flags and experiments (each started only with the owner's OK).
 - **Not yet:** session replays (in Sentry, error sessions only). They need consent; an opt-in comes with Settings › Account (step 3).
