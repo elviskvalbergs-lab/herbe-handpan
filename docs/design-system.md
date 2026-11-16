@@ -35,6 +35,7 @@ The four **chord colours** are earth tones that stay apart from each other in bo
 
 ### Artwork
 - **The quiet hero:** an oak on a hill over a river valley, a figure playing under the tree. Supplied without a logo (`brand/hero-wide.webp` 1600 × 900, `hero-wide-800.webp`, `hero-tall.webp` for portrait crops).
+- **The website hero (Hero A):** the same landscape redrawn with more sky for words to sit on: `brand/hero-sky-wide.webp` (1774 × 887, from 768px; `hero-sky-wide-900.webp` for small uses) and `brand/hero-sky-tall.webp` (1024 × 1536, phones). The agreed look is `docs/design/hero-a-reference.webp`: the picture full bleed, the header over its sky, the headline, text and two buttons top left in ink, and "Try it right here: tap a chord below" pointing down to the playable handpan. Words over the picture get a soft cream halo (`.hero-ink` in `site/src/app/globals.css`), never a box.
 - It is used once, at the top of the first-run Welcome (`.brand-hero`: artwork, then the logo, then one line). Keep it quiet: no text on the picture, no second use on working screens.
 
 ### The website

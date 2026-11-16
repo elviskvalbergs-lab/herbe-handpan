@@ -13,6 +13,9 @@ export type HomePage = {
   heroTitle: string;
   heroText: string;
   heroNote?: string;
+  heroCta?: string;
+  heroListen?: string;
+  heroTry?: string;
   demoCaption?: string;
   howTitle?: string;
   steps?: Point[];

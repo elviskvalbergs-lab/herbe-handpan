@@ -10,3 +10,8 @@ it("page text is a closed list: no images, embeds or raw HTML", () => {
   const body = schemaTypes.find((t) => t.name === "body") as unknown as { of: { type: string }[] };
   expect(body.of.map((m) => m.type)).toEqual(["block"]);
 });
+
+it("the home hero's words are content: title, text and the three labels", () => {
+  const home = schemaTypes.find((t) => t.name === "homePage") as unknown as { fields: { name: string }[] };
+  expect(home.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["heroTitle", "heroText", "heroCta", "heroListen", "heroTry"]));
+});

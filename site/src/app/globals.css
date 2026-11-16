@@ -147,3 +147,10 @@
   .pan-drawing svg { display: block; width: 100%; height: auto; }
   .pan-drawing .pan-note { cursor: default; }
 }
+
+/* Words over the hero picture: a soft cream halo, so they read over leaves
+   and hills too, without a box (docs/design/hero-a-reference.webp). */
+.hero-ink :is(h1, p),
+.nav-on-picture > a:not(:last-child) {
+  text-shadow: 0 0 2px var(--bg), 0 0 14px var(--bg), 0 0 28px var(--bg);
+}
