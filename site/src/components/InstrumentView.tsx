@@ -110,7 +110,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
             <>
               <h2 className="m-0 mb-2 text-[30px] font-semibold tracking-[-0.015em]">Chords you can play</h2>
               <p className="m-0 mb-5 text-body">
-                {simple.length} major and minor chords on these notes{more > 0 ? `, and ${more} more in the app (sevenths, sus, add9…)` : ""}. Tap one to see it on the layout.
+                {simple.length} major and minor chords on these notes{more > 0 ? `, and ${more} more in the app (sevenths, sus, add9…)` : ""}. Tap one to hear it and see it on the layout.
               </p>
             </>
           ) : (

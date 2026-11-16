@@ -285,9 +285,10 @@ export function updatePanShellMode(mode) {
 
 // Highlight the currently playing note(s). Clears any previous playing state
 // so only the most-recently-requested notes are lit. Auto-clears after 2.2s.
+// The app has one pan (found by id); the website passes the drawing it means.
 let _playTimer = null;
-export function updatePanPlaying(noteNames) {
-  const svg = document.getElementById(PAN_SVG_ID);
+/** @param {string[]} noteNames @param {Element | null} [svg] */
+export function updatePanPlaying(noteNames, svg = document.getElementById(PAN_SVG_ID)) {
   if (!svg) return;
   if (_playTimer !== null) { clearTimeout(_playTimer); _playTimer = null; }
   svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
