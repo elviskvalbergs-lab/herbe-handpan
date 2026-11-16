@@ -27,7 +27,7 @@ if os.environ.get('DATABASE_URL'):
 css = read('styles.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/charts.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
+js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/charts.js', 'js/links.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -51,6 +51,13 @@ html = f'''<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Oakhum</title>
+  <meta name="description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Oakhum">
+  <meta property="og:title" content="Oakhum">
+  <meta property="og:description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
+  <meta property="og:image" content="/og/app.jpg">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon-180.png">

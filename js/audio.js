@@ -196,8 +196,13 @@ function playWind(freq, now, dur, sink) {
   osc.onended = () => [osc, vib, vibGain, noise, bp, ng, out].forEach(n => n.disconnect());
 }
 
+// Called once, the first time any sound plays (measurement: first_play).
+let _onFirstSound = null;
+export function onFirstSound(fn) { _onFirstSound = fn; }
+
 function playFreq(freq, startTime, dur = 0.9) {
   if (!ctx) return;
+  if (_onFirstSound) { const fn = _onFirstSound; _onFirstSound = null; fn(); }
   const now = startTime ?? ctx.currentTime;
   const sink = reverbSend ?? masterGain; // fall back if reverb not ready yet
   if (voice !== 'handpan') { playWind(freq, now, dur, sink); return; }
