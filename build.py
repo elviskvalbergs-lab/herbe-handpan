@@ -46,6 +46,13 @@ if _supa_url and _supa_key:
     js_bundle = re.sub(r"const _SUPA_KEY = '[^']*';", f"const _SUPA_KEY = '{_supa_key}';", js_bundle)
     print('Using Supabase project from HP_SUPABASE_URL')
 
+# Error reporting (Sentry project oakhum-app, EU region). Vercel sets
+# VERCEL_ENV (production / preview) and the commit; a local build is
+# "development" and samples every trace.
+_sentry_env = os.environ.get('VERCEL_ENV') or 'development'
+_sentry_release = 'oakhum-app@' + (os.environ.get('VERCEL_GIT_COMMIT_SHA') or 'local')[:12]
+_sentry_traces = '1.0' if _sentry_env == 'development' else '0.1'
+
 html = f'''<!DOCTYPE html>
 <html lang="en" data-theme="auto">
 <head>
@@ -71,6 +78,20 @@ html = f'''<!DOCTYPE html>
     // The theme pref before first paint (applyTheme() in app.js keeps it in step).
     try {{ var t = JSON.parse(localStorage.getItem('hp-prefs') || '{{}}').theme; if (t === 'dark' || t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; }} catch (e) {{}}
   </script>
+  <script>
+    // Errors go to Sentry (project oakhum-app). The loader below fetches the
+    // SDK after the page has loaded. Session replay is off (it needs consent,
+    // docs/free-to-play.md §9) and the project doesn't store IP addresses.
+    window.sentryOnLoad = function () {{
+      Sentry.init({{
+        environment: '{_sentry_env}',
+        release: '{_sentry_release}',
+        tracesSampleRate: {_sentry_traces},
+        sendDefaultPii: false,
+      }});
+    }};
+  </script>
+  <script src="https://js-de.sentry-cdn.com/61ab240ada1884d0c6ce945b07d50e33.min.js" crossorigin="anonymous"></script>
   <link rel="preload" href="/fonts/oakhum-text-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/oakhum-text-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
