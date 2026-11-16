@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -30,4 +31,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Errors and traces go to Sentry (project oakhum-site, EU region). Source maps
+// are uploaded only when SENTRY_AUTH_TOKEN is set in Vercel; without it the
+// build still works and stack traces are minified.
+export default withSentryConfig(nextConfig, {
+  org: "burti",
+  project: "oakhum-site",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  widenClientFileUpload: true,
+  silent: !process.env.CI,
+});

@@ -54,3 +54,9 @@ Tunings, notes and chords are not content: they come from the app's catalogue.
 `POST /api/requests` validates (`src/lib/requests.ts`) and writes a hidden
 `request` with the write token. `POST /api/requests/vote` adds a vote to a
 public one. Both answer 503 with a plain message until the write token is set.
+
+## Error reporting (Sentry)
+
+Errors and 10% of traces go to the Sentry project **oakhum-site** (organisation burti, EU region); the app reports to **oakhum-app**. Settings are in `src/lib/sentry.ts` and the `instrumentation*.ts` / `sentry.*.config.ts` files. Session replay is off (it needs consent) and no user identity or IP is stored.
+
+Readable stack traces in production need source maps: create a Sentry auth token (Sentry › Settings › Auth Tokens, scope `project:releases`) and add it in Vercel as `SENTRY_AUTH_TOKEN` (sensitive) on the oakhum-site project. Without it the build still works.

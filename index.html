@@ -23,6 +23,20 @@
     // The theme pref before first paint (applyTheme() in app.js keeps it in step).
     try { var t = JSON.parse(localStorage.getItem('hp-prefs') || '{}').theme; if (t === 'dark' || t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
+  <script>
+    // Errors go to Sentry (project oakhum-app). The loader below fetches the
+    // SDK after the page has loaded. Session replay is off (it needs consent,
+    // docs/free-to-play.md §9) and the project doesn't store IP addresses.
+    window.sentryOnLoad = function () {
+      Sentry.init({
+        environment: 'development',
+        release: 'oakhum-app@local',
+        tracesSampleRate: 1.0,
+        sendDefaultPii: false,
+      });
+    };
+  </script>
+  <script src="https://js-de.sentry-cdn.com/61ab240ada1884d0c6ce945b07d50e33.min.js" crossorigin="anonymous"></script>
   <link rel="preload" href="/fonts/oakhum-text-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/oakhum-text-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
