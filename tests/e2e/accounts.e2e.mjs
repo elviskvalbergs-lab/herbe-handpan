@@ -67,7 +67,7 @@ window.supabase = { createClient() {
       return call('select', { table, since: q.since }).then(data => ({ data, error: null })).then(res, rej);
     } };
     q.select = () => q; q.order = () => q; q.gt = (_c, v) => { q.since = v; return q; };
-    q.maybeSingle = () => Promise.resolve({ data: null, error: null });
+    q.maybeSingle = () => Promise.resolve({ data: table === 'profiles' ? { can_build: !!window.__canBuild } : null, error: null });
     q.upsert = () => Promise.resolve({ error: null });
     return q;
   };
@@ -230,6 +230,16 @@ await step('a guest saves a visiting ocarina: after sign-in it is in My instrume
   await toast(p).filter({ hasText: /added to My instruments/ }).waitFor();
   const names = await p.evaluate(() => JSON.parse(localStorage.getItem('hp-instruments')).map(i => i.family));
   assert.deepEqual(names, ['ocarina']);
+});
+
+await step('building is hidden unless the owner ticked can_build', async () => {
+  await p.goto(`${BASE}/#settings`);
+  await p.locator('.appbar').first().waitFor();
+  assert.equal(await p.getByText('Clay bodies').count(), 0);
+  // The owner ticks can_build: the app reads it from profiles at start.
+  await p.addInitScript(() => { window.__canBuild = true; });
+  await p.reload();
+  await p.getByText('Clay bodies').waitFor({ timeout: 8000 });
 });
 
 await browser.close();

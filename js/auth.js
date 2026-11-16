@@ -158,6 +158,16 @@ export async function touchLastSeen({ privacyVersion = null, source = null, inte
   if (error) console.warn('touch_last_seen:', error.message);
 }
 
+// What this account may use beyond the app everyone gets: { canBuild }
+// (profiles.can_build, set by the owner in Supabase). null when it can't be
+// read (offline, or before the migration), so the caller keeps what it knew.
+export async function fetchAccess() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb.from('profiles').select('can_build').maybeSingle();
+  if (error) return null;
+  return { canBuild: !!data?.can_build };
+}
+
 // Export my data: every row the account holds, as the server has it.
 export async function exportAccountRows() {
   if (!_sb || !_session) return null;

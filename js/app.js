@@ -55,7 +55,7 @@ import { syncRound, syncKey, pendingChanges } from './sync.js';
 import {
   initSupabase, isLoggedIn, getUserEmail, sendOtp, verifyOtp, signOut, scheduleSave, logEvent,
   getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, exportAccountRows,
-  deleteMyAccount, saveCloudInstruments, fetchSharedInstrument,
+  deleteMyAccount, saveCloudInstruments, fetchSharedInstrument, fetchAccess,
 } from './auth.js';
 import { syncBases } from './localdb.js';
 import { offline } from './offline.js';
@@ -421,11 +421,11 @@ function viewSettings() {
         ${uiRow({ title: 'Listen debug', meta: 'What the microphone hears: note strengths, chord guesses, confidence, thresholds', action: 'open-listen-debug', chevron: true })}
       </div>
 
-      <h2 class="list-title">Tuning</h2>
+      ${canBuild() ? `<h2 class="list-title">Tuning</h2>
       <div class="list">
         ${uiRow({ title: 'Clay bodies', meta: `${clays.length} clay bod${clays.length === 1 ? 'y' : 'ies'} · shrinkage used by the builder`, action: 'open-clay-bodies', chevron: true })}
       </div>
-
+` : ''}
       <h2 class="list-title">Account</h2>
       <div class="list">${accountSettingsHtml()}</div>
 
@@ -1359,6 +1359,9 @@ function viewWizard() {
 
   if (w.step === 'ocarina') {
     const oc = w.oc;
+    // Making a clay ocarina is for builders only (canBuild): everyone else
+    // goes straight to "I have one".
+    if (!oc.path && !canBuild()) oc.path = 'have';
     if (!oc.path) {
       return wizardFrame(w, {
         title: 'Add an ocarina',
@@ -1369,7 +1372,7 @@ function viewWizard() {
         bar: { left: w.history.length ? WIZARD_BACK : '', right: WIZARD_SKIP },
       });
     }
-    const back = '<button type="button" class="btn btn-ghost" data-action="wizard-oc-path" data-path="">Back</button>';
+    const back = canBuild() ? '<button type="button" class="btn btn-ghost" data-action="wizard-oc-path" data-path="">Back</button>' : (w.history.length ? WIZARD_BACK : '');
     if (oc.path === 'have') {
       const chart = oc.chartId !== 'custom' ? getChart(oc.chartId) : null;
       return wizardFrame(w, {
@@ -1654,7 +1657,7 @@ function ocTabs(inst) {
   if (playable) tabs.push(['notes', 'Notes', 'layout-grid'], ['chords', 'Chords', 'music']);
   if (inst.id === SHARED_ID) return tabs;
   if (playable) tabs.push(['playlists', 'Playlists', 'list-music']);
-  if (inst.kind === 'scale') tabs.push(['builder', 'Build', 'hammer']);
+  if (inst.kind === 'scale' && canBuild()) tabs.push(['builder', 'Build', 'hammer']);
   if (inst.kind === 'custom' || inst.kind === 'traditional') tabs.push(['setup', 'Set up', 'wrench']);
   return tabs;
 }
@@ -2122,6 +2125,7 @@ function viewInstrument() {
   if (!inst) return viewHome();
   const uf = state.useFlats, us = state.useSolfege;
   const midis = playableMidis(inst);
+  if (state.oc.tab === 'builder' && !canBuild()) state.oc.tab = 'notes';
   if (state.oc.tab === 'builder' && inst.kind === 'scale') return viewBuilder(inst);
   if (state.oc.tab === 'setup' || (inst.kind === 'custom' && midis.length === 0)) return viewSetup(inst);
 
@@ -5624,7 +5628,7 @@ function loadFromHash() {
   if (hash === '#scales') { state.view = 'selector'; return; }
   if (hash === '#play') { state.view = 'play'; return; }
   if (hash === '#settings') { state.view = 'settings'; return; }
-  if (hash === '#settings/clay') { state.view = 'clay'; return; }
+  if (hash === '#settings/clay') { state.view = canBuild() ? 'clay' : 'settings'; return; }
   if (hash === '#settings/listen') { state.view = 'listen-debug'; return; }
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
@@ -5815,6 +5819,21 @@ const PRIVACY_VERSION = '2026-11';
 
 function accountOn() { return hasAccountOnDevice(); }
 
+// Building ocarinas (the "I'm making one" path, the Build tab, clay bodies)
+// is for chosen accounts only: profiles.can_build, ticked by the owner in
+// Supabase. Kept on the device so it works offline; cleared at sign-out.
+function canBuild() {
+  try { return accountOn() && localStorage.getItem('hp-can-build') === '1'; } catch { return false; }
+}
+function refreshAccess() {
+  fetchAccess().then(a => {
+    if (!a || !accountOn()) return; // offline or not set up: keep what we knew
+    const before = canBuild();
+    if (a.canBuild) localStorage.setItem('hp-can-build', '1'); else localStorage.removeItem('hp-can-build');
+    if (canBuild() !== before) render();
+  });
+}
+
 // Every saved list read again (after a sync, a carry-over or a sign-out).
 function reloadSaved() {
   state.savedLayouts = getSavedLayouts();
@@ -5982,6 +6001,7 @@ async function handleLogin(event, session) {
   if (!accountOn()) becomeAccount(session);
   startAccount();
   syncSoon(0);
+  refreshAccess();
 }
 
 function becomeAccount(session) {
@@ -6011,7 +6031,7 @@ let _accountStarted = false;
 function startAccount() {
   if (_accountStarted) return;
   _accountStarted = true;
-  touchLastSeen();
+  touchLastSeen().then(refreshAccess);
   syncSoon(0);
   startSyncPoll();
   enableOffline();
@@ -6246,6 +6266,7 @@ async function forgetAccountOnDevice() {
   clearTimeout(_syncTimer);
   _accountStarted = false;
   clearAccountData();
+  localStorage.removeItem('hp-can-build');
   await syncBases.clear();
   await offline.disable();
   Object.assign(state, { syncPending: 0, lastSynced: null, offlineReady: false, accountConfirm: null, accountError: null });

@@ -505,6 +505,7 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
 - **Sync:** one row per item in `saved_items`, written only through `save_item` (optimistic version). The outbox is the difference between each item and its base (the last copy the server confirmed, in IndexedDB, `js/localdb.js`), so an offline edit survives a reload without being queued anywhere. Conflicts merge with `merge3` and are retried. Handpan instruments aren't synced (they're made from layouts). Shared instruments are also written to `instruments`, which serves the codes. The old `user_data` blob sync is no longer written.
 - **Prefs** sync as one item, `prefs`, including `lastPath`: an account opens where it left off, on any device.
 - **Offline:** `sw.js?v=<build hash>` is registered after sign-in only; it precaches the page, icons, fonts and the pinned supabase-js (2.49.4), and answers every page load (deep links too) with the cached app when offline. Guests and sign-out remove it and its caches.
+- **Building ocarinas is for chosen accounts:** `profiles.can_build` (default off, ticked by the owner in Supabase) shows the wizard's "I'm making one", the Build tab and Settings › Clay bodies; everyone else never sees them. The app keeps the flag on the device (`hp-can-build`) so it works offline, and drops it at sign-out.
 - **Not yet:** Google and Apple sign-in show once switched on in Supabase (owner task, `supabase/README.md`). Saving a heard progression comes with Listen step 4 (its sheet text, `heard`, is ready).
 
 **Stop here for the owner's review.**

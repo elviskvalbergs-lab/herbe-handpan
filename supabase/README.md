@@ -93,3 +93,13 @@ change is needed).
    key with Sign in with Apple. In Supabase → Providers → Apple, fill in the
    Services ID, Team ID, Key ID and the key, and switch it on. Apple's key
    expires after six months: renew it there.
+
+## Who can build ocarinas
+
+Building a clay ocarina (the wizard's "I'm making one", the Build tab and
+Settings › Clay bodies) is hidden from everyone except accounts you choose.
+To turn it on for someone: they sign in to the app once (that creates their
+row), then in Supabase → Table Editor → `profiles` tick **can_build** on
+their row (find it by `user_id`, which Authentication → Users shows next to
+their email). The app picks it up at their next start or sign-in. Untick it
+to hide building again; their instruments stay, they just play them.

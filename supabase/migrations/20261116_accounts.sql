@@ -11,7 +11,8 @@ create table if not exists public.profiles (
   privacy_version text,         -- the privacy notice version shown at sign-up
   signup_source   text,         -- the path they signed up on, e.g. '/handpan/d-kurd'
   signup_intent   text,         -- what they were saving, e.g. 'chord'
-  last_seen_on    date          -- set at most once a day
+  last_seen_on    date,         -- set at most once a day
+  can_build       boolean not null default false  -- may build ocarinas (the Build tab, clay bodies); ticked by the owner in Supabase
 );
 
 alter table public.profiles enable row level security;
