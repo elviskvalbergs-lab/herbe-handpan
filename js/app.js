@@ -42,7 +42,7 @@ import {
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
-import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME } from './links.js';
+import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomParams } from './links.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
@@ -5639,17 +5639,6 @@ function openScaleLayout(scale) {
   state.layout = saved ? JSON.parse(JSON.stringify(saved.layout)) : createLayoutFromScale(scale);
   state.currentInstrumentId = saved ? owned.id : null;
   state.chords = findAllChords(state.layout);
-}
-
-function layoutFromCustomParams(params) {
-  const slots = key => (params.get(key) || '').split(',').map(n => ({ note: n === 'null' ? null : n }));
-  return {
-    id: 'custom',
-    name: params.get('name') || 'Custom Layout',
-    isCustom: true,
-    top: { ding: params.get('ding') || 'D3', slots: slots('top'), capacity: parseInt(params.get('tc') || '8') },
-    bottom: { slots: slots('bottom'), capacity: parseInt(params.get('bc') || '3') },
-  };
 }
 
 // Opens a parsed deep link (links.js) as a visiting instrument, ready to
