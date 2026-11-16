@@ -19,13 +19,13 @@ export function initSupabase(onAuthChange) {
 }
 
 // ── Measurement: PostHog EU (docs/free-to-play.md §9) ───────────────────────
-// Off until _PH_KEY is filled in (the project's public key, like _SUPA_KEY).
+// _PH_KEY is the project's public key (like _SUPA_KEY); empty turns it off.
 // Set up for no consent banner: memory-only persistence (no cookie, no stored
 // id, each visit counts on its own), no person profiles for guests, session
-// recording off. Errors are captured for bug fixing; taps are autocaptured for
-// heatmaps. Events before PostHog has loaded wait in a short queue, and every
+// recording off. PostHog is for usage only: taps are autocaptured for
+// heatmaps, while errors and performance go to Sentry, not here. Events before PostHog has loaded wait in a short queue, and every
 // failure is silent, so measuring never gets in the way of playing.
-const _PH_KEY = '';
+const _PH_KEY = 'phc_nh2iTHkNwrRJm9cvptxc5MUErcozvXSzfgpo3eCyg9cP';
 const _PH_HOST = 'https://eu.i.posthog.com';
 const _eventQueue = [];
 let _phState = 'off'; // 'off' | 'loading' | 'ready'
@@ -39,8 +39,8 @@ function _loadPosthog() {
     try {
       window.posthog.init(_PH_KEY, {
         api_host: _PH_HOST, persistence: 'memory', person_profiles: 'identified_only',
-        autocapture: true, capture_pageview: 'history_change', capture_exceptions: true,
-        disable_session_recording: true,
+        autocapture: true, capture_pageview: 'history_change', capture_exceptions: false,
+        capture_performance: false, disable_session_recording: true,
       });
       _phState = 'ready';
       while (_eventQueue.length) { const [n, p] = _eventQueue.shift(); logEvent(n, p); }

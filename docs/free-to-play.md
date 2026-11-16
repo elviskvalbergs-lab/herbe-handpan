@@ -270,11 +270,11 @@ If the account already has an item with the same id, both are kept.
 
 ### 9. Measurement (privacy-friendly)
 **Tool: PostHog, EU cloud (Frankfurt), free tier** (owner's decision, review round 2). It replaces the first plan, our own `events` table, which was never merged: it gave counts but no heatmaps, and the owner wants to see where people tap.
-- **Free tier:** about 1M events and 100,000 errors a month, far above what we need.
+- **Free tier:** about 1M events a month for the whole PostHog organisation (all its projects share it), far above what we need. Project: Oakhum (EU, id 352395).
 - **Set up for no consent banner:** memory-only persistence (no cookie, no stored id; each visit counts on its own), no person profiles for guests, session recording off. In the PostHog project settings, turn on "Discard client IP data".
-- **What we get:** the events below, autocaptured taps (heatmaps per screen; every instrument and tab has its own URL), funnels and sources, and error tracking with stack traces.
-- **Claude reads it** through the PostHog MCP connector: errors to fix, a weekly usage review, and later feature flags and experiments (each started only with the owner's OK).
-- **Not yet:** session replays. They need consent; an opt-in comes with Settings › Account (step 3), recording sessions with an error plus a small sample.
+- **What we get:** the events below, autocaptured taps (heatmaps per screen; every instrument and tab has its own URL), funnels and sources. Errors, replays and performance are **not** in PostHog: they go to Sentry, which the owner uses everywhere else (round 3). In PostHog, error capture, web vitals and session replay are off.
+- **Claude reads it** through the PostHog MCP connector: a weekly usage review, and later feature flags and experiments (each started only with the owner's OK).
+- **Not yet:** session replays (in Sentry, error sessions only). They need consent; an opt-in comes with Settings › Account (step 3).
 - **Return visits** can't be seen without a stored id; for accounts, `profiles.last_seen_on` counts them.
 - **Privacy notice:** names PostHog (a US company, data stored in the EU) as a processor.
 - **Code:** `logEvent(name, props)` in `js/auth.js`. It does nothing until `_PH_KEY` (the project's public key) is filled in.
