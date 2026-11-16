@@ -1713,6 +1713,46 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .s-subs { margin: var(--space-2) 0 var(--space-3); }
 .b-subs-layout { margin-top: var(--space-2); }
 
+/* ── Listen: a chord heard, with its confidence ──────────────────────────── */
+.hear-name { font-size: 28px; line-height: 1.1; font-weight: 800; }
+.hear-name.is-faded { opacity: 0.55; }
+.hear-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: 1px; animation: hear-pulse 1.4s ease-in-out infinite; }
+@keyframes hear-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .hear-dot { animation: none; } }
+.hear-note { margin: 0; font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2); }
+.hear-note.is-danger { color: var(--danger); }
+.hear-conf { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-13); font-weight: 600; }
+.hear-conf-bars { display: inline-flex; gap: 3px; }
+.hear-conf-bars i { width: 18px; height: 8px; border-radius: 2px; background: var(--surface-3); }
+.hear-conf.is-sure { color: var(--success); }
+.hear-conf.is-sure .hear-conf-bars i { background: var(--success); }
+.hear-conf.is-likely { color: var(--text-1); }
+.hear-conf.is-likely .hear-conf-bars i:nth-child(-n+2) { background: var(--text-2); }
+.hear-conf.is-unsure { color: var(--warning); }
+.hear-conf.is-unsure .hear-conf-bars i:first-child { background: var(--warning); }
+.hear-history { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.hear-overall { font-size: var(--fs-13); font-weight: 600; }
+.hear-overall.is-sure { color: var(--success); }
+.hear-overall.is-unsure { color: var(--warning); }
+.hear-chip.is-sure { border-color: var(--text-2); }
+.hear-chip.is-unsure { border-style: dashed; color: var(--text-3); }
+.hear-chip.is-current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.hear-empty-fg { min-height: 120px; display: grid; place-items: center; color: var(--text-3); }
+.hear-empty-fg .ico { width: 40px; height: 40px; }
+/* Listen debug */
+.listen-debug .row-btns { margin: var(--space-2) 0; }
+.ld-chroma { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 120px; align-items: end; }
+.ld-bar { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+.ld-bar span { display: block; background: var(--text-1); border-radius: 3px 3px 0 0; transition: height 80ms linear; }
+.ld-bar em { font-style: normal; font-size: 10px; text-align: center; color: var(--text-3); margin-top: 2px; }
+.ld-lines { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+.ld-table { width: 100%; border-collapse: collapse; font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+.ld-table td { padding: 4px 0; border-bottom: 1px solid var(--border); }
+.ld-table td:last-child { text-align: right; }
+.ld-sliders { display: flex; flex-direction: column; gap: var(--space-3); }
+.ld-slider-row { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-13); }
+.ld-slider-row input { accent-color: var(--accent); }
+
 /* Play (docs/free-to-play.md): where the app opens with nothing saved. */
 .play { display: flex; flex-direction: column; gap: var(--space-3); }
 .play .list-title { margin-bottom: 0; }
