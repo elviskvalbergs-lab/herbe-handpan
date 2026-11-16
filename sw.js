@@ -28,8 +28,8 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // Fonts: cache-first
-  if (e.request.url.includes('fonts.g')) {
+  // Fonts (Google's and our own /fonts/): cache-first
+  if (e.request.url.includes('fonts.g') || new URL(e.request.url).pathname.startsWith('/fonts/')) {
     e.respondWith(
       caches.match(e.request).then(r => r || fetch(e.request).then(res => {
         caches.open(CACHE).then(c => c.put(e.request, res.clone()));

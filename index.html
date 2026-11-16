@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="auto">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -12,24 +12,29 @@
   <meta property="og:image" content="/og/app.png">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-180.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Oakhum">
-  <meta name="theme-color" content="#090F0D">
+  <meta name="theme-color" content="#1C1B16">
   <script>
     // The theme pref before first paint (applyTheme() in app.js keeps it in step).
-    try { var t = JSON.parse(localStorage.getItem('hp-prefs') || '{}').theme; if (t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; } catch (e) {}
+    try { var t = JSON.parse(localStorage.getItem('hp-prefs') || '{}').theme; if (t === 'dark' || t === 'light' || t === 'auto') document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" href="/fonts/oakhum-text-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/oakhum-text-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+/* Oakhum Text: Lato 2.0, subset and renamed (fonts/README.md). */
+@font-face { font-family: 'Oakhum Text'; font-weight: 400; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-400.woff2') format('woff2'); }
+@font-face { font-family: 'Oakhum Text'; font-weight: 500; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-500.woff2') format('woff2'); }
+@font-face { font-family: 'Oakhum Text'; font-weight: 600; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-600.woff2') format('woff2'); }
+@font-face { font-family: 'Oakhum Text'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-700.woff2') format('woff2'); }
 
 :root {
   /* ── Type ─────────────────────────────────────────────── */
-  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font: 'Oakhum Text', 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --fs-12: 12px;  --lh-12: 16px;   /* minimum: captions, badges, tab labels */
   --fs-13: 13px;  --lh-13: 18px;   /* meta, helper text */
   --fs-15: 15px;  --lh-15: 22px;   /* body, buttons, list titles */
@@ -72,42 +77,43 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
 
-  /* ── Colour: dark (default) ───────────────────────────── */
-  --bg:           #090F0D;
-  --surface-0:    #0C1713;   /* sunken: inside cards, fingering mouthpiece */
-  --surface-1:    #111F19;   /* cards, list groups, sheets, tab bar */
-  --surface-2:    #172A21;   /* inputs, secondary buttons, hover */
-  --surface-3:    #1E372B;   /* pressed, switch track off, meter track */
-  --border:       #1F3B2E;
-  --border-strong:#2F5544;   /* inputs, secondary buttons, dividers you must see */
+  /* ── Colour: dark (ink, Oakhum) ─────────────────────────── */
+  --bg:           #1C1B16;
+  --surface-0:    #171611;   /* sunken: inside cards, fingering mouthpiece */
+  --surface-1:    #252419;   /* cards, list groups, sheets, tab bar */
+  --surface-2:    #2E2C21;   /* inputs, secondary buttons, hover */
+  --surface-3:    #38362A;   /* pressed, switch track off, meter track */
+  --border:       #34322A;
+  --border-strong:#575240;   /* inputs, secondary buttons, dividers you must see */
 
-  --text-1:       #E4F2EA;   /* titles, values, covered holes        ~16:1 */
-  --text-2:       #B8D0C4;   /* body                                  ~11:1 */
-  --text-3:       #8BA898;   /* meta, helper, captions                 ~7:1 */
-  --text-disabled:#56705F;   /* disabled only, never for information   */
+  --text-1:       #F2E6D3;   /* titles, values, covered holes        ~16:1 */
+  --text-2:       #D8CCB6;   /* body                                  ~11:1 */
+  --text-3:       #A99F88;   /* meta, helper, captions                 ~7:1 */
+  --text-disabled:#6B6552;   /* disabled only, never for information   */
 
-  --accent:            #CD4C38;   /* brand mark: blow, changed holes, indicators */
-  --accent-fill:       #C2412E;   /* primary button background (white text 5.1:1) */
-  --accent-fill-hover: #CD4C38;
-  --accent-fill-press: #A9382A;
+  --accent:            #D07C55;   /* brand mark: blow, changed holes, indicators */
+  --accent-fill:       #A65A37;   /* primary button background (white text 5.1:1) */
+  --accent-fill-hover: #B3633F;
+  --accent-fill-press: #8C4729;
   --on-accent:         #FFFFFF;
-  --accent-text:       #EE7A66;   /* accent as text/icon on dark (7:1) */
-  --accent-soft:       rgba(205, 76, 56, 0.16);
+  --accent-text:       #E0936B;   /* accent as text/icon on dark (7:1) */
+  --accent-soft:       rgba(208, 124, 85, 0.16);
 
-  --selected-bg:  #E4F2EA;   /* selected chip / segment: neutral, not red */
-  --on-selected:  #0B1A14;
+  --selected-bg:  #F2E6D3;   /* selected chip / segment: neutral, not red */
+  --on-selected:  #28271F;
+  --brand:        #F2E6D3;   /* the logo: Cream on ink */
 
-  --success:      #4CC38A;  --success-soft: rgba(76, 195, 138, 0.16);  /* in tune */
-  --warning:      #E8B33A;  --warning-soft: rgba(232, 179, 58, 0.16);  /* near (10–50 ¢) */
-  --danger:       #F07563;  --danger-soft:  rgba(240, 117, 99, 0.14);  /* delete, errors */
+  --success:      #8DB86A;  --success-soft: rgba(141, 184, 106, 0.16);  /* in tune */
+  --warning:      #E2B24A;  --warning-soft: rgba(226, 178, 74, 0.16);  /* near (10–50 ¢) */
+  --danger:       #EE8270;  --danger-soft:  rgba(238, 130, 112, 0.14);  /* delete, errors */
   --on-danger:    #1A0B08;  /* text on a filled danger button (white on #F07563 is only 2.6:1) */
-  --focus:        #7FD6D4;  /* 2px focus ring, distinct from accent and selection */
+  --focus:        #8CC8C4;  /* 2px focus ring, distinct from accent and selection */
 
-  --move-lift:    #6FD0CE;  /* lift arrow + "lift" word */
-  --move-cover:   #E8B33A;  /* cover arrow + "cover" word */
+  --move-lift:    #8CC8C4;  /* lift arrow + "lift" word */
+  --move-cover:   #E2B24A;  /* cover arrow + "cover" word */
   --hole-covered: var(--text-1);
   --hole-open:    var(--bg);
-  --pan-stage:    #090F0D;  /* card behind the pan drawing */
+  --pan-stage:    #1C1B16;  /* card behind the pan drawing */
   --scrim:        rgba(0, 0, 0, 0.6);
 
   --e-1: 0 1px 2px rgba(0, 0, 0, 0.35);
@@ -115,82 +121,84 @@
   --e-3: 0 -12px 40px rgba(0, 0, 0, 0.55); /* bottom sheet */
 
   /* Chord colours (pan) — unchanged */
-  --chord-c0: #CD4C38; --chord-c0-stroke: #e8906e; --chord-c0-text: #fff;
-  --chord-c1: #D9A62E; --chord-c1-stroke: #f0c866; --chord-c1-text: #241c05;
-  --chord-c2: #3FA7A6; --chord-c2-stroke: #7fd6d4; --chord-c2-text: #04211f;
-  --chord-c3: #9B6FD4; --chord-c3-stroke: #c6a3f0; --chord-c3-text: #1c0d2e;
-  --note-rest-bg: #162c22; --note-rest-text: #5a9878;
-  --note-active-bg: #CD4C38; --note-active-text: #fff; --note-empty-border: #224838;
-  --pan-playing: #FFFFFF;    /* ring around a sounding note */
+  --chord-c0: #B3633F; --chord-c0-stroke: #D9946F; --chord-c0-text: #fff;
+  --chord-c1: #C9962E; --chord-c1-stroke: #E6BE6A; --chord-c1-text: #2A1F06;
+  --chord-c2: #5A968B; --chord-c2-stroke: #94C8BE; --chord-c2-text: #08201C;
+  --chord-c3: #9A7DB6; --chord-c3-stroke: #C4AEDC; --chord-c3-text: #1C1226;
+  --note-rest-bg: #2E2B20; --note-rest-text: #A99F78;
+  --note-active-bg: #B3633F; --note-active-text: #fff; --note-empty-border: #4A4635;
+  --pan-playing: #FFF8EC;    /* ring around a sounding note */
   /* The pan drawing (js/pan.js), dark; light values with the light theme below. */
-  --pan-g0: #1a3828; --pan-g1: #0d2018; --pan-g2: #060f0c; --pan-i0: #183028; --pan-i1: #0d1e18;
-  --pan-rim: #2a5040; --pan-groove: #1c3828; --pan-guide: #183028; --pan-note-stroke: #1F3B2E;
-  --pan-glow: rgba(255, 255, 255, 0.55);
-  --alt-c0-text: rgba(232,190,160,0.75); --alt-c1-text: rgba(240,216,150,0.75);
-  --alt-c2-text: rgba(170,224,222,0.75); --alt-c3-text: rgba(214,190,240,0.75);
-  --faint-stroke: #7fd6d4; --faint-text: #9fc9bb;
+  --pan-g0: #3C3626; --pan-g1: #26231A; --pan-g2: #14130E; --pan-i0: #332E22; --pan-i1: #221F17;
+  --pan-rim: #5A5240; --pan-groove: #3C3828; --pan-guide: #332E22; --pan-note-stroke: #3A372B;
+  --pan-glow: rgba(255, 248, 236, 0.55);
+  --alt-c0-text: rgba(232,170,140,0.75); --alt-c1-text: rgba(240,210,140,0.75);
+  --alt-c2-text: rgba(170,214,206,0.75); --alt-c3-text: rgba(205,185,230,0.75);
+  --faint-stroke: #94C8BE; --faint-text: #A9C9BF;
   --qr-bg: #FFFFFF;          /* QR codes need a white quiet zone in both themes */
 }
 
-/* ── Colour: light (daylight) ───────────────────────────── */
+/* ── Colour: light (cream) ─────────────────────────────── */
 :root[data-theme="light"] {
-  --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
-  --border: #D3DED7; --border-strong: #A9BDB1;
-  --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
-  --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
-  --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
-  --selected-bg: #0F231A; --on-selected: #FFFFFF;
-  --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
+  --bg: #F2E6D3; --surface-0: #EADBC3; --surface-1: #FBF6EC; --surface-2: #F3E9D8; --surface-3: #E7D9C2;
+  --border: #E0CFB4; --border-strong: #BBA584;
+  --text-1: #28271F; --text-2: #46432F; --text-3: #66614B; --text-disabled: #A89D84;
+  --accent: #B3633F; --accent-fill: #A65A37; --accent-fill-hover: #9E5232; --accent-fill-press: #8C4729;
+  --on-accent: #FFFFFF; --accent-text: #9A5333; --accent-soft: rgba(179, 99, 63, 0.12);
+  --selected-bg: #4E4B2E; --on-selected: #FBF6EC;
+  --brand: #4E4B2E;          /* the logo: Oak Olive on cream */
+  --success: #4A6B2A; --success-soft: rgba(74, 107, 42, 0.12);
   --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
-  --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10); --on-danger: #FFFFFF;
-  --focus: #0B6E6C;
-  --move-lift: #0E7C7B; --move-cover: #9A6700;
-  --hole-covered: #0F231A; --hole-open: #FFFFFF;
-  --pan-stage: #E4EBE6; --scrim: rgba(15, 35, 26, 0.45);
-  --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
-  --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
-  --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+  --danger: #A3311F;  --danger-soft: rgba(163, 49, 31, 0.10); --on-danger: #FFFFFF;
+  --focus: #2F6F73;
+  --move-lift: #2F6F73; --move-cover: #8A5A00;
+  --hole-covered: #28271F; --hole-open: #FBF6EC;
+  --pan-stage: #EADBC3; --scrim: rgba(40, 39, 31, 0.45);
+  --e-1: 0 1px 2px rgba(40, 39, 31, 0.10);
+  --e-2: 0 8px 24px rgba(40, 39, 31, 0.16);
+  --e-3: 0 -12px 40px rgba(40, 39, 31, 0.20);
 }
 /* Auto: the same values as light when the OS asks for it. Keep this block identical to the one above. */
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
-    --border: #D3DED7; --border-strong: #A9BDB1;
-    --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
-    --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
-    --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
-    --selected-bg: #0F231A; --on-selected: #FFFFFF;
-    --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
+    --bg: #F2E6D3; --surface-0: #EADBC3; --surface-1: #FBF6EC; --surface-2: #F3E9D8; --surface-3: #E7D9C2;
+    --border: #E0CFB4; --border-strong: #BBA584;
+    --text-1: #28271F; --text-2: #46432F; --text-3: #66614B; --text-disabled: #A89D84;
+    --accent: #B3633F; --accent-fill: #A65A37; --accent-fill-hover: #9E5232; --accent-fill-press: #8C4729;
+    --on-accent: #FFFFFF; --accent-text: #9A5333; --accent-soft: rgba(179, 99, 63, 0.12);
+    --selected-bg: #4E4B2E; --on-selected: #FBF6EC;
+    --brand: #4E4B2E;
+    --success: #4A6B2A; --success-soft: rgba(74, 107, 42, 0.12);
     --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
-    --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10); --on-danger: #FFFFFF;
-    --focus: #0B6E6C;
-    --move-lift: #0E7C7B; --move-cover: #9A6700;
-    --hole-covered: #0F231A; --hole-open: #FFFFFF;
-    --pan-stage: #E4EBE6; --scrim: rgba(15, 35, 26, 0.45);
-    --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
-    --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
-    --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
+    --danger: #A3311F;  --danger-soft: rgba(163, 49, 31, 0.10); --on-danger: #FFFFFF;
+    --focus: #2F6F73;
+    --move-lift: #2F6F73; --move-cover: #8A5A00;
+    --hole-covered: #28271F; --hole-open: #FBF6EC;
+    --pan-stage: #EADBC3; --scrim: rgba(40, 39, 31, 0.45);
+    --e-1: 0 1px 2px rgba(40, 39, 31, 0.10);
+    --e-2: 0 8px 24px rgba(40, 39, 31, 0.16);
+    --e-3: 0 -12px 40px rgba(40, 39, 31, 0.20);
   }
 }
 
-/* The pan drawing in daylight: a light steel shell, darker lines. The chord
-   colours stay the same in both themes. (Two blocks, like the theme above.) */
+/* The pan drawing in daylight: a warm bronze shell on cream, darker lines.
+   The chord colours stay the same in both themes. (Two blocks, like the theme above.) */
 :root[data-theme="light"] {
-  --pan-g0: #FBFDFB; --pan-g1: #E2EAE5; --pan-g2: #C6D4CB; --pan-i0: #F5F9F6; --pan-i1: #DAE4DE;
-  --pan-rim: #93AA9D; --pan-groove: #A9BDB1; --pan-guide: #A9BDB1; --pan-note-stroke: #9DB2A6;
-  --note-rest-bg: #FFFFFF; --note-rest-text: #3F6253; --note-empty-border: #93AA9D;
-  --pan-playing: #0F231A; --pan-glow: rgba(15, 35, 26, 0.35);
-  --alt-c0-text: #9C3222; --alt-c1-text: #7A5A00; --alt-c2-text: #0B6E6C; --alt-c3-text: #5B3A8C;
-  --faint-stroke: #0B6E6C; --faint-text: #2C6B63;
+  --pan-g0: #FBF6EC; --pan-g1: #E9DCC5; --pan-g2: #D1BE9F; --pan-i0: #F6EEDF; --pan-i1: #E2D3B9;
+  --pan-rim: #A48F6E; --pan-groove: #BBA584; --pan-guide: #BBA584; --pan-note-stroke: #B09A78;
+  --note-rest-bg: #FBF6EC; --note-rest-text: #5A553F; --note-empty-border: #A48F6E;
+  --pan-playing: #28271F; --pan-glow: rgba(40, 39, 31, 0.35);
+  --alt-c0-text: #8C4729; --alt-c1-text: #7A5A00; --alt-c2-text: #2F6F73; --alt-c3-text: #6A4A7E;
+  --faint-stroke: #2F6F73; --faint-text: #3E6A64;
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme="auto"] {
-    --pan-g0: #FBFDFB; --pan-g1: #E2EAE5; --pan-g2: #C6D4CB; --pan-i0: #F5F9F6; --pan-i1: #DAE4DE;
-    --pan-rim: #93AA9D; --pan-groove: #A9BDB1; --pan-guide: #A9BDB1; --pan-note-stroke: #9DB2A6;
-    --note-rest-bg: #FFFFFF; --note-rest-text: #3F6253; --note-empty-border: #93AA9D;
-    --pan-playing: #0F231A; --pan-glow: rgba(15, 35, 26, 0.35);
-    --alt-c0-text: #9C3222; --alt-c1-text: #7A5A00; --alt-c2-text: #0B6E6C; --alt-c3-text: #5B3A8C;
-    --faint-stroke: #0B6E6C; --faint-text: #2C6B63;
+    --pan-g0: #FBF6EC; --pan-g1: #E9DCC5; --pan-g2: #D1BE9F; --pan-i0: #F6EEDF; --pan-i1: #E2D3B9;
+    --pan-rim: #A48F6E; --pan-groove: #BBA584; --pan-guide: #BBA584; --pan-note-stroke: #B09A78;
+    --note-rest-bg: #FBF6EC; --note-rest-text: #5A553F; --note-empty-border: #A48F6E;
+    --pan-playing: #28271F; --pan-glow: rgba(40, 39, 31, 0.35);
+    --alt-c0-text: #8C4729; --alt-c1-text: #7A5A00; --alt-c2-text: #2F6F73; --alt-c3-text: #6A4A7E;
+    --faint-stroke: #2F6F73; --faint-text: #3E6A64;
   }
 }
 @media (min-width: 1024px) { :root { --gutter: 24px; } }
@@ -594,13 +602,13 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 /* Alt-highlight — same pitch class as a chord note, alternate position on the
    pan. Same hue as its degree's highlight color, dimmed and dashed. */
 .pan-note.alt-highlight circle { stroke-width: 1.5; stroke-dasharray: 3 3; }
-.pan-note.alt-highlight-0 circle { fill: rgba(205,76,56,0.12) !important; stroke: rgba(205,76,56,0.5) !important; }
+.pan-note.alt-highlight-0 circle { fill: rgba(179,99,63,0.12) !important; stroke: rgba(179,99,63,0.5) !important; }
 .pan-note.alt-highlight-0 text { fill: var(--alt-c0-text) !important; }
-.pan-note.alt-highlight-1 circle { fill: rgba(217,166,46,0.12) !important; stroke: rgba(217,166,46,0.5) !important; }
+.pan-note.alt-highlight-1 circle { fill: rgba(201,150,46,0.12) !important; stroke: rgba(201,150,46,0.5) !important; }
 .pan-note.alt-highlight-1 text { fill: var(--alt-c1-text) !important; }
-.pan-note.alt-highlight-2 circle { fill: rgba(63,167,166,0.12) !important; stroke: rgba(63,167,166,0.5) !important; }
+.pan-note.alt-highlight-2 circle { fill: rgba(90,150,139,0.12) !important; stroke: rgba(90,150,139,0.5) !important; }
 .pan-note.alt-highlight-2 text { fill: var(--alt-c2-text) !important; }
-.pan-note.alt-highlight-3 circle { fill: rgba(155,111,212,0.12) !important; stroke: rgba(155,111,212,0.5) !important; }
+.pan-note.alt-highlight-3 circle { fill: rgba(154,125,182,0.12) !important; stroke: rgba(154,125,182,0.5) !important; }
 .pan-note.alt-highlight-3 text { fill: var(--alt-c3-text) !important; }
 
 /* Playing animation — ring + pulse only, keeps whatever fill/text color the
@@ -624,9 +632,9 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .pan-note.faint text { fill: var(--faint-text) !important; }
 .pan-strike { pointer-events: none; }
 .pan-strike rect { stroke: #060f0c; stroke-width: 1.5; }
-.pan-strike-r rect { fill: #E4F2EA; }
+.pan-strike-r rect { fill: #F2E6D3; }
 .pan-strike-r text { fill: #0B1A14; }
-.pan-strike-l rect { fill: #7FD6D4; }
+.pan-strike-l rect { fill: #8CC8C4; }
 .pan-strike-l text { fill: #04211f; }
 
 .chord-count {
@@ -728,8 +736,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   background: none; border: 0; border-radius: var(--r-sm); cursor: pointer;
   color: var(--accent-fill); font: var(--fw-semibold) 14px/20px var(--font);
 }
-:root[data-theme="light"] .toast-action { color: #EE7A66; }
-@media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #EE7A66; } }
+:root[data-theme="light"] .toast-action { color: #E0936B; }
+@media (prefers-color-scheme: light) { :root[data-theme="auto"] .toast-action { color: #E0936B; } }
 
 /* Playlists tab and playlist detail (§6.9) */
 .playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
@@ -1246,7 +1254,7 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 .share-code { font: var(--fw-bold) var(--fs-32)/var(--lh-32) var(--font); letter-spacing: 0.18em; text-align: center; color: var(--text-1); margin: var(--space-2) 0; }
 .share-qr { display: flex; justify-content: center; background: var(--qr-bg); border-radius: var(--r-sm); padding: 8px; min-height: 60px; align-items: center; }
 .share-qr svg { width: 224px; height: 224px; }
-.share-loading { font-size: var(--fs-13); color: #557064; }
+.share-loading { font-size: var(--fs-13); color: var(--text-3); }
 .share-url { margin-top: var(--space-3); font-size: var(--fs-13); }
 
 /* Settings (§6.19): grouped list rows, the control at the right of each */
@@ -1553,7 +1561,7 @@ html { touch-action: manipulation; }
 .hm-svg { width: 100%; height: auto; display: block; border-radius: 12px; }
 .hm-svg .hm-blank { fill: var(--surface-2); stroke: var(--border); stroke-width: 4; }
 .hm-spot circle { fill: rgba(255, 255, 255, 0.18); stroke: #fff; stroke-width: 6; }
-.hm-spot.is-sel circle { stroke: var(--accent); stroke-width: 10; fill: rgba(205, 76, 56, 0.25); }
+.hm-spot.is-sel circle { stroke: var(--accent); stroke-width: 10; fill: rgba(179, 99, 63, 0.25); }
 .hm-spot.is-closed circle { fill: rgba(0, 0, 0, 0.75); stroke: #fff; stroke-width: 8; }
 .hm-spot.is-open circle { fill: #fff; stroke: var(--accent); stroke-width: 16; }
 .hm-num { fill: #fff; font-size: 30px; font-weight: 700; text-anchor: middle; dominant-baseline: central;
@@ -1737,6 +1745,25 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .play { display: flex; flex-direction: column; gap: var(--space-3); }
 .play .list-title { margin-bottom: 0; }
 .play-notice { display: flex; flex-direction: column; gap: var(--space-2); }
+.play-brand { padding: var(--space-2) 0 var(--space-1); }
+
+/* Brand (docs/design-system.md, "Brand"): the Oakhum logo and the landscape
+   artwork. The logo is drawn in currentColor (js/brand.js); --brand is Oak
+   Olive on cream and Cream on ink. */
+.brand-logo { display: block; color: var(--brand); flex-shrink: 0; }
+.brand-horizontal { height: 32px; width: auto; aspect-ratio: 670 / 220; }
+.brand-leaf { height: 24px; width: auto; aspect-ratio: 100 / 150; }
+/* The quiet hero: the artwork with no logo baked in, the logo below it. */
+.brand-hero { display: grid; gap: var(--space-4); margin-bottom: var(--space-6); }
+.brand-hero-art {
+  display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: 60% 40%;
+  border-radius: var(--r-md); background: var(--surface-0);
+}
+.brand-hero .brand-horizontal { height: 40px; }
+.brand-hero-line { color: var(--text-2); max-width: 36ch; }
+.brand-about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
+.brand-about .brand-horizontal { height: 28px; }
+.brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
 
   </style>
 </head>
@@ -2381,6 +2408,31 @@ function icon(name, extraClass = '') {
   const inner = ICON_PATHS[name];
   if (!inner) return '';
   return `<svg class="ico ${extraClass}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+
+
+// ── js/brand.js ──
+// The Oakhum logo (docs/design-system.md, "Brand"). The paths are copied
+// unchanged from the brand kit's SVG masters in brand/ (horizontal_*.svg and
+// leaf_only_*.svg): one traced oak leaf and the outlined "oakhum" lettering.
+// Both are drawn in currentColor, so the logo takes the colour of the text
+// around it: Oak Olive or Ink on cream, Cream on ink (never recoloured
+// otherwise, stretched, or given veins; see the brand book's rules).
+
+// The leaf alone, in a 100 × 150 box.
+const BRAND_LEAF_D = 'M 52.69,0.00 L 46.24,2.16 L 39.78,11.87 L 32.26,12.95 L 30.11,17.27 L 30.11,23.74 L 35.48,34.53 L 34.41,41.01 L 31.18,41.01 L 18.28,32.37 L 10.75,34.53 L 7.53,39.93 L 7.53,45.32 L 10.75,52.88 L 29.03,70.14 L 30.11,75.54 L 26.88,77.70 L 16.13,71.22 L 7.53,70.14 L 2.15,73.38 L 0.00,79.86 L 6.45,91.73 L 22.58,98.20 L 32.26,104.68 L 33.33,107.91 L 31.18,110.07 L 21.51,108.99 L 18.28,113.31 L 19.35,117.63 L 23.66,121.94 L 40.86,129.50 L 48.39,137.05 L 50.54,150.00 L 53.76,148.92 L 54.84,138.13 L 61.29,131.65 L 75.27,126.26 L 79.57,121.94 L 77.42,116.55 L 70.97,116.55 L 68.82,112.23 L 75.27,107.91 L 84.95,105.76 L 94.62,99.28 L 96.77,94.96 L 94.62,86.33 L 83.87,85.25 L 76.34,89.57 L 72.04,86.33 L 78.49,78.78 L 91.40,71.22 L 96.77,65.83 L 100.00,58.27 L 98.92,50.72 L 92.47,46.40 L 86.02,47.48 L 75.27,55.04 L 70.97,52.88 L 72.04,45.32 L 81.72,32.37 L 81.72,21.58 L 78.49,18.35 L 68.82,19.42 L 66.67,17.27 L 64.52,7.55 L 59.14,2.16 Z';
+// The lettering, in the horizontal lockup's 670 × 220 box.
+const BRAND_WORD_D = 'M200.85 107.42 Q207.89 107.42 213.58 109.72 Q219.28 112.00 223.26 116.32 Q227.25 120.62 229.39 126.69 Q231.53 132.74 231.53 140.28 Q231.53 147.82 229.39 153.93 Q227.25 160.02 223.26 164.30 Q219.28 168.56 213.58 170.86 Q207.89 173.15 200.85 173.15 Q193.74 173.15 188.05 170.86 Q182.37 168.56 178.35 164.30 Q174.34 160.02 172.16 153.93 Q170.00 147.82 170.00 140.28 Q170.00 132.74 172.16 126.69 Q174.34 120.62 178.35 116.32 Q182.37 112.00 188.05 109.72 Q193.74 107.42 200.85 107.42 Z M200.85 163.59 Q209.91 163.59 214.37 157.50 Q218.82 151.41 218.82 140.34 Q218.82 129.28 214.37 123.15 Q209.91 117.02 200.85 117.02 Q191.68 117.02 187.18 123.15 Q182.69 129.28 182.69 140.34 Q182.69 151.41 187.18 157.50 Q191.68 163.59 200.85 163.59 Z M292.00 143.93 Q284.52 144.19 279.30 145.09 Q274.09 145.99 270.81 147.51 Q267.55 149.02 266.10 151.06 Q264.66 153.10 264.66 155.62 Q264.66 158.01 265.45 159.74 Q266.24 161.47 267.57 162.57 Q268.93 163.67 270.75 164.18 Q272.58 164.67 274.72 164.67 Q277.55 164.67 279.90 164.10 Q282.26 163.53 284.32 162.51 Q286.41 161.47 288.29 159.96 Q290.18 158.44 292.00 156.50 L292.00 143.93 Z M256.04 117.34 Q261.38 112.25 267.63 109.74 Q273.89 107.22 281.38 107.22 Q286.84 107.22 291.04 109.01 Q295.26 110.80 298.15 114.02 Q301.04 117.22 302.51 121.68 Q304.00 126.14 304.00 131.54 L304.00 172.27 L298.52 172.27 Q296.72 172.27 295.77 171.68 Q294.83 171.07 294.26 169.44 L292.95 163.85 Q290.49 166.10 288.09 167.83 Q285.72 169.56 283.11 170.80 Q280.49 172.02 277.53 172.64 Q274.58 173.27 271.01 173.27 Q267.24 173.27 263.94 172.25 Q260.64 171.21 258.18 169.07 Q255.73 166.93 254.31 163.73 Q252.90 160.53 252.90 156.24 Q252.90 152.47 254.94 149.00 Q256.98 145.50 261.60 142.73 Q266.24 139.96 273.68 138.22 Q281.12 136.45 292.00 136.19 L292.00 131.54 Q292.00 124.31 288.92 120.74 Q285.84 117.16 279.87 117.16 Q275.84 117.16 273.11 118.16 Q270.38 119.17 268.40 120.40 Q266.41 121.62 264.94 122.62 Q263.47 123.62 261.89 123.62 Q260.64 123.62 259.71 122.94 Q258.81 122.25 258.24 121.31 L256.04 117.34 Z M337.63 79.51 L337.63 133.74 L340.53 133.74 Q341.85 133.74 342.71 133.36 Q343.60 132.99 344.54 131.85 L363.65 110.80 Q364.53 109.62 365.59 109.03 Q366.67 108.42 368.30 108.42 L379.50 108.42 L356.93 133.11 Q355.11 135.45 353.02 136.70 Q354.22 137.51 355.12 138.59 Q356.05 139.65 356.93 140.91 L380.93 172.27 L369.93 172.27 Q368.42 172.27 367.32 171.78 Q366.22 171.27 365.36 169.95 L345.62 144.30 Q344.68 142.85 343.73 142.46 Q342.79 142.05 340.91 142.05 L337.63 142.05 L337.63 172.27 L325.37 172.27 L325.37 79.51 L337.63 79.51 Z M414.55 116.53 Q418.58 112.45 423.45 109.93 Q428.32 107.42 434.67 107.42 Q439.95 107.42 443.94 109.19 Q447.94 110.94 450.63 114.12 Q453.34 117.28 454.72 121.74 Q456.11 126.20 456.11 131.62 L456.11 172.27 L443.78 172.27 L443.78 131.62 Q443.78 124.76 440.64 120.97 Q437.49 117.16 431.03 117.16 Q426.32 117.16 422.19 119.40 Q418.09 121.62 414.55 125.45 L414.55 172.27 L402.30 172.27 L402.30 79.51 L414.55 79.51 L414.55 116.53 Z M531.27 108.42 L531.27 172.27 L523.93 172.27 Q521.41 172.27 520.67 169.82 L519.78 163.41 Q517.70 165.61 515.44 167.44 Q513.19 169.25 510.59 170.54 Q508.02 171.84 505.13 172.55 Q502.25 173.27 498.91 173.27 Q493.64 173.27 489.64 171.52 Q485.65 169.76 482.94 166.60 Q480.25 163.41 478.86 158.96 Q477.48 154.48 477.48 149.08 L477.48 108.42 L489.79 108.42 L489.79 149.08 Q489.79 155.93 492.94 159.74 Q496.08 163.53 502.56 163.53 Q507.27 163.53 511.36 161.31 Q515.44 159.07 519.02 155.18 L519.02 108.42 L531.27 108.42 Z M552.64 172.27 L552.64 108.42 L560.01 108.42 Q562.58 108.42 563.21 110.88 L564.09 116.97 Q567.61 112.76 571.91 110.09 Q576.21 107.42 582.00 107.42 Q588.35 107.42 592.29 110.92 Q596.26 114.39 598.09 120.36 Q599.46 116.97 601.66 114.51 Q603.86 112.06 606.57 110.48 Q609.28 108.91 612.33 108.17 Q615.37 107.42 618.51 107.42 Q623.60 107.42 627.59 109.03 Q631.59 110.62 634.34 113.71 Q637.11 116.77 638.55 121.31 Q640.00 125.82 640.00 131.62 L640.00 172.27 L627.69 172.27 L627.69 131.62 Q627.69 124.45 624.56 120.81 Q621.46 117.16 615.49 117.16 Q612.86 117.16 610.46 118.07 Q608.09 118.97 606.28 120.80 Q604.49 122.62 603.45 125.33 Q602.43 128.02 602.43 131.62 L602.43 172.27 L590.11 172.27 L590.11 131.62 Q590.11 124.19 587.15 120.68 Q584.20 117.16 578.49 117.16 Q574.52 117.16 571.12 119.24 Q567.73 121.31 564.90 124.88 L564.90 172.27 L552.64 172.27 Z';
+
+// kind: 'horizontal' (leaf + oakhum, the default) or 'leaf' (the symbol alone,
+// for small sizes). label: the accessible name; pass '' when the logo sits next
+// to text that already says Oakhum.
+function brandLogo({ kind = 'horizontal', label = 'Oakhum', cls = '' } = {}) {
+  const a11y = label ? `role="img" aria-label="${label}"` : 'aria-hidden="true"';
+  if (kind === 'leaf') {
+    return `<svg class="brand-logo brand-leaf ${cls}" viewBox="0 0 100 150" ${a11y}><path fill="currentColor" d="${BRAND_LEAF_D}"/></svg>`;
+  }
+  return `<svg class="brand-logo brand-horizontal ${cls}" viewBox="0 0 670 220" ${a11y}><g fill="currentColor"><path d="${BRAND_LEAF_D}" transform="translate(32 37) scale(0.95 0.9533333333333334)"/><path d="${BRAND_WORD_D}"/></g></svg>`;
 }
 
 
@@ -6893,7 +6945,7 @@ const state = {
   wizard: null,            // add-instrument wizard state, see viewWizard()
   tuner: { on: false, reading: null, error: null, lastAdvance: 0 }, // microphone tuner
   rec: newRecState(),      // the armed record field, see uiHzField()
-  theme: 'dark',           // 'dark' | 'light' | 'auto' (follows the OS)
+  theme: 'auto',           // 'dark' | 'light' | 'auto' (follows the OS; the default)
   syncTipHidden: false,    // the "Sync across devices" tip on Home was dismissed
   clayEdit: null,          // { id, name, pct, error } while a clay body is edited
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
@@ -7233,6 +7285,7 @@ function viewSettings() {
 
       <h2 class="list-title">About</h2>
       <div class="list">
+        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute.</span></div>
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
       </div>
     </div>`;
@@ -7969,6 +8022,7 @@ function viewPlay() {
   return `
     ${bar}
     <div class="play">
+      ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute. Free, no sign-up to play.</span></div>` : ''}
       ${notice}
       ${uiSeg(INSTRUMENT_FAMILIES.map(f => ({ value: f.id, label: escHtml(f.name) })), fam, { action: 'play-family', label: 'Instrument' })}
       <h2 class="list-title">Popular</h2>
@@ -8116,8 +8170,17 @@ function wizardFrame(w, { title, sub = '', body, bar }) {
   const header = w.firstRun
     ? uiAppBar({ title: 'Welcome' })
     : uiAppBar({ title: 'Add instrument', back: { action: 'back-home', label: 'My instruments' } });
+  // First run, first step: the quiet hero (artwork, then the logo), docs/design-system.md "Brand".
+  const hero = w.firstRun && at === 1 ? `
+      <div class="brand-hero">
+        <img class="brand-hero-art" src="/brand/hero-wide-800.webp" srcset="/brand/hero-wide-800.webp 800w, /brand/hero-wide.webp 1600w"
+          sizes="(min-width: 640px) 640px, 100vw" width="800" height="450" alt="">
+        ${brandLogo()}
+        <p class="brand-hero-line">Notes, chords and scales for handpan, ocarina and flute.</p>
+      </div>` : '';
   return `${header}
     <div class="wizard">
+      ${hero}
       ${w.notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(w.notice)}</p>` : ''}
       <div class="wizard-count">Step ${Math.max(1, at)} of ${Math.max(total, at)}</div>
       <h2 class="wizard-title">${escHtml(title)}</h2>
@@ -12441,7 +12504,7 @@ function loadPrefs() {
 
 // The theme pref on <html data-theme> (the CSS does the rest) and the
 // browser chrome colour to match. Auto follows the OS as it changes.
-const THEME_COLORS = { dark: '#090F0D', light: '#F3F6F4' };
+const THEME_COLORS = { dark: '#1C1B16', light: '#F2E6D3' };
 const _themeQuery = window.matchMedia?.('(prefers-color-scheme: light)');
 function applyTheme() {
   document.documentElement.dataset.theme = state.theme;

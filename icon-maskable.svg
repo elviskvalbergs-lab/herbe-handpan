@@ -1,28 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <defs>
-    <radialGradient id="body" cx="50%" cy="40%" r="55%">
-      <stop offset="0%" stop-color="#1d4a30"/>
-      <stop offset="100%" stop-color="#091810"/>
-    </radialGradient>
-    <radialGradient id="dome" cx="40%" cy="35%" r="60%">
-      <stop offset="0%" stop-color="#e8c050"/>
-      <stop offset="100%" stop-color="#a07820"/>
-    </radialGradient>
-  </defs>
-  <!-- Maskable: safe zone is inner 80% — content within ~r=77 from center -->
-  <rect width="192" height="192" fill="#0d2018"/>
-  <!-- Pan body (slightly smaller for maskable safe zone) -->
-  <circle cx="96" cy="96" r="80" fill="url(#body)" stroke="#4a8060" stroke-width="2"/>
-  <circle cx="96" cy="96" r="68" fill="none" stroke="#2d5a42" stroke-width="1.5" stroke-dasharray="3 5"/>
-  <!-- Dome -->
-  <circle cx="96" cy="96" r="20" fill="url(#dome)" stroke="#c8a030" stroke-width="1.5"/>
-  <!-- Tone fields -->
-  <circle cx="96" cy="44"  r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="132" cy="60" r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="148" cy="96" r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="132" cy="132" r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="96" cy="148" r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="60" cy="132" r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="44" cy="96"  r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
-  <circle cx="60" cy="60"  r="9" fill="#2a7a52" stroke="#50c080" stroke-width="2"/>
+  <!-- Oakhum app icon: the brand kit's leaf (brand/leaf_only_cream.svg) in Cream on Oak Olive. -->
+  <rect width="192" height="192" fill="#4E4B2E"/>
+  <path fill="#F2E6D3" transform="translate(66.00 51.00) scale(0.6)" d="M 52.69,0.00 L 46.24,2.16 L 39.78,11.87 L 32.26,12.95 L 30.11,17.27 L 30.11,23.74 L 35.48,34.53 L 34.41,41.01 L 31.18,41.01 L 18.28,32.37 L 10.75,34.53 L 7.53,39.93 L 7.53,45.32 L 10.75,52.88 L 29.03,70.14 L 30.11,75.54 L 26.88,77.70 L 16.13,71.22 L 7.53,70.14 L 2.15,73.38 L 0.00,79.86 L 6.45,91.73 L 22.58,98.20 L 32.26,104.68 L 33.33,107.91 L 31.18,110.07 L 21.51,108.99 L 18.28,113.31 L 19.35,117.63 L 23.66,121.94 L 40.86,129.50 L 48.39,137.05 L 50.54,150.00 L 53.76,148.92 L 54.84,138.13 L 61.29,131.65 L 75.27,126.26 L 79.57,121.94 L 77.42,116.55 L 70.97,116.55 L 68.82,112.23 L 75.27,107.91 L 84.95,105.76 L 94.62,99.28 L 96.77,94.96 L 94.62,86.33 L 83.87,85.25 L 76.34,89.57 L 72.04,86.33 L 78.49,78.78 L 91.40,71.22 L 96.77,65.83 L 100.00,58.27 L 98.92,50.72 L 92.47,46.40 L 86.02,47.48 L 75.27,55.04 L 70.97,52.88 L 72.04,45.32 L 81.72,32.37 L 81.72,21.58 L 78.49,18.35 L 68.82,19.42 L 66.67,17.27 L 64.52,7.55 L 59.14,2.16 Z"/>
 </svg>

@@ -1,8 +1,44 @@
-# herbe-handpan design system and redesign spec
+# Oakhum design system and redesign spec
 
 Nov 11, 2026 · design review of the current build (screenshots `phone-01…17`, `desktop-01…17`) and the spec for the redesign.
 
 This document is for the engineer who implements it. It covers the problems, the rules, the navigation model, tokens, components, every screen, and the order to build it in. Where it says "keep", the behaviour of the existing code stays as it is and only the presentation changes. Handpan behaviour (chord finding, filters, autoplay, discover, voicings, playlists, layouts, URL hashes) must not change.
+
+---
+
+## 0. Brand: Oakhum
+
+The app is called **Oakhum** (all lower case in the logo: "oakhum"). The brand kit is the owner's *oakhum identity system v1.0* (brand book and SVG/PDF/PNG masters, Nov 2026). The SVG masters and the landscape artwork are in `brand/`; the brand book PDF is kept outside the repo, because everything in the repo is served publicly.
+
+### Logo
+- **One traced oak leaf and one outlined lettering system.** Lockups: *horizontal* (leaf + "oakhum", used in the app), *stacked* ("oak" over "hum" under the leaf), *maker mark* (leaf + "hum") and the *leaf* alone. Files: `brand/{horizontal,stacked,leaf_hum,leaf_only}_{ink,oak_olive,clay,cream}.svg`.
+- **In the app** the logo comes from one shared helper, `brandLogo({ kind, label })` in `js/brand.js`. It draws the master paths in `currentColor`, coloured by `--brand` (Oak Olive on cream, Cream on ink). Never redraw or copy the paths elsewhere.
+- **Rules from the brand book:** keep clear space of at least one lowercase letter height around a lockup. Don't stretch it, add veins, or swap in another tree. Don't bake the logo into the landscape artwork: put it next to the artwork. Below about 20px tall, use the leaf alone.
+- **App icon:** the leaf in Cream on Oak Olive (`icon.svg`, `icon-maskable.svg` with the 80% safe zone, PNGs at 180, 192 and 512).
+
+### Colour
+| Name | Hex | Role in the app |
+| --- | --- | --- |
+| Oak Olive | `#4E4B2E` | the logo on cream, selected chips and segments in light, the app icon |
+| Clay | `#B3633F` | the accent: marks, the selected tab, chord colour 1, and primary buttons (as `#A65A37`, so white text is 5:1) |
+| Ink | `#28271F` | text on cream; the dark theme is built from it (`--bg` `#1C1B16`, cards `#252419`) |
+| Cream | `#F2E6D3` | the light theme's page; text and the logo on ink |
+| Sage | `#7A7A57` | reserved for illustration and quiet decoration; too low-contrast for text (3.6:1 on cream) |
+
+The brand book calls its values approximations sampled from the artwork. The app uses them as given; tints and shades for surfaces, text and status are derived from them in `styles.css` and checked for contrast (text ≥ 4.5:1 on its surface).
+
+The four **chord colours** are earth tones that stay apart from each other in both themes: Clay `#B3633F`, Ochre `#C9962E`, Sage-teal `#5A968B`, Heather `#9A7DB6`.
+
+### Type
+- **Oakhum Text** (Lato 2.0, subset and renamed under the OFL; see `fonts/README.md`), 400 / 500 / 600 / 700, self-hosted in `fonts/` and preloaded. The brand book names Lato Regular / Medium for UI and body text, and the logo lettering is based on Lato Medium.
+- The type scale, weights and sizes are unchanged (§4).
+
+### Artwork
+- **The quiet hero:** an oak on a hill over a river valley, a figure playing under the tree. Supplied without a logo (`brand/hero-wide.webp` 1600 × 900, `hero-wide-800.webp`, `hero-tall.webp` for portrait crops).
+- It is used once, at the top of the first-run Welcome (`.brand-hero`: artwork, then the logo, then one line). Keep it quiet: no text on the picture, no second use on working screens.
+
+### Theme
+- Both themes are brand themes: **cream** (light) and **ink** (dark). New users get `auto`, which follows the phone's setting. A saved choice still wins.
 
 ---
 
@@ -160,159 +196,28 @@ In the brief's terms: scale filter, chord filters, voicing, play and tuner stay 
 
 Replace the current `:root` block in `styles.css` with the block below. The **legacy aliases** at the end keep every existing rule working, so step 1 of §7 changes the look without touching any selector. Remove each alias once its last user has gone.
 
-The theme is set on `<html data-theme="dark|light|auto">` from the `theme` pref, and `auto` follows the OS. The JS that sets the attribute also updates `<meta name="theme-color">` (`#090F0D` dark, `#F3F6F4` light).
+The theme is set on `<html data-theme="dark|light|auto">` from the `theme` pref, and `auto` follows the OS. The JS that sets the attribute also updates `<meta name="theme-color">` (`#1C1B16` dark, `#F2E6D3` light). The default is `auto`.
 
-**The pan drawing follows the theme** (changed at the owner's request; it used to stay dark). `pan.js` draws with `--pan-*` tokens: dark steel in the dark theme, a light steel shell with darker lines in the light theme (`--pan-stage` #E4EBE6 behind it). The four chord colours are the same in both; the faint and other-octave note colours have light-theme versions. The fingering diagram follows the theme too.
+**The pan drawing follows the theme** (changed at the owner's request; it used to stay dark). `pan.js` draws with `--pan-*` tokens: dark bronze in the dark theme, a warm bronze shell with darker lines on cream in the light theme (`--pan-stage` behind it). The four chord colours are the same in both; the faint and other-octave note colours have light-theme versions. The fingering diagram follows the theme too.
 
-```css
-:root {
-  /* ── Type ─────────────────────────────────────────────── */
-  --font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --fs-12: 12px;  --lh-12: 16px;   /* minimum: captions, badges, tab labels */
-  --fs-13: 13px;  --lh-13: 18px;   /* meta, helper text */
-  --fs-15: 15px;  --lh-15: 22px;   /* body, buttons, list titles */
-  --fs-17: 17px;  --lh-17: 24px;   /* app bar title, card titles, sheet titles */
-  --fs-20: 20px;  --lh-20: 28px;   /* screen titles, moves line in practice */
-  --fs-24: 24px;  --lh-24: 32px;   /* wizard questions, tuner note */
-  --fs-32: 32px;  --lh-32: 40px;   /* share code, large numerics */
-  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
-  --tracking-overline: 0.06em;
+The token **names** and roles below are the system; the **values** live in one place, the `:root` blocks at the top of `styles.css` (dark in bare `:root`, light in `[data-theme="light"]` and again in the `auto` media block, which must stay identical). Since the Oakhum brand (§0) they are the Oakhum palette. The earlier herbe values (green-black and red) are in git history before the Oakhum PR.
 
-  /* ── Spacing (4px grid) ───────────────────────────────── */
-  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
-  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
-  --space-12: 48px; --space-16: 64px;
-
-  /* ── Radii (herbe: square-first) ──────────────────────── */
-  --r-xs: 2px;   /* badges */
-  --r-sm: 4px;   /* buttons, chips, inputs, segmented */
-  --r-md: 8px;   /* cards, popovers, desktop modal, tuner (desktop) */
-  --r-lg: 12px;  /* bottom-sheet top corners */
-  --r-full: 999px; /* switch track, needle, progress dots only */
-
-  /* ── Sizes and layout ─────────────────────────────────── */
-  --touch: 44px;
-  --control-h: 44px;          /* buttons, segmented, chips' hit area */
-  --field-h: 48px;            /* inputs and selects on touch (16px font, no iOS zoom) */
-  --appbar-h: 56px;
-  --tabbar-h: 64px;
-  --tuner-h: 72px;
-  --gutter: 16px;             /* 24px at ≥1024 */
-  --content-max: 1200px;
-  --reading-max: 640px;       /* forms, wizard, practice */
-  --z-appbar: 20; --z-tabbar: 20; --z-tuner: 30; --z-sheet: 40; --z-toast: 50;
-
-  /* ── Motion ───────────────────────────────────────────── */
-  --dur-1: 120ms;  /* hover, press, colour */
-  --dur-2: 200ms;  /* expand, toast */
-  --dur-3: 280ms;  /* sheet in/out */
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);
-
-  /* ── Colour: dark (default) ───────────────────────────── */
-  --bg:           #090F0D;
-  --surface-0:    #0C1713;   /* sunken: inside cards, fingering mouthpiece */
-  --surface-1:    #111F19;   /* cards, list groups, sheets, tab bar */
-  --surface-2:    #172A21;   /* inputs, secondary buttons, hover */
-  --surface-3:    #1E372B;   /* pressed, switch track off, meter track */
-  --border:       #1F3B2E;
-  --border-strong:#2F5544;   /* inputs, secondary buttons, dividers you must see */
-
-  --text-1:       #E4F2EA;   /* titles, values, covered holes        ~16:1 */
-  --text-2:       #B8D0C4;   /* body                                  ~11:1 */
-  --text-3:       #8BA898;   /* meta, helper, captions                 ~7:1 */
-  --text-disabled:#56705F;   /* disabled only, never for information   */
-
-  --accent:            #CD4C38;   /* brand mark: blow, changed holes, indicators */
-  --accent-fill:       #C2412E;   /* primary button background (white text 5.1:1) */
-  --accent-fill-hover: #CD4C38;
-  --accent-fill-press: #A9382A;
-  --on-accent:         #FFFFFF;
-  --accent-text:       #EE7A66;   /* accent as text/icon on dark (7:1) */
-  --accent-soft:       rgba(205, 76, 56, 0.16);
-
-  --selected-bg:  #E4F2EA;   /* selected chip / segment: neutral, not red */
-  --on-selected:  #0B1A14;
-
-  --success:      #4CC38A;  --success-soft: rgba(76, 195, 138, 0.16);  /* in tune */
-  --warning:      #E8B33A;  --warning-soft: rgba(232, 179, 58, 0.16);  /* near (10–50 ¢) */
-  --danger:       #F07563;  --danger-soft:  rgba(240, 117, 99, 0.14);  /* delete, errors */
-  --focus:        #7FD6D4;  /* 2px focus ring, distinct from accent and selection */
-
-  --move-lift:    #6FD0CE;  /* lift arrow + "lift" word */
-  --move-cover:   #E8B33A;  /* cover arrow + "cover" word */
-  --hole-covered: var(--text-1);
-  --hole-open:    var(--bg);
-  --pan-stage:    #090F0D;  /* card behind the pan drawing */
-  --scrim:        rgba(0, 0, 0, 0.6);
-
-  --e-1: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --e-2: 0 8px 24px rgba(0, 0, 0, 0.45);   /* tuner, popover, toast */
-  --e-3: 0 -12px 40px rgba(0, 0, 0, 0.55); /* bottom sheet */
-
-  /* Chord colours (pan) — unchanged */
-  --chord-c0: #CD4C38; --chord-c0-stroke: #e8906e; --chord-c0-text: #fff;
-  --chord-c1: #D9A62E; --chord-c1-stroke: #f0c866; --chord-c1-text: #241c05;
-  --chord-c2: #3FA7A6; --chord-c2-stroke: #7fd6d4; --chord-c2-text: #04211f;
-  --chord-c3: #9B6FD4; --chord-c3-stroke: #c6a3f0; --chord-c3-text: #1c0d2e;
-  --note-rest-bg: #162c22; --note-rest-text: #5a9878;
-  --note-active-bg: #CD4C38; --note-active-text: #fff; --note-empty-border: #224838;
-
-  /* ── Legacy aliases (remove as rules migrate) ─────────── */
-  --surface: var(--surface-0);
-  --card:    var(--surface-1);
-  --muted:   var(--text-3);
-  --text:    var(--text-2);
-  --heading: var(--text-1);
-  --primary: var(--accent-fill);
-  --primary-hover: var(--accent-fill-hover);
-  --primary-light: var(--accent-soft);
-  --radius:  var(--r-sm);
-}
-
-/* ── Colour: light (daylight) ───────────────────────────── */
-:root[data-theme="light"] {
-  --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
-  --border: #D3DED7; --border-strong: #A9BDB1;
-  --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
-  --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
-  --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
-  --selected-bg: #0F231A; --on-selected: #FFFFFF;
-  --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
-  --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
-  --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10);
-  --focus: #0B6E6C;
-  --move-lift: #0E7C7B; --move-cover: #9A6700;
-  --hole-covered: #0F231A; --hole-open: #FFFFFF;
-  --pan-stage: #0C1713; --scrim: rgba(15, 35, 26, 0.45);
-  --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
-  --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
-  --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
-}
-/* Auto: the same values as light when the OS asks for it. Keep this block identical to the one above. */
-@media (prefers-color-scheme: light) {
-  :root[data-theme="auto"] {
-    --bg: #F3F6F4; --surface-0: #E9EFEB; --surface-1: #FFFFFF; --surface-2: #F0F4F1; --surface-3: #E1E9E4;
-    --border: #D3DED7; --border-strong: #A9BDB1;
-    --text-1: #0F231A; --text-2: #2E4A3D; --text-3: #557064; --text-disabled: #93A79C;
-    --accent: #C2412E; --accent-fill: #C2412E; --accent-fill-hover: #B23A27; --accent-fill-press: #9C3222;
-    --on-accent: #FFFFFF; --accent-text: #B23A27; --accent-soft: rgba(194, 65, 46, 0.10);
-    --selected-bg: #0F231A; --on-selected: #FFFFFF;
-    --success: #17734E; --success-soft: rgba(23, 115, 78, 0.12);
-    --warning: #8A5A00; --warning-soft: rgba(138, 90, 0, 0.12);
-    --danger: #B3261E;  --danger-soft: rgba(179, 38, 30, 0.10);
-    --focus: #0B6E6C;
-    --move-lift: #0E7C7B; --move-cover: #9A6700;
-    --hole-covered: #0F231A; --hole-open: #FFFFFF;
-    --pan-stage: #0C1713; --scrim: rgba(15, 35, 26, 0.45);
-    --e-1: 0 1px 2px rgba(15, 35, 26, 0.10);
-    --e-2: 0 8px 24px rgba(15, 35, 26, 0.16);
-    --e-3: 0 -12px 40px rgba(15, 35, 26, 0.20);
-  }
-}
-@media (min-width: 1024px) { :root { --gutter: 24px; } }
-@media (prefers-reduced-motion: reduce) { :root { --dur-1: 0ms; --dur-2: 0ms; --dur-3: 0ms; } }
-```
+| Group | Tokens | Role |
+| --- | --- | --- |
+| Type | `--font`, `--fs-12…32` / `--lh-*`, `--fw-*`, `--tracking-overline` | Oakhum Text (Lato 2.0); 12px minimum |
+| Spacing | `--space-1…16` | 4px grid |
+| Radii | `--r-xs…lg`, `--r-full` | square-first: 2/4/8/12px |
+| Sizes | `--touch`, `--control-h`, `--field-h`, `--appbar-h`, `--tabbar-h`, … | 44px touch minimum |
+| Motion | `--dur-1…3`, `--ease-*` | zero under reduced motion |
+| Surfaces | `--bg`, `--surface-0…3`, `--border`, `--border-strong` | page, sunken, card, input, pressed |
+| Text | `--text-1…3`, `--text-disabled` | titles, body, meta (all ≥ 4.5:1 on their surfaces) |
+| Accent | `--accent`, `--accent-fill(-hover/-press)`, `--on-accent`, `--accent-text`, `--accent-soft` | Clay: marks, primary buttons, accent text |
+| Selection | `--selected-bg`, `--on-selected` | selected chip, segment, switch: Oak Olive on cream, Cream on ink |
+| Brand | `--brand` | the logo's colour |
+| Status | `--success`, `--warning`, `--danger` (+ `-soft`, `--on-danger`), `--focus` | in tune, near, errors, focus ring |
+| Moves | `--move-lift`, `--move-cover`, `--hole-covered`, `--hole-open` | fingering diagrams |
+| Pan | `--pan-*`, `--note-*`, `--chord-c0…c3` (+ `-stroke`, `-text`), `--alt-c*-text`, `--faint-*` | the pan drawing and chord colours |
+| Elevation | `--e-1…3`, `--scrim` | |
 
 **Base rules:** `body { font: var(--fw-regular) var(--fs-15)/var(--lh-15) var(--font); color: var(--text-2); background: var(--bg); }`. Headings and values use `--text-1`. Numbers that change (Hz, cents, counts) use `font-variant-numeric: tabular-nums`. Text inputs use 16px below 1024px (keep the existing iOS zoom rule). Global focus rule: `:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }`. Nothing gets `outline: none` without a replacement.
 
