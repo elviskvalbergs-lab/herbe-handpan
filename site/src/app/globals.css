@@ -1,0 +1,149 @@
+@import "tailwindcss";
+/* The handpan drawing's note styles, shared with the app (js/pan.js renderPan). */
+@import "../../../css/pan-drawing.css";
+
+/*
+ * Design tokens. This is the only file where raw colour values may appear;
+ * components use the tokens below (enforced by tests/design-tokens.spec.ts).
+ *
+ * The Oakhum brand (docs/design-system.md §0 in the repository root): Oak Olive,
+ * Clay, Ink, Cream and Sage, and Oakhum Text (Lato 2.0). The site has one theme:
+ * a cream page with ink bands, like the brand book's quiet landscape.
+ */
+@font-face { font-family: "Oakhum Text"; font-weight: 400; font-style: normal; font-display: swap; src: url("/fonts/oakhum-text-400.woff2") format("woff2"); }
+@font-face { font-family: "Oakhum Text"; font-weight: 500; font-style: normal; font-display: swap; src: url("/fonts/oakhum-text-500.woff2") format("woff2"); }
+@font-face { font-family: "Oakhum Text"; font-weight: 600; font-style: normal; font-display: swap; src: url("/fonts/oakhum-text-600.woff2") format("woff2"); }
+@font-face { font-family: "Oakhum Text"; font-weight: 700; font-style: normal; font-display: swap; src: url("/fonts/oakhum-text-700.woff2") format("woff2"); }
+
+:root {
+  /* The brand palette, as given in the brand book. */
+  --oak-olive: #4E4B2E;
+  --clay: #B3633F;
+  --ink: #28271F;
+  --cream: #F2E6D3;
+  --sage: #7A7A57;            /* decoration only: 3.6:1 on cream, never text */
+
+  /* Page and surfaces. */
+  --bg: #F2E6D3;              /* cream */
+  --surface: #FBF6EC;         /* cards on cream */
+  --band: #EADBC3;            /* a quiet band between sections */
+  --border: #DCCBB0;
+  --border-strong: #A48F6E;
+
+  /* Text on cream. */
+  --text: #28271F;            /* 12.2:1 */
+  --body-text: #46432F;       /* 8.1:1 */
+  --muted: #625D47;           /* 5.4:1, captions */
+
+  /* Links and the primary button on cream: Oak Olive. Cream on it is 7.2:1. */
+  --link: #4E4B2E;
+  --link-hover: #28271F;
+  --primary: #4E4B2E;
+  --primary-hover: #3B3922;
+  --on-primary: #FBF6EC;
+
+  /* Clay: the accent. As text on cream it is darkened to 4.7:1. */
+  --accent: #B3633F;
+  --accent-text: #9A5333;
+  --accent-soft: #F0D9C8;
+
+  /* Ink bands (header, hero, closing call). */
+  --dark: #28271F;
+  --dark-raised: #34322A;
+  --on-dark: #F2E6D3;         /* 12.2:1 */
+  --on-dark-muted: #D8CCB6;   /* 9.4:1 */
+  --dark-line: #575240;
+  /* The call to action on ink: a lighter clay with ink text (5.5:1). */
+  --cta: #D98A63;
+  --cta-hover: #E09A72;
+  --on-cta: #28271F;
+
+  --focus: #2F6F73;
+  --focus-on-dark: #8CC8C4;
+
+  --status-ready: #4A6B2A;    /* 5:1 on cream */
+  --status-soon: #8A5A00;     /* 4.8:1 on cream */
+  --status-ready-soft: #E1E6CF;
+  --status-soon-soft: #F3E3BF;
+  --danger: #A3311F;
+
+  /* The handpan drawing (js/pan.js): the app's light theme values, unchanged.
+     tests/pan-tokens.spec.ts checks they match ../styles.css. */
+  --pan-stage: #EADBC3;
+  --pan-g0: #FBF6EC; --pan-g1: #E9DCC5; --pan-g2: #D1BE9F; --pan-i0: #F6EEDF; --pan-i1: #E2D3B9;
+  --pan-rim: #A48F6E; --pan-groove: #BBA584; --pan-guide: #BBA584; --pan-note-stroke: #B09A78;
+  --note-rest-bg: #FBF6EC; --note-rest-text: #5A553F; --note-empty-border: #A48F6E;
+  --pan-playing: #28271F; --pan-glow: rgba(40, 39, 31, 0.35);
+  --alt-c0-text: #8C4729; --alt-c1-text: #7A5A00; --alt-c2-text: #2F6F73; --alt-c3-text: #6A4A7E;
+  --faint-stroke: #2F6F73; --faint-text: #3E6A64;
+  --chord-c0: #B3633F; --chord-c0-stroke: #D9946F; --chord-c0-text: #fff;
+  --chord-c1: #C9962E; --chord-c1-stroke: #E6BE6A; --chord-c1-text: #2A1F06;
+  --chord-c2: #5A968B; --chord-c2-stroke: #94C8BE; --chord-c2-text: #08201C;
+  --chord-c3: #9A7DB6; --chord-c3-stroke: #C4AEDC; --chord-c3-text: #1C1226;
+
+  --radius: 20px;
+  --radius-tile: 14px;
+  --pill: 999px;
+
+  --measure: 66ch;
+  --page-width: 75rem;
+  --font: "Oakhum Text", "Lato", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-band: var(--band);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-body: var(--body-text);
+  --color-muted: var(--muted);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-dark: var(--dark);
+  --color-dark-raised: var(--dark-raised);
+  --color-on-dark: var(--on-dark);
+  --color-on-dark-muted: var(--on-dark-muted);
+  --color-dark-line: var(--dark-line);
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
+  --color-on-cta: var(--on-cta);
+  --color-oak: var(--oak-olive);
+  --color-sage: var(--sage);
+  --color-ready: var(--status-ready);
+  --color-soon: var(--status-soon);
+  --color-ready-soft: var(--status-ready-soft);
+  --color-soon-soft: var(--status-soon-soft);
+  --color-danger: var(--danger);
+  --color-pan-stage: var(--pan-stage);
+  --radius-card: var(--radius);
+  --radius-tile: var(--radius-tile);
+  --radius-pill: var(--pill);
+  --font-sans: var(--font);
+  --container-page: var(--page-width);
+  --container-measure: var(--measure);
+}
+
+/* Base styles sit in the base layer so Tailwind's utilities (text-on-dark on a link, say) win. */
+@layer base {
+  html { background: var(--bg); color: var(--text); font-family: var(--font); -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font-size: 17px; line-height: 1.55; }
+  a { color: var(--link); text-underline-offset: 3px; }
+  a:hover { color: var(--link-hover); }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .on-dark :focus-visible { outline-color: var(--focus-on-dark); }
+  h1, h2, h3 { text-wrap: balance; }
+}
+@layer components {
+  .tabular { font-variant-numeric: tabular-nums; }
+  /* The pan drawing scales to its box. */
+  .pan-drawing svg { display: block; width: 100%; height: auto; }
+  .pan-drawing .pan-note { cursor: default; }
+}
