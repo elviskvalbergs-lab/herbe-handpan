@@ -25,14 +25,14 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero A (docs/design/hero-a-reference.webp): the brand landscape full
-          bleed, words over its sky. Phones get the tall picture. */}
+          bleed, words over its open sky (kept left of the tree). Phones get the tall picture. */}
       <section className="relative isolate overflow-hidden bg-bg">
         <picture>
           <source media="(min-width: 768px)" srcSet={heroWide} sizes="100vw" />
           <img {...heroImg} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_100%] md:object-[75%_100%]" />
         </picture>
-        <div className={`${container} relative flex min-h-[175vw] flex-col pt-[44vw] pb-10 sm:min-h-[150vw] md:min-h-[max(620px,min(62vw,100svh))] md:pt-[max(140px,12vw)] md:pb-28`}>
-          <div className="hero-ink max-w-[86%] md:max-w-[min(60%,780px)]">
+        <div className={`${container} relative flex min-h-[175vw] flex-col pt-[44vw] pb-10 sm:min-h-[150vw] md:min-h-[max(560px,min(56vw,calc(100svh-84px)))] md:pt-[max(64px,6vw)] md:pb-28`}>
+          <div className="max-w-[80%] md:max-w-[min(54%,720px)]">
             <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,70px)] font-bold leading-[1.03] tracking-[-0.03em] text-text">{home.heroTitle}</h1>
             <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{home.heroText}</p>
             <div className="flex flex-wrap gap-3.5">
