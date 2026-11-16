@@ -6,6 +6,7 @@ import { SCALES } from '../js/data.js';
 import { TRADITIONAL_CHARTS } from '../js/charts.js';
 import {
   parseLink, linkFor, linkSlug, linkTitle, linkPreview, withLinkPreview, catalogueLinks, closestLinks,
+  layoutFromCustomParams,
 } from '../js/links.js';
 
 test('slugs: lower case, # as s, dashes', () => {
@@ -123,4 +124,23 @@ test('the preview card goes into index.html', () => {
   assert.match(out, /<meta name="description" content="Notes, chords, arpeggios and play-along on the alto C 12-hole ocarina/);
   assert.match(out, /'<title>not this<\/title>'/, 'only the head changes');
   assert.equal((out.match(/og:title/g) || []).length, 1);
+});
+
+test('custom handpan link: each shell has one slot per capacity, empty ones null', () => {
+  // The "new custom handpan" link: eight empty top notes, an empty bottom list, bc=3.
+  const fresh = layoutFromCustomParams(new URLSearchParams({ ding: 'D3', top: Array(8).fill('null').join(','), bottom: '', tc: '8', bc: '3', name: 'My handpan' }));
+  assert.equal(fresh.top.capacity, 8);
+  assert.equal(fresh.top.slots.length, 8);
+  assert.equal(fresh.bottom.capacity, 3);
+  assert.deepEqual(fresh.bottom.slots, [{ note: null }, { note: null }, { note: null }]);
+
+  const set = layoutFromCustomParams(new URLSearchParams({ ding: 'D3', top: 'A3,null,C4', bottom: 'F2', tc: '3', bc: '2' }));
+  assert.deepEqual(set.top.slots.map(s => s.note), ['A3', null, 'C4']);
+  assert.deepEqual(set.bottom.slots.map(s => s.note), ['F2', null]);
+  assert.equal(set.name, 'Custom Layout');
+
+  // More notes than the capacity says: keep the notes.
+  const over = layoutFromCustomParams(new URLSearchParams({ top: 'A3,C4,D4', tc: '2' }));
+  assert.equal(over.top.capacity, 3);
+  assert.equal(over.bottom.slots.length, 3);
 });

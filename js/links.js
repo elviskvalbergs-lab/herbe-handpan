@@ -189,6 +189,27 @@ export function parseLink(pathname, search = '') {
   return { kind, family, ...t, tab, chord, path: linkFor(t, { tab, chord }) };
 }
 
+// A custom handpan link's query (ding, top, bottom, tc, bc, name) as a
+// layout. Each shell gets exactly as many slots as its capacity (tc / bc),
+// empty ones as null: an empty list ("bottom=") is three empty slots when
+// bc=3, not one blank note, so the shell can still be made smaller.
+export function layoutFromCustomParams(params) {
+  const shell = (key, capKey, fallback) => {
+    const raw = params.get(key) ? params.get(key).split(',') : [];
+    const notes = raw.map(n => (n && n !== 'null' ? n : null));
+    const cap = parseInt(params.get(capKey) ?? '', 10);
+    const capacity = Math.min(12, Math.max(Number.isNaN(cap) ? fallback : cap, notes.length, 0));
+    return { slots: Array.from({ length: capacity }, (_, i) => ({ note: notes[i] ?? null })), capacity };
+  };
+  return {
+    id: 'custom',
+    name: params.get('name') || 'Custom Layout',
+    isCustom: true,
+    top: { ding: params.get('ding') || 'D3', ...shell('top', 'tc', 8) },
+    bottom: shell('bottom', 'bc', 3),
+  };
+}
+
 // The nearest catalogue slugs to a mistyped one, best first.
 export function closestLinks(family, slug, limit = 3) {
   const fams = LINK_FAMILIES.includes(family) ? [family] : LINK_FAMILIES;
