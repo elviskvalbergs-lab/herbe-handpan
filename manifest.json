@@ -1,7 +1,7 @@
 {
-  "name": "Handpan Chords",
-  "short_name": "Handpan",
-  "description": "Explore handpan scales, layouts and chords",
+  "name": "Oakhum",
+  "short_name": "Oakhum",
+  "description": "Notes, chords and scales for handpan, ocarina and flute",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#090f0d",
