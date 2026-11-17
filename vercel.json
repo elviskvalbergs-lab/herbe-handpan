@@ -16,6 +16,10 @@
       "destination": "/"
     },
     {
+      "source": "/kalimba/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/ocarina/:path*",
       "destination": "/"
     },

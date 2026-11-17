@@ -9,11 +9,20 @@ import { TRADITIONAL_CHARTS, chartsForFamily, chartDefaultKey, instrumentFromCha
 import { linkFor as appLinkFor, linkSlug, linkTitle, parseLink } from "@engine/links.js";
 import { renderPan } from "@engine/pan.js";
 import { ocarinaToLayout, arpeggioOrder, renderFingering } from "@engine/ocarina-ui.js";
-import { TONGUE_DRUMS } from "@engine/tonguedrums.js";
+import { LAYOUT_FAMILIES } from "@engine/layoutfamilies.js";
 
-export type Family = "handpan" | "tongue-drum" | "ocarina" | "flute";
-/** The families the app draws as a pan (a middle note and a ring): their chords play together. */
-export type PanFamily = "handpan" | "tongue-drum";
+export type Family = "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute";
+/** The families the app draws from a layout (js/layoutfamilies.js): handpans, tongue drums, kalimbas. Their chords play together. */
+export type PanFamily = "handpan" | "tongue-drum" | "kalimba";
+
+export function isPanFamily(family: string): family is PanFamily {
+  return Object.hasOwn(LAYOUT_FAMILIES, family);
+}
+
+/** The app's word for a layout family: "handpan", "tongue drum", "kalimba". */
+export function panWord(family: PanFamily): string {
+  return LAYOUT_FAMILIES[family].word;
+}
 
 export type Tuning = {
   /** The app's link slug, unique within a family: "d-kurd", "alto-c-12". */
@@ -66,12 +75,17 @@ export function handpanTunings(): Tuning[] {
 
 /** Every tongue drum in the app's catalogue (js/tonguedrums.js, from makers' listings). */
 export function tongueDrumTunings(): Tuning[] {
-  return TONGUE_DRUMS.map((t: Scale) => scaleTuning(t, "tongue-drum"));
+  return LAYOUT_FAMILIES["tongue-drum"].tunings.map((t: Scale) => scaleTuning(t, "tongue-drum"));
+}
+
+/** Every kalimba in the app's catalogue (js/kalimbas.js, from makers' charts). */
+export function kalimbaTunings(): Tuning[] {
+  return LAYOUT_FAMILIES.kalimba.tunings.map((t: Scale) => scaleTuning(t, "kalimba"));
 }
 
 // The app's tuning behind a pan-family slug.
 function panScale(slug: string, family: PanFamily): Scale | undefined {
-  const list: Scale[] = family === "tongue-drum" ? TONGUE_DRUMS : SCALES;
+  const list: Scale[] = LAYOUT_FAMILIES[family]?.tunings ?? SCALES;
   return list.find((s: Scale) => lastSegment(linkFor({ scaleId: s.id })) === slug);
 }
 
@@ -108,7 +122,9 @@ function buildChartTunings(family: "ocarina" | "flute"): Tuning[] {
 const CHART_TUNINGS = { ocarina: buildChartTunings("ocarina"), flute: buildChartTunings("flute") };
 
 export function tuningsFor(family: Family): Tuning[] {
-  return family === "handpan" ? handpanTunings() : family === "tongue-drum" ? tongueDrumTunings() : chartTunings(family);
+  if (family === "handpan") return handpanTunings();
+  if (isPanFamily(family)) return LAYOUT_FAMILIES[family].tunings.map((t: Scale) => scaleTuning(t, family));
+  return chartTunings(family);
 }
 
 export function findTuning(family: Family, slug: string): Tuning | null {
@@ -129,7 +145,7 @@ const SHORT: Record<string, string> = {
   maj6: "6", min6: "m6", add9: "add9", madd9: "m(add9)", maj9: "maj9", min9: "m9", dom9: "9",
 };
 
-/** Chords on a handpan scale or tongue drum, as the app finds them; intervals are left out. */
+/** Chords on a handpan scale, tongue drum or kalimba, as the app finds them; intervals are left out. */
 export function handpanChords(slug: string, family: PanFamily = "handpan"): Chord[] {
   const scale = panScale(slug, family);
   if (!scale) return [];
@@ -153,12 +169,12 @@ export function triads(chords: Chord[]): Chord[] {
 
 const display = (n: string) => displayNote(n, true).replace("b", "♭");
 
-/** The app's drawing of a handpan scale or tongue drum, with a chord's notes lit. */
+/** The app's drawing of a handpan scale, tongue drum or kalimba, with a chord's notes lit. */
 export function panSvg(slug: string, chordNotes: string[] = [], family: PanFamily = "handpan"): string {
   const scale = panScale(slug, family);
   if (!scale) return "";
   return renderPan(createLayoutFromScale(scale), { highlightNotes: chordNotes, useFlats: true })
-    .replace('id="handpan-svg"', `role="img" aria-label="${scale.name} handpan layout"`);
+    .replace('id="handpan-svg"', `role="img" aria-label="${scale.name} ${panWord(family)} layout"`);
 }
 
 /** A deep link into the app: the tuning, and optionally a tab and a chord. */

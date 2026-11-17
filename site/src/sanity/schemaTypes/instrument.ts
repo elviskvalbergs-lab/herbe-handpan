@@ -15,7 +15,7 @@ export const instrument = defineType({
       name: "family",
       type: "string",
       description: "Which of the app's instruments this page shows. 'Not in the app yet' for coming-soon ones.",
-      options: { list: [{ title: "Handpan", value: "handpan" }, { title: "Tongue drum", value: "tongue-drum" }, { title: "Ocarina", value: "ocarina" }, { title: "Flute", value: "flute" }, { title: "Not in the app yet", value: "none" }] },
+      options: { list: [{ title: "Handpan", value: "handpan" }, { title: "Tongue drum", value: "tongue-drum" }, { title: "Kalimba", value: "kalimba" }, { title: "Ocarina", value: "ocarina" }, { title: "Flute", value: "flute" }, { title: "Not in the app yet", value: "none" }] },
       validation: (r) => r.required(),
     }),
     defineField({

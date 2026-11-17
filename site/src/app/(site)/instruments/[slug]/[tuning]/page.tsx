@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { InstrumentView } from "@/components/InstrumentView";
 import { instrumentTunings } from "@/lib/instruments";
+import { isPanFamily, panWord } from "@/lib/engine";
 import { getInstrument, getInstruments } from "@/sanity/lib/data";
 
 type Props = { params: Promise<{ slug: string; tuning: string }> };
@@ -18,11 +19,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = await getInstrument(slug);
   const t = doc ? instrumentTunings(doc).all.find((x) => x.slug === tuning) : null;
   if (!doc || !t) return {};
-  const isPan = t.family === "handpan";
+  const word = isPanFamily(t.family) ? panWord(t.family) : null;
   return {
-    title: isPan ? `${t.name} handpan chords` : `${t.name} fingerings`,
-    description: isPan
-      ? `Every chord on the ${t.name} handpan (${t.notes.join(" ")}), drawn on its layout. Free in your browser.`
+    title: word ? `${t.name} ${word} chords` : `${t.name} fingerings`,
+    description: word
+      ? `Every chord on the ${t.name} ${word} (${t.notes.join(" ")}), drawn on its layout. Free in your browser.`
       : `Fingerings for every note of the ${t.name}, and chords as arpeggios. Free in your browser.`,
     alternates: { canonical: `/instruments/${slug}/${tuning}` },
   };

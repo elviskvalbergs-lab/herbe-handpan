@@ -8,26 +8,27 @@
 //   /flute/tin-whistle-d, /flute/naf-6-a4
 //   /tongue-drum/d-kurd-9[/chords[/a-min]] a tongue drum from TONGUE_DRUMS
 //   /tongue-drum/custom?…                  a custom tongue drum (same query as a custom handpan)
+//   /kalimba/c-major-17, /kalimba/custom?… kalimbas (js/kalimbas.js), the same way
 //   /s/7KQ2PM[/chords]                    an instrument shared by code
 //
 // A slug never changes or disappears once published: a rename only adds an
 // alias. Every slug is lower case; '#' is written 's' (F# Kurd → fs-kurd).
 
 import { SCALES } from './data.js';
-import { TONGUE_DRUMS, isTongueDrumId, findTuning } from './tonguedrums.js';
+import { LAYOUT_FAMILIES, LAYOUT_FAMILY_IDS, isLayoutFamily, familyOfTuningId, findTuning } from './layoutfamilies.js';
 import { TRADITIONAL_CHARTS, getChart, instrumentFromChart } from './charts.js';
 
 // The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
 export const APP_NAME = 'Oakhum';
 
-export const LINK_FAMILIES = ['handpan', 'tongue-drum', 'ocarina', 'flute'];
+export const LINK_FAMILIES = [...LAYOUT_FAMILY_IDS, 'ocarina', 'flute'];
 export const LINK_TABS = {
   handpan: ['pan', 'chords', 'playlists', 'listen'],
-  'tongue-drum': ['pan', 'chords', 'playlists', 'listen'],
+  ...Object.fromEntries(LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan').map(f => [f, ['pan', 'chords', 'playlists', 'listen']])),
   ocarina: ['notes', 'chords', 'listen'],
   flute: ['notes', 'chords', 'listen'],
 };
-const LINK_DEFAULT_TAB = { handpan: 'pan', 'tongue-drum': 'pan', ocarina: 'notes', flute: 'notes' };
+const LINK_DEFAULT_TAB = { ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, 'pan'])), ocarina: 'notes', flute: 'notes' };
 
 export function linkSlug(text) {
   return String(text).toLowerCase().replace(/#/g, 's').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -84,9 +85,12 @@ function linkBuildTables() {
     const pick = list.find(s => s.id.startsWith('D-')) ?? list[0];
     alias.handpan.set(rest, linkSlug(pick.id));
   }
-  for (const t of TONGUE_DRUMS) {
-    canonical['tongue-drum'].set(t.slug, { family: 'tongue-drum', scaleId: t.id });
-    byTarget.set(`scale:${t.id}`, t.slug);
+  // Tongue drums, kalimbas…: each tuning by its own slug.
+  for (const fam of LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan')) {
+    for (const t of LAYOUT_FAMILIES[fam].tunings) {
+      canonical[fam].set(t.slug, { family: fam, scaleId: t.id });
+      byTarget.set(`scale:${t.id}`, t.slug);
+    }
   }
   for (const chart of TRADITIONAL_CHARTS) {
     const fam = chart.family;
@@ -132,7 +136,7 @@ export function linkFor(target, { tab = null, chord = null } = {}) {
   else if (target.scaleId) {
     const slug = LINK_TABLES.byTarget.get(`scale:${target.scaleId}`);
     if (!slug) return null;
-    family = isTongueDrumId(target.scaleId) ? 'tongue-drum' : 'handpan';
+    family = familyOfTuningId(target.scaleId);
     base = `/${family}/${slug}`;
   } else if (target.chartId) {
     const chart = getChart(target.chartId);
@@ -142,7 +146,7 @@ export function linkFor(target, { tab = null, chord = null } = {}) {
     if (!slug) return null;
     base = `/${chart.family}/${slug}`; family = chart.family;
   } else if (target.custom != null) {
-    family = target.family === 'tongue-drum' ? 'tongue-drum' : 'handpan';
+    family = isLayoutFamily(target.family) ? target.family : 'handpan';
     base = `/${family}/custom`;
     const q = String(target.custom);
     query = q ? `?${q.replace(/^\?/, '')}` : '';
@@ -179,7 +183,7 @@ export function parseLink(pathname, search = '') {
   const slug = linkSlug(rawSlug);
   const tab = tabOf(family);
 
-  if ((family === 'handpan' || family === 'tongue-drum') && slug === 'custom') {
+  if (isLayoutFamily(family) && slug === 'custom') {
     const q = String(search).replace(/^\?/, '');
     return { kind: 'custom', family, params: new URLSearchParams(q), tab, chord, path: linkFor({ custom: q, family }, { tab, chord }) };
   }
@@ -204,8 +208,9 @@ export function parseLink(pathname, search = '') {
 // empty ones as null: an empty list ("bottom=") is three empty slots when
 // bc=3, not one blank note, so the shell can still be made smaller.
 export function layoutFromCustomParams(params, family = 'handpan') {
-  const drum = family === 'tongue-drum';
-  const max = drum ? 16 : 12; // tongue drums come with up to 15 tongues
+  const fam = isLayoutFamily(family) ? family : 'handpan';
+  const drum = fam === 'tongue-drum';
+  const max = LAYOUT_FAMILIES[fam].maxNotes; // notes besides the lowest, per shell
   const shell = (key, capKey, fallback) => {
     const raw = params.get(key) ? params.get(key).split(',') : [];
     const notes = raw.map(n => (n && n !== 'null' ? n : null));
@@ -218,9 +223,9 @@ export function layoutFromCustomParams(params, family = 'handpan') {
     name: params.get('name') || 'Custom Layout',
     isCustom: true,
     // A tongue drum: centre=1 when its lowest note is a tongue in the middle.
-    ...(drum ? { instrument: 'tongue-drum', centre: params.get('centre') === '1' } : {}),
+    ...(fam !== 'handpan' ? { instrument: fam, centre: drum && params.get('centre') === '1' } : {}),
     top: { ding: params.get('ding') || 'D3', ...shell('top', 'tc', 8) },
-    bottom: shell('bottom', 'bc', drum ? 0 : 3),
+    bottom: shell('bottom', 'bc', fam === 'handpan' ? 3 : 0),
   };
 }
 
@@ -260,7 +265,7 @@ function linkDistance(a, b) {
 // A name for the instrument a link opens, for titles and preview cards.
 export function linkTitle(link) {
   if (!link) return null;
-  const what = link.family === 'tongue-drum' ? 'tongue drum' : 'handpan';
+  const what = LAYOUT_FAMILIES[isLayoutFamily(link.family) ? link.family : 'handpan'].word;
   if (link.kind === 'scale') return `${(findTuning(link.scaleId)?.name ?? link.scaleId).replace(/ \(\d+\)$/, '')} ${what}`;
   if (link.kind === 'custom') return `${link.params.get('name') || 'Custom'} ${what}`;
   if (link.kind === 'shared') return 'Shared instrument';
@@ -283,7 +288,7 @@ export function linkPreview(pathname, search = '') {
   const link = parseLink(pathname, search);
   const title = linkTitle(link);
   if (!title || link.kind === 'unknown') {
-    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
+    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
   }
   const what = link.tab === 'listen' ? 'Listen to a song and play along'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`

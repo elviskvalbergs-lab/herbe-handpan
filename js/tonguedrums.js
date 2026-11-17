@@ -11,8 +11,6 @@
 //
 // Pure data; unit tested in Node (tests/tonguedrums.test.mjs).
 
-import { SCALES } from './data.js';
-
 const SELA_CATALOGUE = 'https://selapercussion.com/wp-content/uploads/SELA-World-Of-Sounds-Catalog-2024.pdf';
 
 function td(id, { name, slug, family, desc, centre = false, notes, sources }) {
@@ -141,10 +139,3 @@ export const TONGUE_DRUMS = [
 
 export function isTongueDrumId(id) { return String(id).startsWith('TD-'); }
 
-// A tuning by id: a handpan scale or a tongue drum.
-export function findTuning(id) {
-  return SCALES.find(s => s.id === id) ?? TONGUE_DRUMS.find(t => t.id === id) ?? null;
-}
-
-// Which instrument a layout is: 'handpan' or 'tongue-drum'.
-export function layoutInstrument(layout) { return layout?.instrument === 'tongue-drum' ? 'tongue-drum' : 'handpan'; }

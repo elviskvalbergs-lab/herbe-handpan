@@ -1,6 +1,7 @@
 // Unit tests for js/links.js (docs/free-to-play.md, "1. Deep links"). Run with: node --test
 import { test } from 'node:test';
 import { TONGUE_DRUMS } from '../js/tonguedrums.js';
+import { KALIMBAS } from '../js/kalimbas.js';
 import assert from 'node:assert/strict';
 
 import { SCALES } from '../js/data.js';
@@ -22,8 +23,8 @@ test('every catalogue scale and chart key has exactly one link, and it round-tri
   const paths = links.map(l => l.path);
   assert.equal(new Set(paths).size, paths.length, 'no two instruments share a link');
   const keys = TRADITIONAL_CHARTS.reduce((n, c) => n + c.keys.length, 0);
-  assert.equal(links.length, SCALES.length + TONGUE_DRUMS.length + keys);
-  for (const s of [...SCALES, ...TONGUE_DRUMS]) {
+  assert.equal(links.length, SCALES.length + TONGUE_DRUMS.length + KALIMBAS.length + keys);
+  for (const s of [...SCALES, ...TONGUE_DRUMS, ...KALIMBAS]) {
     const path = linkFor({ scaleId: s.id });
     const back = parseLink(path);
     assert.equal(back.kind, 'scale', path);

@@ -21,7 +21,7 @@ self.addEventListener('message', e => { if (e.data?.type === 'oakhum-off') off =
 // Pages that are the app. '/' is the app on its own Vercel address and the
 // website's home on the shared domain: online the network answers either
 // way, and offline the app is the best we have.
-const APP_PAGES = /^\/(play|handpan|tongue-drum|ocarina|flute|s)?(\/|$)/;
+const APP_PAGES = /^\/(play|handpan|tongue-drum|kalimba|ocarina|flute|s)?(\/|$)/;
 function isAppPage(url) { return url.origin === self.location.origin && APP_PAGES.test(url.pathname); }
 // Files of the app (not the website's /_next/… or images).
 const APP_FILES = /^\/(manifest\.json|icon[^/]*|fonts\/[^/]+|og\/[^/]+)$/;

@@ -80,6 +80,16 @@ it("a wind instrument's chords are spelled as its key: F#m on a D whistle", () =
   expect(windChords(whistle).map((c) => c.short)).toContain("F#m");
 });
 
+it("kalimbas come from the app: every tuning, its chords and its drawing of keys", () => {
+  const kl = tuningsFor("kalimba");
+  expect(kl.length).toBeGreaterThanOrEqual(10);
+  for (const t of kl) expect(t.path).toBe(`/kalimba/${t.slug}`);
+  expect(triads(handpanChords("c-major-17", "kalimba")).map((c) => c.short)).toEqual(expect.arrayContaining(["C", "Dm", "Em", "F", "G", "Am"]));
+  const svg = panSvg("c-major-17", ["C4", "E4", "G4"], "kalimba");
+  expect(svg).toMatch(/pan-note kalimba-key/);
+  expect(svg).toContain('aria-label="C Major (17) kalimba layout"');
+});
+
 it("a demo's app link opens the app on that tuning with the chord just played", async () => {
   const { parseLink } = await import("@engine/links.js");
   const kurd = findTuning("handpan", "d-kurd")!;
