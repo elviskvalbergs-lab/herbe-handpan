@@ -1,20 +1,27 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { APP_URL } from "@/lib/site";
-import { btnCta, container } from "@/lib/ui";
+import { btnCta, btnInk, container } from "@/lib/ui";
 import { Logo } from "./Logo";
 
+// On the home page the header is a cream band above the hero picture, ink on
+// cream (docs/design/hero-a-reference.webp). Elsewhere it is the ink band.
 export function SiteHeader() {
+  const home = usePathname() === "/";
+  const link = home ? "text-text no-underline hover:text-text hover:underline" : "text-on-dark no-underline hover:text-on-dark hover:underline";
   return (
-    <header className="on-dark bg-dark text-on-dark">
-      <nav aria-label="Main" className={`${container} flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4`}>
-        <Link href="/" className="text-on-dark hover:text-on-dark" aria-label="Oakhum home">
+    <header className={home ? "relative z-10 bg-bg text-text" : "on-dark bg-dark text-on-dark"}>
+      <nav aria-label="Main" className={`${container} flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4 ${home ? "md:py-6" : ""}`}>
+        <Link href="/" className={home ? "text-text hover:text-text" : "text-on-dark hover:text-on-dark"} aria-label="Oakhum home">
           <Logo className="h-9" label="" />
         </Link>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[16px]">
-          <Link href="/#instruments" className="text-on-dark no-underline hover:text-on-dark hover:underline">Instruments</Link>
-          <Link href="/#how" className="text-on-dark no-underline hover:text-on-dark hover:underline">How it works</Link>
-          <Link href="/request" className="text-on-dark no-underline hover:text-on-dark hover:underline">Request</Link>
-          <a href={APP_URL} className={`${btnCta} min-h-11 px-5 py-2 text-[16px]`}>Open the app</a>
+        <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 text-[16px] font-semibold`}>
+          <Link href="/#instruments" className={link}>Instruments</Link>
+          <Link href="/#how" className={link}>How it works</Link>
+          <Link href="/request" className={link}>Request</Link>
+          <a href={APP_URL} className={`${home ? btnInk : btnCta} min-h-11 px-5 py-2 text-[16px]`}>Open the app</a>
         </div>
       </nav>
     </header>

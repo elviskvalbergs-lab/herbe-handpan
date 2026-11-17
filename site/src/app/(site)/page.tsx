@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 import { Faq } from "@/components/Faq";
 import { Features } from "@/components/Features";
@@ -6,10 +6,16 @@ import { HandpanDemo } from "@/components/HandpanDemo";
 import { InstrumentList } from "@/components/InstrumentList";
 import { handpanChords, triads } from "@/lib/engine";
 import { APP_URL } from "@/lib/site";
-import { btnCta, btnOnDark, btnPrimary, container, h2, h3 } from "@/lib/ui";
+import { btnCta, btnInk, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
+import * as seed from "@/content/seed";
 import { getFeatures, getHome, getInstruments } from "@/sanity/lib/data";
 
 const DEMO_SCALE = "d-kurd";
+
+// The hero's picture, art-directed: brand/hero-sky-wide.webp (2:1) from
+// 768px, brand/hero-sky-tall.webp (2:3) on phones. Decorative, so alt="".
+const { props: { srcSet: heroWide } } = getImageProps({ src: "/brand/hero-sky-wide.webp", alt: "", width: 1774, height: 887, sizes: "100vw", priority: true });
+const { props: heroImg } = getImageProps({ src: "/brand/hero-sky-tall.webp", alt: "", width: 1024, height: 1536, sizes: "100vw", priority: true });
 
 export default async function HomePage() {
   const [home, instruments, features] = await Promise.all([getHome(), getInstruments(), getFeatures()]);
@@ -18,18 +24,35 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="on-dark bg-dark text-on-dark">
-        <div className={`${container} flex flex-wrap items-center gap-14 pt-10 pb-20 lg:pt-14`}>
-          <div className="min-w-0 flex-[1_1_440px]">
-            <h1 className="m-0 mb-6 text-[clamp(40px,6vw,68px)] font-semibold leading-[1.03] tracking-[-0.025em]">{home.heroTitle}</h1>
-            <p className="m-0 mb-9 max-w-[540px] text-[20px] text-on-dark-muted">{home.heroText}</p>
+      {/* Hero A (docs/design/hero-a-reference.webp): the brand landscape full
+          bleed, words over its open sky (kept left of the tree). Phones get the tall picture. */}
+      <section className="relative isolate overflow-hidden bg-bg">
+        <picture>
+          <source media="(min-width: 768px)" srcSet={heroWide} sizes="100vw" />
+          <img {...heroImg} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_100%] md:object-[75%_100%]" />
+        </picture>
+        <div className={`${container} relative flex min-h-[175vw] flex-col pt-[44vw] pb-10 sm:min-h-[150vw] md:min-h-[max(560px,min(56vw,calc(100svh-84px)))] md:pt-[max(64px,6vw)] md:pb-28`}>
+          <div className="max-w-[80%] md:max-w-[min(54%,720px)]">
+            <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,70px)] font-bold leading-[1.03] tracking-[-0.03em] text-text">{home.heroTitle}</h1>
+            <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{home.heroText}</p>
             <div className="flex flex-wrap gap-3.5">
-              <a href={APP_URL} className={btnCta}>Start playing, free</a>
-              <Link href="#instruments" className={btnOnDark}>Choose your instrument</Link>
+              <a href={APP_URL} className={btnPrimary}>{home.heroCta ?? seed.home.heroCta}</a>
+              <a href="#demo" className={btnOnPicture}>{home.heroListen ?? seed.home.heroListen}</a>
             </div>
-            {home.heroNote ? <p className="mt-5 mb-0 text-[15px] text-on-dark-muted">{home.heroNote}</p> : null}
           </div>
-          <div className="min-w-0 flex-[1_1_380px]">
+          <a href="#demo" className={`${btnInk} absolute bottom-8 left-4 px-5 py-2.5 text-[16px] max-md:hidden sm:left-8`}>
+            <span aria-hidden="true">↓</span> {home.heroTry ?? seed.home.heroTry}
+          </a>
+        </div>
+      </section>
+
+      <section id="demo" className="on-dark scroll-mt-4 bg-dark text-on-dark">
+        <div className={`${container} flex flex-wrap items-center gap-10 py-16 lg:py-20`}>
+          <div className="min-w-0 flex-[1_1_320px]">
+            <h2 className={`${h2} m-0 mb-4`}>{home.heroTry ?? seed.home.heroTry}</h2>
+            {home.heroNote ? <p className="m-0 text-[17px] text-on-dark-muted">{home.heroNote}</p> : null}
+          </div>
+          <div className="min-w-0 flex-[1_1_420px]">
             <HandpanDemo slug={DEMO_SCALE} chords={demoChords} initial={dm} caption={home.demoCaption} tone="dark" />
           </div>
         </div>
@@ -47,17 +70,6 @@ export default async function HomePage() {
           ))}
         </ol>
       </section>
-
-      <div className={container}>
-        <Image
-          src="/brand/hero-wide.webp"
-          alt="An oak on a hill above a river valley, someone playing a flute in its shade"
-          width={1600}
-          height={900}
-          sizes="(min-width: 1200px) 1136px, 100vw"
-          className="aspect-[21/9] h-auto w-full rounded-card object-cover object-[60%_45%]"
-        />
-      </div>
 
       <section id="instruments" className={`${container} pt-20 pb-24`}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
