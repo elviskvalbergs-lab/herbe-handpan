@@ -4171,7 +4171,7 @@ function viewEditor() {
               help: `${topFilled + 1} ${fi.thing}${topFilled ? 's' : ''} · ${topEmpty} empty`,
             })}
           </div>
-          ${isCustom && fam === 'tongue-drum' ? uiSwitchRow({ label: 'Lowest note in the middle', help: 'A round tongue in the centre, as on handpan-style tongue drums', on: !!layout.centre, action: 'ed-centre' }) : ''}` : `<div class="ed-shell">
+          ${fam === 'tongue-drum' ? uiSwitchRow({ label: 'Lowest note in the middle', help: layout.centre ? 'A round tongue in the centre' : 'All tongues round the edge', on: !!layout.centre, action: 'ed-centre' }) : ''}` : `<div class="ed-shell">
             <div class="overline">Top shell</div>
             ${uiStepper({
               value: layout.top.capacity, label: 'Top shell', action: 'adjust-capacity', data: { shell: 'top' },
@@ -5848,7 +5848,11 @@ function stateToHash() {
   const chord = state.view === 'chords' ? state.selectedChord?.id ?? null : null;
 
   if (!state.layout.isCustom) {
-    return linkFor({ scaleId: state.layout.id }, { tab, chord }) ?? `#scale=${state.layout.id}${chord ? `&chord=${chord}` : ''}`;
+    const path = linkFor({ scaleId: state.layout.id }, { tab, chord }) ?? `#scale=${state.layout.id}${chord ? `&chord=${chord}` : ''}`;
+    // A catalogue tongue drum drawn the other way round from the maker's (ed-centre).
+    const maker = findTuning(state.layout.id);
+    const flipped = layoutInstrument(state.layout) === 'tongue-drum' && maker && !!maker.centre !== !!state.layout.centre;
+    return flipped && path.startsWith('/') ? `${path}?centre=${state.layout.centre ? 1 : 0}` : path;
   }
 
   const topSlots = state.layout.top.slots.map(s => s.note ?? 'null').join(',');
@@ -5943,8 +5947,10 @@ function openLink(link) {
     return;
   }
   // Handpans: a scale, or custom notes carried in the link.
-  if (link.kind === 'scale') openScaleLayout(findTuning(link.scaleId));
-  else {
+  if (link.kind === 'scale') {
+    openScaleLayout(findTuning(link.scaleId));
+    if (link.centre != null && layoutInstrument(state.layout) === 'tongue-drum') state.layout.centre = link.centre;
+  } else {
     state.layout = layoutFromCustomParams(link.params, link.family);
     state.currentInstrumentId = null;
     state.chords = findAllChords(state.layout);
@@ -8133,7 +8139,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'ed-centre') {
-    if (!state.layout?.isCustom) return;
+    if (layoutInstrument(state.layout) !== 'tongue-drum') return;
     state.layout.centre = !state.layout.centre;
     state.chords = findAllChords(state.layout);
     navReplace(stateToHash());

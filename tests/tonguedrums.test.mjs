@@ -81,3 +81,15 @@ test('Listen and the setup work on tongue drums', () => {
   const inD = setupTopScales(setupScalesFor(TONGUE_DRUMS, 2));
   assert.equal(new Set(inD.map(t => t.family)).size, inD.length);
 });
+
+test('a catalogue drum can be drawn with or without a middle tongue, and the link keeps it', () => {
+  const l = parseLink('/tongue-drum/d-kurd-9/chords', '?centre=0');
+  assert.deepEqual([l.kind, l.scaleId, l.centre, l.tab], ['scale', 'TD-D-Kurd-9', false, 'chords']);
+  assert.equal(l.path, '/tongue-drum/d-kurd-9/chords?centre=0');
+  assert.equal(parseLink('/tongue-drum/d-kurd-9').centre, undefined, 'the maker\'s drawing when the link says nothing');
+  assert.equal(parseLink('/handpan/d-kurd', '?centre=0').centre, undefined, 'only tongue drums');
+  const flat = createLayoutFromScale(findTuning('TD-D-Kurd-9'));
+  flat.centre = false;
+  const svg = renderPan(flat);
+  assert.equal((svg.match(/class="pan-note tongue/g) ?? []).length, 9, 'all nine round the edge');
+});

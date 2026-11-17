@@ -975,7 +975,7 @@ Each step is one small commit that can be checked on the Vercel preview at 360px
 A steel tongue drum is played like a handpan (struck notes, chords together, often a middle note), so it is a layout in the handpan engine and uses the handpan screens unchanged: Chords, Drum (the Pan tab, renamed), Playlists, progressions, Listen, the setup, saving and links (`/tongue-drum/<slug>`, `/tongue-drum/custom`). Only these differ:
 
 - **Picture:** `renderPan` draws a layout with `instrument: 'tongue-drum'` as tongues: each note a rounded `rect` (coloured by `css/pan-drawing.css` like a dent) inside a U-shaped cut, pointing at the middle; the lowest at the bottom, the others climbing alternately right and left as makers lay them out; `centre: true` puts the lowest note in the middle as a round tongue. Same note ids and classes, so taps, chord colours, the playing glow and the editor need nothing new.
-- **Drum tab:** one **Tongues** count instead of the two shells, no shell switch and no ring rotation; a custom drum has a "Lowest note in the middle" switch.
+- **Drum tab:** one **Tongues** count instead of the two shells, no shell switch and no ring rotation, and a "Lowest note in the middle" switch on every drum: many drums sold with a catalogue tuning have no middle tongue. A catalogue drum drawn the other way round from the maker's keeps it in its link (`?centre=0` or `?centre=1`) and in what is saved.
 - **Sound:** its own struck voice (`'tongue-drum'` in `js/audio.js`), purer than the handpan's.
 - **Data:** `js/tonguedrums.js`, each tuning with the maker's listing as its source.
 
