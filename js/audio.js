@@ -215,7 +215,7 @@ function playFreq(freq, startTime, dur = 0.9) {
   const harmonics = voice === 'kalimba' ? [
     { mult: 1,   gain: 0.6,  decay: 2.4 },
     { mult: 2,   gain: 0.06, decay: 0.8 },
-    { mult: 5.4, gain: 0.05, decay: 0.15 },
+    { mult: 5.4, gain: 0.03, decay: 0.12 },
   ] : voice === 'tongue-drum' ? [
     { mult: 1,   gain: 0.62, decay: 6.5 },
     { mult: 2,   gain: 0.12, decay: 2.4 },
@@ -236,7 +236,10 @@ function playFreq(freq, startTime, dur = 0.9) {
 
     env.gain.setValueAtTime(0, now);
     env.gain.linearRampToValueAtTime(gain, now + (voice === 'tongue-drum' ? 0.008 : voice === 'kalimba' ? 0.002 : 0.004));
-    env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
+    // The quick drop after the strike, then the long fade. A partial that
+    // dies sooner than the drop (the kalimba's pluck) only fades: scheduling
+    // the drop after its fade would bring it back as a beep.
+    if (decay > 0.18) env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
 
     osc.connect(env);

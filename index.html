@@ -6626,7 +6626,7 @@ function playFreq(freq, startTime, dur = 0.9) {
   const harmonics = voice === 'kalimba' ? [
     { mult: 1,   gain: 0.6,  decay: 2.4 },
     { mult: 2,   gain: 0.06, decay: 0.8 },
-    { mult: 5.4, gain: 0.05, decay: 0.15 },
+    { mult: 5.4, gain: 0.03, decay: 0.12 },
   ] : voice === 'tongue-drum' ? [
     { mult: 1,   gain: 0.62, decay: 6.5 },
     { mult: 2,   gain: 0.12, decay: 2.4 },
@@ -6647,7 +6647,10 @@ function playFreq(freq, startTime, dur = 0.9) {
 
     env.gain.setValueAtTime(0, now);
     env.gain.linearRampToValueAtTime(gain, now + (voice === 'tongue-drum' ? 0.008 : voice === 'kalimba' ? 0.002 : 0.004));
-    env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
+    // The quick drop after the strike, then the long fade. A partial that
+    // dies sooner than the drop (the kalimba's pluck) only fades: scheduling
+    // the drop after its fade would bring it back as a beep.
+    if (decay > 0.18) env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
 
     osc.connect(env);
@@ -14738,7 +14741,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = '114901ea1519'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = '9384cca6362c'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 
