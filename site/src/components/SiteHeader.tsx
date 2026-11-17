@@ -13,15 +13,17 @@ export function SiteHeader() {
   const link = home ? "text-text no-underline hover:text-text hover:underline" : "text-on-dark no-underline hover:text-on-dark hover:underline";
   return (
     <header className={home ? "relative z-10 bg-bg text-text" : "on-dark bg-dark text-on-dark"}>
-      <nav aria-label="Main" className={`${container} flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-4 ${home ? "md:py-6" : ""}`}>
+      <nav aria-label="Main" className={`${container} flex flex-wrap items-center justify-between gap-x-6 gap-y-2.5 py-3 md:flex-nowrap md:py-4 ${home ? "md:py-6" : ""}`}>
         <Link href="/" className={home ? "text-text hover:text-text" : "text-on-dark hover:text-on-dark"} aria-label="Oakhum home">
-          <Logo className="h-9" label="" />
+          <Logo className="h-8 md:h-9" label="" />
         </Link>
-        <div className={`flex flex-wrap items-center gap-x-6 gap-y-2 text-[16px] font-semibold`}>
+        {/* Phones: the logo and the app button on one row, the links on one row
+            below. From 768px everything sits in one row, the button last. */}
+        <a href={APP_URL} className={`${home ? btnInk : btnCta} min-h-10 px-4 py-1.5 text-[15px] md:order-last md:min-h-11 md:px-5 md:py-2 md:text-[16px]`}>Open the app</a>
+        <div className="flex w-full items-center justify-between gap-x-6 text-[15px] font-semibold sm:justify-start md:ml-auto md:w-auto md:text-[16px]">
           <Link href="/#instruments" className={link}>Instruments</Link>
           <Link href="/#how" className={link}>How it works</Link>
           <Link href="/request" className={link}>Request</Link>
-          <a href={APP_URL} className={`${home ? btnInk : btnCta} min-h-11 px-5 py-2 text-[16px]`}>Open the app</a>
         </div>
       </nav>
     </header>
