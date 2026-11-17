@@ -6,3 +6,10 @@ __pycache__/
 # Built by build.py (Vercel runs it on every deploy). Not committed: every
 # change to js/ or css rebuilt it, so any two pull requests conflicted here.
 /index.html
+# Demo video build output
+scripts/demo-video/frames/
+scripts/demo-video/*.mp4
+scripts/demo-video/*.webm
+scripts/demo-video/*.png
+scripts/demo-video/*.ffconcat
+scripts/demo-video/timeline.json
