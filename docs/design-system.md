@@ -970,6 +970,15 @@ Each step is one small commit that can be checked on the Vercel preview at 360px
 - **Charted instruments get Set up too** (`viewChartSetup`): ocarinas and flutes from a published chart have the same tab without Readings: Your ocarina/flute (name, photo, key), Where the holes are (ocarinas), Holes and fingers, and Your fingerings (notes played your way). On Notes, "Not how you play it? Change the fingering" saves a fingering for that note (badge "Your fingering"); "Use the chart's one" puts the published one back. A key change moves fingerings set by hand with it and keeps renamed fingers.
 - **Ocarina / flute Chords use the handpan Chords layout** (`viewOcarinaChords`, `ocChordStageHtml`): the same `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` structure. On top (sticky on phones; the right column from 600px): one fingering picture in place of the pan, then the chord card (title, notes, ♡, ▶ Chord, ⋯) with the notes in playing order as numbered buttons and the move for the note on show. Picking a chord in the list shows and plays it; while it plays, the picture, the lit note and the move step through the notes. ⋯ opens a sheet with the octaves, two-chamber pairs, the hole key and Which finger is which.
 
+### Tongue drums: handpan screens, their own picture
+
+A steel tongue drum is played like a handpan (struck notes, chords together, often a middle note), so it is a layout in the handpan engine and uses the handpan screens unchanged: Chords, Drum (the Pan tab, renamed), Playlists, progressions, Listen, the setup, saving and links (`/tongue-drum/<slug>`, `/tongue-drum/custom`). Only these differ:
+
+- **Picture:** `renderPan` draws a layout with `instrument: 'tongue-drum'` as tongues: each note a rounded `rect` (coloured by `css/pan-drawing.css` like a dent) inside a U-shaped cut, pointing at the middle; the lowest at the bottom, the others climbing alternately right and left as makers lay them out; `centre: true` puts the lowest note in the middle as a round tongue. Same note ids and classes, so taps, chord colours, the playing glow and the editor need nothing new.
+- **Drum tab:** one **Tongues** count instead of the two shells, no shell switch and no ring rotation; a custom drum has a "Lowest note in the middle" switch.
+- **Sound:** its own struck voice (`'tongue-drum'` in `js/audio.js`), purer than the handpan's.
+- **Data:** `js/tonguedrums.js`, each tuning with the maker's listing as its source.
+
 ### Rule: one pattern per screen, for every instrument
 
 Handpan, ocarina, flute and any instrument added later share their screens. Each screen is made of shared parts; an instrument supplies only what really differs (the picture of the instrument, its fingerings), never its own version of a screen.

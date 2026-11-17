@@ -139,7 +139,7 @@ export const instruments: InstrumentDoc[] = [
     slug: "kalimba",
     family: "none",
     status: "soon",
-    order: 4,
+    order: 5,
     tuningsLine: "17-key in C, 21-key and custom",
     title: "Kalimba chords",
     intro: "Kalimba support is on the list. Tell us which kalimba you play and its notes, and vote for it to move it up.",
@@ -150,14 +150,22 @@ export const instruments: InstrumentDoc[] = [
     _id: "instrument-tongue-drum",
     name: "Steel tongue drum",
     slug: "steel-tongue-drum",
-    family: "none",
-    status: "soon",
-    order: 5,
-    tuningsLine: "8, 11 and 15-tongue drums in common scales",
-    title: "Steel tongue drum chords",
-    intro: "Steel tongue drums share a lot with handpans: a fixed set of notes. Tell us your drum's notes and vote for it.",
-    featuredTunings: [],
-    faqs: [],
+    family: "tongue-drum",
+    status: "available",
+    order: 4,
+    tuningsLine: "18 tunings from Sela, Meinl, RAV Vast and more, plus your own notes",
+    title: "Tongue drum chords",
+    intro: "A tongue drum plays only the notes it was tuned with, like a handpan, so the chords that work depend on your drum. Pick yours to see what it can play.",
+    featuredTunings: ["d-kurd-9", "d-amara-9", "c-major-pentatonic-8", "a-minor-pentatonic-8", "g-major-pentatonic-8", "c-major-pentatonic-6"],
+    playAlongTitle: "Playing with a guitar or piano",
+    playAlongText: "Show this to your friend. Staying on these chords keeps you in tune with each other.",
+    ctaTitle: "Play your tongue drum in the app, free",
+    ctaText: "Opens straight on your tuning with every feature ready, no account needed.",
+    faqs: [
+      { question: "Can a tongue drum play chords?", answer: "Yes: strike two or three tongues together, or one after another as an arpeggio. The app colours each note of a chord so you can find it quickly." },
+      { question: "My drum isn't listed", answer: "Choose “Your own notes” in the app and set every tongue, or ask for it and we add it." },
+      { question: "How do I find my drum's tuning?", answer: "It's usually on the box or a sticker underneath. If not, let the app listen: play the lowest tongue, then each of the others." },
+    ],
   },
 ];
 
@@ -173,7 +181,7 @@ export const features: FeatureDoc[] = [
   { _id: "feature-listen", title: "Hear a chord, see it on your instrument", text: "When a friend plays a chord on guitar or piano, the app listens and shows it on your instrument, or the closest version your notes allow.", status: "next", order: 20 },
   { _id: "feature-offline", title: "Play offline", text: "With a free account, your instruments, chords and playlists keep working with no signal.", status: "next", order: 21 },
   { _id: "feature-signin", title: "Sign in with Google or Apple", text: "Besides the email code.", status: "next", order: 22 },
-  { _id: "feature-more", title: "More instruments", text: "Kalimba and steel tongue drum are next. Vote for what you play.", status: "next", order: 23 },
+  { _id: "feature-more", title: "More instruments", text: "Kalimba is next. Vote for what you play.", status: "next", order: 23 },
 ];
 
 export const pages: PageDoc[] = [
