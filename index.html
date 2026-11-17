@@ -124,7 +124,7 @@
   --field-h: 48px;            /* inputs and selects on touch (16px font, no iOS zoom) */
   --appbar-h: 56px;
   --tabbar-h: 64px;
-  --tuner-h: 72px;
+  --tuner-h: 112px;
   --actionbar-h: 77px;        /* wizard action bar and sheet footer: 52 + 2 × 12 + 1 */
   --gutter: 16px;             /* 24px at ≥1024 */
   --content-max: 1200px;
@@ -985,7 +985,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
    phones and tablets, floating at the bottom of the content on desktop. */
 .tuner {
   position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom); z-index: var(--z-tuner);
-  height: var(--tuner-h); display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: var(--space-1);
+  height: var(--tuner-h); display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-rows: 40px minmax(0, 1fr); align-items: center; column-gap: var(--space-1);
   padding: var(--space-2) var(--space-1) var(--space-2) var(--space-4);
   background: var(--surface-1); border-top: 1px solid var(--border-strong); box-shadow: var(--e-2);
 }
@@ -998,6 +998,9 @@ body.has-tabbar .tuner { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bott
     width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-radius: var(--r-md);
   }
 }
+/* The live wave of the sound coming in, behind the bar's text (tuner.js drawMicWave). */
+.tuner-wave { grid-column: 1 / -1; display: block; width: 100%; height: 40px; color: var(--accent); --wave-soft: var(--accent); }
+.pick-wave { display: block; width: 100%; height: 56px; color: var(--accent); --wave-soft: var(--accent); }
 .tuner-parts { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-3); align-items: center; min-width: 0; }
 .tuner-note { min-width: 0; }
 .tuner-name { font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); white-space: nowrap; }
@@ -1799,9 +1802,6 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .setup-status { display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--text-2); font-size: var(--fs-13); }
 /* What the microphone hears while listening: a level meter and the note. */
 .listen-live { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin-top: var(--space-2); text-align: center; color: var(--text-2); font-size: var(--fs-13); }
-.listen-meter { display: block; width: min(220px, 60%); height: 6px; border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }
-.listen-meter > span { display: block; height: 100%; background: var(--accent); transition: width 80ms linear; }
-@media (prefers-reduced-motion: reduce) { .listen-meter > span { transition: none; } }
 /* The note picker's "Play it": listen first, the list below. */
 .pick-listen-btn { margin-bottom: var(--space-3); }
 .pick-listen { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4); margin-bottom: var(--space-3); text-align: center; }
@@ -4036,6 +4036,10 @@ function createStabilityTracker({ holdMs = 200, toleranceCents = 35, a4 = 440 } 
 // note from room noise.
 const TUNER_MIN_RMS = 0.002;
 
+// The microphone that is open, if any: { ctx, scope, buf }.
+let _mic = null;
+function openMic() { return _mic; }
+
 // The microphone as an AudioContext source, opened from a tap. The context
 // is made before the permission prompt (still inside the tap) and woken up
 // after it: Safari leaves a context made later paused, and a paused one
@@ -4055,12 +4059,109 @@ async function openMicrophone() {
   }
   if (ctx.state !== 'running') await ctx.resume().catch(() => {});
   const source = ctx.createMediaStreamSource(stream);
+  // Safari only runs analysers that lead to the speakers: everything the
+  // microphone feeds ends in this silent node, or the analysers read zeros.
+  const sink = ctx.createGain();
+  sink.gain.value = 0;
+  sink.connect(ctx.destination);
+  // The live picture of the sound (drawMicWave) reads this one.
+  const scope = ctx.createAnalyser();
+  scope.fftSize = 2048;
+  source.connect(scope);
+  scope.connect(sink);
+  const mic = { ctx, scope, buf: new Float32Array(scope.fftSize) };
+  _mic = mic;
   const close = () => {
+    if (_mic === mic) _mic = null;
     stream.getTracks().forEach(t => t.stop());
     source.disconnect();
+    sink.disconnect();
     ctx.close();
   };
-  return { ctx, source, close };
+  return { ctx, source, sink, close };
+}
+
+// Draws the sound coming in on a canvas: a wave that follows the real signal,
+// quiet when it is quiet. With a pitch (hz) the wave is held still on its
+// period, like an oscilloscope, so a clean note is a calm, steady curve and
+// a chord or a voice a richer one; without one it flows. Colours come from
+// the canvas's CSS (color: the line; --wave-soft: the echoes).
+function drawMicWave(canvas, mic, { hz = null, level = null, t = 0 } = {}) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  }
+  const g = canvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const css = getComputedStyle(canvas);
+  const line = css.color;
+  const soft = css.getPropertyValue('--wave-soft').trim() || line;
+  const mid = h / 2;
+  let buf = null;
+  if (mic) { mic.scope.getFloatTimeDomainData(mic.buf); buf = mic.buf; }
+  if (level == null) level = buf ? rmsLevel(buf) : 0;
+  // How much of the buffer spans the width: three periods of the note when
+  // there is one, else about 20 ms.
+  const sr = mic?.ctx.sampleRate ?? 48000;
+  const span = Math.min(buf?.length ?? 1024, Math.round(hz > 0 ? (sr / hz) * 3 : sr * 0.02));
+  // Start on a rising zero crossing so a steady note doesn't jitter.
+  let start = 0;
+  if (buf && hz > 0) {
+    for (let i = 1; i < buf.length - span; i++) if (buf[i - 1] < 0 && buf[i] >= 0) { start = i; break; }
+  }
+  // Loud enough to see at any level: the wave is scaled to its own peak,
+  // then given a height that grows with how loud it is (−60 dB … −10 dB).
+  let peak = 0;
+  if (buf) for (let i = start; i < start + span; i++) peak = Math.max(peak, Math.abs(buf[i]));
+  const db = level > 0 ? 20 * Math.log10(level) : -100;
+  const loud = Math.max(0, Math.min(1, (db + 60) / 50));
+  const amp = (h * 0.42) * (0.08 + 0.92 * loud);
+  const pts = Math.max(32, Math.min(120, Math.round(w / 4)));
+  const ys = new Float32Array(pts);
+  for (let i = 0; i < pts; i++) {
+    const x = i / (pts - 1);
+    const taper = Math.sin(Math.PI * x); // the ends rest on the middle line
+    let v;
+    if (buf && peak > 1e-5 && loud > 0.02) v = buf[start + Math.min(span - 1, Math.round(x * (span - 1)))] / peak;
+    else v = Math.sin(x * Math.PI * 3 + t * 0.0025) * 0.25; // breathing while it's quiet: the mic is on
+    ys[i] = v * amp * taper;
+  }
+  // The last frames trail behind the current one, so the sound flows.
+  const trail = (canvas._waveTrail ??= []);
+  trail.unshift(ys);
+  if (trail.length > 3) trail.length = 3;
+  const xAt = i => (i / (pts - 1)) * w;
+  const path = (arr, k) => {
+    g.beginPath();
+    g.moveTo(0, mid - arr[0] * k);
+    for (let i = 1; i < pts; i++) {
+      const xm = (xAt(i - 1) + xAt(i)) / 2, ym = mid - ((arr[i - 1] + arr[i]) / 2) * k;
+      g.quadraticCurveTo(xAt(i - 1), mid - arr[i - 1] * k, xm, ym);
+    }
+    g.lineTo(w, mid - arr[pts - 1] * k);
+  };
+  // A soft ribbon (the wave and its mirror), the trail, then the line.
+  g.beginPath();
+  g.moveTo(0, mid);
+  for (let i = 0; i < pts; i++) g.lineTo(xAt(i), mid - Math.abs(ys[i]));
+  for (let i = pts - 1; i >= 0; i--) g.lineTo(xAt(i), mid + Math.abs(ys[i]));
+  g.closePath();
+  g.fillStyle = soft;
+  g.globalAlpha = 0.12 + 0.18 * loud;
+  g.fill();
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  trail.slice(1).forEach((arr, j) => {
+    path(arr, 1);
+    g.strokeStyle = soft; g.globalAlpha = 0.3 - j * 0.12; g.lineWidth = 1.5;
+    g.stroke();
+  });
+  path(ys, 1);
+  g.strokeStyle = line; g.globalAlpha = 0.7 + 0.3 * loud; g.lineWidth = 2;
+  g.stroke();
+  g.globalAlpha = 1;
 }
 
 // Root mean square of a window of samples: how loud it is.
@@ -4075,10 +4176,11 @@ function rmsLevel(buf) {
 // of a stop() function; rejects if the microphone can't be opened (no
 // permission, no HTTPS, no device).
 async function startTuner(onReading, { a4 = 440, minRms = TUNER_MIN_RMS } = {}) {
-  const { ctx, source, close } = await openMicrophone();
+  const { ctx, source, sink, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 4096;
   source.connect(analyser);
+  analyser.connect(sink);
   const buf = new Float32Array(analyser.fftSize);
   const tracker = createStabilityTracker({ a4 });
   const timer = setInterval(() => {
@@ -4353,11 +4455,12 @@ const LISTEN_FFT = 16384;
 // onFrame({ chroma, bass, energy, peaks, db, sampleRate, fftSize, timeBuf, time })
 // Resolves to stop(); rejects when the mic can't be opened.
 async function startListening(onFrame, { intervalMs = 100, tune = {} } = {}) {
-  const { ctx, source, close } = await openMicrophone();
+  const { ctx, source, sink, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
   analyser.fftSize = LISTEN_FFT;
   analyser.smoothingTimeConstant = 0;
   source.connect(analyser);
+  analyser.connect(sink);
   const db = new Float32Array(analyser.frequencyBinCount);
   const timeBuf = new Float32Array(4096);
   const timer = setInterval(() => {
@@ -8807,7 +8910,9 @@ function render() {
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
-  if (state.tuner.on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
+  // One listening bar whenever the microphone is on: the tuner, or Listen.
+  if (state.tuner.on || listenUi().on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
+  ensureMicWave();
   const guide = recGuideHtml();
   if (guide) app.insertAdjacentHTML('beforeend', guide);
   document.body.classList.toggle('rec-guide-on', !!guide);
@@ -8816,7 +8921,7 @@ function render() {
   if (offlineCard) app.insertAdjacentHTML('beforeend', offlineCard);
   rememberLastPath();
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
-  document.body.classList.toggle('tuner-on', state.tuner.on);
+  document.body.classList.toggle('tuner-on', state.tuner.on || listenUi().on);
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
   // A record field stays armed only while it is on screen.
   if (state.rec.armed && !app.querySelector('.rec-field.is-armed')) disarmRecord();
@@ -9630,15 +9735,13 @@ function stopListen(extra = {}) {
 function listenLiveHtml(reading = state.tuner.reading, L = state.listen) {
   if (!L?.listening) return '';
   const level = reading?.level ?? 0;
-  // −60 dB … −10 dB across the meter.
-  const pct = level > 0 ? Math.max(0, Math.min(100, ((20 * Math.log10(level)) + 60) * 2)) : 0;
   const now = performance.now();
   let text;
   if (reading?.hz > 0) text = `Hearing ${escHtml(displayNote(midiToNoteName(Math.round(reading.midi)), state.useFlats, state.useSolfege))}`;
   else if (level >= TUNER_MIN_RMS) text = 'Hearing sound · strike one note and let it ring';
   else if (now - (L.heardAt ?? L.startedAt) > 5000) text = 'Can’t hear anything. Hold the phone closer, about a hand away, and check that this site may use the microphone.';
   else text = 'Waiting for a note…';
-  return `<span class="listen-meter" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></span><span class="listen-live-text">${text}</span>`;
+  return `<span class="listen-live-text">${text}</span>`;
 }
 
 function updateListenLive(reading, L = state.listen) {
@@ -12582,12 +12685,39 @@ function recGuideHtml() {
 }
 
 function tunerStripHtml() {
+  const listening = !state.tuner.on && listenUi().on;
   return `
-    <div id="tuner-panel" class="tuner" role="region" aria-label="Tuner">
-      <div id="tuner-parts" class="tuner-parts">${tunerPanelInner()}</div>
-      ${uiIconBtn('x', 'Stop the tuner', { action: 'tuner-toggle', cls: 'tuner-close' })}
+    <div id="tuner-panel" class="tuner" role="region" aria-label="${listening ? 'Listening' : 'Tuner'}">
+      <canvas class="mic-wave tuner-wave" aria-hidden="true"></canvas>
+      <div id="tuner-parts" class="tuner-parts">${listening ? listenStripInner() : tunerPanelInner()}</div>
+      ${uiIconBtn('x', listening ? 'Stop listening' : 'Stop the tuner', { action: listening ? 'hear-stop' : 'tuner-toggle', cls: 'tuner-close' })}
       <span id="tuner-live" class="sr-only" aria-live="polite"></span>
     </div>`;
+}
+
+// The listening bar while Listen hears chords: the chord, or what it's doing.
+function listenStripInner() {
+  const L = listenUi();
+  const c = L.chord;
+  return `
+    <div class="tuner-note is-${c ? 'ok' : 'idle'}"><div class="tuner-name">${c ? escHtml(listenShownName(c)) : '—'}</div></div>
+    <div class="tuner-mid"><div class="tuner-row"><span class="tuner-status">${c ? (L.heard ? 'Chord heard' : 'Last chord heard') : 'Listening for chords…'}</span></div></div>`;
+}
+
+// The live wave on every canvas.mic-wave while the microphone is open
+// (tuner.js drawMicWave), one frame each screen refresh.
+let _micWaveRaf = 0;
+function ensureMicWave() {
+  if (_micWaveRaf || !openMic()) return;
+  const frame = t => {
+    const mic = openMic();
+    const canvases = document.querySelectorAll('canvas.mic-wave');
+    if (!mic) { _micWaveRaf = 0; return; }
+    const r = state.tuner.on ? state.tuner.reading : null;
+    canvases.forEach(c => drawMicWave(c, mic, { hz: r?.hz > 0 ? r.hz : null, t }));
+    _micWaveRaf = requestAnimationFrame(frame);
+  };
+  _micWaveRaf = requestAnimationFrame(frame);
 }
 
 // Where to read how to allow the microphone, for the browsers that say.
@@ -12650,6 +12780,7 @@ let _tunerLiveAt = 0;
 const TUNER_HOLD_MS = 2000;
 function onTunerReading(reading) {
   state.tuner.reading = reading;
+  ensureMicWave();
   if (reading.midi != null) state.tuner.lastHeard = { reading, at: performance.now() };
   // An armed record field takes the first steady reading. One armed by
   // itself after a capture waits for a note that started after it.
@@ -13000,6 +13131,7 @@ function renderNotePicker() {
   const P = state.pickListen;
   const listen = P?.listening
     ? `<div class="pick-listen card"><p class="pick-listen-title"><span class="listen-dot" aria-hidden="true"></span> Play the ${escHtml(slotLabel)} once and let it ring</p>
+        <canvas class="mic-wave pick-wave" aria-hidden="true"></canvas>
         <div class="listen-live" id="listen-live">${listenLiveHtml(state.tuner.reading, P)}</div>
         <button type="button" class="btn btn-ghost btn-sm" data-action="pick-listen-stop">Stop listening</button></div>`
     : `<button type="button" class="btn btn-primary btn-block pick-listen-btn" data-action="pick-listen">${icon('mic')} Play it · Oakhum listens</button>
@@ -13174,6 +13306,7 @@ function listenStop(stopped = '') {
 function listenOnFrame(frame) {
   const L = listenUi();
   if (!L.on || !_listenTrack) return;
+  ensureMicWave();
   const r = _listenTrack.push(frame);
   const now = performance.now();
   if (r.heard) L.lastHeard = now;
@@ -14978,7 +15111,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = 'e9ff514f4487'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = '980a140b5210'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 

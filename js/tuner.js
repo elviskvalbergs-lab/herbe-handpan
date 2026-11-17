@@ -79,6 +79,10 @@ export function createStabilityTracker({ holdMs = 200, toleranceCents = 35, a4 =
 // note from room noise.
 export const TUNER_MIN_RMS = 0.002;
 
+// The microphone that is open, if any: { ctx, scope, buf }.
+let _mic = null;
+export function openMic() { return _mic; }
+
 // The microphone as an AudioContext source, opened from a tap. The context
 // is made before the permission prompt (still inside the tap) and woken up
 // after it: Safari leaves a context made later paused, and a paused one
@@ -98,12 +102,109 @@ export async function openMicrophone() {
   }
   if (ctx.state !== 'running') await ctx.resume().catch(() => {});
   const source = ctx.createMediaStreamSource(stream);
+  // Safari only runs analysers that lead to the speakers: everything the
+  // microphone feeds ends in this silent node, or the analysers read zeros.
+  const sink = ctx.createGain();
+  sink.gain.value = 0;
+  sink.connect(ctx.destination);
+  // The live picture of the sound (drawMicWave) reads this one.
+  const scope = ctx.createAnalyser();
+  scope.fftSize = 2048;
+  source.connect(scope);
+  scope.connect(sink);
+  const mic = { ctx, scope, buf: new Float32Array(scope.fftSize) };
+  _mic = mic;
   const close = () => {
+    if (_mic === mic) _mic = null;
     stream.getTracks().forEach(t => t.stop());
     source.disconnect();
+    sink.disconnect();
     ctx.close();
   };
-  return { ctx, source, close };
+  return { ctx, source, sink, close };
+}
+
+// Draws the sound coming in on a canvas: a wave that follows the real signal,
+// quiet when it is quiet. With a pitch (hz) the wave is held still on its
+// period, like an oscilloscope, so a clean note is a calm, steady curve and
+// a chord or a voice a richer one; without one it flows. Colours come from
+// the canvas's CSS (color: the line; --wave-soft: the echoes).
+export function drawMicWave(canvas, mic, { hz = null, level = null, t = 0 } = {}) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  }
+  const g = canvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const css = getComputedStyle(canvas);
+  const line = css.color;
+  const soft = css.getPropertyValue('--wave-soft').trim() || line;
+  const mid = h / 2;
+  let buf = null;
+  if (mic) { mic.scope.getFloatTimeDomainData(mic.buf); buf = mic.buf; }
+  if (level == null) level = buf ? rmsLevel(buf) : 0;
+  // How much of the buffer spans the width: three periods of the note when
+  // there is one, else about 20 ms.
+  const sr = mic?.ctx.sampleRate ?? 48000;
+  const span = Math.min(buf?.length ?? 1024, Math.round(hz > 0 ? (sr / hz) * 3 : sr * 0.02));
+  // Start on a rising zero crossing so a steady note doesn't jitter.
+  let start = 0;
+  if (buf && hz > 0) {
+    for (let i = 1; i < buf.length - span; i++) if (buf[i - 1] < 0 && buf[i] >= 0) { start = i; break; }
+  }
+  // Loud enough to see at any level: the wave is scaled to its own peak,
+  // then given a height that grows with how loud it is (−60 dB … −10 dB).
+  let peak = 0;
+  if (buf) for (let i = start; i < start + span; i++) peak = Math.max(peak, Math.abs(buf[i]));
+  const db = level > 0 ? 20 * Math.log10(level) : -100;
+  const loud = Math.max(0, Math.min(1, (db + 60) / 50));
+  const amp = (h * 0.42) * (0.08 + 0.92 * loud);
+  const pts = Math.max(32, Math.min(120, Math.round(w / 4)));
+  const ys = new Float32Array(pts);
+  for (let i = 0; i < pts; i++) {
+    const x = i / (pts - 1);
+    const taper = Math.sin(Math.PI * x); // the ends rest on the middle line
+    let v;
+    if (buf && peak > 1e-5 && loud > 0.02) v = buf[start + Math.min(span - 1, Math.round(x * (span - 1)))] / peak;
+    else v = Math.sin(x * Math.PI * 3 + t * 0.0025) * 0.25; // breathing while it's quiet: the mic is on
+    ys[i] = v * amp * taper;
+  }
+  // The last frames trail behind the current one, so the sound flows.
+  const trail = (canvas._waveTrail ??= []);
+  trail.unshift(ys);
+  if (trail.length > 3) trail.length = 3;
+  const xAt = i => (i / (pts - 1)) * w;
+  const path = (arr, k) => {
+    g.beginPath();
+    g.moveTo(0, mid - arr[0] * k);
+    for (let i = 1; i < pts; i++) {
+      const xm = (xAt(i - 1) + xAt(i)) / 2, ym = mid - ((arr[i - 1] + arr[i]) / 2) * k;
+      g.quadraticCurveTo(xAt(i - 1), mid - arr[i - 1] * k, xm, ym);
+    }
+    g.lineTo(w, mid - arr[pts - 1] * k);
+  };
+  // A soft ribbon (the wave and its mirror), the trail, then the line.
+  g.beginPath();
+  g.moveTo(0, mid);
+  for (let i = 0; i < pts; i++) g.lineTo(xAt(i), mid - Math.abs(ys[i]));
+  for (let i = pts - 1; i >= 0; i--) g.lineTo(xAt(i), mid + Math.abs(ys[i]));
+  g.closePath();
+  g.fillStyle = soft;
+  g.globalAlpha = 0.12 + 0.18 * loud;
+  g.fill();
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  trail.slice(1).forEach((arr, j) => {
+    path(arr, 1);
+    g.strokeStyle = soft; g.globalAlpha = 0.3 - j * 0.12; g.lineWidth = 1.5;
+    g.stroke();
+  });
+  path(ys, 1);
+  g.strokeStyle = line; g.globalAlpha = 0.7 + 0.3 * loud; g.lineWidth = 2;
+  g.stroke();
+  g.globalAlpha = 1;
 }
 
 // Root mean square of a window of samples: how loud it is.
@@ -118,10 +219,11 @@ export function rmsLevel(buf) {
 // of a stop() function; rejects if the microphone can't be opened (no
 // permission, no HTTPS, no device).
 export async function startTuner(onReading, { a4 = 440, minRms = TUNER_MIN_RMS } = {}) {
-  const { ctx, source, close } = await openMicrophone();
+  const { ctx, source, sink, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 4096;
   source.connect(analyser);
+  analyser.connect(sink);
   const buf = new Float32Array(analyser.fftSize);
   const tracker = createStabilityTracker({ a4 });
   const timer = setInterval(() => {

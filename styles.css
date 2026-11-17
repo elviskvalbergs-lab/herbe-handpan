@@ -35,7 +35,7 @@
   --field-h: 48px;            /* inputs and selects on touch (16px font, no iOS zoom) */
   --appbar-h: 56px;
   --tabbar-h: 64px;
-  --tuner-h: 72px;
+  --tuner-h: 112px;
   --actionbar-h: 77px;        /* wizard action bar and sheet footer: 52 + 2 × 12 + 1 */
   --gutter: 16px;             /* 24px at ≥1024 */
   --content-max: 1200px;
@@ -896,7 +896,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
    phones and tablets, floating at the bottom of the content on desktop. */
 .tuner {
   position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom); z-index: var(--z-tuner);
-  height: var(--tuner-h); display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: var(--space-1);
+  height: var(--tuner-h); display: grid; grid-template-columns: minmax(0, 1fr) 44px; grid-template-rows: 40px minmax(0, 1fr); align-items: center; column-gap: var(--space-1);
   padding: var(--space-2) var(--space-1) var(--space-2) var(--space-4);
   background: var(--surface-1); border-top: 1px solid var(--border-strong); box-shadow: var(--e-2);
 }
@@ -909,6 +909,9 @@ body.has-tabbar .tuner { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bott
     width: min(560px, calc(100% - 48px)); border: 1px solid var(--border-strong); border-radius: var(--r-md);
   }
 }
+/* The live wave of the sound coming in, behind the bar's text (tuner.js drawMicWave). */
+.tuner-wave { grid-column: 1 / -1; display: block; width: 100%; height: 40px; color: var(--accent); --wave-soft: var(--accent); }
+.pick-wave { display: block; width: 100%; height: 56px; color: var(--accent); --wave-soft: var(--accent); }
 .tuner-parts { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-3); align-items: center; min-width: 0; }
 .tuner-note { min-width: 0; }
 .tuner-name { font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); white-space: nowrap; }
@@ -1710,9 +1713,6 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .setup-status { display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--text-2); font-size: var(--fs-13); }
 /* What the microphone hears while listening: a level meter and the note. */
 .listen-live { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin-top: var(--space-2); text-align: center; color: var(--text-2); font-size: var(--fs-13); }
-.listen-meter { display: block; width: min(220px, 60%); height: 6px; border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }
-.listen-meter > span { display: block; height: 100%; background: var(--accent); transition: width 80ms linear; }
-@media (prefers-reduced-motion: reduce) { .listen-meter > span { transition: none; } }
 /* The note picker's "Play it": listen first, the list below. */
 .pick-listen-btn { margin-bottom: var(--space-3); }
 .pick-listen { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4); margin-bottom: var(--space-3); text-align: center; }
