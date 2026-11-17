@@ -179,6 +179,18 @@ export async function fetchAccess() {
   return { canBuild: !!data?.can_build };
 }
 
+// What the account holds on the server, counted by kind ({ layout: 3, … }),
+// deleted items left out; null when it can't be read. Settings › Account
+// shows it next to what this device holds, to see where things are.
+export async function fetchAccountCounts() {
+  if (!_sb || !_session) return null;
+  const { data, error } = await _sb.from('saved_items').select('kind,deleted_at');
+  if (error) return null;
+  const counts = {};
+  for (const r of data ?? []) if (!r.deleted_at) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
+  return counts;
+}
+
 // Export my data: every row the account holds, as the server has it.
 export async function exportAccountRows() {
   if (!_sb || !_session) return null;
