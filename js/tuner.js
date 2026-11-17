@@ -73,17 +73,52 @@ export function createStabilityTracker({ holdMs = 200, toleranceCents = 35, a4 =
   };
 }
 
-// Starts listening. onReading({ hz, midi, stable, since }) is called about
-// 20 times a second. Returns a promise of a stop() function; rejects if the
-// microphone can't be opened (no permission, no HTTPS, no device).
-export async function startTuner(onReading, { a4 = 440 } = {}) {
+// The quietest sound the live tuner looks for a pitch in (RMS, full scale 1).
+// With the phone's automatic gain off, a drum or kalimba an arm's length
+// away often arrives around −45 dB; YIN's clarity, not loudness, tells a
+// note from room noise.
+export const TUNER_MIN_RMS = 0.002;
+
+// The microphone as an AudioContext source, opened from a tap. The context
+// is made before the permission prompt (still inside the tap) and woken up
+// after it: Safari leaves a context made later paused, and a paused one
+// hears only silence. Shared by the tuner and Listen (listen-audio.js).
+export async function openMicrophone() {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no microphone access');
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-  });
   const Ctx = window.AudioContext || window.webkitAudioContext;
   const ctx = new Ctx();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (err) {
+    ctx.close();
+    throw err;
+  }
+  if (ctx.state !== 'running') await ctx.resume().catch(() => {});
   const source = ctx.createMediaStreamSource(stream);
+  const close = () => {
+    stream.getTracks().forEach(t => t.stop());
+    source.disconnect();
+    ctx.close();
+  };
+  return { ctx, source, close };
+}
+
+// Root mean square of a window of samples: how loud it is.
+export function rmsLevel(buf) {
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  return Math.sqrt(sum / buf.length);
+}
+
+// Starts listening. onReading({ hz, midi, stable, since, level }) is called
+// about 20 times a second (level: rmsLevel of the window). Returns a promise
+// of a stop() function; rejects if the microphone can't be opened (no
+// permission, no HTTPS, no device).
+export async function startTuner(onReading, { a4 = 440, minRms = TUNER_MIN_RMS } = {}) {
+  const { ctx, source, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 4096;
   source.connect(analyser);
@@ -91,13 +126,11 @@ export async function startTuner(onReading, { a4 = 440 } = {}) {
   const tracker = createStabilityTracker({ a4 });
   const timer = setInterval(() => {
     analyser.getFloatTimeDomainData(buf);
-    const res = yinPitch(buf, ctx.sampleRate);
-    onReading(tracker.push(res && res.clarity > 0.8 ? res.hz : null, performance.now()));
+    const res = yinPitch(buf, ctx.sampleRate, { minRms });
+    onReading({ ...tracker.push(res && res.clarity > 0.8 ? res.hz : null, performance.now()), level: rmsLevel(buf) });
   }, 50);
   return () => {
     clearInterval(timer);
-    stream.getTracks().forEach(t => t.stop());
-    source.disconnect();
-    ctx.close();
+    close();
   };
 }

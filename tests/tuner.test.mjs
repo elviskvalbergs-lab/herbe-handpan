@@ -48,3 +48,13 @@ test('stability: a note is reported after holding 200 ms', () => {
   assert.equal(tr.push(null, 500).stable, false);
   assert.equal(tr.push(466.16, 520).stable, false);
 });
+
+test('the live tuner hears a quiet drum: a note at −50 dB is found, silence is not', async () => {
+  const { yinPitch, rmsLevel, TUNER_MIN_RMS } = await import('../js/tuner.js');
+  const sr = 48000;
+  const quiet = new Float32Array(4096).map((_, i) => 0.004 * Math.sin(2 * Math.PI * 146.83 * i / sr)); // D3, peak −48 dB
+  assert.ok(rmsLevel(quiet) < 0.01, 'quieter than the old cut-off');
+  const res = yinPitch(quiet, sr, { minRms: TUNER_MIN_RMS });
+  assert.ok(res && Math.abs(res.hz - 146.83) < 1, `heard ${res?.hz}`);
+  assert.equal(yinPitch(new Float32Array(4096), sr, { minRms: TUNER_MIN_RMS }), null);
+});
