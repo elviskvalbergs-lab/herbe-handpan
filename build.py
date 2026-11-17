@@ -24,8 +24,10 @@ if os.environ.get('DATABASE_URL'):
     if subprocess.call([sys.executable, os.path.join(ROOT, 'supabase', 'migrate.py')]) != 0:
         sys.exit('Database migration failed: build stopped.')
 
-# styles.css, then the parts the website shares (css/)
-css = read('styles.css') + '\n' + read('css/pan-drawing.css')
+# styles.css and the parts the website shares (css/)
+# The fingering diagram's rules come first: they used to open the second half
+# of styles.css, and nothing before them touched the diagram (same cascade).
+css = read('css/fingering.css') + '\n' + read('styles.css') + '\n' + read('css/pan-drawing.css')
 
 # JS files in dependency order
 js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/setup.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/tonguedrums.js', 'js/links.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/app.js']
