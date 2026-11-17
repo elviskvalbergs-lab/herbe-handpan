@@ -11,7 +11,16 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
         <div className="max-w-[560px] flex-[1_1_420px]">
           <Logo className="mb-5 h-9 text-oak" label="Oakhum" />
           {settings.storyTitle ? <p className="m-0 mb-2 text-[21px] font-semibold">{settings.storyTitle}</p> : null}
-          {settings.story ? <p className="m-0 text-body">{settings.story}</p> : null}
+          {(settings.story ?? "").split(/\n\s*\n/).filter((p) => p.trim()).map((p, i) => (
+            <p key={i} className="m-0 mb-3 text-body last:mb-0">{p.trim()}</p>
+          ))}
+          {settings.storyVerse ? (
+            <figure className="m-0 mt-6 border-l-2 border-accent pl-5">
+              <blockquote lang="lv" className="m-0 whitespace-pre-line text-[19px] font-semibold italic leading-[1.5] text-text">{settings.storyVerse.trim()}</blockquote>
+              {settings.storyVerseTranslation ? <p className="m-0 mt-2 whitespace-pre-line text-[15px] italic leading-[1.5] text-muted">{settings.storyVerseTranslation.trim()}</p> : null}
+              {settings.storyVerseSource ? <figcaption className="mt-2 text-[14px] text-muted">{settings.storyVerseSource}</figcaption> : null}
+            </figure>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-12">
           <ul className="m-0 flex list-none flex-col gap-3 p-0">

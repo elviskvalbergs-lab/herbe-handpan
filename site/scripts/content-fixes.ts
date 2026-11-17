@@ -71,6 +71,24 @@ const FIXES: Fix[] = [
       return `available; filled ${Object.keys(set).join(", ")}`;
     },
   },
+  {
+    // The owner's story of the name (2026-11-17): the hum of the oaks and the
+    // forest, grounding and healing, and a Latvian folk song about the oak.
+    // The story is replaced only while it is still the starting text; the
+    // verse fields are filled only while empty.
+    name: "2026-11-17-oak-story",
+    async run() {
+      const doc = await client.fetch<Record<string, unknown> | null>(`*[_id == "siteSettings"][0]`);
+      if (!doc) return "no siteSettings document";
+      const OLD_STORY = "Oakhum is made in Latvia, on a street lined with old oaks. In Latvian folklore the oak is the tree of strength, and it has stood for as long as people have made music. The hum is what handpans, ocarinas and flutes share: hollow bodies that sing when you play them.";
+      const set: Record<string, unknown> = {};
+      if (doc.story === OLD_STORY || !doc.story) set.story = seed.settings.story;
+      for (const key of ["storyVerse", "storyVerseTranslation", "storyVerseSource"] as const) if (!doc[key]) set[key] = seed.settings[key];
+      if (!Object.keys(set).length) return "left as edited in the Studio";
+      await client.patch("siteSettings").set(set).commit();
+      return `set ${Object.keys(set).join(", ")}`;
+    },
+  },
 ];
 
 async function main() {
