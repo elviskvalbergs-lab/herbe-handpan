@@ -1,6 +1,6 @@
 # Oakhum video: script for review
 
-Version 1, 17 Nov 2026. **Status:** script only. Nothing gets rendered until the owner approves it.
+Version 2, 18 Nov 2026 (adds scene 7b: browser or app). **Status:** script only. Nothing gets rendered until the owner approves it.
 
 ## Rules for every Oakhum video
 
@@ -19,7 +19,7 @@ Version 1, 17 Nov 2026. **Status:** script only. Nothing gets rendered until the
    - **9:16 cut** (1080 × 1920) for Reels, Shorts and TikTok: footage on top, the phone below.
    - Reddit and Facebook take either.
 
-## The script (about 50 s)
+## The script (about 55 s)
 
 ### 1. Why (common opening, about 14 s)
 
@@ -45,11 +45,17 @@ Version 1, 17 Nov 2026. **Status:** script only. Nothing gets rendered until the
 
 For other instruments, scenes 5–7 keep the same voice-over and swap the picture, for example the kalimba's keys or the ocarina's fingering diagram.
 
+### 3b. Works anywhere (common, about 5 s)
+
+| # | Picture | Voice-over | Caption |
+|---|---|---|---|
+| 7b | A finger taps "Add to Home Screen". The Oakhum icon appears among the phone's apps, and opening it shows the app full-screen. Then the same instrument on a laptop browser. | "Use it right in your browser, or add it to your phone as an app. With a free account, your instruments go with you, even offline." | In your browser, or as an app |
+
 ### 4. Ending (common, about 8 s)
 
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
-| 8 | Back to the fire, everyone playing together. Then the end card: logo, "Handpans, kalimbas, flutes and more", "Free in your browser", **oakhum.com** | "Oakhum. Find the music hiding in your instrument." | Find the music hiding in your instrument |
+| 8 | Back to the fire, everyone playing together. Then the end card: logo, "Handpans, kalimbas, flutes and more", "Free in your browser or as an app", **oakhum.com** | "Oakhum. Find the music hiding in your instrument." | Find the music hiding in your instrument |
 
 ## What it needs
 
