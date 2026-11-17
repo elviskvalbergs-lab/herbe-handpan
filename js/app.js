@@ -1998,7 +1998,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
   const tabs = practice ? '' : uiTabBar(ocTabs(inst).map(([id, label, ic]) => ({ id, label, icon: ic, action: 'oc-tab', data: { tab: id } })), view);
   return `
     ${uiAppBar({
-      switcher: inst.link ? { name: inst.name, action: 'open-play', title: 'Other instruments' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
+      switcher: inst.link ? { name: inst.name, action: 'open-play', data: { family: inst.family }, title: inst.family === 'flute' ? 'Other flutes' : 'Other ocarinas' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
       badge: inst.link ? uiBadge('Not saved') : shared ? uiBadge(inst.publicId) : '',
       actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
