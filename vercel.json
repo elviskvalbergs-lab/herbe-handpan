@@ -3,9 +3,32 @@
   "outputDirectory": ".",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/handpan/:path*", "destination": "/index.html" },
-    { "source": "/ocarina/:path*", "destination": "/index.html" },
-    { "source": "/flute/:path*", "destination": "/index.html" },
-    { "source": "/s/:path*", "destination": "/index.html" }
+    {
+      "source": "/play",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/handpan/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ocarina/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/flute/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/s/:path*",
+      "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/privacy",
+      "destination": "https://oakhum-site.vercel.app/privacy",
+      "permanent": false
+    }
   ]
 }

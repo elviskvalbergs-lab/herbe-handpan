@@ -273,7 +273,12 @@ function settleFocus(app, prevSheet, focusKey) {
 // it goes to the screen's logical parent instead.
 // URLs are paths (deep links, docs/free-to-play.md) or '#…' screens, which
 // always hang off the root so a deep-link path never sticks to them.
-function navUrl(url) { return !url ? '/' : url[0] === '#' ? '/' + url : url; }
+// One domain (docs/free-to-play.md): the website is at /, the app's home at
+// /play, its deep links at the root (/handpan/…). '/' still opens the app on
+// its own Vercel address, so both count as home.
+const APP_HOME = '/play';
+function isAppHome(path = location.pathname) { return path === '/' || path === APP_HOME || path === APP_HOME + '/'; }
+function navUrl(url) { return !url || url === '/' ? APP_HOME : url[0] === '#' ? APP_HOME + url : url; }
 function navPush(url) { history.pushState({ hp: 1 }, '', navUrl(url)); }
 function navReplace(url, extra = {}) { history.replaceState({ ...(history.state ?? {}), ...extra }, '', navUrl(url)); }
 
@@ -3772,10 +3777,10 @@ function openInstrument(id, { push = true } = {}) {
 function openStartView() {
   // An account opens where it left off, on this or another device (§7).
   const last = accountOn() ? syncReadPrefs().lastPath : null;
-  if (last && last !== '/' && last !== location.pathname + location.hash) {
+  if (last && !isAppHome(last) && last !== location.pathname + location.hash) {
     history.replaceState(history.state, '', last);
     if (urlIsLink()) { loadFromUrl(); if (state.view !== 'play') return; }
-    history.replaceState(history.state, '', '/');
+    history.replaceState(history.state, '', APP_HOME);
   }
   // Nothing saved yet: the Play screen, one tap from playing
   // (docs/free-to-play.md, "2. Guest experience").
@@ -5688,7 +5693,7 @@ function measureFamily() {
 function measureOpen() {
   const link = parseLink(location.pathname, location.search);
   // The link, without anything personal: custom notes and share codes stay out.
-  const path = !link ? (location.pathname === '/' ? '/' : 'other')
+  const path = !link ? (isAppHome() ? APP_HOME : 'other')
     : link.kind === 'custom' ? '/handpan/custom'
     : link.kind === 'shared' ? '/s'
     : link.kind === 'unknown' ? `/${link.family}/?`
@@ -5814,7 +5819,7 @@ function savePrefs() {
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
 const BUILD_HASH = 'dev'; // build.py writes the build's hash: the offline cache version
-const PRIVACY_URL = 'https://oakhum-site.vercel.app/privacy';
+const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 
 function accountOn() { return hasAccountOnDevice(); }
@@ -6342,7 +6347,7 @@ window.addEventListener('beforeunload', e => {
 // The path of a link without anything personal (custom notes, share codes).
 function measurePathOf(pathname) {
   const link = parseLink((pathname || '/').split(/[?#]/)[0], '');
-  return !link ? '/' : link.kind === 'custom' ? '/handpan/custom' : link.kind === 'shared' ? '/s' : link.kind === 'unknown' ? `/${link.family}/?` : link.path;
+  return !link ? APP_HOME : link.kind === 'custom' ? '/handpan/custom' : link.kind === 'shared' ? '/s' : link.kind === 'unknown' ? `/${link.family}/?` : link.path;
 }
 
 // The screen on show, kept in the synced prefs so a second device opens
