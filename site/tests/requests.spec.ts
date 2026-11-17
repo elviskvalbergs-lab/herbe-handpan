@@ -16,3 +16,11 @@ it("explains what's missing or wrong", () => {
 it("drops what bots fill in", () => {
   expect(validateRequest({ kind: "feature", title: "x", website: "http://spam" })).toMatchObject({ ok: false });
 });
+
+it("takes feedback: the text is required and the title is its first line", () => {
+  expect(validateRequest({ kind: "feedback", details: "" })).toMatchObject({ ok: false, error: expect.stringMatching(/what happened/) });
+  const r = validateRequest({ kind: "feedback", details: " Chords didn't light up\non my phone ", notes: "D Kurd" });
+  expect(r).toEqual({ ok: true, value: { kind: "feedback", title: "Chords didn't light up", notes: "D Kurd", details: "Chords didn't light up\non my phone", email: undefined } });
+  const long = validateRequest({ kind: "feedback", details: "x".repeat(300) });
+  expect(long.ok && long.value.title.length).toBe(80);
+});

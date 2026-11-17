@@ -466,6 +466,7 @@ function viewSettings() {
       <h2 class="list-title">About</h2>
       <div class="list">
         <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</span></div>
+        ${uiRow({ title: 'Send feedback', meta: 'Something confusing, wrong or missing? Tell us, it really helps', action: 'open-feedback', lead: 'message-square', chevron: true })}
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
       </div>
     </div>`;
@@ -6542,6 +6543,7 @@ function savePrefs() {
 
 const BUILD_HASH = 'dev'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
+const FEEDBACK_URL = '/request?kind=feedback'; // the website's request form, opened on "Feedback"
 const PRIVACY_VERSION = '2026-11';
 
 function accountOn() { return hasAccountOnDevice(); }
@@ -7050,6 +7052,7 @@ async function exportMyData() {
 
 function accountAction(action) {
   if (action === 'open-privacy') { window.open(PRIVACY_URL, '_blank', 'noopener'); return true; }
+  if (action === 'open-feedback') { window.open(FEEDBACK_URL, '_blank', 'noopener'); return true; }
   if (action === 'account-sync') {
     syncNow().then(() => {
       refreshAccountCounts();
