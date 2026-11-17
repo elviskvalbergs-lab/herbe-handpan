@@ -105,8 +105,8 @@ export const instruments: InstrumentDoc[] = [
     title: "Ocarina fingerings and chords",
     intro: "Fingering charts for 12-hole ocarinas in every key, from a published chart. Chords play as arpeggios, note by note, with the fingering for each.",
     featuredTunings: ["alto-c-12", "alto-g-12", "alto-f-12", "soprano-c-12", "soprano-g-12", "bass-c-12"],
-    playAlongTitle: "Making your own ocarina?",
-    playAlongText: "The app also designs one from a scale: chambers, hole sizes and the clay's shrinkage. Then tune it hole by hole with the built-in tuner.",
+    playAlongTitle: "Made your own ocarina?",
+    playAlongText: "Set it up hole by hole with the built-in tuner, and the app gives it its own fingering chart and chords.",
     ctaTitle: "Play your ocarina in the app, free",
     ctaText: "Opens straight on your key with the fingering for every note.",
     faqs: [
@@ -169,7 +169,6 @@ export const features: FeatureDoc[] = [
   { _id: "feature-chordsheet", title: "Chord sheets", text: "Paste a song's chords and the app fits them to your instrument, then teaches it in levels: roots, arpeggio, groove.", status: "ready", order: 5 },
   { _id: "feature-fingerings", title: "Fingering charts", text: "Ocarina and flute fingerings for every note, from published charts.", status: "ready", order: 6 },
   { _id: "feature-tuner", title: "Tuner", text: "A built-in tuner, also for tuning an ocarina you made hole by hole.", status: "ready", order: 7 },
-  { _id: "feature-builder", title: "Ocarina builder", text: "Design an ocarina from a scale: chambers, hole sizes and clay shrinkage.", status: "ready", order: 8 },
   { _id: "feature-share", title: "Share an instrument", text: "Send your exact setup as a link, a code or a QR code.", status: "ready", order: 9 },
   { _id: "feature-listen", title: "Hear a chord, see it on your instrument", text: "When a friend plays a chord on guitar or piano, the app listens and shows it on your instrument, or the closest version your notes allow.", status: "next", order: 20 },
   { _id: "feature-offline", title: "Play offline", text: "With a free account, your instruments, chords and playlists keep working with no signal.", status: "next", order: 21 },
