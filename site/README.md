@@ -30,7 +30,11 @@ Without a Sanity project the site shows the starting content in
    lgaa-site). It sets `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`,
    `SANITY_API_READ_TOKEN` and `SANITY_API_WRITE_TOKEN`. Pick the EU region.
 3. Environment variables:
-   - `NEXT_PUBLIC_APP_URL`: where the app answers (default `https://oakhum.vercel.app`).
+   - `NEXT_PUBLIC_APP_URL`: the app's own Vercel address (default `https://oakhum.vercel.app`).
+     The site serves the app on its own domain (one domain): `/play` and the deep links
+     `/handpan/…`, `/ocarina/…`, `/flute/…`, `/s/…`, plus the app's service worker,
+     manifest, icons and preview images, are fetched from there (`rewrites` in
+     `next.config.ts`). Links to the app are plain paths (`/play`, `/handpan/d-kurd`).
    - `NEXT_PUBLIC_SITE_URL`: the site's own address (for the sitemap and link previews).
 4. In sanity.io/manage → API → CORS origins, add the site's address with
    credentials allowed, so `/studio` can sign in.

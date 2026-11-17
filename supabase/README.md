@@ -75,7 +75,8 @@ Google** and **Continue with Apple** as soon as each is switched on here (it
 reads the enabled providers from Supabase's public auth settings, so no app
 change is needed).
 
-1. **URL Configuration → Redirect URLs:** add `https://oakhum.vercel.app/**`
+1. **URL Configuration → Redirect URLs:** add `https://oakhum-site.vercel.app/**`
+   (the shared domain: the website with the app at /play), `https://oakhum.vercel.app/**`
    and `https://handpan.herbe.app/**` (and the custom domain once it's set
    up). Sign-in links and Google/Apple come back to the page you were on;
    without this they land on the Site URL instead.

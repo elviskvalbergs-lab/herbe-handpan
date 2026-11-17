@@ -2,7 +2,7 @@
   "name": "Oakhum",
   "short_name": "Oakhum",
   "description": "Notes, chords and scales for handpan, ocarina and flute",
-  "start_url": "/",
+  "start_url": "/play",
   "display": "standalone",
   "background_color": "#F2E6D3",
   "theme_color": "#4E4B2E",
@@ -37,5 +37,7 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "/play",
+  "scope": "/"
 }
