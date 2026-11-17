@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -370,9 +370,7 @@ function handpanAppBar(tabs = '') {
   return uiAppBar({
     switcher: saved
       ? { name: state.layout.name, action: 'back-home', title: 'My instruments' }
-      : layoutInstrument(state.layout) !== 'handpan'
-      ? { name: state.layout.name, action: 'open-play', data: { family: layoutInstrument(state.layout) }, title: 'Other tunings' }
-      : { name: state.layout.name, action: 'back-selector', title: 'Other scales' },
+      : { name: state.layout.name, action: 'open-play', data: { family: layoutInstrument(state.layout) }, title: layoutInstrument(state.layout) === 'handpan' ? 'Other scales' : 'Other tunings' },
     badge: saved ? '' : uiBadge('Not saved'),
     actions: [tunerAppBtn(), menuAppBtn()],
     tabs,
@@ -1261,12 +1259,12 @@ function viewBeginnerSetup() {
     const roots = setupRoots(tunings);
     return stepFrame({
       header, count: count(3), title: fi.knowTitle,
-      sub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
+      sub: fi.knowSub,
       body: `
         <div class="setup-roots">
-          ${roots.map(r => `<button type="button" class="setup-root${r.pc === 2 ? ' is-first' : ''}" data-action="setup-root" data-pc="${r.pc}">${escHtml(setupRootName(r.pc))}</button>`).join('')}
+          ${roots.map((r, i) => `<button type="button" class="setup-root${i === 0 ? ' is-first' : ''}" data-action="setup-root" data-pc="${r.pc}">${escHtml(setupRootName(r.pc))}</button>`).join('')}
         </div>
-        <p class="wizard-foot">Most ${word}s are in D, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
+        <p class="wizard-foot">Most ${word}s are in ${escHtml(setupRootName(roots[0]?.pc ?? 2))}, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
     });
   }
 
@@ -1290,7 +1288,7 @@ function viewBeginnerSetup() {
   // done
   const s = findTuning(st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
-  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
+  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s));
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
     header, count: count(4), title: `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
@@ -1373,7 +1371,7 @@ function setupAction(action, el) {
   if (action === 'setup-first-chord' || action === 'setup-save') {
     const s = findTuning(st.scaleId);
     if (!s) return true;
-    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
+    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s));
     const path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
     state.setup = null;
     openLink(parseLink(path, ''));

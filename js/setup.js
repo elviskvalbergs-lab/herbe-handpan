@@ -18,12 +18,16 @@ const SETUP_FAMILY_ORDER = [
 // How many scales "Which D scale?" shows before Show all.
 export const SETUP_TOP = 5;
 
-// The middle notes (dings) handpans come in, as pitch classes, D first and
-// then by how many scales use them.
+// The note a tuning is known by: a handpan's middle note, a tongue drum's
+// lowest, a kalimba's key (js/kalimbas.js).
+export function setupKeyNote(s) { return s.key ? `${s.key}4` : s.top.ding; }
+
+// The notes tunings come in, as pitch classes, D first and then by how many
+// tunings use them.
 export function setupRoots(scales) {
   const count = new Map();
   for (const s of scales) {
-    const pc = notePC(s.top.ding);
+    const pc = notePC(setupKeyNote(s));
     count.set(pc, (count.get(pc) ?? 0) + 1);
   }
   return [...count.entries()]
@@ -41,7 +45,7 @@ function setupFamilyRank(scale) {
 export function setupScalesFor(scales, pc) {
   return scales
     .map((s, order) => ({ s, order }))
-    .filter(({ s }) => notePC(s.top.ding) === pc)
+    .filter(({ s }) => notePC(setupKeyNote(s)) === pc)
     .sort((a, b) => setupFamilyRank(a.s) - setupFamilyRank(b.s) || a.order - b.order)
     .map(({ s }) => s);
 }
