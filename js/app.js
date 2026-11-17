@@ -29,7 +29,7 @@ import {
   ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
 } from './ocarina-ui.js';
 import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch, predictFingeringHz } from './ocarina.js';
-import { startTuner, yinPitch } from './tuner.js';
+import { startTuner, yinPitch, openMic, drawMicWave } from './tuner.js';
 import {
   listenTracker, listenOverallConfidence, listenChordOnNotes, LISTEN_DEFAULTS,
 } from './listen-detect.js';
@@ -181,7 +181,9 @@ function render() {
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
-  if (state.tuner.on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
+  // One listening bar whenever the microphone is on: the tuner, or Listen.
+  if (state.tuner.on || listenUi().on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
+  ensureMicWave();
   const guide = recGuideHtml();
   if (guide) app.insertAdjacentHTML('beforeend', guide);
   document.body.classList.toggle('rec-guide-on', !!guide);
@@ -190,7 +192,7 @@ function render() {
   if (offlineCard) app.insertAdjacentHTML('beforeend', offlineCard);
   rememberLastPath();
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
-  document.body.classList.toggle('tuner-on', state.tuner.on);
+  document.body.classList.toggle('tuner-on', state.tuner.on || listenUi().on);
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
   // A record field stays armed only while it is on screen.
   if (state.rec.armed && !app.querySelector('.rec-field.is-armed')) disarmRecord();
@@ -1004,15 +1006,13 @@ function stopListen(extra = {}) {
 function listenLiveHtml(reading = state.tuner.reading, L = state.listen) {
   if (!L?.listening) return '';
   const level = reading?.level ?? 0;
-  // −60 dB … −10 dB across the meter.
-  const pct = level > 0 ? Math.max(0, Math.min(100, ((20 * Math.log10(level)) + 60) * 2)) : 0;
   const now = performance.now();
   let text;
   if (reading?.hz > 0) text = `Hearing ${escHtml(displayNote(midiToNoteName(Math.round(reading.midi)), state.useFlats, state.useSolfege))}`;
   else if (level >= TUNER_MIN_RMS) text = 'Hearing sound · strike one note and let it ring';
   else if (now - (L.heardAt ?? L.startedAt) > 5000) text = 'Can’t hear anything. Hold the phone closer, about a hand away, and check that this site may use the microphone.';
   else text = 'Waiting for a note…';
-  return `<span class="listen-meter" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></span><span class="listen-live-text">${text}</span>`;
+  return `<span class="listen-live-text">${text}</span>`;
 }
 
 function updateListenLive(reading, L = state.listen) {
@@ -4044,12 +4044,39 @@ function recGuideHtml() {
 }
 
 function tunerStripHtml() {
+  const listening = !state.tuner.on && listenUi().on;
   return `
-    <div id="tuner-panel" class="tuner" role="region" aria-label="Tuner">
-      <div id="tuner-parts" class="tuner-parts">${tunerPanelInner()}</div>
-      ${uiIconBtn('x', 'Stop the tuner', { action: 'tuner-toggle', cls: 'tuner-close' })}
+    <div id="tuner-panel" class="tuner" role="region" aria-label="${listening ? 'Listening' : 'Tuner'}">
+      <canvas class="mic-wave tuner-wave" aria-hidden="true"></canvas>
+      <div id="tuner-parts" class="tuner-parts">${listening ? listenStripInner() : tunerPanelInner()}</div>
+      ${uiIconBtn('x', listening ? 'Stop listening' : 'Stop the tuner', { action: listening ? 'hear-stop' : 'tuner-toggle', cls: 'tuner-close' })}
       <span id="tuner-live" class="sr-only" aria-live="polite"></span>
     </div>`;
+}
+
+// The listening bar while Listen hears chords: the chord, or what it's doing.
+function listenStripInner() {
+  const L = listenUi();
+  const c = L.chord;
+  return `
+    <div class="tuner-note is-${c ? 'ok' : 'idle'}"><div class="tuner-name">${c ? escHtml(listenShownName(c)) : '—'}</div></div>
+    <div class="tuner-mid"><div class="tuner-row"><span class="tuner-status">${c ? (L.heard ? 'Chord heard' : 'Last chord heard') : 'Listening for chords…'}</span></div></div>`;
+}
+
+// The live wave on every canvas.mic-wave while the microphone is open
+// (tuner.js drawMicWave), one frame each screen refresh.
+let _micWaveRaf = 0;
+function ensureMicWave() {
+  if (_micWaveRaf || !openMic()) return;
+  const frame = t => {
+    const mic = openMic();
+    const canvases = document.querySelectorAll('canvas.mic-wave');
+    if (!mic) { _micWaveRaf = 0; return; }
+    const r = state.tuner.on ? state.tuner.reading : null;
+    canvases.forEach(c => drawMicWave(c, mic, { hz: r?.hz > 0 ? r.hz : null, t }));
+    _micWaveRaf = requestAnimationFrame(frame);
+  };
+  _micWaveRaf = requestAnimationFrame(frame);
 }
 
 // Where to read how to allow the microphone, for the browsers that say.
@@ -4112,6 +4139,7 @@ let _tunerLiveAt = 0;
 const TUNER_HOLD_MS = 2000;
 function onTunerReading(reading) {
   state.tuner.reading = reading;
+  ensureMicWave();
   if (reading.midi != null) state.tuner.lastHeard = { reading, at: performance.now() };
   // An armed record field takes the first steady reading. One armed by
   // itself after a capture waits for a note that started after it.
@@ -4462,6 +4490,7 @@ function renderNotePicker() {
   const P = state.pickListen;
   const listen = P?.listening
     ? `<div class="pick-listen card"><p class="pick-listen-title"><span class="listen-dot" aria-hidden="true"></span> Play the ${escHtml(slotLabel)} once and let it ring</p>
+        <canvas class="mic-wave pick-wave" aria-hidden="true"></canvas>
         <div class="listen-live" id="listen-live">${listenLiveHtml(state.tuner.reading, P)}</div>
         <button type="button" class="btn btn-ghost btn-sm" data-action="pick-listen-stop">Stop listening</button></div>`
     : `<button type="button" class="btn btn-primary btn-block pick-listen-btn" data-action="pick-listen">${icon('mic')} Play it · Oakhum listens</button>
@@ -4636,6 +4665,7 @@ function listenStop(stopped = '') {
 function listenOnFrame(frame) {
   const L = listenUi();
   if (!L.on || !_listenTrack) return;
+  ensureMicWave();
   const r = _listenTrack.push(frame);
   const now = performance.now();
   if (r.heard) L.lastHeard = now;

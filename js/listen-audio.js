@@ -12,11 +12,12 @@ export const LISTEN_FFT = 16384;
 // onFrame({ chroma, bass, energy, peaks, db, sampleRate, fftSize, timeBuf, time })
 // Resolves to stop(); rejects when the mic can't be opened.
 export async function startListening(onFrame, { intervalMs = 100, tune = {} } = {}) {
-  const { ctx, source, close } = await openMicrophone();
+  const { ctx, source, sink, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
   analyser.fftSize = LISTEN_FFT;
   analyser.smoothingTimeConstant = 0;
   source.connect(analyser);
+  analyser.connect(sink);
   const db = new Float32Array(analyser.frequencyBinCount);
   const timeBuf = new Float32Array(4096);
   const timer = setInterval(() => {
