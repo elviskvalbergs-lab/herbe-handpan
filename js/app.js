@@ -57,7 +57,7 @@ import { dataStore, hasAccountOnDevice, carryOverVisit, clearAccountData, visitH
 import { syncRound, syncKey, pendingChanges } from './sync.js';
 import {
   initSupabase, isLoggedIn, getUserEmail, sendOtp, verifyOtp, signOut, scheduleSave, logEvent,
-  getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, exportAccountRows,
+  getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, importLegacyData, exportAccountRows,
   deleteMyAccount, saveCloudInstruments, fetchSharedInstrument, fetchAccess,
 } from './auth.js';
 import { syncBases } from './localdb.js';
@@ -109,6 +109,7 @@ const state = {
   saveSheet: null,         // the save sheet (§3): { what, step, email, error, busy, providers }, see saveSheetHtml()
   accountConfirm: null,    // 'signout' | 'delete' while Settings › Account confirms
   accountError: null,
+  legacyImported: 0,       // items brought over from the first app versions, for the toast
   syncPending: 0,          // changes waiting for the server
   lastSynced: null,
   syncError: null,
@@ -6600,7 +6601,12 @@ function startAccount() {
   if (_accountStarted) return;
   _accountStarted = true;
   touchLastSeen().then(refreshAccess);
-  syncSoon(0);
+  // An account from the first app versions: its instruments, playlists and
+  // progressions are brought over once, then arrive with the first sync.
+  importLegacyData().then(n => {
+    if (n > 0) state.legacyImported = n;
+    syncSoon(0);
+  });
   startSyncPoll();
   enableOffline();
   render();
@@ -6680,7 +6686,10 @@ async function syncNow() {
       reloadSaved();
       render();
     } else if (before !== r.pending) render();
-    if (r.copies.length) showToast(`Changed on two devices, so both are kept: ${r.copies[0]}`);
+    if (state.legacyImported && r.pulled) {
+      showToast(`Brought over ${state.legacyImported} item${state.legacyImported !== 1 ? 's' : ''} from your earlier account`);
+      state.legacyImported = 0;
+    } else if (r.copies.length) showToast(`Changed on two devices, so both are kept: ${r.copies[0]}`);
     else if (before > 0 && r.pending === 0 && r.pushed) showToast('Synced');
     if (r.pushed) pushSharedInstruments();
   } catch (err) {
