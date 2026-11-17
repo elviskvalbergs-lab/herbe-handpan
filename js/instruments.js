@@ -20,6 +20,7 @@ const ONBOARDED_KEY = 'hp-onboarded';
 
 export const INSTRUMENT_FAMILIES = [
   { id: 'handpan', name: 'Handpan' },
+  { id: 'tongue-drum', name: 'Tongue drum' },
   { id: 'ocarina', name: 'Ocarina' },
   { id: 'flute', name: 'Flute' }, // offered when js/charts.js has a sourced flute chart
 ];
@@ -45,6 +46,13 @@ function nowIso() { return new Date().toISOString(); }
 
 export function handpanInstrumentId(layoutId) { return 'hp-' + layoutId; }
 
+// Handpans and tongue drums are layouts (a middle note, a ring of notes, js/pan.js):
+// they live in the saved layouts and use the handpan screens.
+export function usesLayout(inst) { return inst?.family === 'handpan' || inst?.family === 'tongue-drum'; }
+
+// The family of a saved layout's instrument.
+function layoutFamily(saved) { return saved.layout?.instrument === 'tongue-drum' ? 'tongue-drum' : 'handpan'; }
+
 // Adds a handpan instrument for every saved layout that has none, keeps names
 // in step, and soft-deletes handpan instruments whose layout is gone.
 // Pure: returns { instruments, changed }.
@@ -59,7 +67,7 @@ export function reconcileInstruments(instruments, savedLayouts, now = nowIso()) 
     if (!existing) {
       list.push({
         id,
-        family: 'handpan',
+        family: layoutFamily(saved),
         kind: saved.layout?.isCustom ? 'custom' : 'scale',
         layoutId: saved.id,
         name: saved.name,
@@ -68,15 +76,16 @@ export function reconcileInstruments(instruments, savedLayouts, now = nowIso()) 
         lastPlayedAt: saved.savedAt ? new Date(saved.savedAt).toISOString() : null,
       });
       changed = true;
-    } else if (existing.deletedAt || existing.name !== saved.name) {
+    } else if (existing.deletedAt || existing.name !== saved.name || existing.family !== layoutFamily(saved)) {
       delete existing.deletedAt;
       existing.name = saved.name;
+      existing.family = layoutFamily(saved);
       existing.updatedAt = now;
       changed = true;
     }
   }
   for (const inst of list) {
-    if (inst.family === 'handpan' && !inst.deletedAt && !live.has(inst.id)) {
+    if (usesLayout(inst) && !inst.deletedAt && !live.has(inst.id)) {
       inst.deletedAt = now;
       inst.updatedAt = now;
       changed = true;
@@ -156,6 +165,7 @@ export function createCustomFlute({ name, holeCount }, now = nowIso()) {
 // One line under the instrument's name on its card.
 export function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
+  if (inst.family === 'tongue-drum') return inst.kind === 'custom' ? 'Custom tongue drum' : 'Tongue drum';
   if (inst.kind === 'traditional') {
     const notes = inst.chambers?.[0]?.notes ?? [];
     return notes.length ? `${notes.length} notes, ${midiToNoteName(notes[0])} to ${midiToNoteName(notes[notes.length - 1])}` : '';
@@ -265,7 +275,7 @@ export function newPublicId(random = Math.random) {
 // Instruments that sync through the instruments table: everything except
 // handpans, which are rebuilt from the saved layouts (synced already).
 export function syncableInstruments(list) {
-  return list.filter(i => i.family !== 'handpan');
+  return list.filter(i => !usesLayout(i));
 }
 
 // Two-way merge of local instruments with cloud rows ({ id, data,
@@ -300,7 +310,7 @@ export function copySharedInstrument(shared, now = nowIso()) {
   const { publicId, build, setup, deletedAt, ...rest } = shared;
   return {
     ...rest,
-    id: (shared.family === 'handpan' ? 'hp-' : 'oc-') + Math.random().toString(36).slice(2, 10),
+    id: (usesLayout(shared) ? 'hp-' : 'oc-') + Math.random().toString(36).slice(2, 10),
     copiedFrom: publicId ?? null,
     build: build ? { ...build, stage: 'done', perChamber: [] } : undefined,
     createdAt: now, updatedAt: now, lastPlayedAt: now,

@@ -121,6 +121,88 @@ function strikeBadgesSvg(placed, strikeMarks) {
   return out;
 }
 
+// ── Tongue drums (js/tonguedrums.js) ────────────────────────────────────────
+// The same notes, ids and classes as the handpan drawing, so taps, chord
+// colours, the playing glow and the editor work unchanged; each note is a
+// tongue (a rounded rect, which pan-drawing.css colours like a dent) cut
+// into the shell and pointing at the middle. The lowest note sits at the
+// bottom and the notes climb alternately right and left, the way makers lay
+// them out (https://www.hluru.net/en-us/blogs/skills-tips/15-note-tongue-drum-sheet-music-3-advanced-songs-free-tabs).
+function tongueAngles(count) {
+  const step = (2 * Math.PI) / count;
+  return Array.from({ length: count }, (_, i) => {
+    const k = Math.ceil(i / 2);
+    const side = i % 2 === 1 ? -1 : 1; // 1: right of the bottom, -1: left
+    return Math.PI / 2 + side * k * step;
+  });
+}
+
+function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfege) {
+  const deg = Math.round((angle * 180) / Math.PI - 90); // local -y points at the middle
+  const allClasses = ['pan-note', 'tongue', ...classes.split(' ').filter(Boolean)].join(' ');
+  const noteAttr = note ? ` data-note="${note}"` : '';
+  const cut = `M ${-w / 2 - 5} ${h / 2} L ${-w / 2 - 5} ${-h / 2 + w / 2} A ${w / 2 + 5} ${w / 2 + 5} 0 0 1 ${w / 2 + 5} ${-h / 2 + w / 2} L ${w / 2 + 5} ${h / 2}`;
+  let text;
+  if (!note) {
+    text = `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="${Math.round(w * 0.5)}" font-weight="600" fill="var(--note-rest-text)">+</text>`;
+  } else {
+    const shown = displayNote(note, useFlats, useSolfege);
+    const name = shown.replace(/\d+$/, '');
+    const oct = (shown.match(/\d+$/) ?? [''])[0];
+    const fs = Math.max(9, Math.round((name.length > 1 ? 12 : 14) * w / 40));
+    text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
+<text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+  }
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
+  <g transform="translate(${x} ${y}) rotate(${deg})">
+    <path d="${cut}" fill="none" stroke="var(--pan-groove)" stroke-width="2" stroke-linecap="round"/>
+    <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
+  </g>
+  ${text}
+</g>`;
+}
+
+function renderTongueDrum(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks }) {
+  const cx = 250, cy = 250;
+  let svg = `<svg id="${PAN_SVG_ID}" class="is-tongue-drum" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="panGrad" cx="38%" cy="32%">
+      <stop offset="0%" style="stop-color: var(--pan-g0)"/>
+      <stop offset="60%" style="stop-color: var(--pan-g1)"/>
+      <stop offset="100%" style="stop-color: var(--pan-g2)"/>
+    </radialGradient>
+  </defs>
+  <circle cx="${cx}" cy="${cy}" r="215" fill="url(#panGrad)" stroke="var(--pan-rim)" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="200" fill="none" stroke="var(--pan-groove)" stroke-width="1" stroke-dasharray="3 7"/>
+`;
+  // The ring: every note but a centre one, in slot order (custom drums keep
+  // their empty places). Lower notes get bigger tongues.
+  const ring = [];
+  if (!layout.centre) ring.push({ note: layout.top.ding, id: 'ding', top: true });
+  layout.top.slots.forEach((slot, i) => ring.push({ note: slot.note, id: `ring-${i}`, top: true }));
+  layout.bottom.slots.forEach((slot, i) => ring.push({ note: slot.note, id: `gu-${i}`, top: false }));
+  const n = Math.max(ring.length, 1);
+  const angles = tongueAngles(n);
+  const baseW = Math.max(26, Math.min(48, Math.round(640 / n)));
+  ring.forEach((t, i) => {
+    const scale = 1.12 - 0.24 * (n <= 1 ? 0 : i / (n - 1)); // the lowest first, biggest
+    const w = Math.round(baseW * scale);
+    const h = Math.round(w * 1.9);
+    const r = 205 - h / 2 - 14;
+    const x = Math.round(cx + r * Math.cos(angles[i]));
+    const y = Math.round(cy + r * Math.sin(angles[i]));
+    if (t.note) placed.push({ x, y, r: w / 2, note: t.note });
+    const cls = t.id === 'ding' ? `ding ${noteClass(t.note, true)}` : t.top ? `ring ${noteClass(t.note, true)}` : `gu ${noteClass(t.note, false)}`;
+    svg += tongueSvg(x, y, angles[i], t.note, cls, t.id, w, h, useFlats, useSolfege);
+  });
+  if (layout.centre) {
+    if (layout.top.ding) placed.push({ x: cx, y: cy, r: 44, note: layout.top.ding });
+    svg += noteSlotSvg(cx, cy, layout.top.ding, `ding ${noteClass(layout.top.ding, true)}`, 'ding', 44, useFlats, useSolfege);
+  }
+  if (strikeMarks.length) svg += strikeBadgesSvg(placed, strikeMarks);
+  return svg + '</svg>';
+}
+
 // opts.faintNotes (optional) draws notes faintly (the next chord), and
 // opts.strikeMarks (optional) numbers notes in strike order with L/R; a pan
 // rendered without them is exactly as before.
@@ -159,6 +241,8 @@ export function renderPan(layout, opts = {}) {
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
   }
+
+  if (layout.instrument === 'tongue-drum') return renderTongueDrum(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks });
 
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;

@@ -44,9 +44,10 @@ import {
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
 import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomParams } from './links.js';
+import { TONGUE_DRUMS, findTuning, layoutInstrument, isTongueDrumId } from './tonguedrums.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
-  touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId,
+  touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId, usesLayout,
   createScaleOcarina, createCustomOcarina, createCustomFlute, instrumentStatus, midiToNoteName,
   getClayBodies, saveClayBodies, getInstrumentsRaw, writeInstrumentsRaw,
   newPublicId, copySharedInstrument,
@@ -325,7 +326,7 @@ function openSettings({ push = true } = {}) {
 function removeInstrument(id) {
   const inst = getInstrument(id);
   if (!inst) { render(); return; }
-  if (inst.family === 'handpan') {
+  if (usesLayout(inst)) {
     deleteLayout(inst.layoutId);
     state.savedLayouts = getSavedLayouts();
     scheduleSave();
@@ -1079,7 +1080,7 @@ function familyName(id) { return INSTRUMENT_FAMILIES.find(f => f.id === id)?.nam
 // One instrument on Home: family glyph, name, what it is, and its ⋯ menu.
 function instrumentRowHtml(inst) {
   let meta;
-  if (inst.family === 'handpan') {
+  if (usesLayout(inst)) {
     const notes = state.savedLayouts.find(l => l.id === inst.layoutId)?.noteCount;
     meta = escHtml([instrumentStatus(inst), notes ? `${notes} notes` : ''].filter(Boolean).join(' · '));
   } else if (inst.kind === 'scale' && inst.build && inst.build.stage !== 'done') {
@@ -1272,7 +1273,7 @@ function viewBeginnerSetup() {
   }
 
   // done
-  const s = SCALES.find(x => x.id === st.scaleId);
+  const s = findTuning(st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
   const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
@@ -1342,7 +1343,7 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-hear') {
-    const s = SCALES.find(x => x.id === el.dataset.id);
+    const s = findTuning(el.dataset.id);
     if (s) { initAudio(); playScale(setupScaleNotes(s), () => {}); }
     return true;
   }
@@ -1355,7 +1356,7 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-first-chord' || action === 'setup-save') {
-    const s = SCALES.find(x => x.id === st.scaleId);
+    const s = findTuning(st.scaleId);
     if (!s) return true;
     const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
     const path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
@@ -1392,7 +1393,7 @@ function playRowHtml(target) {
   const path = linkFor(target);
   const link = parseLink(path);
   if (!link) return '';
-  const scale = target.scaleId ? SCALES.find(s => s.id === target.scaleId) : null;
+  const scale = target.scaleId ? findTuning(target.scaleId) : null;
   return uiRow({
     lead: FAMILY_ICONS[link.family], title: linkTitle(link).replace(/ handpan$/, ''),
     meta: scale ? scale.desc ?? '' : '', chevron: true, action: 'open-link', data: { path },
@@ -1472,8 +1473,8 @@ function rowMenuSheet(id) {
   const inst = getInstrument(id);
   if (!inst) return '';
   const rows = [];
-  if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
-  if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
+  if (!usesLayout(inst)) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
+  if (!usesLayout(inst)) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
   rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
   return uiSheet({ key: 'row-menu', variant: 'rowmenu', title: inst.name, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
 }
@@ -1533,7 +1534,7 @@ function wizardOcarinaPlan() { return planOcarina(state.wizard.oc); }
 // gu notes, chamber count (with the note window when fewer chambers than
 // the full scale needs) and single notes switched off.
 function planOcarina(oc) {
-  const scale = SCALES.find(sc => sc.id === oc.scaleId);
+  const scale = findTuning(oc.scaleId);
   const all = scaleToMidis(scale, { transpose: oc.transpose, includeGu: oc.includeGu });
   const needed = chambersNeeded(all);
   const chambers = Math.min(oc.chambers ?? needed, needed);
@@ -1938,7 +1939,7 @@ function wizardKeySelect(fam, chart, keyId) {
 
 // Pitch classes of a scale from data.js, for the Notes and Chords filter.
 function scalePitchClasses(scaleId) {
-  const scale = SCALES.find(sc => sc.id === scaleId);
+  const scale = findTuning(scaleId);
   if (!scale) return null;
   return new Set(scaleToMidis(scale).map(m => ((m % 12) + 12) % 12));
 }
@@ -2093,7 +2094,7 @@ function ocChordModel(inst) {
     .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
   const sourceId = oc.scaleFilter !== 'All' ? oc.scaleFilter : inst.scaleId;
-  const source = SCALES.find(sc => sc.id === sourceId);
+  const source = findTuning(sourceId);
   const have = new Set(chords.map(c => `${notePC(c.rootNote)}-${c.type.id}`));
   const missing = !source ? [] : findAllChords(createLayoutFromScale(source))
     .filter(c => !have.has(`${notePC(c.rootNote)}-${c.type.id}`))
@@ -2528,9 +2529,13 @@ function ocCardData(inst, key) {
 // one (a whistle-bodied flute like a tin whistle); everything else, the
 // handpan screens included, keeps the handpan sound.
 function voiceForState() {
+  // A handpan or tongue drum on screen sounds like itself.
+  if (state.layout && ['editor', 'chords', 'hp-playlists', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
+  if (state.view === 'setup') return state.setup?.family === 'tongue-drum' ? 'tongue-drum' : 'handpan';
   if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
   const inst = currentInstrument();
-  if (!inst || inst.family === 'handpan') return 'handpan';
+  if (!inst) return 'handpan';
+  if (usesLayout(inst)) return inst.family;
   if (inst.family === 'ocarina') return 'ocarina';
   return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'flute';
 }
@@ -4042,7 +4047,7 @@ function openInstrument(id, { push = true } = {}) {
   state.selectedChord = null;
   state.sourcePlaylistId = null;
   state.sourceEntryId = null;
-  if (inst.family === 'handpan') {
+  if (usesLayout(inst)) {
     const saved = state.savedLayouts.find(l => l.id === inst.layoutId);
     if (!saved) return false;
     state.layout = JSON.parse(JSON.stringify(saved.layout));
@@ -4895,7 +4900,7 @@ function menuAppBtn() { return uiIconBtn('ellipsis', 'More', { action: 'menu-ope
 // The instrument the playlist was opened from and how many entries are its.
 function plHere(pl) {
   const inst = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
-  if (inst && inst.family !== 'handpan') {
+  if (inst && !usesLayout(inst)) {
     return { kind: 'oc', name: inst.name, n: pl.chords.filter(c => c.instrumentId === inst.id).length };
   }
   const layoutId = hpCurrentLayoutId();
@@ -5032,7 +5037,7 @@ function progStepLayout(s) {
   if (s.layoutData) return JSON.parse(JSON.stringify(s.layoutData));
   const saved = state.savedLayouts.find(l => l.id === s.layoutId);
   if (saved) return JSON.parse(JSON.stringify(saved.layout));
-  const scale = SCALES.find(sc => sc.id === s.layoutId);
+  const scale = findTuning(s.layoutId);
   return scale ? createLayoutFromScale(scale) : null;
 }
 
@@ -5048,7 +5053,7 @@ function progHpContext(layoutId, name) {
 // handpan or ocarina is put on screen first). null when there is none.
 function progContext(prog) {
   const cur = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
-  if (cur && cur.family !== 'handpan') return progOcContext(cur);
+  if (cur && !usesLayout(cur)) return progOcContext(cur);
   const layoutId = hpCurrentLayoutId();
   if (layoutId) return progHpContext(layoutId, state.layout.name);
   const first = prog?.steps.find(s => (s.instrumentId ? !!getInstrument(s.instrumentId) : !!progStepLayout(s)));
@@ -5478,10 +5483,10 @@ function csTargets() {
   const out = [];
   const add = t => { if (t && !out.some(x => x.key === t.key)) out.push(t); };
   const cur = state.currentInstrumentId && state.currentInstrumentId !== SHARED_ID ? getInstrument(state.currentInstrumentId) : null;
-  if (cur && cur.family !== 'handpan' && playableMidis(cur).length) add(csOcTarget(cur));
-  if (state.layout && (!cur || cur.family === 'handpan')) add(csHpTarget(hpCurrentLayoutId(), state.layout));
+  if (cur && !usesLayout(cur) && playableMidis(cur).length) add(csOcTarget(cur));
+  if (state.layout && (!cur || usesLayout(cur))) add(csHpTarget(hpCurrentLayoutId(), state.layout));
   for (const inst of getInstruments()) {
-    if (inst.family === 'handpan') {
+    if (usesLayout(inst)) {
       const saved = state.savedLayouts.find(l => l.id === inst.layoutId);
       if (saved) add(csHpTarget(saved.id, saved.layout, inst.name));
     } else if (playableMidis(inst).length) add(csOcTarget(inst));
@@ -5650,7 +5655,7 @@ function csSave() {
   state.chordSheet = null;
   // Put the instrument it was fitted to on screen, so the progression plays.
   if (target.kind === 'oc' && state.currentInstrumentId !== target.inst.id) openInstrument(target.inst.id, { push: false });
-  if (target.kind === 'hp' && (hpCurrentLayoutId() !== target.layoutId || (state.currentInstrumentId && getInstrument(state.currentInstrumentId)?.family !== 'handpan'))) {
+  if (target.kind === 'hp' && (hpCurrentLayoutId() !== target.layoutId || (state.currentInstrumentId && !usesLayout(getInstrument(state.currentInstrumentId))))) {
     progLoadHandpan({ layoutId: target.layoutId, layoutData: target.layout.isCustom ? target.layout : null, scaleName: target.name });
   }
   const cov = sheetCoverage(sheet.steps, chords, cs.semis);
@@ -5670,7 +5675,7 @@ function loadPlaylistChordAt(pl, idx) {
     if (saved) {
       state.layout = saved.layout;
     } else {
-      const scale = SCALES.find(s => s.id === fav.layoutId);
+      const scale = findTuning(fav.layoutId);
       if (!scale) return false;
       state.layout = createLayoutFromScale(scale);
     }
@@ -5821,7 +5826,9 @@ function stateToHash() {
     bc: state.layout.bottom.capacity,
     name: state.layout.name,
   });
-  return linkFor({ custom: params }, { tab, chord });
+  const family = layoutInstrument(state.layout);
+  if (family === 'tongue-drum' && state.layout.centre) params.set('centre', '1');
+  return linkFor({ custom: params, family }, { tab, chord });
 }
 
 // An ocarina or flute tab as a URL: a visiting or shared one by its link,
@@ -5901,9 +5908,9 @@ function openLink(link) {
     return;
   }
   // Handpans: a scale, or custom notes carried in the link.
-  if (link.kind === 'scale') openScaleLayout(SCALES.find(s => s.id === link.scaleId));
+  if (link.kind === 'scale') openScaleLayout(findTuning(link.scaleId));
   else {
-    state.layout = layoutFromCustomParams(link.params);
+    state.layout = layoutFromCustomParams(link.params, link.family);
     state.currentInstrumentId = null;
     state.chords = findAllChords(state.layout);
   }
@@ -5948,7 +5955,7 @@ function loadFromHash() {
     const raw = hash.slice(7);
     const [scaleId, ...rest] = raw.split('&chord=');
     chordId = rest[0] || null;
-    const scale = SCALES.find(s => s.id === scaleId);
+    const scale = findTuning(scaleId);
     if (scale) {
       openScaleLayout(scale);
       state.view = chordId ? 'chords' : 'editor';
@@ -6352,7 +6359,7 @@ const syncLocal = {
     const m = new Map();
     for (const [kind, key] of Object.entries(SYNC_LISTS)) {
       for (const data of syncReadList(key)) {
-        if (!data?.id || (kind === 'instrument' && data.family === 'handpan')) continue;
+        if (!data?.id || (kind === 'instrument' && usesLayout(data))) continue;
         m.set(syncKey(kind, data.id), { kind, id: data.id, data });
       }
     }
@@ -6795,7 +6802,7 @@ document.addEventListener('click', e => {
     if (!inst) return;
     state.confirm = {
       kind: 'instrument', id: inst.id, ok: 'Remove', title: `Remove ${inst.name}?`,
-      body: inst.family === 'handpan'
+      body: usesLayout(inst)
         ? 'Its saved layout is removed from My instruments on this device and from sync.'
         : 'Its readings and build history are removed from this device and from sync.',
     };
@@ -7065,7 +7072,7 @@ document.addEventListener('click', e => {
     const inst = getInstrument(id);
     state.menu = false;
     // One you set up yourself is edited on its Set up tab, with everything else.
-    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && inst.family !== 'handpan') {
+    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && !usesLayout(inst)) {
       if (state.currentInstrumentId !== id || state.view !== 'instrument') openInstrument(id);
       state.oc.tab = 'setup';
       state.oc.holeMap = null;
@@ -7370,7 +7377,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-pick-handpan') {
-    const scale = SCALES.find(sc => sc.id === el.dataset.id);
+    const scale = findTuning(el.dataset.id);
     if (!scale) return;
     const layout = createLayoutFromScale(scale);
     saveLayout({
@@ -7495,7 +7502,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'select-scale') {
-    const scale = SCALES.find(s => s.id === el.dataset.id);
+    const scale = findTuning(el.dataset.id);
     if (!scale) return;
     state.layout = createLayoutFromScale(scale);
     state.chords = findAllChords(state.layout);
@@ -8504,7 +8511,7 @@ document.addEventListener('change', e => {
       const key = el.dataset.key;
       if (key === 'scaleId') Object.assign(inst.design, { scaleId: el.value, chambers: null, windowStart: null, excluded: [] });
       applyDesign(inst);
-      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${SCALES.find(sc => sc.id === inst.scaleId).name} ocarina`;
+      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${findTuning(inst.scaleId).name} ocarina`;
     }
     saveInstrument(inst);
     refreshInstruments();

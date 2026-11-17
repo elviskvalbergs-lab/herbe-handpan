@@ -2372,6 +2372,9 @@ function createLayoutFromScale(scale) {
     id: scale.id,
     name: scale.name,
     isCustom: false,
+    // A tongue drum (js/tonguedrums.js) is drawn with tongues; centre: its
+    // lowest note sits in the middle. Handpans have neither field.
+    ...(scale.instrument ? { instrument: scale.instrument, centre: !!scale.centre } : {}),
     top: {
       ding: scale.top.ding,
       slots: scale.top.notes.map(n => ({ note: n })),
@@ -4634,6 +4637,157 @@ function detectLowestKey(chart, hz, { a4 = 440 } = {}) {
 }
 
 
+// ── js/tonguedrums.js ──
+// Steel tongue drums: the tunings makers sell, in the same shape as the
+// handpan scales in data.js (SCALES), so the handpan engine (chords,
+// playlists, Listen, the setup, links) works for them unchanged. Only the
+// picture differs: tongues instead of dents (js/pan.js, renderPan).
+//
+// Every tuning comes from a maker's published listing, noted in `sources`
+// (CLAUDE.md: never from memory). Notes are listed lowest first; `top.ding`
+// is the lowest note. `centre: true` means that note is a tongue in the
+// middle of the drum (as on handpan-style tongue drums such as RAV Vast);
+// otherwise every tongue sits around the edge.
+//
+// Pure data; unit tested in Node (tests/tonguedrums.test.mjs).
+
+const SELA_CATALOGUE = 'https://selapercussion.com/wp-content/uploads/SELA-World-Of-Sounds-Catalog-2024.pdf';
+
+function td(id, { name, slug, family, desc, centre = false, notes, sources }) {
+  const [ding, ...rest] = notes;
+  return {
+    id, name, slug, family, desc, centre, sources, instrument: 'tongue-drum',
+    top: { ding, notes: rest, capacity: rest.length },
+    bottom: { notes: [], capacity: 0 },
+  };
+}
+
+const TONGUE_DRUMS = [
+  td('TD-C-Major-Pentatonic-6', {
+    name: 'C Major Pentatonic (6)', slug: 'c-major-pentatonic-6', family: 'Major Pentatonic',
+    desc: 'Six high, bright tongues. The friendliest first drum: nothing sounds wrong.',
+    notes: ['C5', 'D5', 'E5', 'G5', 'A5', 'C6'],
+    sources: [{ maker: 'Sela', model: 'SE352', url: SELA_CATALOGUE }],
+  }),
+  td('TD-C-Major-8', {
+    name: 'C Major (8)', slug: 'c-major-8', family: 'Major',
+    desc: 'A full major scale, C to C. Plays children’s songs and simple melodies.',
+    notes: ['C5', 'D5', 'E5', 'F5', 'G5', 'A5', 'B5', 'C6'],
+    sources: [{ maker: 'Sela', model: 'SE360', url: SELA_CATALOGUE }],
+  }),
+  td('TD-D-Major-8', {
+    name: 'D Major (8)', slug: 'd-major-8', family: 'Major',
+    desc: 'A full major scale, D to D. Bright and singable.',
+    notes: ['D5', 'E5', 'F#5', 'G5', 'A5', 'B5', 'C#6', 'D6'],
+    sources: [{ maker: 'Sela', model: 'SE361', url: SELA_CATALOGUE }],
+  }),
+  td('TD-C-Major-Pentatonic-8', {
+    name: 'C Major Pentatonic (8)', slug: 'c-major-pentatonic-8', family: 'Major Pentatonic',
+    desc: 'Low and warm pentatonic over two octaves.',
+    notes: ['C3', 'D3', 'E3', 'G3', 'A3', 'C4', 'D4', 'E4'],
+    sources: [{ maker: 'Sela', model: 'SE372', url: SELA_CATALOGUE }],
+  }),
+  td('TD-D-Akebono-8', {
+    name: 'D Akebono (8)', slug: 'd-akebono-8', family: 'Akebono',
+    desc: 'Japanese pentatonic: calm, a little mysterious.',
+    notes: ['D3', 'E3', 'F3', 'A3', 'Bb3', 'D4', 'E4', 'F4'],
+    sources: [{ maker: 'Sela', model: 'SE371', url: SELA_CATALOGUE }],
+  }),
+  td('TD-D-Kurd-9', {
+    name: 'D Kurd (9)', slug: 'd-kurd-9', family: 'Kurd', centre: true,
+    desc: 'The handpan favourite on a tongue drum: deep D in the middle, natural minor around it.',
+    notes: ['D3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4'],
+    sources: [{ maker: 'Sela', model: 'SE380', url: SELA_CATALOGUE }],
+  }),
+  td('TD-D-Amara-9', {
+    name: 'D Amara (9)', slug: 'd-amara-9', family: 'Amara', centre: true,
+    desc: 'Also sold as D Celtic Minor. Soft, folky minor with a deep D in the middle.',
+    notes: ['D3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5'],
+    sources: [
+      { maker: 'Sela', model: 'SE381', url: SELA_CATALOGUE },
+      { maker: 'Meinl Sonic Energy', model: 'OSTD2NBE', url: 'https://www.meinlshop.de/en/Meinl-Sonic-Energy-16-Octave-Steel-Tongue-Drum-D-Amara-9-Notes-440-Hz-Lasered-Floral-Design-Navy-Blue-OSTD2NBE/OSTD2NBE' },
+      { maker: 'RAV Vast', model: 'D Celtic Minor', url: 'https://ravvast.com/products/rav-vast-d-celtic-minor-arm' },
+    ],
+  }),
+  td('TD-C-Minor-11', {
+    name: 'C Minor (11)', slug: 'c-minor-11', family: 'Minor',
+    desc: 'A natural minor over almost two octaves, with low C and G.',
+    notes: ['C3', 'G3', 'Ab3', 'C4', 'D4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'],
+    sources: [{ maker: 'Sela', model: 'SETD13U1', url: SELA_CATALOGUE }],
+  }),
+  td('TD-C-Major-11', {
+    name: 'C Major (11)', slug: 'c-major-11', family: 'Major',
+    desc: 'A major scale over almost two octaves, with low C and G.',
+    notes: ['C3', 'G3', 'A3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'C5', 'D5'],
+    sources: [{ maker: 'Sela', model: 'SETD13U2', url: 'https://www.thomann.ie/sela_tongue_drum_setd13u2.htm' }],
+  }),
+  td('TD-G-Major-Pentatonic-8', {
+    name: 'G Major Pentatonic (8)', slug: 'g-major-pentatonic-8', family: 'Major Pentatonic',
+    desc: 'Sold as G Major. Sunny pentatonic, easy to play along with songs in G.',
+    notes: ['G3', 'A3', 'B3', 'D4', 'E4', 'G4', 'A4', 'B4'],
+    sources: [{ maker: 'Meinl Sonic Energy', model: 'STD3VB', url: 'https://www.meinlshop.de/en/Meinl-Sonic-Energy-12-Steel-Tongue-Drum-G-Major-8-Notes-440-Hz-Vintage-Brown-STD3VB/STD3VB' }],
+  }),
+  td('TD-A-Minor-Pentatonic-8', {
+    name: 'A Minor Pentatonic (8)', slug: 'a-minor-pentatonic-8', family: 'Minor Pentatonic',
+    desc: 'Sold as A Minor. Gentle minor pentatonic, the classic meditation drum.',
+    notes: ['A3', 'C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5'],
+    sources: [{ maker: 'Meinl Sonic Energy', model: 'STD1VB', url: 'https://www.meinlshop.de/en/meinl-sonic-energy/steel-tongue-drums/meinl-sonic-energy-steel-tongue-drum-vintage-brown-a-minor-std1vb?c=330' }],
+  }),
+  td('TD-D-Major-9', {
+    name: 'D Major (9)', slug: 'd-major-9', family: 'Major', centre: true,
+    desc: 'Bright major with a deep D in the middle.',
+    notes: ['D3', 'G3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'A4'],
+    sources: [{ maker: 'RAV Vast', model: 'D Major', url: 'https://ravvast.com/products/rav-vast-d-major-indigo' }],
+  }),
+  td('TD-B-Celtic-Minor-9', {
+    name: 'B Celtic Minor (9)', slug: 'b-celtic-minor-9', family: 'Celtic Minor', centre: true,
+    desc: 'Soft, folky minor with a deep B in the middle.',
+    notes: ['B2', 'F#3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'A4'],
+    sources: [{ maker: 'RAV Vast', model: 'B Celtic Minor', url: 'https://ravvast.com/products/rav-vast-b-celtic-minor-indigo' }],
+  }),
+  td('TD-B-Kurd-10', {
+    name: 'B Kurd (10)', slug: 'b-kurd-10', family: 'Kurd', centre: true,
+    desc: 'Natural minor with a deep B in the middle.',
+    notes: ['B2', 'F#3', 'G3', 'A3', 'B3', 'C#4', 'D4', 'E4', 'F#4', 'A4'],
+    sources: [{ maker: 'RAV Vast', model: 'B Kurd', url: 'https://ravvast.com/products/rav-vast-b-kurd-indigo' }],
+  }),
+  td('TD-G-Pygmy-9', {
+    name: 'G Pygmy (9)', slug: 'g-pygmy-9', family: 'Pygmy', centre: true,
+    desc: 'Dark, earthy pentatonic with a very deep G in the middle.',
+    notes: ['G2', 'C3', 'D3', 'Eb3', 'G3', 'Bb3', 'C4', 'D4', 'F4'],
+    sources: [{ maker: 'RAV Vast', model: 'G Pygmy', url: 'https://ravvast.com/products/rav-vast-g-pygmy-arm' }],
+  }),
+  td('TD-E-Minor-Pentatonic-10', {
+    name: 'E Minor Pentatonic (10)', slug: 'e-minor-pentatonic-10', family: 'Minor Pentatonic',
+    desc: 'Minor pentatonic over two octaves.',
+    notes: ['E3', 'G3', 'A3', 'B3', 'D4', 'E4', 'G4', 'A4', 'B4', 'D5'],
+    sources: [{ maker: 'Idiopan', model: 'Dominus', url: 'https://idiopan.com/products/idiopan-dominus' }],
+  }),
+  td('TD-A-Akebono-8', {
+    name: 'A Akebono (8)', slug: 'a-akebono-8', family: 'Akebono',
+    desc: 'Japanese pentatonic in A: calm and a little mysterious.',
+    notes: ['A3', 'B3', 'C4', 'E4', 'F4', 'A4', 'B4', 'C5'],
+    sources: [{ maker: 'Asian Sound', model: 'Hapi Slim A Akebono', url: 'https://www.thomann.co.uk/asian_sound_hapi_slim_a_akebono.htm' }],
+  }),
+  td('TD-D-Kurd-15', {
+    name: 'D Kurd (15)', slug: 'd-kurd-15', family: 'Kurd',
+    desc: 'Two full octaves of D Kurd: room for melodies as well as chords.',
+    notes: ['D3', 'E3', 'F3', 'G3', 'A3', 'Bb3', 'C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'Bb4', 'C5', 'D5'],
+    sources: [{ maker: 'Thomann', model: '14" EQ D Kurd 15', url: 'https://www.thomann.co.uk/thomann_tongue_drum_14_eq_d_kurd_440.htm' }],
+  }),
+];
+
+function isTongueDrumId(id) { return String(id).startsWith('TD-'); }
+
+// A tuning by id: a handpan scale or a tongue drum.
+function findTuning(id) {
+  return SCALES.find(s => s.id === id) ?? TONGUE_DRUMS.find(t => t.id === id) ?? null;
+}
+
+// Which instrument a layout is: 'handpan' or 'tongue-drum'.
+function layoutInstrument(layout) { return layout?.instrument === 'tongue-drum' ? 'tongue-drum' : 'handpan'; }
+
+
 // ── js/links.js ──
 // Deep links: a stable path for every instrument and tuning in the catalogue
 // (docs/free-to-play.md, "1. Deep links"). Pure: no DOM, so the tests and
@@ -4643,6 +4797,8 @@ function detectLowestKey(chart, hz, { a4 = 440 } = {}) {
 //   /handpan/custom[/chords[/a-min]]?ding=D3&top=A3,…&bottom=…&tc=8&bc=3&name=…
 //   /ocarina/alto-c-12[/notes|/chords]    a fingering chart in one key
 //   /flute/tin-whistle-d, /flute/naf-6-a4
+//   /tongue-drum/d-kurd-9[/chords[/a-min]] a tongue drum from TONGUE_DRUMS
+//   /tongue-drum/custom?…                  a custom tongue drum (same query as a custom handpan)
 //   /s/7KQ2PM[/chords]                    an instrument shared by code
 //
 // A slug never changes or disappears once published: a rename only adds an
@@ -4651,13 +4807,14 @@ function detectLowestKey(chart, hz, { a4 = 440 } = {}) {
 // The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
 const APP_NAME = 'Oakhum';
 
-const LINK_FAMILIES = ['handpan', 'ocarina', 'flute'];
+const LINK_FAMILIES = ['handpan', 'tongue-drum', 'ocarina', 'flute'];
 const LINK_TABS = {
   handpan: ['pan', 'chords', 'playlists', 'listen'],
+  'tongue-drum': ['pan', 'chords', 'playlists', 'listen'],
   ocarina: ['notes', 'chords', 'listen'],
   flute: ['notes', 'chords', 'listen'],
 };
-const LINK_DEFAULT_TAB = { handpan: 'pan', ocarina: 'notes', flute: 'notes' };
+const LINK_DEFAULT_TAB = { handpan: 'pan', 'tongue-drum': 'pan', ocarina: 'notes', flute: 'notes' };
 
 function linkSlug(text) {
   return String(text).toLowerCase().replace(/#/g, 's').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -4694,8 +4851,8 @@ function linkChartSlug(chart, key) {
 
 // The slug tables, built once.
 function linkBuildTables() {
-  const canonical = { handpan: new Map(), ocarina: new Map(), flute: new Map() };
-  const alias = { handpan: new Map(), ocarina: new Map(), flute: new Map() };
+  const canonical = Object.fromEntries(LINK_FAMILIES.map(f => [f, new Map()]));
+  const alias = Object.fromEntries(LINK_FAMILIES.map(f => [f, new Map()]));
   const byTarget = new Map();
   for (const s of SCALES) {
     const slug = linkSlug(s.id);
@@ -4713,6 +4870,10 @@ function linkBuildTables() {
     if (canonical.handpan.has(rest)) continue;
     const pick = list.find(s => s.id.startsWith('D-')) ?? list[0];
     alias.handpan.set(rest, linkSlug(pick.id));
+  }
+  for (const t of TONGUE_DRUMS) {
+    canonical['tongue-drum'].set(t.slug, { family: 'tongue-drum', scaleId: t.id });
+    byTarget.set(`scale:${t.id}`, t.slug);
   }
   for (const chart of TRADITIONAL_CHARTS) {
     const fam = chart.family;
@@ -4758,7 +4919,8 @@ function linkFor(target, { tab = null, chord = null } = {}) {
   else if (target.scaleId) {
     const slug = LINK_TABLES.byTarget.get(`scale:${target.scaleId}`);
     if (!slug) return null;
-    base = `/handpan/${slug}`; family = 'handpan';
+    family = isTongueDrumId(target.scaleId) ? 'tongue-drum' : 'handpan';
+    base = `/${family}/${slug}`;
   } else if (target.chartId) {
     const chart = getChart(target.chartId);
     if (!chart) return null;
@@ -4767,7 +4929,8 @@ function linkFor(target, { tab = null, chord = null } = {}) {
     if (!slug) return null;
     base = `/${chart.family}/${slug}`; family = chart.family;
   } else if (target.custom != null) {
-    base = '/handpan/custom'; family = 'handpan';
+    family = target.family === 'tongue-drum' ? 'tongue-drum' : 'handpan';
+    base = `/${family}/custom`;
     const q = String(target.custom);
     query = q ? `?${q.replace(/^\?/, '')}` : '';
   } else return null;
@@ -4803,9 +4966,9 @@ function parseLink(pathname, search = '') {
   const slug = linkSlug(rawSlug);
   const tab = tabOf(family);
 
-  if (family === 'handpan' && slug === 'custom') {
+  if ((family === 'handpan' || family === 'tongue-drum') && slug === 'custom') {
     const q = String(search).replace(/^\?/, '');
-    return { kind: 'custom', family, params: new URLSearchParams(q), tab, chord, path: linkFor({ custom: q }, { tab, chord }) };
+    return { kind: 'custom', family, params: new URLSearchParams(q), tab, chord, path: linkFor({ custom: q, family }, { tab, chord }) };
   }
   const canonSlug = LINK_TABLES.canonical[family].has(slug) ? slug : LINK_TABLES.alias[family].get(slug);
   const target = canonSlug && LINK_TABLES.canonical[family].get(canonSlug);
@@ -4827,20 +4990,24 @@ function parseLink(pathname, search = '') {
 // layout. Each shell gets exactly as many slots as its capacity (tc / bc),
 // empty ones as null: an empty list ("bottom=") is three empty slots when
 // bc=3, not one blank note, so the shell can still be made smaller.
-function layoutFromCustomParams(params) {
+function layoutFromCustomParams(params, family = 'handpan') {
+  const drum = family === 'tongue-drum';
+  const max = drum ? 16 : 12; // tongue drums come with up to 15 tongues
   const shell = (key, capKey, fallback) => {
     const raw = params.get(key) ? params.get(key).split(',') : [];
     const notes = raw.map(n => (n && n !== 'null' ? n : null));
     const cap = parseInt(params.get(capKey) ?? '', 10);
-    const capacity = Math.min(12, Math.max(Number.isNaN(cap) ? fallback : cap, notes.length, 0));
+    const capacity = Math.min(max, Math.max(Number.isNaN(cap) ? fallback : cap, notes.length, 0));
     return { slots: Array.from({ length: capacity }, (_, i) => ({ note: notes[i] ?? null })), capacity };
   };
   return {
     id: 'custom',
     name: params.get('name') || 'Custom Layout',
     isCustom: true,
+    // A tongue drum: centre=1 when its lowest note is a tongue in the middle.
+    ...(drum ? { instrument: 'tongue-drum', centre: params.get('centre') === '1' } : {}),
     top: { ding: params.get('ding') || 'D3', ...shell('top', 'tc', 8) },
-    bottom: shell('bottom', 'bc', 3),
+    bottom: shell('bottom', 'bc', drum ? 0 : 3),
   };
 }
 
@@ -4880,8 +5047,9 @@ function linkDistance(a, b) {
 // A name for the instrument a link opens, for titles and preview cards.
 function linkTitle(link) {
   if (!link) return null;
-  if (link.kind === 'scale') return `${SCALES.find(s => s.id === link.scaleId)?.name ?? link.scaleId} handpan`;
-  if (link.kind === 'custom') return `${link.params.get('name') || 'Custom'} handpan`;
+  const what = link.family === 'tongue-drum' ? 'tongue drum' : 'handpan';
+  if (link.kind === 'scale') return `${(findTuning(link.scaleId)?.name ?? link.scaleId).replace(/ \(\d+\)$/, '')} ${what}`;
+  if (link.kind === 'custom') return `${link.params.get('name') || 'Custom'} ${what}`;
   if (link.kind === 'shared') return 'Shared instrument';
   if (link.kind === 'chart') {
     const chart = getChart(link.chartId);
@@ -4902,7 +5070,7 @@ function linkPreview(pathname, search = '') {
   const link = parseLink(pathname, search);
   const title = linkTitle(link);
   if (!title || link.kind === 'unknown') {
-    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
+    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
   }
   const what = link.tab === 'listen' ? 'Listen to a song and play along'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
@@ -5332,6 +5500,7 @@ const ONBOARDED_KEY = 'hp-onboarded';
 
 const INSTRUMENT_FAMILIES = [
   { id: 'handpan', name: 'Handpan' },
+  { id: 'tongue-drum', name: 'Tongue drum' },
   { id: 'ocarina', name: 'Ocarina' },
   { id: 'flute', name: 'Flute' }, // offered when js/charts.js has a sourced flute chart
 ];
@@ -5357,6 +5526,13 @@ function nowIso() { return new Date().toISOString(); }
 
 function handpanInstrumentId(layoutId) { return 'hp-' + layoutId; }
 
+// Handpans and tongue drums are layouts (a middle note, a ring of notes, js/pan.js):
+// they live in the saved layouts and use the handpan screens.
+function usesLayout(inst) { return inst?.family === 'handpan' || inst?.family === 'tongue-drum'; }
+
+// The family of a saved layout's instrument.
+function layoutFamily(saved) { return saved.layout?.instrument === 'tongue-drum' ? 'tongue-drum' : 'handpan'; }
+
 // Adds a handpan instrument for every saved layout that has none, keeps names
 // in step, and soft-deletes handpan instruments whose layout is gone.
 // Pure: returns { instruments, changed }.
@@ -5371,7 +5547,7 @@ function reconcileInstruments(instruments, savedLayouts, now = nowIso()) {
     if (!existing) {
       list.push({
         id,
-        family: 'handpan',
+        family: layoutFamily(saved),
         kind: saved.layout?.isCustom ? 'custom' : 'scale',
         layoutId: saved.id,
         name: saved.name,
@@ -5380,15 +5556,16 @@ function reconcileInstruments(instruments, savedLayouts, now = nowIso()) {
         lastPlayedAt: saved.savedAt ? new Date(saved.savedAt).toISOString() : null,
       });
       changed = true;
-    } else if (existing.deletedAt || existing.name !== saved.name) {
+    } else if (existing.deletedAt || existing.name !== saved.name || existing.family !== layoutFamily(saved)) {
       delete existing.deletedAt;
       existing.name = saved.name;
+      existing.family = layoutFamily(saved);
       existing.updatedAt = now;
       changed = true;
     }
   }
   for (const inst of list) {
-    if (inst.family === 'handpan' && !inst.deletedAt && !live.has(inst.id)) {
+    if (usesLayout(inst) && !inst.deletedAt && !live.has(inst.id)) {
       inst.deletedAt = now;
       inst.updatedAt = now;
       changed = true;
@@ -5468,6 +5645,7 @@ function createCustomFlute({ name, holeCount }, now = nowIso()) {
 // One line under the instrument's name on its card.
 function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
+  if (inst.family === 'tongue-drum') return inst.kind === 'custom' ? 'Custom tongue drum' : 'Tongue drum';
   if (inst.kind === 'traditional') {
     const notes = inst.chambers?.[0]?.notes ?? [];
     return notes.length ? `${notes.length} notes, ${midiToNoteName(notes[0])} to ${midiToNoteName(notes[notes.length - 1])}` : '';
@@ -5577,7 +5755,7 @@ function newPublicId(random = Math.random) {
 // Instruments that sync through the instruments table: everything except
 // handpans, which are rebuilt from the saved layouts (synced already).
 function syncableInstruments(list) {
-  return list.filter(i => i.family !== 'handpan');
+  return list.filter(i => !usesLayout(i));
 }
 
 // Two-way merge of local instruments with cloud rows ({ id, data,
@@ -5612,7 +5790,7 @@ function copySharedInstrument(shared, now = nowIso()) {
   const { publicId, build, setup, deletedAt, ...rest } = shared;
   return {
     ...rest,
-    id: (shared.family === 'handpan' ? 'hp-' : 'oc-') + Math.random().toString(36).slice(2, 10),
+    id: (usesLayout(shared) ? 'hp-' : 'oc-') + Math.random().toString(36).slice(2, 10),
     copiedFrom: publicId ?? null,
     build: build ? { ...build, stage: 'done', perChamber: [] } : undefined,
     createdAt: now, updatedAt: now, lastPlayedAt: now,
@@ -6133,7 +6311,7 @@ const START_OFFSET = 0.05;
 // Each is a sustained tone with a soft breathy attack, built from a few
 // harmonics (one PeriodicWave), a little breath noise and a slow vibrato
 // that comes in after the attack. Handpan keeps its own struck sound.
-const VOICES = ['handpan', 'ocarina', 'flute', 'whistle'];
+const VOICES = ['handpan', 'tongue-drum', 'ocarina', 'flute', 'whistle'];
 function setVoice(name) { voice = VOICES.includes(name) ? name : 'handpan'; }
 
 const WIND = {
@@ -6219,9 +6397,15 @@ function playFreq(freq, startTime, dur = 0.9) {
   if (_onFirstSound) { const fn = _onFirstSound; _onFirstSound = null; fn(); }
   const now = startTime ?? ctx.currentTime;
   const sink = reverbSend ?? masterGain; // fall back if reverb not ready yet
-  if (voice !== 'handpan') { playWind(freq, now, dur, sink); return; }
+  if (voice !== 'handpan' && voice !== 'tongue-drum') { playWind(freq, now, dur, sink); return; }
 
-  const harmonics = [
+  // Struck steel. A tongue drum rings purer than a handpan: a strong
+  // fundamental and a faint octave, a slightly softer attack, a long tail.
+  const harmonics = voice === 'tongue-drum' ? [
+    { mult: 1,   gain: 0.62, decay: 6.5 },
+    { mult: 2,   gain: 0.12, decay: 2.4 },
+    { mult: 3,   gain: 0.04, decay: 1.2 },
+  ] : [
     { mult: 1,   gain: 0.52, decay: 5.5 },
     { mult: 2,   gain: 0.34, decay: 3.2 },
     { mult: 3,   gain: 0.11, decay: 2.0 },
@@ -6236,7 +6420,7 @@ function playFreq(freq, startTime, dur = 0.9) {
     osc.detune.value = (Math.random() - 0.5) * 4;
 
     env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(gain, now + 0.004);
+    env.gain.linearRampToValueAtTime(gain, now + (voice === 'tongue-drum' ? 0.008 : 0.004));
     env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
 
@@ -6441,6 +6625,88 @@ function strikeBadgesSvg(placed, strikeMarks) {
   return out;
 }
 
+// ── Tongue drums (js/tonguedrums.js) ────────────────────────────────────────
+// The same notes, ids and classes as the handpan drawing, so taps, chord
+// colours, the playing glow and the editor work unchanged; each note is a
+// tongue (a rounded rect, which pan-drawing.css colours like a dent) cut
+// into the shell and pointing at the middle. The lowest note sits at the
+// bottom and the notes climb alternately right and left, the way makers lay
+// them out (https://www.hluru.net/en-us/blogs/skills-tips/15-note-tongue-drum-sheet-music-3-advanced-songs-free-tabs).
+function tongueAngles(count) {
+  const step = (2 * Math.PI) / count;
+  return Array.from({ length: count }, (_, i) => {
+    const k = Math.ceil(i / 2);
+    const side = i % 2 === 1 ? -1 : 1; // 1: right of the bottom, -1: left
+    return Math.PI / 2 + side * k * step;
+  });
+}
+
+function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfege) {
+  const deg = Math.round((angle * 180) / Math.PI - 90); // local -y points at the middle
+  const allClasses = ['pan-note', 'tongue', ...classes.split(' ').filter(Boolean)].join(' ');
+  const noteAttr = note ? ` data-note="${note}"` : '';
+  const cut = `M ${-w / 2 - 5} ${h / 2} L ${-w / 2 - 5} ${-h / 2 + w / 2} A ${w / 2 + 5} ${w / 2 + 5} 0 0 1 ${w / 2 + 5} ${-h / 2 + w / 2} L ${w / 2 + 5} ${h / 2}`;
+  let text;
+  if (!note) {
+    text = `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-family="system-ui,sans-serif" font-size="${Math.round(w * 0.5)}" font-weight="600" fill="var(--note-rest-text)">+</text>`;
+  } else {
+    const shown = displayNote(note, useFlats, useSolfege);
+    const name = shown.replace(/\d+$/, '');
+    const oct = (shown.match(/\d+$/) ?? [''])[0];
+    const fs = Math.max(9, Math.round((name.length > 1 ? 12 : 14) * w / 40));
+    text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
+<text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+  }
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
+  <g transform="translate(${x} ${y}) rotate(${deg})">
+    <path d="${cut}" fill="none" stroke="var(--pan-groove)" stroke-width="2" stroke-linecap="round"/>
+    <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
+  </g>
+  ${text}
+</g>`;
+}
+
+function renderTongueDrum(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks }) {
+  const cx = 250, cy = 250;
+  let svg = `<svg id="${PAN_SVG_ID}" class="is-tongue-drum" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="panGrad" cx="38%" cy="32%">
+      <stop offset="0%" style="stop-color: var(--pan-g0)"/>
+      <stop offset="60%" style="stop-color: var(--pan-g1)"/>
+      <stop offset="100%" style="stop-color: var(--pan-g2)"/>
+    </radialGradient>
+  </defs>
+  <circle cx="${cx}" cy="${cy}" r="215" fill="url(#panGrad)" stroke="var(--pan-rim)" stroke-width="2"/>
+  <circle cx="${cx}" cy="${cy}" r="200" fill="none" stroke="var(--pan-groove)" stroke-width="1" stroke-dasharray="3 7"/>
+`;
+  // The ring: every note but a centre one, in slot order (custom drums keep
+  // their empty places). Lower notes get bigger tongues.
+  const ring = [];
+  if (!layout.centre) ring.push({ note: layout.top.ding, id: 'ding', top: true });
+  layout.top.slots.forEach((slot, i) => ring.push({ note: slot.note, id: `ring-${i}`, top: true }));
+  layout.bottom.slots.forEach((slot, i) => ring.push({ note: slot.note, id: `gu-${i}`, top: false }));
+  const n = Math.max(ring.length, 1);
+  const angles = tongueAngles(n);
+  const baseW = Math.max(26, Math.min(48, Math.round(640 / n)));
+  ring.forEach((t, i) => {
+    const scale = 1.12 - 0.24 * (n <= 1 ? 0 : i / (n - 1)); // the lowest first, biggest
+    const w = Math.round(baseW * scale);
+    const h = Math.round(w * 1.9);
+    const r = 205 - h / 2 - 14;
+    const x = Math.round(cx + r * Math.cos(angles[i]));
+    const y = Math.round(cy + r * Math.sin(angles[i]));
+    if (t.note) placed.push({ x, y, r: w / 2, note: t.note });
+    const cls = t.id === 'ding' ? `ding ${noteClass(t.note, true)}` : t.top ? `ring ${noteClass(t.note, true)}` : `gu ${noteClass(t.note, false)}`;
+    svg += tongueSvg(x, y, angles[i], t.note, cls, t.id, w, h, useFlats, useSolfege);
+  });
+  if (layout.centre) {
+    if (layout.top.ding) placed.push({ x: cx, y: cy, r: 44, note: layout.top.ding });
+    svg += noteSlotSvg(cx, cy, layout.top.ding, `ding ${noteClass(layout.top.ding, true)}`, 'ding', 44, useFlats, useSolfege);
+  }
+  if (strikeMarks.length) svg += strikeBadgesSvg(placed, strikeMarks);
+  return svg + '</svg>';
+}
+
 // opts.faintNotes (optional) draws notes faintly (the next chord), and
 // opts.strikeMarks (optional) numbers notes in strike order with L/R; a pan
 // rendered without them is exactly as before.
@@ -6479,6 +6745,8 @@ function renderPan(layout, opts = {}) {
     if (!isTopShell && dimBottom) classes.push('dimmed');
     return classes.join(' ');
   }
+
+  if (layout.instrument === 'tongue-drum') return renderTongueDrum(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks });
 
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
@@ -8361,7 +8629,7 @@ function openSettings({ push = true } = {}) {
 function removeInstrument(id) {
   const inst = getInstrument(id);
   if (!inst) { render(); return; }
-  if (inst.family === 'handpan') {
+  if (usesLayout(inst)) {
     deleteLayout(inst.layoutId);
     state.savedLayouts = getSavedLayouts();
     scheduleSave();
@@ -9115,7 +9383,7 @@ function familyName(id) { return INSTRUMENT_FAMILIES.find(f => f.id === id)?.nam
 // One instrument on Home: family glyph, name, what it is, and its ⋯ menu.
 function instrumentRowHtml(inst) {
   let meta;
-  if (inst.family === 'handpan') {
+  if (usesLayout(inst)) {
     const notes = state.savedLayouts.find(l => l.id === inst.layoutId)?.noteCount;
     meta = escHtml([instrumentStatus(inst), notes ? `${notes} notes` : ''].filter(Boolean).join(' · '));
   } else if (inst.kind === 'scale' && inst.build && inst.build.stage !== 'done') {
@@ -9308,7 +9576,7 @@ function viewBeginnerSetup() {
   }
 
   // done
-  const s = SCALES.find(x => x.id === st.scaleId);
+  const s = findTuning(st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
   const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
@@ -9378,7 +9646,7 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-hear') {
-    const s = SCALES.find(x => x.id === el.dataset.id);
+    const s = findTuning(el.dataset.id);
     if (s) { initAudio(); playScale(setupScaleNotes(s), () => {}); }
     return true;
   }
@@ -9391,7 +9659,7 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-first-chord' || action === 'setup-save') {
-    const s = SCALES.find(x => x.id === st.scaleId);
+    const s = findTuning(st.scaleId);
     if (!s) return true;
     const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
     const path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
@@ -9428,7 +9696,7 @@ function playRowHtml(target) {
   const path = linkFor(target);
   const link = parseLink(path);
   if (!link) return '';
-  const scale = target.scaleId ? SCALES.find(s => s.id === target.scaleId) : null;
+  const scale = target.scaleId ? findTuning(target.scaleId) : null;
   return uiRow({
     lead: FAMILY_ICONS[link.family], title: linkTitle(link).replace(/ handpan$/, ''),
     meta: scale ? scale.desc ?? '' : '', chevron: true, action: 'open-link', data: { path },
@@ -9508,8 +9776,8 @@ function rowMenuSheet(id) {
   const inst = getInstrument(id);
   if (!inst) return '';
   const rows = [];
-  if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
-  if (inst.family !== 'handpan') rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
+  if (!usesLayout(inst)) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
+  if (!usesLayout(inst)) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
   rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
   return uiSheet({ key: 'row-menu', variant: 'rowmenu', title: inst.name, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
 }
@@ -9569,7 +9837,7 @@ function wizardOcarinaPlan() { return planOcarina(state.wizard.oc); }
 // gu notes, chamber count (with the note window when fewer chambers than
 // the full scale needs) and single notes switched off.
 function planOcarina(oc) {
-  const scale = SCALES.find(sc => sc.id === oc.scaleId);
+  const scale = findTuning(oc.scaleId);
   const all = scaleToMidis(scale, { transpose: oc.transpose, includeGu: oc.includeGu });
   const needed = chambersNeeded(all);
   const chambers = Math.min(oc.chambers ?? needed, needed);
@@ -9974,7 +10242,7 @@ function wizardKeySelect(fam, chart, keyId) {
 
 // Pitch classes of a scale from data.js, for the Notes and Chords filter.
 function scalePitchClasses(scaleId) {
-  const scale = SCALES.find(sc => sc.id === scaleId);
+  const scale = findTuning(scaleId);
   if (!scale) return null;
   return new Set(scaleToMidis(scale).map(m => ((m % 12) + 12) % 12));
 }
@@ -10129,7 +10397,7 @@ function ocChordModel(inst) {
     .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
   const sourceId = oc.scaleFilter !== 'All' ? oc.scaleFilter : inst.scaleId;
-  const source = SCALES.find(sc => sc.id === sourceId);
+  const source = findTuning(sourceId);
   const have = new Set(chords.map(c => `${notePC(c.rootNote)}-${c.type.id}`));
   const missing = !source ? [] : findAllChords(createLayoutFromScale(source))
     .filter(c => !have.has(`${notePC(c.rootNote)}-${c.type.id}`))
@@ -10564,9 +10832,13 @@ function ocCardData(inst, key) {
 // one (a whistle-bodied flute like a tin whistle); everything else, the
 // handpan screens included, keeps the handpan sound.
 function voiceForState() {
+  // A handpan or tongue drum on screen sounds like itself.
+  if (state.layout && ['editor', 'chords', 'hp-playlists', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
+  if (state.view === 'setup') return state.setup?.family === 'tongue-drum' ? 'tongue-drum' : 'handpan';
   if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
   const inst = currentInstrument();
-  if (!inst || inst.family === 'handpan') return 'handpan';
+  if (!inst) return 'handpan';
+  if (usesLayout(inst)) return inst.family;
   if (inst.family === 'ocarina') return 'ocarina';
   return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'flute';
 }
@@ -12078,7 +12350,7 @@ function openInstrument(id, { push = true } = {}) {
   state.selectedChord = null;
   state.sourcePlaylistId = null;
   state.sourceEntryId = null;
-  if (inst.family === 'handpan') {
+  if (usesLayout(inst)) {
     const saved = state.savedLayouts.find(l => l.id === inst.layoutId);
     if (!saved) return false;
     state.layout = JSON.parse(JSON.stringify(saved.layout));
@@ -12931,7 +13203,7 @@ function menuAppBtn() { return uiIconBtn('ellipsis', 'More', { action: 'menu-ope
 // The instrument the playlist was opened from and how many entries are its.
 function plHere(pl) {
   const inst = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
-  if (inst && inst.family !== 'handpan') {
+  if (inst && !usesLayout(inst)) {
     return { kind: 'oc', name: inst.name, n: pl.chords.filter(c => c.instrumentId === inst.id).length };
   }
   const layoutId = hpCurrentLayoutId();
@@ -13068,7 +13340,7 @@ function progStepLayout(s) {
   if (s.layoutData) return JSON.parse(JSON.stringify(s.layoutData));
   const saved = state.savedLayouts.find(l => l.id === s.layoutId);
   if (saved) return JSON.parse(JSON.stringify(saved.layout));
-  const scale = SCALES.find(sc => sc.id === s.layoutId);
+  const scale = findTuning(s.layoutId);
   return scale ? createLayoutFromScale(scale) : null;
 }
 
@@ -13084,7 +13356,7 @@ function progHpContext(layoutId, name) {
 // handpan or ocarina is put on screen first). null when there is none.
 function progContext(prog) {
   const cur = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
-  if (cur && cur.family !== 'handpan') return progOcContext(cur);
+  if (cur && !usesLayout(cur)) return progOcContext(cur);
   const layoutId = hpCurrentLayoutId();
   if (layoutId) return progHpContext(layoutId, state.layout.name);
   const first = prog?.steps.find(s => (s.instrumentId ? !!getInstrument(s.instrumentId) : !!progStepLayout(s)));
@@ -13514,10 +13786,10 @@ function csTargets() {
   const out = [];
   const add = t => { if (t && !out.some(x => x.key === t.key)) out.push(t); };
   const cur = state.currentInstrumentId && state.currentInstrumentId !== SHARED_ID ? getInstrument(state.currentInstrumentId) : null;
-  if (cur && cur.family !== 'handpan' && playableMidis(cur).length) add(csOcTarget(cur));
-  if (state.layout && (!cur || cur.family === 'handpan')) add(csHpTarget(hpCurrentLayoutId(), state.layout));
+  if (cur && !usesLayout(cur) && playableMidis(cur).length) add(csOcTarget(cur));
+  if (state.layout && (!cur || usesLayout(cur))) add(csHpTarget(hpCurrentLayoutId(), state.layout));
   for (const inst of getInstruments()) {
-    if (inst.family === 'handpan') {
+    if (usesLayout(inst)) {
       const saved = state.savedLayouts.find(l => l.id === inst.layoutId);
       if (saved) add(csHpTarget(saved.id, saved.layout, inst.name));
     } else if (playableMidis(inst).length) add(csOcTarget(inst));
@@ -13686,7 +13958,7 @@ function csSave() {
   state.chordSheet = null;
   // Put the instrument it was fitted to on screen, so the progression plays.
   if (target.kind === 'oc' && state.currentInstrumentId !== target.inst.id) openInstrument(target.inst.id, { push: false });
-  if (target.kind === 'hp' && (hpCurrentLayoutId() !== target.layoutId || (state.currentInstrumentId && getInstrument(state.currentInstrumentId)?.family !== 'handpan'))) {
+  if (target.kind === 'hp' && (hpCurrentLayoutId() !== target.layoutId || (state.currentInstrumentId && !usesLayout(getInstrument(state.currentInstrumentId))))) {
     progLoadHandpan({ layoutId: target.layoutId, layoutData: target.layout.isCustom ? target.layout : null, scaleName: target.name });
   }
   const cov = sheetCoverage(sheet.steps, chords, cs.semis);
@@ -13706,7 +13978,7 @@ function loadPlaylistChordAt(pl, idx) {
     if (saved) {
       state.layout = saved.layout;
     } else {
-      const scale = SCALES.find(s => s.id === fav.layoutId);
+      const scale = findTuning(fav.layoutId);
       if (!scale) return false;
       state.layout = createLayoutFromScale(scale);
     }
@@ -13857,7 +14129,9 @@ function stateToHash() {
     bc: state.layout.bottom.capacity,
     name: state.layout.name,
   });
-  return linkFor({ custom: params }, { tab, chord });
+  const family = layoutInstrument(state.layout);
+  if (family === 'tongue-drum' && state.layout.centre) params.set('centre', '1');
+  return linkFor({ custom: params, family }, { tab, chord });
 }
 
 // An ocarina or flute tab as a URL: a visiting or shared one by its link,
@@ -13937,9 +14211,9 @@ function openLink(link) {
     return;
   }
   // Handpans: a scale, or custom notes carried in the link.
-  if (link.kind === 'scale') openScaleLayout(SCALES.find(s => s.id === link.scaleId));
+  if (link.kind === 'scale') openScaleLayout(findTuning(link.scaleId));
   else {
-    state.layout = layoutFromCustomParams(link.params);
+    state.layout = layoutFromCustomParams(link.params, link.family);
     state.currentInstrumentId = null;
     state.chords = findAllChords(state.layout);
   }
@@ -13984,7 +14258,7 @@ function loadFromHash() {
     const raw = hash.slice(7);
     const [scaleId, ...rest] = raw.split('&chord=');
     chordId = rest[0] || null;
-    const scale = SCALES.find(s => s.id === scaleId);
+    const scale = findTuning(scaleId);
     if (scale) {
       openScaleLayout(scale);
       state.view = chordId ? 'chords' : 'editor';
@@ -14145,7 +14419,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = 'a20342190954'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = 'a30fd578fabf'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 
@@ -14388,7 +14662,7 @@ const syncLocal = {
     const m = new Map();
     for (const [kind, key] of Object.entries(SYNC_LISTS)) {
       for (const data of syncReadList(key)) {
-        if (!data?.id || (kind === 'instrument' && data.family === 'handpan')) continue;
+        if (!data?.id || (kind === 'instrument' && usesLayout(data))) continue;
         m.set(syncKey(kind, data.id), { kind, id: data.id, data });
       }
     }
@@ -14831,7 +15105,7 @@ document.addEventListener('click', e => {
     if (!inst) return;
     state.confirm = {
       kind: 'instrument', id: inst.id, ok: 'Remove', title: `Remove ${inst.name}?`,
-      body: inst.family === 'handpan'
+      body: usesLayout(inst)
         ? 'Its saved layout is removed from My instruments on this device and from sync.'
         : 'Its readings and build history are removed from this device and from sync.',
     };
@@ -15101,7 +15375,7 @@ document.addEventListener('click', e => {
     const inst = getInstrument(id);
     state.menu = false;
     // One you set up yourself is edited on its Set up tab, with everything else.
-    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && inst.family !== 'handpan') {
+    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && !usesLayout(inst)) {
       if (state.currentInstrumentId !== id || state.view !== 'instrument') openInstrument(id);
       state.oc.tab = 'setup';
       state.oc.holeMap = null;
@@ -15406,7 +15680,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'wizard-pick-handpan') {
-    const scale = SCALES.find(sc => sc.id === el.dataset.id);
+    const scale = findTuning(el.dataset.id);
     if (!scale) return;
     const layout = createLayoutFromScale(scale);
     saveLayout({
@@ -15531,7 +15805,7 @@ document.addEventListener('click', e => {
   }
 
   if (action === 'select-scale') {
-    const scale = SCALES.find(s => s.id === el.dataset.id);
+    const scale = findTuning(el.dataset.id);
     if (!scale) return;
     state.layout = createLayoutFromScale(scale);
     state.chords = findAllChords(state.layout);
@@ -16540,7 +16814,7 @@ document.addEventListener('change', e => {
       const key = el.dataset.key;
       if (key === 'scaleId') Object.assign(inst.design, { scaleId: el.value, chambers: null, windowStart: null, excluded: [] });
       applyDesign(inst);
-      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${SCALES.find(sc => sc.id === inst.scaleId).name} ocarina`;
+      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${findTuning(inst.scaleId).name} ocarina`;
     }
     saveInstrument(inst);
     refreshInstruments();
