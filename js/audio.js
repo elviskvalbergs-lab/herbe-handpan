@@ -119,7 +119,7 @@ const START_OFFSET = 0.05;
 // Each is a sustained tone with a soft breathy attack, built from a few
 // harmonics (one PeriodicWave), a little breath noise and a slow vibrato
 // that comes in after the attack. Handpan keeps its own struck sound.
-export const VOICES = ['handpan', 'tongue-drum', 'ocarina', 'flute', 'whistle'];
+export const VOICES = ['handpan', 'tongue-drum', 'kalimba', 'ocarina', 'flute', 'whistle'];
 export function setVoice(name) { voice = VOICES.includes(name) ? name : 'handpan'; }
 
 const WIND = {
@@ -205,11 +205,18 @@ function playFreq(freq, startTime, dur = 0.9) {
   if (_onFirstSound) { const fn = _onFirstSound; _onFirstSound = null; fn(); }
   const now = startTime ?? ctx.currentTime;
   const sink = reverbSend ?? masterGain; // fall back if reverb not ready yet
-  if (voice !== 'handpan' && voice !== 'tongue-drum') { playWind(freq, now, dur, sink); return; }
+  if (voice !== 'handpan' && voice !== 'tongue-drum' && voice !== 'kalimba') { playWind(freq, now, dur, sink); return; }
 
   // Struck steel. A tongue drum rings purer than a handpan: a strong
   // fundamental and a faint octave, a slightly softer attack, a long tail.
-  const harmonics = voice === 'tongue-drum' ? [
+  // A kalimba is a plucked tine: a clear fundamental that dies sooner, a
+  // little octave and a quick bright click from the pluck (a tine's first
+  // overtone sits well above the octave).
+  const harmonics = voice === 'kalimba' ? [
+    { mult: 1,   gain: 0.6,  decay: 2.4 },
+    { mult: 2,   gain: 0.06, decay: 0.8 },
+    { mult: 5.4, gain: 0.05, decay: 0.15 },
+  ] : voice === 'tongue-drum' ? [
     { mult: 1,   gain: 0.62, decay: 6.5 },
     { mult: 2,   gain: 0.12, decay: 2.4 },
     { mult: 3,   gain: 0.04, decay: 1.2 },
@@ -228,7 +235,7 @@ function playFreq(freq, startTime, dur = 0.9) {
     osc.detune.value = (Math.random() - 0.5) * 4;
 
     env.gain.setValueAtTime(0, now);
-    env.gain.linearRampToValueAtTime(gain, now + (voice === 'tongue-drum' ? 0.008 : 0.004));
+    env.gain.linearRampToValueAtTime(gain, now + (voice === 'tongue-drum' ? 0.008 : voice === 'kalimba' ? 0.002 : 0.004));
     env.gain.exponentialRampToValueAtTime(gain * 0.55, now + 0.18);
     env.gain.exponentialRampToValueAtTime(0.0001, now + decay);
 

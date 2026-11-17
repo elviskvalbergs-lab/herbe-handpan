@@ -52,6 +52,7 @@ const ICON_PATHS = {
   // Custom family glyphs, same 24px stroke style.
   // A steel tongue drum from above: the shell and its U-shaped tongues.
   'family-tongue-drum': '<circle cx="12" cy="12" r="10"/><path d="M10 4.6v2.6a2 2 0 0 0 4 0V4.6"/><path d="M10 19.4v-2.6a2 2 0 0 1 4 0v2.6"/><path d="M4.6 10h2.6a2 2 0 0 1 0 4H4.6"/><path d="M19.4 10h-2.6a2 2 0 0 0 0 4h2.6"/>',
+  'family-kalimba': '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="12" cy="15.5" r="1.6"/><path d="M5 9h14"/><path d="M8 9V5.5"/><path d="M10.7 9V4.6"/><path d="M13.3 9V4.6"/><path d="M16 9V5.5"/>',
   'family-handpan': '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3.5"/><circle cx="19" cy="12" r=".6"/><circle cx="15.5" cy="18.06" r=".6"/><circle cx="8.5" cy="18.06" r=".6"/><circle cx="5" cy="12" r=".6"/><circle cx="8.5" cy="5.94" r=".6"/><circle cx="15.5" cy="5.94" r=".6"/>',
   'family-ocarina': '<path d="M3 13c0-4 3.6-7 8-7 4.2 0 7.5 2.6 7.9 6.2"/><path d="M18.9 12.2H22v3h-3.4c-1.3 2.4-4.3 3.8-7.6 3.8-4.4 0-8-2.3-8-6"/><circle cx="8" cy="11" r=".6"/><circle cx="12" cy="10.5" r=".6"/><circle cx="9" cy="15" r=".6"/><circle cx="13" cy="15" r=".6"/>',
   'family-flute': '<rect x="1.5" y="8" width="21" height="8" rx="4"/><circle cx="6" cy="12" r=".75"/><circle cx="8.6" cy="12" r=".75"/><circle cx="11.2" cy="12" r=".75"/><circle cx="13.8" cy="12" r=".75"/><circle cx="16.4" cy="12" r=".75"/><circle cx="19" cy="12" r=".75"/>',

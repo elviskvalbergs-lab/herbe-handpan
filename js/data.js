@@ -489,9 +489,11 @@ export function createLayoutFromScale(scale) {
     id: scale.id,
     name: scale.name,
     isCustom: false,
-    // A tongue drum (js/tonguedrums.js) is drawn with tongues; centre: its
-    // lowest note sits in the middle. Handpans have neither field.
+    // A tongue drum or kalimba (js/layoutfamilies.js) says so; centre: a tongue
+    // drum's lowest note sits in the middle. Handpans have neither field.
     ...(scale.instrument ? { instrument: scale.instrument, centre: !!scale.centre } : {}),
+    // A kalimba's keys left to right, where its maker publishes them.
+    ...(scale.order ? { order: [...scale.order] } : {}),
     top: {
       ding: scale.top.ding,
       slots: scale.top.notes.map(n => ({ note: n })),

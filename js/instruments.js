@@ -13,6 +13,7 @@
 
 import { NOTE_NAMES, SCALES } from './data.js';
 import { dataStore } from './datastore.js';
+import { isLayoutFamily, layoutInstrument, layoutFamilyInfo } from './layoutfamilies.js';
 import { scaleToMidis, buildScaleChambers, chambersNeeded } from './ocarina.js';
 
 const INSTRUMENTS_KEY = 'hp-instruments';
@@ -21,6 +22,7 @@ const ONBOARDED_KEY = 'hp-onboarded';
 export const INSTRUMENT_FAMILIES = [
   { id: 'handpan', name: 'Handpan' },
   { id: 'tongue-drum', name: 'Tongue drum' },
+  { id: 'kalimba', name: 'Kalimba' },
   { id: 'ocarina', name: 'Ocarina' },
   { id: 'flute', name: 'Flute' }, // offered when js/charts.js has a sourced flute chart
 ];
@@ -48,10 +50,10 @@ export function handpanInstrumentId(layoutId) { return 'hp-' + layoutId; }
 
 // Handpans and tongue drums are layouts (a middle note, a ring of notes, js/pan.js):
 // they live in the saved layouts and use the handpan screens.
-export function usesLayout(inst) { return inst?.family === 'handpan' || inst?.family === 'tongue-drum'; }
+export function usesLayout(inst) { return isLayoutFamily(inst?.family); }
 
 // The family of a saved layout's instrument.
-function layoutFamily(saved) { return saved.layout?.instrument === 'tongue-drum' ? 'tongue-drum' : 'handpan'; }
+function layoutFamily(saved) { return layoutInstrument(saved.layout); }
 
 // Adds a handpan instrument for every saved layout that has none, keeps names
 // in step, and soft-deletes handpan instruments whose layout is gone.
@@ -165,7 +167,7 @@ export function createCustomFlute({ name, holeCount }, now = nowIso()) {
 // One line under the instrument's name on its card.
 export function instrumentStatus(inst) {
   if (inst.family === 'handpan') return inst.kind === 'custom' ? 'Custom handpan' : 'Handpan';
-  if (inst.family === 'tongue-drum') return inst.kind === 'custom' ? 'Custom tongue drum' : 'Tongue drum';
+  if (usesLayout(inst)) { const f = layoutFamilyInfo(inst.family); return inst.kind === 'custom' ? `Custom ${f.word}` : f.name; }
   if (inst.kind === 'traditional') {
     const notes = inst.chambers?.[0]?.notes ?? [];
     return notes.length ? `${notes.length} notes, ${midiToNoteName(notes[0])} to ${midiToNoteName(notes[notes.length - 1])}` : '';

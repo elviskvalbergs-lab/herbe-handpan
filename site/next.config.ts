@@ -7,6 +7,7 @@ const APP_PATHS = [
   "/play",
   "/handpan/:path*",
   "/tongue-drum/:path*",
+  "/kalimba/:path*",
   "/ocarina/:path*",
   "/flute/:path*",
   "/s/:path*",

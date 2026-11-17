@@ -1,4 +1,5 @@
 import { displayNote, noteToMidi, notePC } from './data.js';
+import { kalimbaOrder } from './kalimbas.js';
 
 export const PAN_SVG_ID = 'handpan-svg';
 
@@ -203,6 +204,58 @@ function renderTongueDrum(layout, { noteClass, useFlats, useSolfege, placed, str
   return svg + '</svg>';
 }
 
+// ── Kalimbas (js/kalimbas.js) ────────────────────────────────────────────────
+// Keys (tines) over a bridge, left to right as the maker lays them out
+// (layout.order) or in the standard layout (kalimbaOrder): the lowest in the
+// middle, longer keys for lower notes. Each key is a rounded rect, coloured by
+// pan-drawing.css like a dent; same note ids and classes as the handpan.
+function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks }) {
+  const keys = [{ note: layout.top.ding, id: 'ding' }, ...layout.top.slots.map((slot, i) => ({ note: slot.note, id: `ring-${i}` }))];
+  let ordered;
+  if (layout.order?.length === keys.length) {
+    const left = [...keys];
+    ordered = layout.order.map(n => left.splice(left.findIndex(k => k.note === n), 1)[0] ?? { note: n, id: 'ring-x' });
+  } else ordered = kalimbaOrder(keys);
+  const midis = keys.filter(k => k.note).map(k => noteToMidi(k.note));
+  const lo = Math.min(...midis), hi = Math.max(...midis);
+  const n = ordered.length;
+  const span = 400, x0 = 50, bridgeY = 112, top = 66;
+  const step = span / n;
+  const w = Math.max(9, Math.min(22, Math.round(step * 0.72)));
+  let svg = `<svg id="${PAN_SVG_ID}" class="is-kalimba" viewBox="0 0 500 500" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="panGrad" cx="38%" cy="30%">
+      <stop offset="0%" style="stop-color: var(--pan-g0)"/>
+      <stop offset="60%" style="stop-color: var(--pan-g1)"/>
+      <stop offset="100%" style="stop-color: var(--pan-g2)"/>
+    </radialGradient>
+  </defs>
+  <rect x="24" y="30" width="452" height="440" rx="44" fill="url(#panGrad)" stroke="var(--pan-rim)" stroke-width="2"/>
+  <circle cx="250" cy="405" r="30" fill="var(--pan-rim)" opacity="0.55"/>
+`;
+  ordered.forEach((k, i) => {
+    const t = k.note && hi > lo ? (noteToMidi(k.note) - lo) / (hi - lo) : 0.5;
+    const len = Math.round(250 - 130 * t);
+    const cx = Math.round(x0 + step * (i + 0.5));
+    const y1 = top, y2 = bridgeY + len;
+    if (k.note) placed.push({ x: cx, y: y2 - w, r: w / 2, note: k.note });
+    const cls = k.id === 'ding' ? `ding ${noteClass(k.note, true)}` : `ring ${noteClass(k.note, true)}`;
+    const shown = k.note ? displayNote(k.note, useFlats, useSolfege) : '+';
+    const name = shown.replace(/\d+$/, '');
+    const oct = (shown.match(/\d+$/) ?? [''])[0];
+    const fs = Math.max(8, Math.min(13, Math.round(w * 0.62)));
+    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${k.note}"` : ''}>
+  <rect x="${cx - w / 2}" y="${y1}" width="${w}" height="${y2 - y1}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
+  <text x="${cx}" y="${y2 - fs * 1.3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
+  ${oct ? `<text x="${cx}" y="${y2 - fs * 0.35}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.7))}" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>` : ''}
+</g>`;
+  });
+  // The bridge, over the keys' roots.
+  svg += `<rect x="36" y="${bridgeY - 9}" width="428" height="18" rx="9" fill="var(--pan-rim)"/>`;
+  if (strikeMarks.length) svg += strikeBadgesSvg(placed, strikeMarks);
+  return svg + '</svg>';
+}
+
 // opts.faintNotes (optional) draws notes faintly (the next chord), and
 // opts.strikeMarks (optional) numbers notes in strike order with L/R; a pan
 // rendered without them is exactly as before.
@@ -243,6 +296,7 @@ export function renderPan(layout, opts = {}) {
   }
 
   if (layout.instrument === 'tongue-drum') return renderTongueDrum(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks });
+  if (layout.instrument === 'kalimba') return renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strikeMarks });
 
   const totalRingSlots = layout.top.slots.length;
   const hasInnerRing = totalRingSlots >= 10 && totalRingSlots <= 13;
