@@ -159,6 +159,17 @@ const FIXES: Fix[] = [
       return notes.join("; ");
     },
   },
+  {
+    // The daina's English, retold as a verse rather than word for word
+    // (owner, 2026-11-17). Changed only while it is still the first version.
+    name: "2026-11-17-daina-translation",
+    async run() {
+      const doc = await client.fetch<{ storyVerseTranslation?: string } | null>(`*[_id == "siteSettings"][0]{storyVerseTranslation}`);
+      if (doc?.storyVerseTranslation !== "Little oak, little oak,\nhow great your age:\nI was born, and found you here;\nI will die, and you will stay.") return "left as edited in the Studio";
+      await client.patch("siteSettings").set({ storyVerseTranslation: seed.settings.storyVerseTranslation }).commit();
+      return "set storyVerseTranslation";
+    },
+  },
 ];
 
 type FeatureStart = (typeof seed.features)[number];
