@@ -140,14 +140,13 @@ Real paths, so the website links read well and work as shared links:
 
 ### 2. Guest experience
 - **No wall, no popup on entry.** A deep link opens the instrument ready to play.
-- **Opening the app with no link** (e.g. from the home screen) shows **Play**, a one-screen picker. It replaces the first-run wizard:
-  - Handpan / Ocarina / Flute
-  - the popular tunings
-  - "Your own notes" (custom)
-  - one tap to playing
-
-  The full wizard stays for building an ocarina from a scale.
-- **A guest keeps nothing between visits** (owner's decision: push for sign-up). Opening the app again without a link shows the Play screen. Only the current browser tab remembers its work (in `sessionStorage`), so a sign-in, including the Google redirect, never loses it.
+- **Opening the app with no link** (e.g. from the home screen) shows the **beginner setup** (`js/setup.js`, owner-approved mock-up, built after Phase 4):
+  - "What do you play?": plain tiles (Handpan, Ocarina, Flute or whistle; the tongue drum joins when it's added), "Something else? Ask for your instrument", and "Just looking? Play a popular tuning" (the **Play** picker)
+  - a handpan: **Play my notes** first (the app listens: middle note, then each note around it, and names the scale, stopping by itself once every note of the best match was heard), or **I know my scale** (which note is in the middle, D first; the common scales in that key, one per kind; the rest behind Show all)
+  - **Ready**: the first chord to play (the minor or major chord on the middle note), Play my first chord, and Save
+  - an ocarina or flute: the wizard's step for it
+  - A new custom handpan ("Your own notes") starts with no bottom notes.
+- **A guest keeps nothing between visits** (owner's decision: push for sign-up). Opening the app again without a link shows the setup again. Only the current browser tab remembers its work (in `sessionStorage`), so a sign-in, including the Google redirect, never loses it.
 - **The only account mention a guest sees:**
   - a small "Sign in" text button in the app bar on the Play screen
   - the save sheet when they tap save

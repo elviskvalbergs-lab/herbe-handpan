@@ -11,6 +11,11 @@ const PRECACHE = [
   SUPABASE_JS,
 ];
 
+// Sign-out (js/offline.js disable): this worker keeps the open page until it
+// closes, so it stops caching at once, before its caches are deleted.
+let off = false;
+self.addEventListener('message', e => { if (e.data?.type === 'oakhum-off') off = true; });
+
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(PRECACHE.map(url =>
     c.add(new Request(url, { cache: 'reload', mode: url.startsWith('http') ? 'cors' : 'same-origin' })).catch(() => {}),
@@ -25,7 +30,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET') return;
+  if (req.method !== 'GET' || off) return;
   const url = new URL(req.url);
   // Page loads, deep links included (/handpan/…, /s/…): network first, then
   // the cached app, which reads the path itself.
