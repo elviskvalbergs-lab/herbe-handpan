@@ -5,23 +5,23 @@
   "rewrites": [
     {
       "source": "/play",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/handpan/:path*",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/ocarina/:path*",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/flute/:path*",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/s/:path*",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ],
   "redirects": [
