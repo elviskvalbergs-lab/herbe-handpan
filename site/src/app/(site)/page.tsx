@@ -59,20 +59,24 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section id="how" className={`${container} py-20 lg:py-24`}>
-        {home.howTitle ? <h2 className={`${h2} m-0 mb-12 max-w-[680px]`}>{home.howTitle}</h2> : null}
-        <ol className="m-0 grid list-none gap-10 p-0 md:grid-cols-3">
-          {(home.steps ?? []).map((s, i) => (
-            <li key={i} className="flex flex-col gap-2.5">
-              <span aria-hidden="true" className="text-[52px] font-semibold leading-none text-accent">{i + 1}</span>
-              <h3 className={`${h3} m-0`}>{s.title}</h3>
-              <p className="m-0 text-body">{s.text}</p>
-            </li>
-          ))}
-        </ol>
+      {/* How it works: its own quiet band, the steps as cards that rise in
+          as they scroll into view (.step-rise in globals.css). */}
+      <section id="how" className="scroll-mt-4 bg-band">
+        <div className={`${container} py-16 lg:py-24`}>
+          {home.howTitle ? <h2 className={`${h2} m-0 mb-10 max-w-[680px] lg:mb-12`}>{home.howTitle}</h2> : null}
+          <ol className="m-0 grid list-none gap-4 p-0 md:grid-cols-3 md:gap-6">
+            {(home.steps ?? []).map((s, i) => (
+              <li key={i} className="step-rise flex flex-col gap-3 rounded-card bg-surface p-6 shadow-[inset_0_0_0_1px_var(--border)] lg:p-8">
+                <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-pill bg-accent text-[24px] font-semibold leading-none text-on-primary">{i + 1}</span>
+                <h3 className={`${h3} m-0`}>{s.title}</h3>
+                <p className="m-0 text-body">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
-      <section id="instruments" className={`${container} pt-20 pb-24`}>
+      <section id="instruments" className={`${container} pt-16 pb-24 lg:pt-24`}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <h2 className={`${h2} m-0`}>Instruments</h2>
           {home.instrumentsText ? <p className="m-0 max-w-[440px] text-body">{home.instrumentsText}</p> : null}
