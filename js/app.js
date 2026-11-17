@@ -77,6 +77,7 @@ const state = {
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
   sharedStatus: null,      // 'loading' | 'missing' while a share link loads
   shareModal: null,        // { code, url, qr } while the share dialog is open
+  installHelp: false,      // the "Add to home screen" steps sheet (no install prompt on this browser)
   menu: false,             // the instrument's ⋯ menu is open
   confirm: null,           // { kind: 'instrument' | 'playlist', id, title, body, ok } while confirming
   oc: newOcState(),        // ocarina / flute views, see newOcState()
@@ -151,6 +152,23 @@ const state = {
 
 // ── Render ───────────────────────────────────────────────────────────────────
 let _lastScreen = null;
+// The height the page really has. Some Android browsers (Vivaldi, Samsung
+// Internet) with the address bar at the bottom report a 100dvh that isn't
+// what's on screen, and the two-column Chords screen, sized from it, scrolled
+// or left a gap. --app-h is the visible height, kept up to date as the
+// browser's bars come and go; the CSS falls back to 100dvh without it.
+function trackAppHeight() {
+  const set = () => {
+    const h = Math.round(window.visualViewport?.height ?? window.innerHeight);
+    if (h > 0) document.documentElement.style.setProperty('--app-h', `${h}px`);
+  };
+  set();
+  window.addEventListener('resize', set);
+  window.visualViewport?.addEventListener('resize', set);
+  window.addEventListener('orientationchange', () => setTimeout(set, 300));
+}
+trackAppHeight();
+
 function render() {
   guestPickerToSave();
   const app = document.getElementById('app');
@@ -1256,7 +1274,7 @@ function viewBeginnerSetup() {
   if (st.step === 'what') {
     return stepFrame({
       header, hero: first, title: 'What do you play?', sub: 'Tap your instrument. You can add more later.',
-      body: `
+      body: `${installBannerHtml()}
         <div class="setup-tiles">
           ${SETUP_TILES.map(t => `
             <button type="button" class="setup-tile" data-action="setup-family" data-family="${t.family}">
@@ -1571,6 +1589,7 @@ function viewPlay() {
     ${bar}
     <div class="play">
       ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute. Free, no sign-up to play.</span></div>` : ''}
+      ${installBannerHtml()}
       ${notice}
       ${uiSeg(INSTRUMENT_FAMILIES.map(f => ({ value: f.id, label: escHtml(f.name) })), fam, { action: 'play-family', label: 'Instrument' })}
       <h2 class="list-title">Popular</h2>
@@ -1601,6 +1620,7 @@ function viewHome() {
     ${uiAppBar({ title: 'My instruments', actions: [tunerAppBtn(), settingsAppBtn()] })}
     <div class="home">
       <section class="home-main" aria-label="Instruments">
+        ${installBannerHtml()}
         ${insts.length === 0
           ? uiEmpty({
             icon: 'family-handpan', title: 'Add the instruments you play',
@@ -5087,9 +5107,55 @@ function panRotateBtn() {
   });
 }
 
+// ── Add to home screen ─────────────────────────────────────────────────────
+// The app works best installed: full screen, its own icon, offline. A slim
+// banner on the start screens says so; Android browsers give us their own
+// install dialog (beforeinstallprompt), iPhones don't, so there the button
+// shows the steps. Hidden in the installed app, and for 30 days after ×
+// (a per-device convenience, so localStorage).
+let _installEvent = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); _installEvent = e; render(); });
+window.addEventListener('appinstalled', () => { _installEvent = null; state.installHelp = false; render(); });
+const INSTALL_DISMISS_KEY = 'hp-install-dismissed';
+const INSTALL_QUIET_MS = 30 * 24 * 3600 * 1000;
+
+function runningInstalled() {
+  return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function installBannerHtml() {
+  if (runningInstalled()) return '';
+  try { if (Date.now() - Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0) < INSTALL_QUIET_MS) return ''; } catch {}
+  return `
+      <div class="banner install-banner">
+        <span>${icon('smartphone')} Add Oakhum to your home screen: it opens like an app, full screen, and works offline.</span>
+        <span class="install-banner-actions">
+          <button type="button" class="btn btn-primary btn-sm" data-action="install-app">Add</button>
+          ${uiIconBtn('x', 'Not now', { action: 'install-dismiss' })}
+        </span>
+      </div>`;
+}
+function installHelpSheet() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const steps = ios
+    ? (/CriOS|FxiOS|EdgiOS/.test(ua)
+      ? ['Tap the Share button in the address bar (a square with an arrow).', 'Choose <b>Add to Home Screen</b>.', 'Tap <b>Add</b>.']
+      : ['Tap the Share button (a square with an arrow) at the bottom of Safari.', 'Scroll down and choose <b>Add to Home Screen</b>.', 'Tap <b>Add</b>.'])
+    : /SamsungBrowser/.test(ua)
+    ? ['Open the menu (the three lines at the bottom).', 'Choose <b>Add page to</b>, then <b>Home screen</b>.']
+    : ['Open the browser menu (⋮ or ≡).', 'Choose <b>Add to Home screen</b> or <b>Install app</b>.'];
+  return uiSheet({
+    key: 'install', title: 'Add Oakhum to your home screen', close: 'install-help-close',
+    body: `<ol class="install-steps">${steps.map(t => `<li>${t}</li>`).join('')}</ol>
+      <p class="sheet-text">Then open Oakhum from its icon: full screen, quicker to reach, and with an account it works offline.</p>`,
+    footer: '<button type="button" class="btn btn-primary" data-action="install-help-close">Done</button>',
+  });
+}
+
 // ── Sheets ───────────────────────────────────────────────────────────────────
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
+  if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
   if (state.accountConfirm) return accountConfirmSheet();
   if (state.confirm) return confirmSheet();
@@ -7300,6 +7366,25 @@ document.addEventListener('click', e => {
 
 
   if (action === 'tuner-toggle') { toggleTuner(); return; }
+  if (action === 'install-app') {
+    if (_installEvent) {
+      const ev = _installEvent;
+      _installEvent = null;
+      ev.prompt();
+      ev.userChoice?.then(c => { logEvent('install', { outcome: c?.outcome ?? 'unknown' }); render(); });
+    } else {
+      state.installHelp = true;
+      logEvent('install', { outcome: 'help' });
+      render();
+    }
+    return;
+  }
+  if (action === 'install-help-close') { state.installHelp = false; render(); return; }
+  if (action === 'install-dismiss') {
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
+    render();
+    return;
+  }
   if (action === 'share-instrument') { shareInstrument(el.dataset.id); return; }
   if (action === 'share-close') { state.shareModal = null; render(); return; }
   if (action === 'share-copy') {
