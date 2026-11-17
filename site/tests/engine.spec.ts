@@ -79,3 +79,15 @@ it("a wind instrument's chords are spelled as its key: F#m on a D whistle", () =
   const whistle = chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!;
   expect(windChords(whistle).map((c) => c.short)).toContain("F#m");
 });
+
+it("a demo's app link opens the app on that tuning with the chord just played", async () => {
+  const { parseLink } = await import("@engine/links.js");
+  const kurd = findTuning("handpan", "d-kurd")!;
+  const dm = handpanChords("d-kurd").find((c) => c.short === "Dm")!;
+  const l = parseLink(`${kurd.path}/chords/${dm.id}`)!;
+  expect([l.kind, l.tab, l.chord]).toEqual(["scale", "chords", dm.id]);
+  const alto = chartTunings("ocarina").find((t) => t.slug === "alto-c-12")!;
+  const c = windChords(alto)[0];
+  const w = parseLink(`${alto.path}/chords/${c.id}`)!;
+  expect([w.kind, w.tab, w.chord]).toEqual(["chart", "chords", c.id]);
+});

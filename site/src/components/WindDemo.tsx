@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { midiNoteName, windFingering, type Tuning, type WindChord } from "@/lib/engine";
 import { playWindChord, playWindNote } from "@/lib/sound";
+import { btnPrimary } from "@/lib/ui";
 
 // The playable demo of an ocarina or flute, as HandpanDemo is for a handpan:
 // the app's own fingering diagram (js/ocarina-ui.js renderFingering) and chord
@@ -71,6 +72,8 @@ export function WindDemo({ tuning, chords, voice, caption, initial = 0 }: {
         })}
       </div>
       <p aria-live="polite" className="m-0 text-[15px] text-muted">{chord.name}: {chord.pitches.join(" · ")}, one note at a time</p>
+      {/* Straight on to the app, on this instrument with the chord just played. */}
+      <a href={`${tuning.path}/chords/${chord.id}`} className={btnPrimary}>Play {chord.short} in the app</a>
     </div>
   );
 }

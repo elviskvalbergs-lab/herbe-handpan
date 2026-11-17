@@ -4,7 +4,7 @@ import { Faq } from "@/components/Faq";
 import { Features } from "@/components/Features";
 import { HandpanDemo } from "@/components/HandpanDemo";
 import { InstrumentList } from "@/components/InstrumentList";
-import { handpanChords, triads } from "@/lib/engine";
+import { findTuning, handpanChords, triads } from "@/lib/engine";
 import { APP_URL } from "@/lib/site";
 import { btnCta, btnInk, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
 import * as seed from "@/content/seed";
@@ -20,6 +20,7 @@ const { props: heroImg } = getImageProps({ src: "/brand/hero-sky-tall.webp", alt
 export default async function HomePage() {
   const [home, instruments, features] = await Promise.all([getHome(), getInstruments(), getFeatures()]);
   const demoChords = triads(handpanChords(DEMO_SCALE)).slice(0, 7);
+  const demoPath = findTuning("handpan", DEMO_SCALE)?.path;
   const dm = Math.max(0, demoChords.findIndex((c) => c.id === "d-min"));
 
   return (
@@ -53,7 +54,7 @@ export default async function HomePage() {
             {home.heroNote ? <p className="m-0 text-[17px] text-on-dark-muted">{home.heroNote}</p> : null}
           </div>
           <div className="min-w-0 flex-[1_1_420px]">
-            <HandpanDemo slug={DEMO_SCALE} chords={demoChords} initial={dm} caption={home.demoCaption} tone="dark" />
+            <HandpanDemo slug={DEMO_SCALE} chords={demoChords} initial={dm} caption={home.demoCaption} tone="dark" appPath={demoPath} />
           </div>
         </div>
       </section>
