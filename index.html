@@ -8398,6 +8398,17 @@ const syncApi = {
   },
 };
 
+// Brings what an account saved with the first app versions (one user_data
+// row, ocarinas and flutes in instruments) into saved_items, once per account
+// (supabase/migrations/20261117_legacy_import.sql). Resolves to how many
+// items were added; 0 when there was nothing, it already ran, or it failed.
+async function importLegacyData() {
+  if (!_sb || !_session) return 0;
+  const { data, error } = await _sb.rpc('import_legacy_data');
+  if (error) { console.warn('import_legacy_data:', error.message); return 0; }
+  return Number(data) || 0;
+}
+
 // The account was used today (profiles.last_seen_on), and on the first
 // call where and why they signed up. Fails soft.
 async function touchLastSeen({ privacyVersion = null, source = null, intent = null } = {}) {
@@ -8736,6 +8747,7 @@ const state = {
   saveSheet: null,         // the save sheet (§3): { what, step, email, error, busy, providers }, see saveSheetHtml()
   accountConfirm: null,    // 'signout' | 'delete' while Settings › Account confirms
   accountError: null,
+  legacyImported: 0,       // items brought over from the first app versions, for the toast
   syncPending: 0,          // changes waiting for the server
   lastSynced: null,
   syncError: null,
@@ -14978,7 +14990,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = 'e9ff514f4487'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = '1981135a6d3d'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 
@@ -15197,7 +15209,12 @@ function startAccount() {
   if (_accountStarted) return;
   _accountStarted = true;
   touchLastSeen().then(refreshAccess);
-  syncSoon(0);
+  // An account from the first app versions: its instruments, playlists and
+  // progressions are brought over once, then arrive with the first sync.
+  importLegacyData().then(n => {
+    if (n > 0) state.legacyImported = n;
+    syncSoon(0);
+  });
   startSyncPoll();
   enableOffline();
   render();
@@ -15277,7 +15294,10 @@ async function syncNow() {
       reloadSaved();
       render();
     } else if (before !== r.pending) render();
-    if (r.copies.length) showToast(`Changed on two devices, so both are kept: ${r.copies[0]}`);
+    if (state.legacyImported && r.pulled) {
+      showToast(`Brought over ${state.legacyImported} item${state.legacyImported !== 1 ? 's' : ''} from your earlier account`);
+      state.legacyImported = 0;
+    } else if (r.copies.length) showToast(`Changed on two devices, so both are kept: ${r.copies[0]}`);
     else if (before > 0 && r.pending === 0 && r.pushed) showToast('Synced');
     if (r.pushed) pushSharedInstruments();
   } catch (err) {
