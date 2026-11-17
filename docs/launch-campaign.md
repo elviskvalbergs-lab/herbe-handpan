@@ -21,6 +21,8 @@ They are listed in the order to approach them: best fit and most finished part o
 | 5 | **Tin whistle and Native American flute players** | Fingering charts, chords as arpeggios | r/tinwhistle, Chiff & Fipple forum (whistle and NAF boards), Flutopedia's list of NAF groups, NAF Facebook groups |
 | 6 | **Multipliers**: sound healers, yoga and meditation teachers, music therapists, school music teachers (kalimba, ocarina, and recorder when it arrives) | Each one reaches many players | Later, through what waves 1–5 teach you |
 
+**Naming instruments:** never list them all. Say "handpans, kalimbas, flutes and more", swapping in the one you're talking to. The list keeps growing, and posts and videos shouldn't go out of date.
+
 **Your story is part of the pitch.** A one-person project made in Latvia, on Oak Street, free with no sign-up, built from published fingering charts. Say it plainly in every post.
 
 ## 2. Channels, costs and expected return
@@ -43,7 +45,7 @@ All of these cost €0. The real cost is your time.
 
 **Week 0: preparation (~3 h, mostly by you)**
 1. **A way to give feedback inside the app.** The app has no feedback button yet, only the request page. Add a "Send feedback" link (a mailto link to oakhummusic@gmail.com, or a 2-question PostHog survey). *I can build this as a small PR.*
-2. **A 30–45 s demo video, filmed on your phone:** a handpan being played, with the app recognising the scale and lighting up the chords. Make a second one later for kalimba or tongue drum. On Reddit and Facebook a video does much better than a link.
+2. **A demo video** (script for review in `docs/video-script.md`: why, then how, then what). Until it's ready, a quick phone clip works: a handpan being played, with the app recognising the scale and lighting up the chords. Make a second one later for kalimba or tongue drum. On Reddit and Facebook a video does much better than a link.
 3. **Tracked links:** each post gets its own link, such as `oakhum.com/?utm_source=reddit&utm_campaign=handpan`, so PostHog shows which post brought whom. I make the list.
 4. **Free alerts:** create an [F5Bot](https://f5bot.com) alert for "oakhum" (emails when Reddit or HN mention it) and a Google Alert. The alert emails go to Gmail, where I can read them.
 5. Google Search Console and Bing Webmaster Tools: submit `oakhum.com/sitemap.xml`.
