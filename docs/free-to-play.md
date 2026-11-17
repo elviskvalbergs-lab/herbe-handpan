@@ -432,7 +432,7 @@ Every save action in the table above changes from `toggleChord(...)` to `save({w
   - On every app start as a guest, any existing registration is removed and its caches deleted. That covers guests from the old version, and a sign-out in another tab.
 
 ### Migration
-- **There are no existing users** (owner's decision), so there's no data migration. `user_data` and `instruments` stay as they are (the additive rule) and are no longer written by the new code, except `instruments` for shared codes.
+- **Accounts from the first app versions** (the owner's own, at least) are brought over once: on sign-in the app calls `import_legacy_data()` (`supabase/migrations/20261117_legacy_import.sql`), which copies the account's `user_data` row (layouts, playlists, progressions, prefs) and its ocarinas and flutes in `instruments` into `saved_items`, adding only what isn't there yet, and marks `profiles.legacy_imported_at`. `user_data` and `instruments` stay as they are (the additive rule) and are no longer written by the new code, except `instruments` for shared codes.
 - **Old links:** hash links (`#scale=`, `#custom?`, `#p/`, `#i/`) keep working.
 - **Old offline mode:** a browser that still has the old service worker as a guest has it removed on its next visit.
 

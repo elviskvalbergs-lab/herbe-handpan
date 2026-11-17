@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 .build-deps/
+
+# Built by build.py (Vercel runs it on every deploy). Not committed: every
+# change to js/ or css rebuilt it, so any two pull requests conflicted here.
+/index.html
