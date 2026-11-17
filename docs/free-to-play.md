@@ -497,6 +497,9 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - guest goes offline: the card shows and the screen keeps its state
 6. **Later:** passkeys, and a read-only Stats page for the owner.
 
+### One domain
+The website and the app share one domain (owner's decision): the website at `/`, the app's home at `/play`, its deep links at the root (`/handpan/d-kurd`, `/s/CODE`). The website's Vercel project (`site/`) fetches the app's paths and files from the app's own project (`rewrites` in `site/next.config.ts`, `NEXT_PUBLIC_APP_URL`), so the app is still built and deployed as before. In the app, `APP_HOME` (`/play`) is home and `#…` screens hang off it; `/` still opens the app on its own address. The installed app starts at `/play` (manifest), and the service worker answers only the app's pages, leaving the website's alone. Accounts and offline belong to the origin, so someone who used the app on its old address signs in once on the shared one; their things come back by sync.
+
 ### How steps 2–5 were built (notes for the next change)
 - **Guest storage:** `dataStore()` (`js/datastore.js`) is `localStorage` when an account is on the device (`hp-account`) and this tab's `sessionStorage` for a guest, for the four saved lists. Settings and clay bodies stay in `localStorage` for everyone. A session from the old version counts as an account on first load.
 - **Saving:** a guest's tap on an action in `SAVE_ACTIONS` opens the save sheet and keeps `{ what, action, data, path }` in `sessionStorage`; after sign-in the same action runs again (now with an account). Chords go through the playlist picker, which for a guest turns into the sheet; after sign-in the chord goes into Favourites (the entry is plain data, so it survives the Google redirect). Building an instrument isn't a save: a guest builds it in this visit, sees "Not saved · gone when you close this page" with Save, and the sheet once when leaving it.

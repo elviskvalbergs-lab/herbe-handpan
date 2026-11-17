@@ -8,7 +8,6 @@ import { findAllChords } from "@engine/chords.js";
 import { TRADITIONAL_CHARTS, chartsForFamily, chartDefaultKey, instrumentFromChart } from "@engine/charts.js";
 import { linkFor as appLinkFor, linkSlug, linkTitle, parseLink } from "@engine/links.js";
 import { renderPan } from "@engine/pan.js";
-import { APP_URL } from "./site";
 
 export type Family = "handpan" | "ocarina" | "flute";
 
@@ -145,7 +144,7 @@ export function panSvg(slug: string, chordNotes: string[] = []): string {
 /** A deep link into the app: the tuning, and optionally a tab and a chord. */
 export function appLink(tuning: Tuning, opts: { tab?: string; chord?: string } = {}): string {
   const path = opts.tab ? `${tuning.path}/${opts.tab}${opts.chord ? `/${opts.chord}` : ""}` : tuning.path;
-  return `${APP_URL}${path}`;
+  return path; // same domain: the deep link itself (next.config.ts sends it to the app)
 }
 
 export function displayNotes(notes: string[]): string {
