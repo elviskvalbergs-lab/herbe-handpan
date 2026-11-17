@@ -369,6 +369,8 @@ function handpanAppBar(tabs = '') {
   return uiAppBar({
     switcher: saved
       ? { name: state.layout.name, action: 'back-home', title: 'My instruments' }
+      : layoutInstrument(state.layout) === 'tongue-drum'
+      ? { name: state.layout.name, action: 'open-play', data: { family: 'tongue-drum' }, title: 'Other tunings' }
       : { name: state.layout.name, action: 'back-selector', title: 'Other scales' },
     badge: saved ? '' : uiBadge('Not saved'),
     actions: [tunerAppBtn(), menuAppBtn()],
@@ -1074,7 +1076,7 @@ function refreshInstruments() {
   if (state.instruments.length > 0) setOnboarded();
 }
 
-const FAMILY_ICONS = { handpan: 'family-handpan', ocarina: 'family-ocarina', flute: 'family-flute' };
+const FAMILY_ICONS = { handpan: 'family-handpan', 'tongue-drum': 'family-tongue-drum', ocarina: 'family-ocarina', flute: 'family-flute' };
 function familyName(id) { return INSTRUMENT_FAMILIES.find(f => f.id === id)?.name ?? id; }
 
 // One instrument on Home: family glyph, name, what it is, and its ⋯ menu.
@@ -1106,11 +1108,17 @@ function instrumentRowHtml(inst) {
 const SETUP_REQUEST_URL = '/request'; // the website's, on the same domain
 const SETUP_TILES = [
   { family: 'handpan', name: 'Handpan', hint: 'Round steel drum with dents' },
+  { family: 'tongue-drum', name: 'Tongue drum', hint: 'Steel drum with cut tongues' },
   { family: 'ocarina', name: 'Ocarina', hint: 'Clay, with finger holes' },
   { family: 'flute', name: 'Flute or whistle', hint: 'Wooden flute, tin whistle, Native American flute' },
 ];
 
-function newSetup() { return { step: 'what', root: null, showAll: false, scaleId: null, history: [] }; }
+function newSetup() { return { step: 'what', family: 'handpan', root: null, showAll: false, scaleId: null, history: [] }; }
+
+// Handpans and tongue drums go through the same steps, each with its own
+// tunings and words.
+function setupTunings(st) { return st?.family === 'tongue-drum' ? TONGUE_DRUMS : SCALES; }
+function setupWord(st) { return st?.family === 'tongue-drum' ? 'tongue drum' : 'handpan'; }
 
 function setupGo(step, extra = {}) {
   const st = state.setup;
@@ -1125,7 +1133,7 @@ function setupRootName(pc) {
 
 // The handpan drawing of a scale, or of the notes heard so far (empty
 // places up to eight around the middle note while listening).
-function setupPanHtml({ scale = null, heard = null, highlight = [] }) {
+function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'handpan' }) {
   let layout;
   if (scale) layout = createLayoutFromScale(scale);
   else {
@@ -1134,7 +1142,7 @@ function setupPanHtml({ scale = null, heard = null, highlight = [] }) {
     const cap = Math.max(8, top.length);
     layout = layoutFromCustomParams(new URLSearchParams({
       ding: names[0] ?? 'D3', top: [...top, ...Array(cap - top.length).fill('null')].join(','), bottom: '', tc: String(cap), bc: '0',
-    }));
+    }), family);
     if (!names.length) layout.top.ding = null;
   }
   return `<div class="setup-pan pan-wrap">${renderPan(layout, { highlightNotes: highlight, rotated: state.ringRotated, useFlats: state.useFlats })}</div>`;
@@ -1149,7 +1157,10 @@ function viewBeginnerSetup() {
   const first = homeIsEmpty();
   const header = st.step === 'what'
     ? (first ? uiAppBar({ title: 'Welcome', actions: [settingsAppBtn()] }) : backAppBar('Add instrument'))
-    : uiAppBar({ title: st.step === 'done' ? 'Ready' : 'Your handpan', back: { action: 'setup-back', label: 'Back' } });
+    : uiAppBar({ title: st.step === 'done' ? 'Ready' : `Your ${setupWord(st)}`, back: { action: 'setup-back', label: 'Back' } });
+  const word = setupWord(st);
+  const drum = st.family === 'tongue-drum';
+  const tunings = setupTunings(st);
   const count = n => `Step ${n} of 4`;
   const uf = state.useFlats, us = state.useSolfege;
   const nn = n => displayNote(n, uf, us);
@@ -1171,13 +1182,13 @@ function viewBeginnerSetup() {
 
   if (st.step === 'how') {
     return stepFrame({
-      header, count: count(2), title: 'Let’s find out which handpan you have',
+      header, count: count(2), title: `Let’s find out which ${word} you have`,
       sub: 'No need to know its scale. Play it to your phone and Oakhum works it out.',
       body: `
         <ol class="setup-how">
-          <li>Put your phone next to the handpan, somewhere quiet.</li>
-          <li>Play the <strong>big note in the middle</strong> once and let it ring.</li>
-          <li>Then play each note around it, one by one. Any order is fine.</li>
+          <li>Put your phone next to the ${word}, somewhere quiet.</li>
+          <li>Play the <strong>${drum ? 'lowest note (the biggest tongue)' : 'big note in the middle'}</strong> once and let it ring.</li>
+          <li>Then play each ${drum ? 'tongue' : 'note around it'}, one by one. Any order is fine.</li>
         </ol>`,
       bar: {
         help: 'Oakhum only listens while this screen is open. Nothing is recorded.',
@@ -1194,9 +1205,9 @@ function viewBeginnerSetup() {
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `Listening · ${n} note${n !== 1 ? 's' : ''} heard` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
       header, count: count(3),
-      title: n === 0 ? 'Play the big note in the middle' : 'Now the next note',
+      title: n === 0 ? (drum ? 'Play the lowest note' : 'Play the big note in the middle') : 'Now the next note',
       sub: n === 0 ? 'Strike it once and let it ring.' : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going around, any order. Damp each note with your palm before the next.`,
-      body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [] })}${status}`,
+      body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}`,
       bar: {
         left: '<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my scale instead</button>',
         right: L.listening || n >= 3
@@ -1208,7 +1219,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'match') {
     const notes = state.listen?.notes ?? [];
-    const ranked = rankScalesByNotes(notes, SCALES).filter(r => r.ding !== 'none');
+    const ranked = rankScalesByNotes(notes, tunings).filter(r => r.ding !== 'none');
     const best = ranked[0];
     if (!best) {
       return stepFrame({
@@ -1227,7 +1238,7 @@ function viewBeginnerSetup() {
       header, count: count(3), title: `We heard ${notes.length} notes`,
       body: `
         <div class="setup-result card">
-          <p class="setup-result-lead">Your handpan is a</p>
+          <p class="setup-result-lead">Your ${word} is a</p>
           <p class="setup-result-name">${escHtml(s.name)}</p>
           ${s.desc ? `<p class="setup-result-desc">${escHtml(s.desc)}</p>` : ''}
           <p class="setup-result-notes">${setupScaleNotes(s).map(x => escHtml(nn(x))).join(' ')}</p>
@@ -1243,20 +1254,20 @@ function viewBeginnerSetup() {
   }
 
   if (st.step === 'know') {
-    const roots = setupRoots(SCALES);
+    const roots = setupRoots(tunings);
     return stepFrame({
-      header, count: count(3), title: 'Which note is in the middle?',
+      header, count: count(3), title: drum ? 'What’s its lowest note?' : 'Which note is in the middle?',
       sub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
       body: `
         <div class="setup-roots">
           ${roots.map(r => `<button type="button" class="setup-root${r.pc === 2 ? ' is-first' : ''}" data-action="setup-root" data-pc="${r.pc}">${escHtml(setupRootName(r.pc))}</button>`).join('')}
         </div>
-        <p class="wizard-foot">Most handpans are in D, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
+        <p class="wizard-foot">Most ${word}s are in D, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
     });
   }
 
   if (st.step === 'scales') {
-    const all = setupScalesFor(SCALES, st.root);
+    const all = setupScalesFor(tunings, st.root);
     const shown = st.showAll ? all : setupTopScales(all);
     const root = setupRootName(st.root);
     return stepFrame({
@@ -1278,8 +1289,8 @@ function viewBeginnerSetup() {
   const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
-    header, count: count(4), title: `Your ${s.name} handpan is ready`,
-    sub: chord ? 'Start with this chord. Oakhum lights its notes on your handpan, and plays them for you.' : '',
+    header, count: count(4), title: `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
+    sub: chord ? `Start with this chord. Oakhum lights its notes on your ${word}, and plays them for you.` : '',
     body: `
       ${chord ? `<div class="setup-result card">
         <p class="setup-result-name">${escHtml(chordName)}</p>
@@ -1297,7 +1308,7 @@ function viewBeginnerSetup() {
 function setupOnHeard() {
   if (state.view !== 'setup' || state.setup?.step !== 'listen') return;
   const notes = state.listen?.notes ?? [];
-  if (setupHeardEnough(rankScalesByNotes(notes, SCALES), notes.length)) {
+  if (setupHeardEnough(rankScalesByNotes(notes, setupTunings(state.setup)), notes.length)) {
     stopListen();
     setupGo('match');
   }
@@ -1316,7 +1327,7 @@ function setupAction(action, el) {
   if (action === 'setup-family') {
     const fam = el.dataset.family;
     logEvent('setup', { step: 'family', family: fam });
-    if (fam === 'handpan') { setupGo('how'); return true; }
+    if (fam === 'handpan' || fam === 'tongue-drum') { setupGo('how', { family: fam }); return true; }
     // Ocarinas and flutes: the wizard's own step for that family.
     const w = newWizard(homeIsEmpty());
     Object.assign(w, { families: [fam], step: fam, queue: [], history: [] });
@@ -1380,6 +1391,7 @@ function setupAction(action, el) {
 // on My instruments.
 const PLAY_POPULAR = {
   handpan: ['D-Kurd', 'D-Celtic-Minor', 'F-Low-Pygmy', 'D-Integral', 'D-Hijaz', 'E-Equinox'].map(scaleId => ({ scaleId })),
+  'tongue-drum': ['TD-D-Kurd-9', 'TD-D-Amara-9', 'TD-C-Major-Pentatonic-8', 'TD-A-Minor-Pentatonic-8', 'TD-G-Major-Pentatonic-8', 'TD-C-Major-Pentatonic-6'].map(scaleId => ({ scaleId })),
   ocarina: ['C-A4', 'G-E4', 'F-D4', 'C-A5', 'G-E5', 'C-A3'].map(keyId => ({ chartId: 'ocarina-12-stl-c', keyId })),
   flute: chartsForFamily('flute').map(c => ({ chartId: c.id, keyId: c.defaultKey ?? c.keys[0].id })),
 };
@@ -1409,15 +1421,19 @@ function viewPlay() {
       <div class="tip-body">Is it one of these?</div>
       <div class="list">${n.closest.map(p => { const l = parseLink(p); return uiRow({ lead: FAMILY_ICONS[l.family], title: linkTitle(l), chevron: true, action: 'open-link', data: { path: p } }); }).join('')}</div>
     </div>` : '';
+  const popular = new Set(PLAY_POPULAR[fam]?.map(t => t.scaleId));
   const more = fam === 'handpan'
     ? uiRow({ lead: 'search', title: `All ${SCALES.length} scales`, meta: 'Every scale, by notes and name', chevron: true, action: 'other-instrument' })
       + uiRow({ lead: 'pencil', title: 'Your own notes', meta: 'Set the notes of your handpan', chevron: true, action: 'play-custom-handpan' })
+    : fam === 'tongue-drum'
+    ? TONGUE_DRUMS.filter(t => !popular.has(t.id)).map(t => playRowHtml({ scaleId: t.id })).join('')
+      + uiRow({ lead: 'pencil', title: 'Your own notes', meta: 'Set the notes of your tongue drum', chevron: true, action: 'play-custom-handpan', data: { family: 'tongue-drum' } })
     : uiRow({ lead: 'plus', title: fam === 'ocarina' ? 'Other keys, or your own ocarina' : 'Other keys, or your own flute', meta: fam === 'ocarina' ? 'Every key, ocarinas you made, building one from a scale' : 'Every key, and flutes you made', chevron: true, action: 'add-instrument' });
   const bar = backAppBar('Play something else', { actions: [tunerAppBtn(), settingsAppBtn()] });
   return `
     ${bar}
     <div class="play">
-      ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute. Free, no sign-up to play.</span></div>` : ''}
+      ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, ocarina and flute. Free, no sign-up to play.</span></div>` : ''}
       ${notice}
       ${uiSeg(INSTRUMENT_FAMILIES.map(f => ({ value: f.id, label: escHtml(f.name) })), fam, { action: 'play-family', label: 'Instrument' })}
       <h2 class="list-title">Popular</h2>
@@ -1451,13 +1467,13 @@ function viewHome() {
         ${insts.length === 0
           ? uiEmpty({
             icon: 'family-handpan', title: 'Add the instruments you play',
-            body: 'Handpans by scale, ocarinas you bought or are making, and flutes.',
+            body: 'Handpans and tongue drums by scale, ocarinas and flutes.',
             action: `<button type="button" class="btn btn-primary btn-lg" data-action="add-instrument">${icon('plus')} Add instrument</button>`,
           })
           : `<div class="list home-instruments">${insts.map(instrumentRowHtml).join('')}</div>
              <button type="button" class="btn btn-secondary btn-block home-add" data-action="add-instrument">${icon('plus')} Add instrument</button>`}
         <div class="list home-try">
-          ${uiRow({ lead: 'search', title: 'Play something else', meta: 'Any handpan, ocarina or flute, without saving it', chevron: true, action: 'open-play' })}
+          ${uiRow({ lead: 'search', title: 'Play something else', meta: 'Any handpan, tongue drum, ocarina or flute, without saving it', chevron: true, action: 'open-play' })}
         </div>
       </section>
       <section class="home-side" aria-label="Playlists">
@@ -1577,7 +1593,7 @@ function stepFrame({ header, hero = false, notice = '', count = '', title, sub =
         <img class="brand-hero-art" src="/brand/hero-wide-800.webp" srcset="/brand/hero-wide-800.webp 800w, /brand/hero-wide.webp 1600w"
           sizes="(min-width: 640px) 640px, 100vw" width="800" height="450" alt="">
         ${brandLogo()}
-        <p class="brand-hero-line">Notes, chords and scales for handpan, ocarina and flute.</p>
+        <p class="brand-hero-line">Notes, chords and scales for handpan, tongue drum, ocarina and flute.</p>
       </div>` : '';
   const hasBar = bar.left || bar.right || bar.help;
   return `${header}
@@ -1610,7 +1626,8 @@ function viewWizard() {
       ocarina: 'Bought, or one you\'re making',
       flute: 'Tin whistle or Native American flute',
     };
-    const tiles = INSTRUMENT_FAMILIES.map(f => {
+    // The old multi-family step (unused since the beginner setup): the families with a wizard step.
+    const tiles = INSTRUMENT_FAMILIES.filter(f => f.id !== 'tongue-drum').map(f => {
       const unavailable = f.id === 'flute' && chartsForFamily('flute').length === 0;
       const on = w.families.includes(f.id);
       return `
@@ -1992,7 +2009,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
 function handpanTabs(current) {
   return uiTabBar([
     { id: 'chords', label: 'Chords', icon: 'music', action: 'go-chords' },
-    { id: 'editor', label: 'Pan', icon: 'circle-dot', action: 'back-editor' },
+    { id: 'editor', label: layoutInstrument(state.layout) === 'tongue-drum' ? 'Drum' : 'Pan', icon: 'circle-dot', action: 'back-editor' },
     { id: 'playlists', label: 'Playlists', icon: 'list-music', action: 'hp-playlists' },
   ], current);
 }
@@ -4121,13 +4138,14 @@ function viewEditor() {
   const topEmpty = layout.top.slots.filter(s => !s.note).length;
   const bottomFilled = layout.bottom.slots.filter(s => s.note).length;
 
+  const drum = layoutInstrument(layout) === 'tongue-drum';
   return `
     ${handpanAppBar(handpanTabs('editor'))}
     ${state.currentInstrumentId ? (accountOn() ? '' : notSavedBannerHtml('visit-save')) : notSavedBannerHtml('save-layout')}
 
     <div class="editor-layout">
       <div class="editor-main">
-        ${uiSeg([{ value: 'both', label: 'Both shells' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }],
+        ${drum ? '' : uiSeg([{ value: 'both', label: 'Both shells' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }],
           state.shellMode, { action: 'shell-mode', key: 'mode', label: 'Shells shown' })}
         <div class="pan-wrap ed-pan">
           ${panRotateBtn()}${panSvg}
@@ -4138,7 +4156,15 @@ function viewEditor() {
       <div class="editor-sidebar">
         <div class="card ed-card">
           ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
-          <div class="ed-shell">
+          ${drum ? `<div class="ed-shell">
+            <div class="overline">Tongues</div>
+            ${uiStepper({
+              value: layout.top.capacity + 1, label: 'Tongues', action: 'adjust-capacity', data: { shell: 'top' },
+              min: topEmpty === 0 && layout.top.slots.length > 0, max: layout.top.capacity >= 15,
+              help: `${topFilled + 1} tongue${topFilled ? 's' : ''} · ${topEmpty} empty`,
+            })}
+          </div>
+          ${isCustom ? uiSwitchRow({ label: 'Lowest note in the middle', help: 'A round tongue in the centre, as on handpan-style tongue drums', on: !!layout.centre, action: 'ed-centre' }) : ''}` : `<div class="ed-shell">
             <div class="overline">Top shell</div>
             ${uiStepper({
               value: layout.top.capacity, label: 'Top shell', action: 'adjust-capacity', data: { shell: 'top' },
@@ -4153,7 +4179,7 @@ function viewEditor() {
               min: layout.bottom.slots.every(s => !s.note) && layout.bottom.capacity === 0, max: layout.bottom.capacity >= 12,
               help: `${bottomFilled} note${bottomFilled !== 1 ? 's' : ''} · ${layout.bottom.capacity - bottomFilled} empty`,
             })}
-          </div>
+          </div>`}
         </div>
         <div class="ed-actions">${edActionsHtml()}</div>
       </div>
@@ -4763,6 +4789,8 @@ function hpMoreSheet() {
 
 // Rotate button overlaid on the pan drawing (Chords and Pan).
 function panRotateBtn() {
+  // A tongue drum's tongues are drawn the way makers lay them out: no rotation.
+  if (layoutInstrument(state.layout) === 'tongue-drum') return '';
   return uiIconBtn('rotate', 'Rotate the ring so the two lowest notes face you', {
     action: 'toggle-rotation', pressed: state.ringRotated, cls: 'tonal pan-rotate',
   });
@@ -5983,7 +6011,7 @@ function loadFromHash() {
 const MEASURE_START = Date.now();
 
 function measureFamily() {
-  if (state.layout) return 'handpan';
+  if (state.layout) return layoutInstrument(state.layout);
   return currentInstrument()?.family ?? null;
 }
 
@@ -5991,7 +6019,7 @@ function measureOpen() {
   const link = parseLink(location.pathname, location.search);
   // The link, without anything personal: custom notes and share codes stay out.
   const path = !link ? (isAppHome() ? APP_HOME : 'other')
-    : link.kind === 'custom' ? '/handpan/custom'
+    : link.kind === 'custom' ? `/${link.family}/custom`
     : link.kind === 'shared' ? '/s'
     : link.kind === 'unknown' ? `/${link.family}/?`
     : link.path;
@@ -6645,7 +6673,7 @@ window.addEventListener('beforeunload', e => {
 // The path of a link without anything personal (custom notes, share codes).
 function measurePathOf(pathname) {
   const link = parseLink((pathname || '/').split(/[?#]/)[0], '');
-  return !link ? APP_HOME : link.kind === 'custom' ? '/handpan/custom' : link.kind === 'shared' ? '/s' : link.kind === 'unknown' ? `/${link.family}/?` : link.path;
+  return !link ? APP_HOME : link.kind === 'custom' ? `/${link.family}/custom` : link.kind === 'shared' ? '/s' : link.kind === 'unknown' ? `/${link.family}/?` : link.path;
 }
 
 // The screen on show, kept in the synced prefs so a second device opens
@@ -6821,6 +6849,7 @@ document.addEventListener('click', e => {
   if (action === 'open-play') {
     goHome({ push: false });
     state.view = 'play';
+    if (el.dataset.family) state.playFamily = el.dataset.family;
     state.playNotice = null;
     navPush('#play');
     render();
@@ -6844,9 +6873,10 @@ document.addEventListener('click', e => {
   if (action === 'play-custom-handpan') {
     // An empty custom handpan: a D3 ding and eight notes to set on the Pan.
     // No bottom notes to start with: few beginners' handpans have them, and
-    // the Pan adds them when there are.
-    const params = new URLSearchParams({ ding: 'D3', top: Array(8).fill('null').join(','), bottom: '', tc: '8', bc: '0', name: 'My handpan' });
-    const link = parseLink('/handpan/custom', '?' + params);
+    // the Pan adds them when there are. A tongue drum: eight tongues from C4.
+    const drum = el.dataset.family === 'tongue-drum';
+    const params = new URLSearchParams({ ding: drum ? 'C4' : 'D3', top: Array(drum ? 7 : 8).fill('null').join(','), bottom: '', tc: drum ? '7' : '8', bc: '0', name: drum ? 'My tongue drum' : 'My handpan' });
+    const link = parseLink(drum ? '/tongue-drum/custom' : '/handpan/custom', '?' + params);
     openLink(link);
     navPush(stateToHash());
     render();
@@ -8093,11 +8123,20 @@ document.addEventListener('click', e => {
     return;
   }
 
+  if (action === 'ed-centre') {
+    if (!state.layout?.isCustom) return;
+    state.layout.centre = !state.layout.centre;
+    state.chords = findAllChords(state.layout);
+    navReplace(stateToHash());
+    render();
+    return;
+  }
+
   if (action === 'adjust-capacity') {
     const shell = el.dataset.shell;
     const delta = parseInt(el.dataset.delta);
     const target = state.layout[shell];
-    const newCap = Math.max(0, Math.min(12, target.capacity + delta));
+    const newCap = Math.max(0, Math.min(layoutInstrument(state.layout) === 'tongue-drum' ? 15 : 12, target.capacity + delta));
     if (newCap === target.capacity) return;
 
     if (delta > 0) {

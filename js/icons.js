@@ -50,6 +50,8 @@ const ICON_PATHS = {
   'list-ordered': '<path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>',
   copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   // Custom family glyphs, same 24px stroke style.
+  // A steel tongue drum from above: the shell and its U-shaped tongues.
+  'family-tongue-drum': '<circle cx="12" cy="12" r="10"/><path d="M10 4.6v2.6a2 2 0 0 0 4 0V4.6"/><path d="M10 19.4v-2.6a2 2 0 0 1 4 0v2.6"/><path d="M4.6 10h2.6a2 2 0 0 1 0 4H4.6"/><path d="M19.4 10h-2.6a2 2 0 0 0 0 4h2.6"/>',
   'family-handpan': '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3.5"/><circle cx="19" cy="12" r=".6"/><circle cx="15.5" cy="18.06" r=".6"/><circle cx="8.5" cy="18.06" r=".6"/><circle cx="5" cy="12" r=".6"/><circle cx="8.5" cy="5.94" r=".6"/><circle cx="15.5" cy="5.94" r=".6"/>',
   'family-ocarina': '<path d="M3 13c0-4 3.6-7 8-7 4.2 0 7.5 2.6 7.9 6.2"/><path d="M18.9 12.2H22v3h-3.4c-1.3 2.4-4.3 3.8-7.6 3.8-4.4 0-8-2.3-8-6"/><circle cx="8" cy="11" r=".6"/><circle cx="12" cy="10.5" r=".6"/><circle cx="9" cy="15" r=".6"/><circle cx="13" cy="15" r=".6"/>',
   'family-flute': '<rect x="1.5" y="8" width="21" height="8" rx="4"/><circle cx="6" cy="12" r=".75"/><circle cx="8.6" cy="12" r=".75"/><circle cx="11.2" cy="12" r=".75"/><circle cx="13.8" cy="12" r=".75"/><circle cx="16.4" cy="12" r=".75"/><circle cx="19" cy="12" r=".75"/>',
