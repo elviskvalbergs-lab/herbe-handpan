@@ -130,7 +130,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
         <div className="min-w-0 flex-[1_1_360px] lg:sticky lg:top-6">
           {isPan ? (
             <div className="rounded-card bg-pan-stage p-5">
-              <HandpanDemo slug={tuning.slug} family={panFamily ?? "handpan"} chords={simple} caption={`${tuning.name} layout`} />
+              <HandpanDemo slug={tuning.slug} family={panFamily ?? "handpan"} chords={simple} caption={`${tuning.name} layout`} appPath={tuning.path} />
             </div>
           ) : wind.length ? (
             <div className="rounded-card bg-surface p-5 shadow-[inset_0_0_0_1px_var(--border)]">
