@@ -5,19 +5,14 @@
 // recorded, kept or sent (docs/listen-mode.md, Privacy).
 
 import { listenDbToMagnitudes, listenChroma } from './listen-detect.js';
+import { openMicrophone } from './tuner.js';
 
 export const LISTEN_FFT = 16384;
 
 // onFrame({ chroma, bass, energy, peaks, db, sampleRate, fftSize, timeBuf, time })
 // Resolves to stop(); rejects when the mic can't be opened.
 export async function startListening(onFrame, { intervalMs = 100, tune = {} } = {}) {
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser has no microphone access');
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-  });
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  const ctx = new Ctx();
-  const source = ctx.createMediaStreamSource(stream);
+  const { ctx, source, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
   analyser.fftSize = LISTEN_FFT;
   analyser.smoothingTimeConstant = 0;
@@ -33,8 +28,6 @@ export async function startListening(onFrame, { intervalMs = 100, tune = {} } = 
   }, intervalMs);
   return () => {
     clearInterval(timer);
-    stream.getTracks().forEach(t => t.stop());
-    source.disconnect();
-    ctx.close();
+    close();
   };
 }

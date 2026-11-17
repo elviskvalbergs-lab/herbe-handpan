@@ -103,6 +103,7 @@ const state = {
   pickerNewPlaylist: false,
   chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
+  pickListen: null,        // the note picker's "Play it": { listening, startedTuner, startedAt, heardAt, error }
   authEmail: '',
   authCode: '',
   saveSheet: null,         // the save sheet (§3): { what, step, email, error, busy, providers }, see saveSheetHtml()
@@ -965,7 +966,7 @@ function startListen() {
   const where = listenScreen();
   if (!where) return;
   const notes = state.listen?.where === where ? state.listen.notes : [];
-  state.listen = { where, listening: true, notes, lastSince: null, startedTuner: !state.tuner.on || !!state.tuner.error, error: null, stopped: '' };
+  state.listen = { where, listening: true, notes, lastSince: null, startedTuner: !state.tuner.on || !!state.tuner.error, error: null, stopped: '', startedAt: performance.now(), heardAt: null };
   armListenIdle();
   if (state.listen.startedTuner) {
     if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
@@ -994,6 +995,28 @@ function stopListen(extra = {}) {
   Object.assign(L, { listening: false, startedTuner: false }, extra);
   if (startedTuner && state.tuner.on && !state.tuner.error) { toggleTuner(); return; }
   render();
+}
+
+// What the microphone hears right now, under the listening status: a level
+// meter and the note, or what to do when nothing comes through. Updated in
+// place about 20 times a second (no re-render).
+function listenLiveHtml(reading = state.tuner.reading, L = state.listen) {
+  if (!L?.listening) return '';
+  const level = reading?.level ?? 0;
+  // −60 dB … −10 dB across the meter.
+  const pct = level > 0 ? Math.max(0, Math.min(100, ((20 * Math.log10(level)) + 60) * 2)) : 0;
+  const now = performance.now();
+  let text;
+  if (reading?.hz > 0) text = `Hearing ${escHtml(displayNote(midiToNoteName(Math.round(reading.midi)), state.useFlats, state.useSolfege))}`;
+  else if (level >= TUNER_MIN_RMS) text = 'Hearing sound · strike one note and let it ring';
+  else if (now - (L.heardAt ?? L.startedAt) > 5000) text = 'Can’t hear anything. Hold the phone closer, about a hand away, and check that this site may use the microphone.';
+  else text = 'Waiting for a note…';
+  return `<span class="listen-meter" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></span><span class="listen-live-text">${text}</span>`;
+}
+
+function updateListenLive(reading, L = state.listen) {
+  const el = document.getElementById('listen-live');
+  if (el) el.innerHTML = listenLiveHtml(reading, L);
 }
 
 // A tuner reading while listening: a steady note that began after the last
@@ -1209,7 +1232,7 @@ function viewBeginnerSetup() {
       header, count: count(3),
       title: n === 0 ? `Play ${fi.firstShort}` : 'Now the next note',
       sub: n === 0 ? 'Strike it once and let it ring.' : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going around, any order. Damp each note with your palm before the next.`,
-      body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}`,
+      body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
       bar: {
         left: '<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my scale instead</button>',
         right: L.listening || n >= 3
@@ -1227,7 +1250,7 @@ function viewBeginnerSetup() {
       return stepFrame({
         header, count: count(3), title: 'We couldn’t tell which scale that is',
         sub: 'Try again in a quieter spot, striking each note once, or choose it yourself.',
-        body: '',
+        body: notes.length >= 3 ? `<div class="list">${uiRow({ lead: 'pencil', title: `Use the ${notes.length} notes I played`, meta: `Your own ${word}, exactly as heard. You can change any note later.`, chevron: true, action: 'setup-use-heard' })}</div>` : '',
         bar: {
           left: '<button type="button" class="btn btn-secondary" data-action="setup-know">Choose my scale</button>',
           right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
@@ -1247,7 +1270,8 @@ function viewBeginnerSetup() {
           ${setupPanHtml({ scale: s })}
           <button type="button" class="btn btn-secondary" data-action="setup-hear" data-id="${escHtml(s.id)}">${icon('play')} Hear it</button>
         </div>
-        ${close ? `<p class="wizard-foot">Also close: ${close}</p>` : ''}`,
+        ${close ? `<p class="wizard-foot">Also close: ${close}</p>` : ''}
+        <p class="wizard-foot">Not this one? <button type="button" class="link-btn" data-action="setup-use-heard">Use the ${notes.length} notes I played</button> as your own ${escHtml(word)}.</p>`,
       bar: {
         left: '<button type="button" class="btn btn-ghost" data-action="setup-know">Not quite, let me choose</button>',
         right: `<button type="button" class="btn btn-primary" data-action="setup-scale" data-id="${escHtml(s.id)}">Yes, that’s it</button>`,
@@ -1353,6 +1377,23 @@ function setupAction(action, el) {
     stopListen();
     logEvent('setup', { step: 'scale', how: st.step === 'match' ? 'listened' : 'chose' });
     setupGo('done', { scaleId: el.dataset.id });
+    return true;
+  }
+  if (action === 'setup-use-heard') {
+    // The notes as heard, as the instrument's own: the lowest first, the
+    // rest up from it. It opens on its own tab, ready to save.
+    const heard = [...new Set(state.listen?.notes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
+    if (heard.length < 2) return true;
+    const fam = st.family;
+    const rest = heard.slice(1, 1 + layoutFamilyInfo(fam).maxNotes);
+    const params = new URLSearchParams({ ding: heard[0], top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0', name: `My ${layoutFamilyInfo(fam).word}` });
+    stopListen();
+    logEvent('setup', { step: 'scale', how: 'heard-notes' });
+    state.setup = null;
+    openLink(parseLink(`/${fam}/custom`, '?' + params));
+    state.view = 'editor';
+    navPush(stateToHash());
+    render();
     return true;
   }
   if (action === 'setup-hear') {
@@ -3942,7 +3983,15 @@ function onTunerReading(reading) {
     onFluteDetectReading(reading.hz, 'oc');
     return;
   }
-  if (state.listen?.listening && onListenReading(reading)) return;
+  if (state.pickListen?.listening) {
+    if (state.pendingSlot && state.view === 'editor') { onPickListenReading(reading); return; }
+    stopPickListen(); // the picker was closed some other way
+  }
+  if (state.listen?.listening) {
+    if (reading.level >= TUNER_MIN_RMS) state.listen.heardAt = performance.now();
+    if (onListenReading(reading)) return;
+    updateListenLive(reading);
+  }
   const rec = state.rec;
   if (rec.armed && reading.stable && reading.hz > 0 && (!rec.auto || reading.since > rec.armedAt)) {
     captureReading(reading.hz);
@@ -4192,6 +4241,57 @@ function viewEditor() {
   `;
 }
 
+// Sets the note picker's slot (tapped in the list, or heard).
+function setPendingSlotNote(note) {
+  const slot = state.pendingSlot;
+  if (!slot || !note) return;
+  stopPickListen();
+  if (slot.shell === 'ding') {
+    state.layout.top.ding = note;
+  } else {
+    const shell = slot.shell === 'top' ? state.layout.top : state.layout.bottom;
+    while (shell.slots.length <= slot.index) shell.slots.push({ note: null });
+    shell.slots[slot.index].note = note;
+  }
+  state.pendingSlot = null;
+  state.chords = findAllChords(state.layout);
+  initAudio();
+  playNote(note);
+  render();
+}
+
+// "Play it": the tuner listens, and the first steady note that starts after
+// the tap sets the slot. The tuner is turned off again if this turned it on.
+function startPickListen() {
+  const startedTuner = !state.tuner.on || !!state.tuner.error;
+  state.pickListen = { listening: true, startedTuner, startedAt: performance.now(), heardAt: null, error: null };
+  if (startedTuner) {
+    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    toggleTuner().then(() => {
+      if (state.tuner.error && state.pickListen?.listening) { stopPickListen(); state.pickListen = { error: state.tuner.error }; render(); }
+    });
+    return;
+  }
+  render();
+}
+
+function stopPickListen() {
+  const P = state.pickListen;
+  state.pickListen = null;
+  if (P?.listening && P.startedTuner && state.tuner.on && !state.tuner.error) toggleTuner();
+}
+
+// A tuner reading while "Play it" listens.
+function onPickListenReading(reading) {
+  const P = state.pickListen;
+  if (reading.level >= TUNER_MIN_RMS) P.heardAt = performance.now();
+  if (reading.stable && reading.hz > 0 && reading.since > P.startedAt) {
+    setPendingSlotNote(midiToNoteName(Math.round(reading.midi)));
+    return;
+  }
+  updateListenLive(reading, P);
+}
+
 function renderNotePicker() {
   const allNotes = new Set(getAllNotes(state.layout));
   const octaves = [2, 3, 4, 5];
@@ -4211,13 +4311,25 @@ function renderNotePicker() {
     </div>`;
   }).join('');
 
-  const slotLabel = state.pendingSlot.shell === 'ding'
+  const fam = layoutInstrument(state.layout);
+  const fi = layoutFamilyInfo(fam);
+  const slotLabel = fam !== 'handpan'
+    ? (state.pendingSlot.shell === 'ding' ? 'lowest note' : `${fi.thing} ${state.pendingSlot.index + 2}`)
+    : state.pendingSlot.shell === 'ding'
     ? 'ding (center)'
     : `${state.pendingSlot.shell === 'top' ? 'ring' : 'gu'} slot ${state.pendingSlot.index + 1}`;
+  // First: play the note and Oakhum sets it. The list is for when you know it.
+  const P = state.pickListen;
+  const listen = P?.listening
+    ? `<div class="pick-listen card"><p class="pick-listen-title"><span class="listen-dot" aria-hidden="true"></span> Play the ${escHtml(slotLabel)} once and let it ring</p>
+        <div class="listen-live" id="listen-live">${listenLiveHtml(state.tuner.reading, P)}</div>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="pick-listen-stop">Stop listening</button></div>`
+    : `<button type="button" class="btn btn-primary btn-block pick-listen-btn" data-action="pick-listen">${icon('mic')} Play it · Oakhum listens</button>
+       ${P?.error ? `<p class="field-help is-danger">${escHtml(P.error)}</p>` : ''}`;
 
   return uiSheet({
-    key: 'note', title: 'Add a note', close: 'close-picker',
-    body: `<p class="sheet-text">For the ${slotLabel}. Greyed notes are already on the instrument.</p>${rows}`,
+    key: 'note', title: 'Set a note', close: 'close-picker',
+    body: `${listen}<p class="sheet-text">Or choose it, for the ${escHtml(slotLabel)}. Greyed notes are already on the instrument.</p>${rows}`,
     footer: `<button class="btn btn-ghost" data-action="close-picker">Cancel</button>`,
   });
 }
@@ -8172,38 +8284,16 @@ document.addEventListener('click', e => {
 
   // Note picker: cancel or overlay background click
   if (action === 'close-picker') {
+    stopPickListen();
     state.pendingSlot = null;
     render();
     return;
   }
+  if (action === 'pick-listen') { startPickListen(); return; }
+  if (action === 'pick-listen-stop') { stopPickListen(); render(); return; }
 
   // Note picker: pick a note
-  if (action === 'pick-note') {
-    const note = el.dataset.note;
-    const slot = state.pendingSlot;
-    if (!slot) return;
-
-    if (slot.shell === 'ding') {
-      state.layout.top.ding = note;
-    } else if (slot.shell === 'top') {
-      while (state.layout.top.slots.length <= slot.index) {
-        state.layout.top.slots.push({ note: null });
-      }
-      state.layout.top.slots[slot.index].note = note;
-    } else {
-      while (state.layout.bottom.slots.length <= slot.index) {
-        state.layout.bottom.slots.push({ note: null });
-      }
-      state.layout.bottom.slots[slot.index].note = note;
-    }
-
-    state.pendingSlot = null;
-    state.chords = findAllChords(state.layout);
-    initAudio();
-    playNote(note);
-    render();
-    return;
-  }
+  if (action === 'pick-note') { setPendingSlotNote(el.dataset.note); return; }
 
   // ── Chord explorer ─────────────────────────────────────────────────────────
   if (action === 'hp-filters-open') { state.hpFilters = true; render(); return; }
