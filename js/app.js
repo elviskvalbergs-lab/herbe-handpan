@@ -1102,7 +1102,7 @@ function instrumentRowHtml(inst) {
 // a first chord. Ocarinas and flutes go on into the add-instrument wizard.
 // state.setup = { step: 'what' | 'how' | 'listen' | 'match' | 'know' | 'scales' | 'done',
 //   root, showAll, scaleId, history }
-const SETUP_REQUEST_URL = 'https://oakhum-site.vercel.app/request';
+const SETUP_REQUEST_URL = '/request'; // the website's, on the same domain
 const SETUP_TILES = [
   { family: 'handpan', name: 'Handpan', hint: 'Round steel drum with dents' },
   { family: 'ocarina', name: 'Ocarina', hint: 'Clay, with finger holes' },
@@ -1164,7 +1164,7 @@ function viewBeginnerSetup() {
               <span class="setup-tile-hint">${escHtml(t.hint)}</span>
             </button>`).join('')}
         </div>
-        <p class="wizard-foot">Something else? <a class="link-btn" href="${SETUP_REQUEST_URL}" target="_blank" rel="noopener">Ask for your instrument</a>. Just looking? <button type="button" class="link-btn" data-action="open-play">Play a popular tuning</button>.</p>`,
+        <p class="wizard-foot">Something else? <a class="link-btn" href="${SETUP_REQUEST_URL}">Ask for your instrument</a>. Just looking? <button type="button" class="link-btn" data-action="open-play">Play a popular tuning</button>.</p>`,
     });
   }
 
