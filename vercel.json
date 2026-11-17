@@ -27,7 +27,7 @@
   "redirects": [
     {
       "source": "/privacy",
-      "destination": "https://oakhum-site.vercel.app/privacy",
+      "destination": "https://oakhum.com/privacy",
       "permanent": false
     }
   ]
