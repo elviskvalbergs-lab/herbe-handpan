@@ -5,7 +5,7 @@
 // Anything that goes wrong falls through to the plain rewrite in vercel.json.
 import { linkPreview, withLinkPreview } from './js/links.js';
 
-export const config = { matcher: ['/handpan/:path*', '/ocarina/:path*', '/flute/:path*', '/s/:path*'] };
+export const config = { matcher: ['/handpan/:path*', '/tongue-drum/:path*', '/ocarina/:path*', '/flute/:path*', '/s/:path*'] };
 
 export default async function middleware(request) {
   try {

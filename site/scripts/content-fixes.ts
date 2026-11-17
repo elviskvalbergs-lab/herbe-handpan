@@ -7,6 +7,7 @@
 // only while it still reads exactly as the starting content had it.
 import { createClient } from "next-sanity";
 import { apiVersion, dataset, projectId, writeToken } from "../src/sanity/env";
+import * as seed from "../src/content/seed";
 
 // Production builds only: previews share the dataset, so a pull request's
 // preview must not change the live content before it's merged.
@@ -37,6 +38,37 @@ const FIXES: Fix[] = [
       }
       await tx.commit();
       return note;
+    },
+  },
+  {
+    // The tongue drum is in the app (owner, 2026-11-17): its page becomes
+    // available. Fields are filled only where they still hold the starting
+    // "coming soon" text (or nothing), so Studio edits stay.
+    name: "2026-11-17-tongue-drum-available",
+    async run() {
+      const doc = await client.fetch<Record<string, unknown> | null>(`*[_id == "instrument-tongue-drum"][0]`);
+      if (!doc) return "no tongue drum document";
+      if (doc.status !== "soon" || doc.family !== "none") return "left as edited in the Studio";
+      const start = seed.instruments.find((i) => i._id === "instrument-tongue-drum")!;
+      const OLD: Record<string, unknown> = {
+        tuningsLine: "8, 11 and 15-tongue drums in common scales",
+        title: "Steel tongue drum chords",
+        intro: "Steel tongue drums share a lot with handpans: a fixed set of notes. Tell us your drum's notes and vote for it.",
+      };
+      const set: Record<string, unknown> = { family: "tongue-drum", status: "available" };
+      for (const key of ["tuningsLine", "title", "intro"]) if (doc[key] === OLD[key] || !doc[key]) set[key] = start[key as keyof typeof start];
+      for (const key of ["featuredTunings", "playAlongTitle", "playAlongText", "ctaTitle", "ctaText"]) {
+        const v = doc[key];
+        if (v == null || (Array.isArray(v) && !v.length)) set[key] = start[key as keyof typeof start];
+      }
+      if (!(doc.faqs as unknown[] | undefined)?.length) set.faqs = (start.faqs ?? []).map((f, i) => ({ _key: `k${i}`, ...f }));
+      const tx = client.transaction().patch("instrument-tongue-drum", (p) => p.set(set));
+      const kalimba = await client.fetch<{ order?: number } | null>(`*[_id == "instrument-kalimba"][0]{order}`);
+      if (kalimba?.order === 4) { tx.patch("instrument-tongue-drum", (p) => p.set({ order: 4 })); tx.patch("instrument-kalimba", (p) => p.set({ order: 5 })); }
+      const more = await client.fetch<{ text?: string } | null>(`*[_id == "feature-more"][0]{text}`);
+      if (more?.text === "Kalimba and steel tongue drum are next. Vote for what you play.") tx.patch("feature-more", (p) => p.set({ text: "Kalimba is next. Vote for what you play." }));
+      await tx.commit();
+      return `available; filled ${Object.keys(set).join(", ")}`;
     },
   },
 ];

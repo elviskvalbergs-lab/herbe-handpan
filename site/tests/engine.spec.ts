@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appLink, chartTunings, findTuning, handpanChords, handpanTunings, panSvg, triads } from "@/lib/engine";
+import { appLink, chartTunings, findTuning, handpanChords, handpanTunings, panSvg, triads, tuningsFor } from "@/lib/engine";
 import { instrumentTunings } from "@/lib/instruments";
 import * as seed from "@/content/seed";
 
@@ -49,4 +49,14 @@ describe("seed content", () => {
     expect(new Set(seed.instruments.map((d) => d.slug)).size).toBe(seed.instruments.length);
     for (const d of seed.instruments) expect(d.status === "available" ? d.family !== "none" : true).toBe(true);
   });
+});
+
+it("tongue drums come from the app: every tuning, its chords and its drawing", () => {
+  const drums = tuningsFor("tongue-drum");
+  expect(drums.length).toBeGreaterThanOrEqual(18);
+  for (const t of drums) expect(t.path).toBe(`/tongue-drum/${t.slug}`);
+  const chords = handpanChords("d-kurd-9", "tongue-drum");
+  expect(chords.map((c) => c.short)).toContain("Dm");
+  expect(panSvg("d-kurd-9", ["D3", "F4", "A4"], "tongue-drum")).toMatch(/pan-note tongue/);
+  expect(panSvg("d-kurd-9", [], "handpan")).toBe("");
 });
