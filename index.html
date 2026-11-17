@@ -1780,7 +1780,7 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 /* Setup: the beginner flow (js/setup.js, viewSetup) */
 .setup-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
 .setup-tile {
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: var(--space-1);
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: var(--space-1);
   min-height: 112px; padding: var(--space-4); text-align: left; cursor: pointer;
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); color: var(--text-1); font: inherit;
   transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
@@ -14140,7 +14140,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = 'cce40c45b66e'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = '47e4c7edc721'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = 'https://oakhum-site.vercel.app/privacy';
 const PRIVACY_VERSION = '2026-11';
 
