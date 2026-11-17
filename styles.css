@@ -1734,3 +1734,30 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
   padding: var(--space-4); box-shadow: var(--e-2);
 }
 .offline-card .set-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; }
+
+/* Setup: the beginner flow (js/setup.js, viewSetup) */
+.setup-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); }
+.setup-tile {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: var(--space-1);
+  min-height: 112px; padding: var(--space-4); text-align: left; cursor: pointer;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); color: var(--text-1); font: inherit;
+  transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
+}
+.setup-tile:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.setup-tile-name { font: var(--fw-semibold) 18px/24px var(--font); }
+.setup-tile-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.setup-how { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: var(--space-3); color: var(--text-2); }
+.setup-pan { margin: 0 auto; width: min(100%, 320px); }
+.setup-status { display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--text-2); font-size: var(--fs-13); }
+.setup-roots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.setup-root {
+  height: 60px; border-radius: var(--r-md); cursor: pointer; font: var(--fw-bold) 22px/1 var(--font);
+  background: var(--surface-1); border: 1px solid var(--border); color: var(--text-1);
+}
+.setup-root:hover { border-color: var(--border-strong); }
+.setup-root.is-first { background: var(--accent-fill, var(--text-1)); border-color: transparent; color: var(--on-accent, var(--bg)); }
+.setup-result { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-5) var(--space-4); text-align: center; }
+.setup-result-lead { color: var(--text-3); margin: 0; }
+.setup-result-name { margin: 0; font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); }
+.setup-result-desc { margin: 0; color: var(--text-2); max-width: 40ch; }
+.setup-result-notes { margin: 0; color: var(--text-3); font-size: var(--fs-13); letter-spacing: .02em; }

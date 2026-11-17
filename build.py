@@ -28,7 +28,7 @@ if os.environ.get('DATABASE_URL'):
 css = read('styles.css') + '\n' + read('css/pan-drawing.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/links.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/app.js']
+js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/setup.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/links.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
