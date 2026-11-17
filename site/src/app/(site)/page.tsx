@@ -31,7 +31,7 @@ export default async function HomePage() {
           <source media="(min-width: 768px)" srcSet={heroWide} sizes="100vw" />
           <img {...heroImg} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_100%] md:object-[75%_100%]" />
         </picture>
-        <div className={`${container} relative flex min-h-[175vw] flex-col pt-[44vw] pb-10 sm:min-h-[150vw] md:min-h-[max(560px,min(56vw,calc(100svh-84px)))] md:pt-[max(64px,6vw)] md:pb-28`}>
+        <div className={`${container} relative flex min-h-[185vw] flex-col pt-[58vw] pb-10 sm:min-h-[150vw] sm:pt-[44vw] md:min-h-[max(560px,min(56vw,calc(100svh-84px)))] md:pt-[max(64px,6vw)] md:pb-28`}>
           <div className="max-w-[80%] md:max-w-[min(54%,720px)]">
             <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,70px)] font-bold leading-[1.03] tracking-[-0.03em] text-text">{home.heroTitle}</h1>
             <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{home.heroText}</p>
