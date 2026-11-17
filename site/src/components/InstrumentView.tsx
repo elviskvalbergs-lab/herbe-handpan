@@ -49,8 +49,10 @@ function ComingSoon({ instrument }: { instrument: InstrumentDoc }) {
 }
 
 function Available({ instrument, tuning, featured, all }: { instrument: InstrumentDoc; tuning: Tuning; featured: Tuning[]; all: Tuning[] }) {
-  const isPan = tuning.family === "handpan";
-  const chords = isPan ? handpanChords(tuning.slug) : [];
+  // Handpans and tongue drums: a middle note and a ring, chords played together.
+  const panFamily = tuning.family === "handpan" || tuning.family === "tongue-drum" ? tuning.family : null;
+  const isPan = !!panFamily;
+  const chords = panFamily ? handpanChords(tuning.slug, panFamily) : [];
   const simple = triads(chords);
   const more = chords.length - simple.length;
   const base = `/instruments/${instrument.slug}`;
@@ -62,7 +64,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
       <div className="flex flex-wrap items-start gap-14">
         <div className="min-w-0 flex-[1_1_460px]">
           <h1 className="m-0 mb-5 text-[clamp(38px,5.5vw,60px)] font-semibold leading-[1.04] tracking-[-0.025em]">
-            {tuning.slug === featured[0]?.slug ? instrument.title : `${tuning.name} ${isPan ? "handpan chords" : "fingerings"}`}
+            {tuning.slug === featured[0]?.slug ? instrument.title : `${tuning.name} ${panFamily === "tongue-drum" ? "tongue drum chords" : isPan ? "handpan chords" : "fingerings"}`}
           </h1>
           <p className="m-0 mb-8 max-w-[560px] text-[20px] text-body">{instrument.intro}</p>
 
@@ -124,7 +126,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
         <div className="min-w-0 flex-[1_1_360px] lg:sticky lg:top-6">
           {isPan ? (
             <div className="rounded-card bg-pan-stage p-5">
-              <HandpanDemo slug={tuning.slug} chords={simple} caption={`${tuning.name} layout`} />
+              <HandpanDemo slug={tuning.slug} family={panFamily ?? "handpan"} chords={simple} caption={`${tuning.name} layout`} />
             </div>
           ) : (
             <NoteStrip tuning={tuning} />

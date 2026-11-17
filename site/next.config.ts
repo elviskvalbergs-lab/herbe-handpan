@@ -6,6 +6,7 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 const APP_PATHS = [
   "/play",
   "/handpan/:path*",
+  "/tongue-drum/:path*",
   "/ocarina/:path*",
   "/flute/:path*",
   "/s/:path*",

@@ -12,6 +12,10 @@
       "destination": "/"
     },
     {
+      "source": "/tongue-drum/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/ocarina/:path*",
       "destination": "/"
     },

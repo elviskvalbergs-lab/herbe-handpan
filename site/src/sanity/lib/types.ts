@@ -41,7 +41,7 @@ export type InstrumentDoc = {
   _id: string;
   name: string;
   slug: string;
-  family: "handpan" | "ocarina" | "flute" | "none";
+  family: "handpan" | "tongue-drum" | "ocarina" | "flute" | "none";
   status: "available" | "soon";
   order: number;
   tuningsLine?: string;

@@ -8,8 +8,11 @@ import { findAllChords } from "@engine/chords.js";
 import { TRADITIONAL_CHARTS, chartsForFamily, chartDefaultKey, instrumentFromChart } from "@engine/charts.js";
 import { linkFor as appLinkFor, linkSlug, linkTitle, parseLink } from "@engine/links.js";
 import { renderPan } from "@engine/pan.js";
+import { TONGUE_DRUMS } from "@engine/tonguedrums.js";
 
-export type Family = "handpan" | "ocarina" | "flute";
+export type Family = "handpan" | "tongue-drum" | "ocarina" | "flute";
+/** The families the app draws as a pan (a middle note and a ring): their chords play together. */
+export type PanFamily = "handpan" | "tongue-drum";
 
 export type Tuning = {
   /** The app's link slug, unique within a family: "d-kurd", "alto-c-12". */
@@ -48,16 +51,27 @@ const linkFor = (target: { scaleId?: string; chartId?: string; keyId?: string })
 
 const lastSegment = (path: string) => path.split("/")[2] ?? path;
 
-function scaleTuning(s: Scale): Tuning {
+function scaleTuning(s: Scale, family: PanFamily = "handpan"): Tuning {
   const layout = createLayoutFromScale(s);
   const notes = [...getAllNotes(layout)].sort((a, b) => noteToMidi(a) - noteToMidi(b));
   const path = linkFor({ scaleId: s.id });
-  return { slug: lastSegment(path), name: s.name, family: "handpan", notes, description: s.desc ?? null, path };
+  return { slug: lastSegment(path), name: s.name, family, notes, description: s.desc ?? null, path };
 }
 
 /** Every handpan scale in the app's catalogue. */
 export function handpanTunings(): Tuning[] {
-  return SCALES.map(scaleTuning);
+  return SCALES.map((s: Scale) => scaleTuning(s));
+}
+
+/** Every tongue drum in the app's catalogue (js/tonguedrums.js, from makers' listings). */
+export function tongueDrumTunings(): Tuning[] {
+  return TONGUE_DRUMS.map((t: Scale) => scaleTuning(t, "tongue-drum"));
+}
+
+// The app's tuning behind a pan-family slug.
+function panScale(slug: string, family: PanFamily): Scale | undefined {
+  const list: Scale[] = family === "tongue-drum" ? TONGUE_DRUMS : SCALES;
+  return list.find((s: Scale) => lastSegment(linkFor({ scaleId: s.id })) === slug);
 }
 
 /** Every key of every fingering chart of an ocarina or flute. */
@@ -88,7 +102,7 @@ function buildChartTunings(family: "ocarina" | "flute"): Tuning[] {
 const CHART_TUNINGS = { ocarina: buildChartTunings("ocarina"), flute: buildChartTunings("flute") };
 
 export function tuningsFor(family: Family): Tuning[] {
-  return family === "handpan" ? handpanTunings() : chartTunings(family);
+  return family === "handpan" ? handpanTunings() : family === "tongue-drum" ? tongueDrumTunings() : chartTunings(family);
 }
 
 export function findTuning(family: Family, slug: string): Tuning | null {
@@ -109,9 +123,9 @@ const SHORT: Record<string, string> = {
   maj6: "6", min6: "m6", add9: "add9", madd9: "m(add9)", maj9: "maj9", min9: "m9", dom9: "9",
 };
 
-/** Chords on a handpan scale, as the app finds them; intervals are left out. */
-export function handpanChords(slug: string): Chord[] {
-  const scale = SCALES.find((s: Scale) => lastSegment(linkFor({ scaleId: s.id })) === slug);
+/** Chords on a handpan scale or tongue drum, as the app finds them; intervals are left out. */
+export function handpanChords(slug: string, family: PanFamily = "handpan"): Chord[] {
+  const scale = panScale(slug, family);
   if (!scale) return [];
   const chords = findAllChords(createLayoutFromScale(scale));
   return chords
@@ -133,9 +147,9 @@ export function triads(chords: Chord[]): Chord[] {
 
 const display = (n: string) => displayNote(n, true).replace("b", "♭");
 
-/** The app's pan drawing for a scale, with a chord's notes lit. */
-export function panSvg(slug: string, chordNotes: string[] = []): string {
-  const scale = SCALES.find((s: Scale) => lastSegment(linkFor({ scaleId: s.id })) === slug);
+/** The app's drawing of a handpan scale or tongue drum, with a chord's notes lit. */
+export function panSvg(slug: string, chordNotes: string[] = [], family: PanFamily = "handpan"): string {
+  const scale = panScale(slug, family);
   if (!scale) return "";
   return renderPan(createLayoutFromScale(scale), { highlightNotes: chordNotes, useFlats: true })
     .replace('id="handpan-svg"', `role="img" aria-label="${scale.name} handpan layout"`);
