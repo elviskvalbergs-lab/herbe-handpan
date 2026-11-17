@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -1140,10 +1140,46 @@ const SETUP_TILES = [
 
 function newSetup() { return { step: 'what', family: 'handpan', root: null, showAll: false, scaleId: null, history: [] }; }
 
-// Handpans, tongue drums and kalimbas go through the same steps, each with
-// its own tunings and words (js/layoutfamilies.js).
-function setupTunings(st) { return layoutFamilyInfo(st?.family).tunings; }
-function setupWord(st) { return layoutFamilyInfo(st?.family).word; }
+// Every instrument goes through the same steps, each with its own tunings
+// and words: handpans, tongue drums and kalimbas from js/layoutfamilies.js,
+// ocarinas and flutes from their published charts (setup.js
+// chartSetupTunings), with their own words here.
+const SETUP_WIND_WORDS = {
+  ocarina: {
+    word: 'ocarina', voice: 'ocarina', first: 'lowest note: every hole covered, thumb holes too', firstShort: 'the lowest note',
+    each: 'note up the scale, lifting one finger at a time', thing: 'note', firstRoot: 0,
+    knowTitle: 'What key is it in?', knowSub: 'It’s usually written on the ocarina or its box, like the C in “12-hole ocarina in C”.',
+  },
+  flute: {
+    word: 'flute', voice: 'flute', first: 'lowest note: every hole covered', firstShort: 'the lowest note',
+    each: 'note up the scale, lifting one finger at a time', thing: 'note', firstRoot: 2,
+    knowTitle: 'What key is it in?', knowSub: 'It’s usually marked on the flute: D on most tin whistles, often A or F# on a Native American flute.',
+  },
+};
+// How each kind is played and named in the setup's sentences.
+const SETUP_PLAY = {
+  struck: { sound: 'Strike it once and let it ring.', next: 'Damp each note before the next.', again: 'striking each note once', pick: 'scale', knowBtn: 'I know my scale' },
+  blown: { sound: 'Blow it gently and hold it for a second.', next: 'Hold each note for a second.', again: 'holding each note for a second', pick: 'key', knowBtn: 'I know my key' },
+};
+function setupFamilyInfo(family) {
+  if (SETUP_WIND_WORDS[family]) return { ...SETUP_WIND_WORDS[family], ...SETUP_PLAY.blown, wind: true, tunings: chartSetupTunings(family) };
+  const f = layoutFamilyInfo(family);
+  const plucked = family === 'kalimba' ? { sound: 'Pluck it once and let it ring.', next: 'Damp each key before the next.', again: 'plucking each key once', knowBtn: 'I know my key', pick: 'key' } : {};
+  return { ...f, ...SETUP_PLAY.struck, ...plucked, firstRoot: 2, wind: false };
+}
+
+// "My instrument isn't one of these": the notes as heard become a handpan,
+// tongue drum or kalimba of your own; an ocarina or flute is set up note by
+// note (its holes, then each fingering) in the add-instrument wizard.
+function setupOwnRowHtml(st, n) {
+  const fi = setupFamilyInfo(st.family);
+  return fi.wind
+    ? uiRow({ lead: 'pencil', title: `Set up my ${fi.word} note by note`, meta: 'For one that isn’t in the list, or made by hand: its holes, then each fingering with the tuner.', chevron: true, action: 'setup-own-wind' })
+    : uiRow({ lead: 'pencil', title: `Use the ${n} notes I played`, meta: `Your own ${fi.word}, exactly as heard. You can change any note later.`, chevron: true, action: 'setup-use-heard' });
+}
+function setupTunings(st) { return setupFamilyInfo(st?.family).tunings; }
+function setupWord(st) { return setupFamilyInfo(st?.family).word; }
+function setupFindTuning(st, id) { return setupTunings(st).find(t => t.id === id) ?? null; }
 
 function setupGo(step, extra = {}) {
   const st = state.setup;
@@ -1159,6 +1195,24 @@ function setupRootName(pc) {
 // The handpan drawing of a scale, or of the notes heard so far (empty
 // places up to eight around the middle note while listening).
 function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'handpan' }) {
+  // An ocarina or flute: its picture and the notes, the ones to play lit.
+  if (SETUP_WIND_WORDS[family]) {
+    // A chord to play: the fingering of each of its notes, in playing order,
+    // as the Chords screen shows them (the picture of an ocarina or flute).
+    if (scale?.chartId && highlight.length) {
+      const inst = instrumentFromChart(scale.chartId, scale.keyId);
+      const midis = highlight.map(noteToMidi);
+      return `<div class="setup-wind setup-wind-chord">${midis.map((m, i) => `<div class="setup-wind-step"><span class="setup-wind-step-n">${i + 1}</span>${renderFingering(inst, m, { size: 'medium', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: midis[i - 1] ?? null })}</div>`).join('')}</div>`;
+    }
+    const tile = SETUP_TILES.find(t => t.family === family);
+    // Heard notes, or the notes to play (a chord); a whole chart is its range.
+    const names = highlight.length ? highlight : scale ? [] : (heard ?? []).map(heardNoteName);
+    const lit = new Set(highlight.map(noteToMidi));
+    return `<div class="setup-wind">
+      ${tile ? `<img class="setup-wind-pic" src="${tile.picture}" width="160" height="160" alt="">` : ''}
+      ${names.length ? `<div class="chips setup-wind-notes">${names.map(n => `<span class="chip${lit.has(noteToMidi(n)) ? ' is-selected' : ''}">${escHtml(displayNote(n, state.useFlats, state.useSolfege))}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }
   let layout;
   if (scale) layout = createLayoutFromScale(scale);
   else {
@@ -1173,6 +1227,13 @@ function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'ha
   return `<div class="setup-pan pan-wrap">${renderPan(layout, { highlightNotes: highlight, rotated: state.ringRotated, useFlats: state.useFlats })}</div>`;
 }
 
+// A tuning's notes for the setup's lists: every note of a drum or kalimba;
+// an ocarina's or flute's range (a chart can have twenty).
+function setupNotesText(s) {
+  const notes = setupScaleNotes(s).map(n => displayNote(n, state.useFlats, state.useSolfege));
+  return s.chartId ? `${notes[0]} to ${notes.at(-1)} · ${notes.length} notes` : notes.join(' ');
+}
+
 function setupScaleNotes(scale) {
   return [scale.top.ding, ...scale.top.notes, ...scale.bottom.notes].sort((a, b) => noteToMidi(a) - noteToMidi(b));
 }
@@ -1184,7 +1245,7 @@ function viewBeginnerSetup() {
     ? (first ? uiAppBar({ title: 'Welcome', actions: [settingsAppBtn()] }) : backAppBar('Add instrument'))
     : uiAppBar({ title: st.step === 'done' ? 'Ready' : `Your ${setupWord(st)}`, back: { action: 'setup-back', label: 'Back' } });
   const word = setupWord(st);
-  const fi = layoutFamilyInfo(st.family);
+  const fi = setupFamilyInfo(st.family);
   const tunings = setupTunings(st);
   const count = n => `Step ${n} of 4`;
   const uf = state.useFlats, us = state.useSolfege;
@@ -1209,16 +1270,16 @@ function viewBeginnerSetup() {
   if (st.step === 'how') {
     return stepFrame({
       header, count: count(2), title: `Let’s find out which ${word} you have`,
-      sub: 'No need to know its scale. Play it to your phone and Oakhum works it out.',
+      sub: `No need to know its ${fi.pick}. Play it to your phone and Oakhum works it out.`,
       body: `
         <ol class="setup-how">
           <li>Put your phone next to the ${word}, somewhere quiet.</li>
-          <li>Play the <strong>${fi.first}</strong> once and let it ring.</li>
+          <li>Play the <strong>${fi.first}</strong>. ${fi.sound}</li>
           <li>Then play each ${fi.each}, one by one. Any order is fine.</li>
         </ol>`,
       bar: {
         help: 'Oakhum only listens while this screen is open. Nothing is recorded.',
-        left: '<button type="button" class="btn btn-secondary" data-action="setup-know">I know my scale</button>',
+        left: `<button type="button" class="btn btn-secondary" data-action="setup-know">${fi.knowBtn}</button>`,
         right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play my notes</button>`,
       },
     });
@@ -1232,10 +1293,10 @@ function viewBeginnerSetup() {
     return stepFrame({
       header, count: count(3),
       title: n === 0 ? `Play ${fi.firstShort}` : 'Now the next note',
-      sub: n === 0 ? 'Strike it once and let it ring.' : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going around, any order. Damp each note with your palm before the next.`,
+      sub: n === 0 ? fi.sound : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going, any order. ${fi.next}`,
       body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
       bar: {
-        left: '<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my scale instead</button>',
+        left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my ${fi.pick} instead</button>`,
         right: L.listening || n >= 3
           ? `<button type="button" class="btn btn-primary" data-action="setup-heard-done"${n >= 3 ? '' : ' disabled'}>That’s all my notes</button>`
           : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
@@ -1249,11 +1310,11 @@ function viewBeginnerSetup() {
     const best = ranked[0];
     if (!best) {
       return stepFrame({
-        header, count: count(3), title: 'We couldn’t tell which scale that is',
-        sub: 'Try again in a quieter spot, striking each note once, or choose it yourself.',
-        body: notes.length >= 3 ? `<div class="list">${uiRow({ lead: 'pencil', title: `Use the ${notes.length} notes I played`, meta: `Your own ${word}, exactly as heard. You can change any note later.`, chevron: true, action: 'setup-use-heard' })}</div>` : '',
+        header, count: count(3), title: `We couldn’t tell which ${fi.pick} that is`,
+        sub: `Try again in a quieter spot, ${fi.again}, or choose it yourself.`,
+        body: notes.length >= 3 ? `<div class="list">${setupOwnRowHtml(st, notes.length)}</div>` : '',
         bar: {
-          left: '<button type="button" class="btn btn-secondary" data-action="setup-know">Choose my scale</button>',
+          left: `<button type="button" class="btn btn-secondary" data-action="setup-know">Choose my ${fi.pick}</button>`,
           right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
         },
       });
@@ -1264,15 +1325,17 @@ function viewBeginnerSetup() {
       header, count: count(3), title: `We heard ${notes.length} notes`,
       body: `
         <div class="setup-result card">
-          <p class="setup-result-lead">Your ${word} is a</p>
+          <p class="setup-result-lead">Your ${word} is ${/^[AEIOU]/i.test(s.name) ? 'an' : 'a'}</p>
           <p class="setup-result-name">${escHtml(s.name)}</p>
           ${s.desc ? `<p class="setup-result-desc">${escHtml(s.desc)}</p>` : ''}
-          <p class="setup-result-notes">${setupScaleNotes(s).map(x => escHtml(nn(x))).join(' ')}</p>
-          ${setupPanHtml({ scale: s })}
+          <p class="setup-result-notes">${escHtml(setupNotesText(s))}</p>
+          ${setupPanHtml({ scale: s, family: st.family })}
           <button type="button" class="btn btn-secondary" data-action="setup-hear" data-id="${escHtml(s.id)}">${icon('play')} Hear it</button>
         </div>
         ${close ? `<p class="wizard-foot">Also close: ${close}</p>` : ''}
-        <p class="wizard-foot">Not this one? <button type="button" class="link-btn" data-action="setup-use-heard">Use the ${notes.length} notes I played</button> as your own ${escHtml(word)}.</p>`,
+        <p class="wizard-foot">Not this one? ${fi.wind
+          ? `<button type="button" class="link-btn" data-action="setup-own-wind">Set up my ${escHtml(word)} note by note</button>.`
+          : `<button type="button" class="link-btn" data-action="setup-use-heard">Use the ${notes.length} notes I played</button> as your own ${escHtml(word)}.`}</p>`,
       bar: {
         left: '<button type="button" class="btn btn-ghost" data-action="setup-know">Not quite, let me choose</button>',
         right: `<button type="button" class="btn btn-primary" data-action="setup-scale" data-id="${escHtml(s.id)}">Yes, that’s it</button>`,
@@ -1281,7 +1344,7 @@ function viewBeginnerSetup() {
   }
 
   if (st.step === 'know') {
-    const roots = setupRoots(tunings);
+    const roots = setupRoots(tunings, { first: fi.firstRoot });
     return stepFrame({
       header, count: count(3), title: fi.knowTitle,
       sub: fi.knowSub,
@@ -1294,35 +1357,41 @@ function viewBeginnerSetup() {
   }
 
   if (st.step === 'scales') {
-    const all = setupScalesFor(tunings, st.root);
-    const shown = st.showAll ? all : setupTopScales(all);
+    let all = setupScalesFor(tunings, st.root);
+    // An ocarina's or flute's keys: all of them, the popular ones first.
+    if (fi.wind) {
+      const rank = t => { const i = (PLAY_POPULAR[st.family] ?? []).findIndex(p => p.chartId === t.chartId && p.keyId === t.keyId); return i < 0 ? 99 : i; };
+      all = [...all].sort((a, b) => rank(a) - rank(b));
+    }
+    const shown = st.showAll || fi.wind ? all : setupTopScales(all);
     const root = setupRootName(st.root);
     return stepFrame({
-      header, count: count(3), title: `Which ${root} scale?`, sub: 'The most common ones first.',
+      header, count: count(3), title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
       body: `
         <div class="list">
           ${shown.map(s => uiRow({
             title: s.name, chevron: true, action: 'setup-scale', data: { id: s.id }, cls: 'scale-row',
-            meta: escHtml(setupScaleNotes(s).map(nn).join(' ')), meta2: escHtml(s.desc ?? ''),
+            meta: escHtml(setupNotesText(s)), meta2: escHtml(s.desc ?? ''),
           })).join('')}
-          ${!st.showAll && all.length > shown.length ? uiRow({ lead: 'chevron-down', title: `Show all ${all.length} scales in ${root}`, action: 'setup-all' }) : ''}
+          ${!st.showAll && all.length > shown.length ? uiRow({ lead: 'chevron-down', title: fi.wind ? `Show all ${all.length} in ${root}` : `Show all ${all.length} scales in ${root}`, action: 'setup-all' }) : ''}
         </div>`,
     });
   }
 
   // done
-  const s = findTuning(st.scaleId);
+  const s = setupFindTuning(st, st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
-  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s));
+  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId ? 'maj' : 'min' });
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
-    header, count: count(4), title: `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
-    sub: chord ? `Start with this chord. Oakhum lights its notes on your ${word}, and plays them for you.` : '',
+    header, count: count(4), title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
+    sub: chord ? (fi.wind ? `Start with this chord. Your ${word} plays one note at a time, so Oakhum shows the fingering of each note and plays them in turn.`
+      : `Start with this chord. Oakhum lights its notes on your ${word}, and plays them for you.`) : '',
     body: `
       ${chord ? `<div class="setup-result card">
         <p class="setup-result-name">${escHtml(chordName)}</p>
         <p class="setup-result-notes">${chord.notes.map(x => escHtml(nn(x))).join(' · ')}</p>
-        ${setupPanHtml({ scale: s, highlight: chord.notes })}
+        ${setupPanHtml({ scale: s, highlight: chord.notes, family: st.family })}
       </div>` : ''}`,
     bar: {
       left: `<button type="button" class="btn btn-secondary" data-action="setup-save">${accountOn() ? 'Save' : 'Save for next time'}</button>`,
@@ -1354,8 +1423,14 @@ function setupAction(action, el) {
   if (action === 'setup-family') {
     const fam = el.dataset.family;
     logEvent('setup', { step: 'family', family: fam });
-    if (isLayoutFamily(fam)) { setupGo('how', { family: fam }); return true; }
-    // Ocarinas and flutes: the wizard's own step for that family.
+    if (isLayoutFamily(fam) || SETUP_WIND_WORDS[fam]) { setupGo('how', { family: fam }); return true; }
+    return true;
+  }
+  if (action === 'setup-own-wind') {
+    // An ocarina or flute that isn't one of the charts: set it up note by
+    // note in the add-instrument wizard (its holes, then each fingering).
+    stopListen();
+    const fam = st.family;
     const w = newWizard(homeIsEmpty());
     Object.assign(w, { families: [fam], step: fam, queue: [], history: [] });
     Object.assign(state, { wizard: w, view: 'wizard' });
@@ -1398,7 +1473,7 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-hear') {
-    const s = findTuning(el.dataset.id);
+    const s = setupFindTuning(st, el.dataset.id);
     if (s) { initAudio(); playScale(setupScaleNotes(s), () => {}); }
     return true;
   }
@@ -1411,9 +1486,22 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-first-chord' || action === 'setup-save') {
-    const s = findTuning(st.scaleId);
+    const s = setupFindTuning(st, st.scaleId);
     if (!s) return true;
-    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s));
+    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId ? 'maj' : 'min' });
+    if (s.chartId) {
+      // An ocarina or flute: it opens on its Chords tab, the first chord
+      // open with its fingerings, and plays it one note at a time.
+      const path = linkFor({ chartId: s.chartId, keyId: s.keyId }, { tab: 'chords' });
+      state.setup = null;
+      openLink(parseLink(path, ''));
+      navPush(path);
+      if (chord) state.oc.expanded = chord.id;
+      render();
+      if (action === 'setup-save') { completePendingSave({ action: 'shared-add' }); return true; }
+      if (chord) { initAudio(); playSequence(chord.notes, () => {}, 0.55); }
+      return true;
+    }
     const path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
     state.setup = null;
     openLink(parseLink(path, ''));
@@ -2624,7 +2712,7 @@ function ocCardData(inst, key) {
 function voiceForState() {
   // A handpan, tongue drum or kalimba on screen sounds like itself.
   if (state.layout && ['editor', 'chords', 'hp-playlists', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
-  if (state.view === 'setup') return layoutFamilyInfo(state.setup?.family).voice;
+  if (state.view === 'setup') return setupFamilyInfo(state.setup?.family).voice;
   if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
   const inst = currentInstrument();
   if (!inst) return 'handpan';

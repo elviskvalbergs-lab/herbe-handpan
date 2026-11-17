@@ -43,3 +43,26 @@ test('listening stops by itself once every note of the best match was heard', ()
   assert.equal(r[0].scale.id, 'D-Kurd');
   assert.equal(setupHeardEnough(r, all.length), true);
 });
+
+test('ocarinas and flutes in the same setup: every chart key a tuning, matched by the notes heard', async () => {
+  const { chartSetupTunings, setupRoots, setupScalesFor, setupFirstChord, setupKeyNote } = await import('../js/setup.js');
+  const { rankScalesByNotes } = await import('../js/scalefinder.js');
+  const { findAllChords } = await import('../js/chords.js');
+  const { createLayoutFromScale } = await import('../js/data.js');
+  const oc = chartSetupTunings('ocarina');
+  assert.equal(oc.length, 36);
+  assert.ok(oc.every(t => t.id.startsWith('chart:ocarina-12-stl-c/') && t.chartId && t.keyId));
+  // An alto C ocarina: the lowest note (every hole closed) A4, then up the scale.
+  const alto = rankScalesByNotes([69, 71, 72, 74, 76, 77, 79, 81], oc)[0].scale;
+  assert.equal(alto.id, 'chart:ocarina-12-stl-c/C-A4');
+  assert.equal(alto.name, 'Alto C 12-hole ocarina');
+  // "I know my key": C first, and C's three ocarinas.
+  assert.equal(setupRoots(oc, { first: 0 })[0].pc, 0);
+  assert.deepEqual(setupScalesFor(oc, 0).map(t => t.keyId).sort(), ['C-A3', 'C-A4', 'C-A5']);
+  // A tin whistle in D, told from a Native American flute in D by its F#.
+  const fl = chartSetupTunings('flute');
+  assert.equal(rankScalesByNotes([62, 64, 66, 67, 69, 71, 73, 74], fl)[0].scale.id, 'chart:tin-whistle-d/D');
+  // The first chord on an instrument in a major key is its major chord.
+  const c = setupFirstChord(findAllChords(createLayoutFromScale(alto)), setupKeyNote(alto), { prefer: 'maj' });
+  assert.equal(c.id, 'C-maj');
+});
