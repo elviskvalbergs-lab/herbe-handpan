@@ -1528,13 +1528,13 @@ function viewHome() {
     </div>`;
 }
 
-// ⋯ menu of an instrument row on Home: Share… (ocarinas and flutes) and Remove.
+// ⋯ menu of an instrument row on Home: Edit, Share… and Remove, the same for every instrument.
 function rowMenuSheet(id) {
   const inst = getInstrument(id);
   if (!inst) return '';
   const rows = [];
-  if (!usesLayout(inst)) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
-  if (!usesLayout(inst)) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
+  rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(inst), action: 'inst-edit-open', data: { id: inst.id } }));
+  rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: inst.id } }));
   rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
   return uiSheet({ key: 'row-menu', variant: 'rowmenu', title: inst.name, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
 }
@@ -2631,7 +2631,7 @@ function currentInstrument() {
   return state.currentInstrumentId === SHARED_ID ? state.shared : getInstrument(state.currentInstrumentId);
 }
 
-function openSharedLink(code) {
+function openSharedLink(code, tab = null) {
   stopAutoplay();
   Object.assign(state, {
     view: 'instrument', layout: null, currentInstrumentId: SHARED_ID,
@@ -2641,6 +2641,13 @@ function openSharedLink(code) {
   setTimeout(async () => {
     const data = await fetchSharedInstrument(code);
     if (state.currentInstrumentId !== SHARED_ID) return;
+    // A shared handpan, tongue drum or kalimba opens like any visiting one:
+    // its notes on its own screens, ready to save.
+    if (data && usesLayout(data) && data.layout) {
+      openSharedLayout(data, tab);
+      render();
+      return;
+    }
     state.shared = data ? { ...data, id: SHARED_ID, publicId: code.toUpperCase() } : null;
     state.sharedStatus = data ? null : 'missing';
     render();
@@ -2665,6 +2672,15 @@ async function shareInstrument(id = null) {
   if (!inst || inst.id === SHARED_ID) return;
   // A guest got the save sheet first (store.js); an account needs the connection.
   if (!isLoggedIn()) { showToast('Sharing needs a connection'); return; }
+  // A handpan, tongue drum or kalimba shares a copy of its notes, kept up to
+  // date each time it is shared (its layout lives in the saved layouts).
+  if (usesLayout(inst)) {
+    const saved = getSavedLayouts().find(l => l.id === inst.layoutId);
+    if (!saved) return;
+    inst.layout = JSON.parse(JSON.stringify(saved.layout));
+    saveInstrument(inst);
+    if (inst.publicId && await saveCloudInstruments([getInstrument(inst.id)]) !== true) { showToast('Sharing needs a connection'); return; }
+  }
   if (!inst.publicId) {
     let ok = false;
     for (let attempt = 0; attempt < 3 && ok !== true; attempt++) {
@@ -2681,7 +2697,9 @@ async function shareInstrument(id = null) {
     }
   }
   const url = `${location.origin}${linkFor({ code: inst.publicId })}`;
-  state.shareModal = { code: inst.publicId, url, qr: null };
+  const what = usesLayout(inst) ? 'its notes and chords' : 'its fingering chart and chords';
+  const tip = inst.family === 'ocarina' ? ' Stamp the code into the clay or tie the QR code to it.' : ' Print the QR code and keep it with the instrument.';
+  state.shareModal = { code: inst.publicId, url, qr: null, text: `Anyone with the code, link or QR code sees ${what}, read-only, and can add it to their own instruments.${tip}` };
   render();
   try {
     const qrcode = await loadQrLib();
@@ -2698,7 +2716,7 @@ function shareModalHtml() {
   return uiSheet({
     key: 'share', title: 'Share this instrument', close: 'share-close',
     body: `
-      <p class="sheet-text">Anyone with the code, link or QR code sees its fingering chart and chords, read-only, and can add it to their own instruments. Stamp the code into the clay or tie the QR code to it.</p>
+      <p class="sheet-text">${escHtml(m.text)}</p>
       <div class="share-code">${escHtml(m.code)}</div>
       <div class="share-qr">${m.qr ?? '<span class="share-loading">QR code loading…</span>'}</div>
       <input class="input share-url" readonly value="${escHtml(m.url)}" aria-label="Share link">`,
@@ -3339,7 +3357,7 @@ function viewFluteSetup(inst) {
 // ── Photo and hole layout of a bought instrument ─────────────────────────────
 
 function instEditMeta(inst) {
-  return inst.kind === 'custom' ? 'Name, photo, holes, fingers and readings' : 'Name and photo';
+  return inst.kind === 'custom' && !usesLayout(inst) ? 'Name, photo, holes, fingers and readings' : 'Name and photo';
 }
 
 // A photo from the camera or the library, read at up to 1600 px on the long
@@ -3365,8 +3383,8 @@ async function readImageFile(file, max = 1600) {
 }
 
 // Every photo of an instrument has the same shape, so pictures line up:
-// 4:3 for an ocarina, long and thin (3:1) for a flute.
-function photoRatio(inst) { return inst.family === 'flute' ? 3 : 4 / 3; }
+// 4:3 for an ocarina or kalimba, long and thin (3:1) for a flute, square for a round drum.
+function photoRatio(inst) { return inst.family === 'flute' ? 3 : inst.family === 'handpan' || inst.family === 'tongue-drum' ? 1 : 4 / 3; }
 
 // Crop step after picking a photo: the photo under a frame of that shape;
 // drag to move it, the slider (or a pinch / the wheel) to zoom.
@@ -3485,7 +3503,7 @@ document.addEventListener('wheel', e => {
 // the Edit instrument sheet, or at the top of Set up for a bought ocarina
 // or flute: one place for everything about it.
 function instFieldsHtml(inst) {
-  const custom = inst.kind === 'custom';
+  const custom = inst.kind === 'custom' && !usesLayout(inst); // a custom handpan's notes are set on its own tab
   const flute = inst.family === 'flute';
   const n = inst.holeCount ?? 0;
   const id = escHtml(inst.id);
@@ -4778,7 +4796,7 @@ function viewChords() {
     below: `<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
-      <span class="hp-card-hint">Tap a chord to see it on the pan</span>
+      <span class="hp-card-hint">Tap a chord to see it on the ${layoutFamilyInfo(layoutInstrument(state.layout)).word}</span>
       <button type="button" class="btn btn-secondary" data-action="play-scale">${icon('play')} Scale</button>
     </div>`;
 
@@ -4846,7 +4864,7 @@ function viewChords() {
   }
   const identify = `
     <div class="hp-identify">
-      <p class="hp-hint">Tap notes on the pan to build a chord. Tap again to remove one.</p>
+      <p class="hp-hint">Tap notes on the ${layoutFamilyInfo(layoutInstrument(state.layout)).word} to build a chord. Tap again to remove one.</p>
       ${dn.length ? `
         <div class="hp-identify-notes">
           <div class="chips">${dn.map(n => `<span class="chip is-selected hp-note-chip">${escHtml(displayNote(n, uf, us))}</span>`).join('')}</div>
@@ -5013,6 +5031,9 @@ function menuSheet() {
     if (inst && !shared) rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
   } else if (state.layout) {
     title = state.layout.name;
+    const mine = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
+    if (mine) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(mine), action: 'inst-edit-open', data: { id: mine.id } }));
+    if (mine) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: mine.id } }));
     rows.push(uiRow({ lead: 'link', title: state.selectedChord ? 'Copy link to this chord' : 'Copy link', action: 'copy-url' }));
     rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
     if (state.currentInstrumentId) {
@@ -6021,6 +6042,30 @@ function urlIsLink() {
 
 // A handpan from the catalogue: my saved copy of it when I have one, so it
 // opens as that instrument.
+// A handpan, tongue drum or kalimba someone shared by code (/s/CODE): its
+// notes open as a visiting instrument, as a deep link would. A catalogue
+// scale keeps its id; anything else opens as custom notes under its name.
+function openSharedLayout(data, tab) {
+  const layout = JSON.parse(JSON.stringify(data.layout));
+  layout.name = data.name || layout.name;
+  if (layout.isCustom || !findTuning(layout.id)) { layout.isCustom = true; delete layout.savedId; layout.id = 'custom'; }
+  Object.assign(state, {
+    layout, currentInstrumentId: null, shared: null, sharedStatus: null, selectedChord: null,
+    chords: findAllChords(layout), shellMode: 'both', chordFilter: { category: 'All', root: 'All', playlist: 'All' },
+    view: tab === 'chords' || tab === 'listen' ? 'chords' : tab === 'playlists' ? 'hp-playlists' : 'editor',
+  });
+  navReplace(stateToHash());
+}
+
+// Renames a saved handpan, tongue drum or kalimba layout (Edit instrument).
+function renameSavedLayout(layoutId, name) {
+  const saved = getSavedLayouts().find(l => l.id === layoutId);
+  if (!saved) return;
+  saveLayout({ ...saved, name, layout: { ...saved.layout, name } });
+  state.savedLayouts = getSavedLayouts();
+  if (state.layout && hpCurrentLayoutId() === layoutId) state.layout.name = name;
+}
+
 function openScaleLayout(scale) {
   const owned = getInstrument(handpanInstrumentId(scale.id));
   const saved = owned && state.savedLayouts.find(l => l.id === scale.id);
@@ -6043,7 +6088,7 @@ function openLink(link) {
     return;
   }
   if (link.kind === 'shared') {
-    openSharedLink(link.code);
+    openSharedLink(link.code, link.tab);
     if (link.tab === 'chords' || link.tab === 'listen') state.oc.tab = 'chords';
     return;
   }
@@ -8576,6 +8621,9 @@ document.addEventListener('change', e => {
     if (!inst) return;
     if (action === 'ie-name') {
       inst.name = el.value.trim() || inst.name;
+      // A handpan, tongue drum or kalimba takes its name from its saved
+      // layout (instruments.js reconcileInstruments), so rename that too.
+      if (usesLayout(inst)) renameSavedLayout(inst.layoutId, inst.name);
       saveInstrument(inst);
       refreshInstruments();
       render();
