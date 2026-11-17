@@ -454,7 +454,7 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - preview cards per link: a Vercel Routing Middleware (`middleware.js`, works without a framework) that puts the instrument's title, description and an image into `<title>` and the `og:` tags of `index.html`
      - the `open` / `first_play` / `feature` events through `logEvent` (PostHog, off until the key is set)
    - Tests: preview tags for a scale, a chart and an unknown slug; every catalogue scale and chart key round-trips `linkFor` ↔ `parseLink`; aliases (`alto-c-12`, `celtic-minor`); unknown slugs; custom handpan links; old hash links; opening `/handpan/d-kurd/chords/a-min` gives D Kurd on Chords with A minor selected (e2e).
-2. **Save sheet, starting with favourite chords**
+2. **Save sheet, starting with favourite chords**: **built** (`js/store.js`, `js/datastore.js`, the save sheet in `js/app.js`, `supabase/migrations/20261116_accounts.sql`)
    - Build:
      - `store.save` / `account` (email code + Google, plus Apple if the keys are ready)
      - the save sheet with its per-action text
@@ -462,7 +462,7 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - the profile row
      - the `save_tap` / `signup_*` events
    - Tests: a guest ☆ → sheet → (stubbed) sign-in → the chord is in Favourites; Not now changes nothing; the pending action survives a reload.
-3. **All save actions, carry-over and account basics**
+3. **All save actions, carry-over and account basics**: **built** (`SAVE_ACTIONS` in `js/store.js`, `carryOverVisit` in `js/datastore.js`, Settings › Account)
    - Build:
      - every save action in the table goes through `save`
      - work from this visit (`sessionStorage`) and carry-over on sign-up, plus the save sheet on leaving unsaved work
@@ -470,7 +470,7 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - export, delete account, privacy notice
      - sign-out clears the device
    - Tests: a guest builds an ocarina setup, signs up, and it's in My instruments; export contains everything; sign-out leaves no saved data.
-4. **Sync by item, with an outbox and merging**
+4. **Sync by item, with an outbox and merging**: **built** (`js/sync.js`, `js/localdb.js`, `tests/sync.test.mjs`)
    - Build:
      - `saved_items` + `save_item`
      - IndexedDB store + outbox
@@ -484,7 +484,7 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - an instrument setup clash makes a copy
      - offline edits flush on reconnect
      - a second device gets everything
-5. **Offline for accounts**
+5. **Offline for accounts**: **built** (`js/offline.js`, `sw.js`, `tests/e2e/accounts.e2e.mjs`)
    - Build:
      - service worker on only when signed in, versioned precache
      - the Offline pill and pending count
@@ -497,5 +497,15 @@ Each step is its own branch and PR into `preview`, with tests, `python3 build.py
      - sign out: no service worker, no caches, no saved data
      - guest goes offline: the card shows and the screen keeps its state
 6. **Later:** passkeys, and a read-only Stats page for the owner.
+
+### How steps 2–5 were built (notes for the next change)
+- **Guest storage:** `dataStore()` (`js/datastore.js`) is `localStorage` when an account is on the device (`hp-account`) and this tab's `sessionStorage` for a guest, for the four saved lists. Settings and clay bodies stay in `localStorage` for everyone. A session from the old version counts as an account on first load.
+- **Saving:** a guest's tap on an action in `SAVE_ACTIONS` opens the save sheet and keeps `{ what, action, data, path }` in `sessionStorage`; after sign-in the same action runs again (now with an account). Chords go through the playlist picker, which for a guest turns into the sheet; after sign-in the chord goes into Favourites (the entry is plain data, so it survives the Google redirect). Building an instrument isn't a save: a guest builds it in this visit, sees "Not saved · gone when you close this page" with Save, and the sheet once when leaving it.
+- **Carry-over:** `carryOverVisit()` moves the tab's lists into the account; a clashing id is kept under a new id, Favourites' chords are joined.
+- **Sync:** one row per item in `saved_items`, written only through `save_item` (optimistic version). The outbox is the difference between each item and its base (the last copy the server confirmed, in IndexedDB, `js/localdb.js`), so an offline edit survives a reload without being queued anywhere. Conflicts merge with `merge3` and are retried. Handpan instruments aren't synced (they're made from layouts). Shared instruments are also written to `instruments`, which serves the codes. The old `user_data` blob sync is no longer written.
+- **Prefs** sync as one item, `prefs`, including `lastPath`: an account opens where it left off, on any device.
+- **Offline:** `sw.js?v=<build hash>` is registered after sign-in only; it precaches the page, icons, fonts and the pinned supabase-js (2.49.4), and answers every page load (deep links too) with the cached app when offline. Guests and sign-out remove it and its caches.
+- **Building ocarinas is for chosen accounts:** `profiles.can_build` (default off, ticked by the owner in Supabase) shows the wizard's "I'm making one", the Build tab and Settings › Clay bodies; everyone else never sees them. The app keeps the flag on the device (`hp-can-build`) so it works offline, and drops it at sign-out.
+- **Not yet:** Google and Apple sign-in show once switched on in Supabase (owner task, `supabase/README.md`). Saving a heard progression comes with Listen step 4 (its sheet text, `heard`, is ready).
 
 **Stop here for the owner's review.**

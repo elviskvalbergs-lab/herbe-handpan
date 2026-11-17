@@ -28,7 +28,7 @@ if os.environ.get('DATABASE_URL'):
 css = read('styles.css') + '\n' + read('css/pan-drawing.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/links.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/app.js']
+js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/scalefinder.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/links.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -52,6 +52,16 @@ if _supa_url and _supa_key:
 _sentry_env = os.environ.get('VERCEL_ENV') or 'development'
 _sentry_release = 'oakhum-app@' + (os.environ.get('VERCEL_GIT_COMMIT_SHA') or 'local')[:12]
 _sentry_traces = '1.0' if _sentry_env == 'development' else '0.1'
+
+# The offline cache's version: a hash of everything in the page, so each
+# build gets a fresh service worker and precache (sw.js?v=…, js/offline.js).
+import hashlib
+_build_hash = hashlib.sha256((css + js_bundle).encode()).hexdigest()[:12]
+js_bundle = js_bundle.replace("const BUILD_HASH = 'dev';", f"const BUILD_HASH = '{_build_hash}';")
+
+# supabase-js is pinned (and precached by sw.js, which names the same URL).
+SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js'
+assert SUPABASE_JS in read('sw.js'), 'sw.js must precache the same supabase-js as build.py'
 
 html = f'''<!DOCTYPE html>
 <html lang="en" data-theme="auto">
@@ -100,14 +110,9 @@ html = f'''<!DOCTYPE html>
 </head>
 <body>
   <div id="app"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="{SUPABASE_JS}"></script>
   <script>
 {js_bundle}
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {{
-      navigator.serviceWorker.register('/sw.js');
-    }}
   </script>
 </body>
 </html>'''

@@ -4,7 +4,6 @@ const _SUPA_KEY = 'sb_publishable_WGLxN9-CFdCrlEPiqNn7Dg_T1wKKluA';
 
 let _sb = null;
 let _session = null;
-let _saveTimer = null;
 
 export function initSupabase(onAuthChange) {
   if (!window.supabase) return;
@@ -61,7 +60,8 @@ export function getUserEmail() { return _session?.user?.email ?? null; }
 
 export async function sendOtp(email) {
   if (!_sb) return 'No connection';
-  const { error } = await _sb.auth.signInWithOtp({ email });
+  // The same email has a link too, for someone on this browser (§6).
+  const { error } = await _sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href } });
   return error?.message ?? null;
 }
 
@@ -72,53 +72,127 @@ export async function verifyOtp(email, token) {
 }
 
 export async function signOut() {
-  if (_sb) await _sb.auth.signOut();
+  // 'local' ends this device's session only, and still clears it offline.
+  if (_sb) { try { await _sb.auth.signOut({ scope: 'local' }); } catch { /* cleared below */ } }
   _session = null;
 }
 
-export async function loadCloudData() {
-  if (!_sb || !_session) return null;
-  const { data, error } = await _sb
-    .from('user_data')
-    .select('playlists,layouts,prefs,updated_at')
-    .single();
-  if (error) return null; // PGRST116 = no row yet; others = real error
-  return data;
-}
-
+// Something saved changed: the app's sync (js/sync.js) picks it up a moment
+// later. The name stays from the old whole-blob sync, so callers don't change.
 export function scheduleSave() {
-  // Stamp local immediately so the timestamp reflects when data changed,
-  // not when the cloud write eventually fires.
-  const ts = new Date().toISOString();
-  localStorage.setItem('hp-updated-at', ts);
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-data-changed'));
+}
 
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
-    _saveTimer = null;
-    if (!_sb || !_session) return;
-    _sb.from('user_data').upsert({
-      user_id: _session.user.id,
-      playlists: JSON.parse(localStorage.getItem('hp-playlists') || '[]'),
-      layouts:   JSON.parse(localStorage.getItem('hp-layouts')   || '[]'),
-      prefs:     JSON.parse(localStorage.getItem('hp-prefs')     || '{}'),
-      updated_at: localStorage.getItem('hp-updated-at'),
-    }, { onConflict: 'user_id' }).then(({ error }) => {
-      if (error) console.error('Sync error:', error);
+// ── Sign-in methods (docs/free-to-play.md §6) ───────────────────────────────
+// Google and Apple are offered only when switched on in Supabase (the owner
+// sets up the OAuth clients; supabase/README.md). Supabase lists the enabled
+// providers in its public auth settings.
+let _providers = null;
+export async function getAuthProviders() {
+  if (_providers) return _providers;
+  try {
+    const res = await fetch(`${_SUPA_URL}/auth/v1/settings`, { headers: { apikey: _SUPA_KEY } });
+    const ext = (await res.json())?.external ?? {};
+    _providers = { google: !!ext.google, apple: !!ext.apple };
+  } catch {
+    return { google: false, apple: false };
+  }
+  return _providers;
+}
+
+// Google or Apple: leaves the page and comes back to it signed in (the
+// started save waits in sessionStorage, js/store.js).
+export async function signInWithProvider(provider) {
+  if (!_sb) return 'No connection';
+  const { error } = await _sb.auth.signInWithOAuth({ provider, options: { redirectTo: location.href } });
+  return error?.message ?? null;
+}
+
+export function getUserId() { return _session?.user?.id ?? null; }
+
+// ── This device ─────────────────────────────────────────────────────────────
+// A random id per install, and what kind of device it is, only so a kept
+// copy can be named "… (from your tablet)".
+export function deviceId() {
+  try {
+    let id = localStorage.getItem('hp-device-id');
+    if (!id) { id = Math.random().toString(36).slice(2, 12); localStorage.setItem('hp-device-id', id); }
+    return id;
+  } catch { return null; }
+}
+export function deviceKind(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) return 'tablet';
+  if (/Mobi|iPhone|Android/i.test(ua)) return 'phone';
+  return 'computer';
+}
+
+// ── Sync by item (supabase/migrations/20261116_accounts.sql) ────────────────
+// The api js/sync.js's syncRound talks to. pull() throws when the server
+// can't be reached (the round stops, nothing changes); saveItem() returns
+// null then, so the change stays in the outbox.
+export const syncApi = {
+  async pull(since) {
+    if (!_sb || !_session) throw new Error('signed out');
+    let q = _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at,device_kind').order('updated_at');
+    if (since) q = q.gt('updated_at', since);
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+  async saveItem({ kind, id, data, baseVersion, deleted, editedAt }) {
+    if (!_sb || !_session) return null;
+    const { data: res, error } = await _sb.rpc('save_item', {
+      p_kind: kind, p_id: id, p_data: data, p_base_version: baseVersion, p_deleted: !!deleted,
+      p_edited_at: editedAt, p_device_id: deviceId(), p_device_kind: deviceKind(),
     });
-  }, 1500);
+    if (error) { console.warn('Sync error:', error.message); return null; }
+    return res;
+  },
+};
+
+// The account was used today (profiles.last_seen_on), and on the first
+// call where and why they signed up. Fails soft.
+export async function touchLastSeen({ privacyVersion = null, source = null, intent = null } = {}) {
+  if (!_sb || !_session) return;
+  const { error } = await _sb.rpc('touch_last_seen', { p_privacy_version: privacyVersion, p_signup_source: source, p_signup_intent: intent });
+  if (error) console.warn('touch_last_seen:', error.message);
 }
 
-// ── Instruments (needs supabase/migrations/20261111_instruments.sql) ─────────
-// Every call fails soft: null / false when signed out, offline, or before the
-// migration has been run, so the rest of sync is never affected.
-
-export async function loadCloudInstruments() {
+// What this account may use beyond the app everyone gets: { canBuild }
+// (profiles.can_build, set by the owner in Supabase). null when it can't be
+// read (offline, or before the migration), so the caller keeps what it knew.
+export async function fetchAccess() {
   if (!_sb || !_session) return null;
-  const { data, error } = await _sb.from('instruments').select('id,public_id,data,updated_at,deleted_at');
-  if (error) { console.warn('Instruments sync unavailable:', error.message); return null; }
-  return data;
+  const { data, error } = await _sb.from('profiles').select('can_build').maybeSingle();
+  if (error) return null;
+  return { canBuild: !!data?.can_build };
 }
 
+// Export my data: every row the account holds, as the server has it.
+export async function exportAccountRows() {
+  if (!_sb || !_session) return null;
+  const [items, profile] = await Promise.all([
+    _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at'),
+    _sb.from('profiles').select('created_at,privacy_version,signup_source,signup_intent,last_seen_on').maybeSingle(),
+  ]);
+  if (items.error) return null;
+  return { email: getUserEmail(), profile: profile.data ?? null, items: items.data ?? [] };
+}
+
+// Deletes the account and everything in it (delete_my_account cascades).
+export async function deleteMyAccount() {
+  if (!_sb || !_session) return 'Not signed in';
+  const { error } = await _sb.rpc('delete_my_account');
+  if (error) return error.message;
+  await _sb.auth.signOut().catch(() => {});
+  _session = null;
+  return null;
+}
+
+// ── Shared instruments (supabase/migrations/20261111_instruments.sql) ────────
+// A shared code is served from the instruments table (get_shared_instrument),
+// so a shared instrument is also written there, on sharing and on every
+// change after that. Fails soft: false or the error code.
 export async function saveCloudInstruments(list) {
   if (!_sb || !_session || list.length === 0) return true;
   const rows = list.map(inst => ({
@@ -140,23 +214,4 @@ export async function fetchSharedInstrument(publicId) {
   const { data, error } = await _sb.rpc('get_shared_instrument', { p_public_id: publicId });
   if (error) { console.warn('Shared instrument unavailable:', error.message); return null; }
   return data;
-}
-
-// ── Progressions (needs supabase/migrations/20261111_progressions.sql) ───────
-// Kept in their own user_data column and their own requests, so the main
-// upsert above never names it: until the migration has been run these fail
-// soft (null / false) and nothing else in sync is affected.
-
-export async function loadCloudProgressions() {
-  if (!_sb || !_session) return null;
-  const { data, error } = await _sb.from('user_data').select('progressions').single();
-  if (error) { console.warn('Progressions sync unavailable:', error.message); return null; }
-  return Array.isArray(data?.progressions) ? data.progressions : [];
-}
-
-export async function saveCloudProgressions(list) {
-  if (!_sb || !_session) return false;
-  const { error } = await _sb.from('user_data').update({ progressions: list }).eq('user_id', _session.user.id);
-  if (error) { console.warn('Progressions sync error:', error.message); return false; }
-  return true;
 }

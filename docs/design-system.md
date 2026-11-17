@@ -158,7 +158,7 @@ Settings opens from the gear icon on Home and from the ⋯ menu on any instrumen
 | | Show the diagram legend again | row button | resets `ocLegendSeen` and `handLegendSeen` |
 | **Tuning** | ~~A4 reference~~ | deferred by the owner's decision: no setting for now, A4 is 440 Hz everywhere | (none; see §7 step 15) |
 | | Clay bodies | row › Clay bodies page: list with name and shrinkage %, editable | `getClayBodies` / `saveClayBodies` |
-| **Sync** | Signed out: email field + "Send code"; code sent: code field + Verify + Cancel; signed in: email, "Sync now", "Sign out" | `authBarHtml` contents, moved here | |
+| **Account** | Guest: Sign in (opens the save sheet), Privacy notice. Signed in: email and sync status (pending changes), Offline ready, Export my data, Privacy notice, Sign out, Delete account | `accountSettingsHtml` (docs/free-to-play.md §7, §8) | |
 | **About** | Version, "Check for updates" | row | (`checkForUpdates`) |
 
 In the brief's terms: scale filter, chord filters, voicing, play and tuner stay on screen. Scale, transpose, gu notes, chamber count, clay body for this build and window sizes stay in Build. Type, key, name, ID and QR live with the instrument (⋯ menu and Share sheet). Everything in the table above is set once.
@@ -318,6 +318,9 @@ One component replaces `.modal`, `.picker-modal`, `.share-modal`, the note picke
 - Behaviour: `role="dialog" aria-modal="true" aria-labelledby` points at the title. Focus moves to the first control and is trapped. Esc closes. Focus returns to the trigger. The page under it doesn't scroll (`body:has(.sheet) { overflow: hidden }`).
 - **Menu** variant (⋯ menus): on phone, a sheet whose body is a `.list` of rows (icon + label, danger rows in `--danger`). On ≥600px, a **popover**: absolutely placed under its trigger, aligned right, min-width 240px, bg `--surface-1`, 1px `--border-strong`, radius `--r-md`, `--e-2`, rows 44px.
 - **Confirm** variant: title ("Remove Blue D Kurd?"), body 15px `--text-2` ("Its readings and build history are removed from this device and from sync."), footer with [Cancel ghost] and [Remove `.btn-danger` filled with `--danger` bg / `--on-accent` text]. This replaces `window.confirm` in `delete-instrument` and `delete-playlist`.
+
+- **Save** sheet (`saveSheetHtml`, docs/free-to-play.md §3): every save a guest makes opens it. A headline and one line matched to what was tapped (`SAVE_TEXTS` in `js/store.js`), "Free · takes seconds · also lets you play offline", Continue with Google / Apple (only when switched on in Supabase), an email field with Send code, then the code in the same sheet, the privacy line, and Not now. A new save action is one entry in `SAVE_ACTIONS`, never a sheet of its own.
+- **Offline pill** `.offline-pill` (accounts only): a small `cloud-off` "Offline" chip at the start of the app bar's right slot while offline. **Guest offline card** `.offline-card`: sits where toasts do, with "Remind me when I'm back online" and OK.
 
 ### 5.7 Toast `.toast`
 

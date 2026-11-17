@@ -26,6 +26,7 @@ never changes to existing ones. Name new files `YYYYMMDD_short_name.sql`.
 | --- | --- |
 | `20261111_instruments.sql` | `instruments` table (sync of ocarinas and other instruments, owner-only by row-level security) and `get_shared_instrument(public_id)` for read-only sharing by public ID |
 | `20261111_progressions.sql` | nullable `progressions` jsonb column on `user_data` (sync of chord progressions, read and written in requests of their own) |
+| `20261116_accounts.sql` | `profiles` (signup source and intent, last seen date), `saved_items` (sync by item, owner reads; writes only through `save_item`, which bumps a version and returns the current row on a conflict), `touch_last_seen()`, `delete_my_account()` (deletes the user and every row they own) |
 
 Until a migration has been applied, the features that need it fail quietly:
 the app keeps working, instruments and progressions stay on the device and
@@ -66,3 +67,39 @@ production before the PR is merged. To give previews their own database:
 Without a test project, leave `DATABASE_URL` unset for Preview: previews
 then don't migrate anything, and new tables appear only once the PR is
 merged and production deploys.
+
+## Sign-in setup (the owner, in Supabase → Authentication)
+
+The app signs in with an emailed code (works now), and shows **Continue with
+Google** and **Continue with Apple** as soon as each is switched on here (it
+reads the enabled providers from Supabase's public auth settings, so no app
+change is needed).
+
+1. **URL Configuration → Redirect URLs:** add `https://oakhum.vercel.app/**`
+   and `https://handpan.herbe.app/**` (and the custom domain once it's set
+   up). Sign-in links and Google/Apple come back to the page you were on;
+   without this they land on the Site URL instead.
+2. **Email Templates → Magic Link:** put both the code and the link in the
+   email, for example:
+   `<p>Your Oakhum code: <strong>{{ .Token }}</strong></p><p>Or open this link on the same device: <a href="{{ .ConfirmationURL }}">sign in</a></p>`
+3. **Google:** in Google Cloud Console → APIs & Services → Credentials,
+   create an OAuth client ID (Web application) with the authorised redirect
+   URI shown in Supabase → Providers → Google (`https://<project>.supabase.co/auth/v1/callback`).
+   Paste its client ID and secret into Supabase → Providers → Google and
+   switch it on.
+4. **Apple:** in the Apple Developer site → Certificates, Identifiers &
+   Profiles: create a Services ID (Sign in with Apple, with the same
+   Supabase callback URL as its return URL and the Supabase domain) and a
+   key with Sign in with Apple. In Supabase → Providers → Apple, fill in the
+   Services ID, Team ID, Key ID and the key, and switch it on. Apple's key
+   expires after six months: renew it there.
+
+## Who can build ocarinas
+
+Building a clay ocarina (the wizard's "I'm making one", the Build tab and
+Settings › Clay bodies) is hidden from everyone except accounts you choose.
+To turn it on for someone: they sign in to the app once (that creates their
+row), then in Supabase → Table Editor → `profiles` tick **can_build** on
+their row (find it by `user_id`, which Authentication → Users shows next to
+their email). The app picks it up at their next start or sign-in. Untick it
+to hide building again; their instruments stay, they just play them.

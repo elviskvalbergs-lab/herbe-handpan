@@ -1,7 +1,8 @@
 // My instruments: the saved instruments a user plays (handpans, ocarinas,
 // later flutes). See docs/ocarina-mode.md, "Instruments first".
 //
-// Stored in localStorage under hp-instruments (soft deletes, like layouts).
+// Stored under hp-instruments (soft deletes, like layouts) in dataStore():
+// localStorage with an account, this tab's sessionStorage for a guest.
 // Not synced to Supabase yet (phase 7).
 //
 // Handpan instruments mirror the saved layouts in hp-layouts one to one
@@ -11,6 +12,7 @@
 // nothing about layouts or playlists changes.
 
 import { NOTE_NAMES, SCALES } from './data.js';
+import { dataStore } from './datastore.js';
 import { scaleToMidis, buildScaleChambers, chambersNeeded } from './ocarina.js';
 
 const INSTRUMENTS_KEY = 'hp-instruments';
@@ -179,12 +181,12 @@ export function instrumentStatus(inst) {
 // ── Storage ──────────────────────────────────────────────────────────────────
 
 function getAllInstrumentsRaw() {
-  try { return JSON.parse(localStorage.getItem(INSTRUMENTS_KEY) || '[]'); }
+  try { return JSON.parse(dataStore().getItem(INSTRUMENTS_KEY) || '[]'); }
   catch { return []; }
 }
 
 function writeInstruments(list) {
-  localStorage.setItem(INSTRUMENTS_KEY, JSON.stringify(list));
+  dataStore().setItem(INSTRUMENTS_KEY, JSON.stringify(list));
   // Lets the app schedule a cloud sync without every caller remembering to.
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-instruments-changed'));
 }
