@@ -1103,10 +1103,11 @@ function instrumentRowHtml(inst) {
 // state.setup = { step: 'what' | 'how' | 'listen' | 'match' | 'know' | 'scales' | 'done',
 //   root, showAll, scaleId, history }
 const SETUP_REQUEST_URL = '/request'; // the website's, on the same domain
+// Each tile shows its instrument's picture from the brand kit (brand/instruments).
 const SETUP_TILES = [
-  { family: 'handpan', name: 'Handpan', hint: 'Round steel drum with dents' },
-  { family: 'ocarina', name: 'Ocarina', hint: 'Clay, with finger holes' },
-  { family: 'flute', name: 'Flute or whistle', hint: 'Wooden flute, tin whistle, Native American flute' },
+  { family: 'handpan', name: 'Handpan', hint: 'Round steel drum with dents', picture: '/brand/instruments/handpan.webp' },
+  { family: 'ocarina', name: 'Ocarina', hint: 'Clay, with finger holes', picture: '/brand/instruments/ocarina.webp' },
+  { family: 'flute', name: 'Flute or whistle', hint: 'Wooden flute, tin whistle, Native American flute', picture: '/brand/instruments/native-american-flute.webp' },
 ];
 
 function newSetup() { return { step: 'what', root: null, showAll: false, scaleId: null, history: [] }; }
@@ -1160,6 +1161,7 @@ function viewBeginnerSetup() {
         <div class="setup-tiles">
           ${SETUP_TILES.map(t => `
             <button type="button" class="setup-tile" data-action="setup-family" data-family="${t.family}">
+              <img class="setup-tile-pic" src="${t.picture}" width="72" height="72" alt="">
               <span class="setup-tile-name">${escHtml(t.name)}</span>
               <span class="setup-tile-hint">${escHtml(t.hint)}</span>
             </button>`).join('')}
