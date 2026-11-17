@@ -7,6 +7,9 @@
 // Pure helpers, unit tested in Node. The screens are in js/app.js (viewBeginnerSetup).
 
 import { notePC } from './data.js';
+import { midiToNoteName } from './instruments.js';
+import { chartsForFamily, instrumentFromChart } from './charts.js';
+import { linkFor, linkTitle, parseLink } from './links.js';
 
 // Scale families from the most to the least often met, for "the common ones
 // first". An ordering only: every scale stays one tap away under Show all.
@@ -24,14 +27,14 @@ export function setupKeyNote(s) { return s.key ? `${s.key}4` : s.top.ding; }
 
 // The notes tunings come in, as pitch classes, D first and then by how many
 // tunings use them.
-export function setupRoots(scales) {
+export function setupRoots(scales, { first = 2 } = {}) {
   const count = new Map();
   for (const s of scales) {
     const pc = notePC(setupKeyNote(s));
     count.set(pc, (count.get(pc) ?? 0) + 1);
   }
   return [...count.entries()]
-    .sort((a, b) => (a[0] === 2 ? -1 : b[0] === 2 ? 1 : b[1] - a[1] || a[0] - b[0]))
+    .sort((a, b) => (a[0] === first ? -1 : b[0] === first ? 1 : b[1] - a[1] || a[0] - b[0]))
     .map(([pc, n]) => ({ pc, count: n }));
 }
 
@@ -53,10 +56,12 @@ export function setupScalesFor(scales, pc) {
 // The chord to start with on a tuning: the minor or major chord on its
 // middle note when it has one, else the first minor or major chord found.
 // Chords are findAllChords' results.
-export function setupFirstChord(chords, ding) {
+// prefer: 'min' for a handpan-like tuning (most are minor), 'maj' for an
+// ocarina or flute in a major key.
+export function setupFirstChord(chords, ding, { prefer = 'min' } = {}) {
   const triads = chords.filter(c => c.type.id === 'min' || c.type.id === 'maj');
   const dpc = notePC(ding);
-  return triads.find(c => notePC(c.rootName + '4') === dpc && c.type.id === 'min')
+  return triads.find(c => notePC(c.rootName + '4') === dpc && c.type.id === prefer)
     ?? triads.find(c => notePC(c.rootName + '4') === dpc)
     ?? triads[0] ?? null;
 }
@@ -80,4 +85,29 @@ export function setupTopScales(list, n = SETUP_TOP) {
     if (out.length === n) break;
   }
   return out;
+}
+
+// Ocarinas and flutes in the same setup: every key of every published chart
+// of the family as a "tuning" the setup can match and list, its playable
+// notes low to high (the lowest, every hole closed, first) and named as its
+// link is ("Alto C 12-hole ocarina"). key: the key it is sold in (the tonic
+// of a transposing ocarina, a whistle's D). family: its chart, so "the
+// common ones first" shows one per chart.
+const chartTuningCache = new Map();
+export function chartSetupTunings(family) {
+  if (chartTuningCache.has(family)) return chartTuningCache.get(family);
+  const list = chartsForFamily(family).flatMap(chart => chart.keys.map(key => {
+    const inst = instrumentFromChart(chart.id, key.id, { now: '2026-01-01T00:00:00.000Z' });
+    const names = inst.chambers[0].notes.map(midiToNoteName);
+    const link = { chartId: chart.id, keyId: key.id };
+    return {
+      id: `chart:${chart.id}/${key.id}`, ...link,
+      name: linkTitle(parseLink(linkFor(link))) || inst.name,
+      family: chart.id, desc: null,
+      key: key.root ?? names[0].replace(/-?\d+$/, ''),
+      top: { ding: names[0], notes: names.slice(1) }, bottom: { notes: [] },
+    };
+  }));
+  chartTuningCache.set(family, list);
+  return list;
 }

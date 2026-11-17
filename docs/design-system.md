@@ -78,9 +78,11 @@ Ranked by how much each one costs a player using the app on a phone on a stand, 
 ### Screen map
 
 ```
-Setup (first run, or Add instrument)        #setup: What do you play? (tiles) → handpan: Play my notes /
-                                             I know my scale → Ready; ocarina, flute → the wizard's step
-Wizard (ocarina and flute steps)            full screen, own bottom action bar
+Setup (first run, or Add instrument)        #setup: What do you play? (tiles) → every instrument: Play my notes /
+                                             I know my scale (key) → Ready. Ocarinas and flutes match every key
+                                             of their published charts (setup.js chartSetupTunings); one not in
+                                             them → "Set up note by note" (the wizard's step)
+Wizard (ocarina and flute, note by note)    full screen, own bottom action bar
 Home = My instruments                        #  (empty hash)
  ├─ Try a scale (catalogue, unsaved)         (existing selector view)
  ├─ Settings                                 #settings

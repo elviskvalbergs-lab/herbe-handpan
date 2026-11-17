@@ -1713,6 +1713,13 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .listen-meter { display: block; width: min(220px, 60%); height: 6px; border-radius: var(--r-full); background: var(--surface-3); overflow: hidden; }
 .listen-meter > span { display: block; height: 100%; background: var(--accent); transition: width 80ms linear; }
 @media (prefers-reduced-motion: reduce) { .listen-meter > span { transition: none; } }
+/* Setup for an ocarina or flute: its picture and its notes, instead of the pan drawing. */
+.setup-wind { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
+.setup-wind-pic { width: 160px; height: 160px; object-fit: contain; }
+.setup-wind-notes { justify-content: center; }
+.setup-wind-chord { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+.setup-wind-step { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); max-width: 150px; }
+.setup-wind-step-n { font-size: var(--fs-13); font-weight: 600; color: var(--text-2); }
 /* The note picker's "Play it": listen first, the list below. */
 .pick-listen-btn { margin-bottom: var(--space-3); }
 .pick-listen { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4); margin-bottom: var(--space-3); text-align: center; }
