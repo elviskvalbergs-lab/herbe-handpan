@@ -150,6 +150,17 @@ export const syncApi = {
   },
 };
 
+// Brings what an account saved with the first app versions (one user_data
+// row, ocarinas and flutes in instruments) into saved_items, once per account
+// (supabase/migrations/20261117_legacy_import.sql). Resolves to how many
+// items were added; 0 when there was nothing, it already ran, or it failed.
+export async function importLegacyData() {
+  if (!_sb || !_session) return 0;
+  const { data, error } = await _sb.rpc('import_legacy_data');
+  if (error) { console.warn('import_legacy_data:', error.message); return 0; }
+  return Number(data) || 0;
+}
+
 // The account was used today (profiles.last_seen_on), and on the first
 // call where and why they signed up. Fails soft.
 export async function touchLastSeen({ privacyVersion = null, source = null, intent = null } = {}) {
