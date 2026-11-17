@@ -57,7 +57,7 @@ import { dataStore, hasAccountOnDevice, carryOverVisit, clearAccountData, visitH
 import { syncRound, syncKey, pendingChanges } from './sync.js';
 import {
   initSupabase, isLoggedIn, getUserEmail, sendOtp, verifyOtp, signOut, scheduleSave, logEvent,
-  getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, importLegacyData, exportAccountRows,
+  getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, importLegacyData, fetchAccountCounts, exportAccountRows,
   deleteMyAccount, saveCloudInstruments, fetchSharedInstrument, fetchAccess,
 } from './auth.js';
 import { syncBases } from './localdb.js';
@@ -109,6 +109,7 @@ const state = {
   saveSheet: null,         // the save sheet (§3): { what, step, email, error, busy, providers }, see saveSheetHtml()
   accountConfirm: null,    // 'signout' | 'delete' while Settings › Account confirms
   accountError: null,
+  accountCounts: null,     // Settings › Account: what the server holds, by kind (or 'error')
   legacyImported: 0,       // items brought over from the first app versions, for the toast
   syncPending: 0,          // changes waiting for the server
   lastSynced: null,
@@ -321,6 +322,7 @@ function goSelector() {
 function openSettings({ push = true } = {}) {
   stopAutoplay();
   Object.assign(state, { view: 'settings', clayEdit: null, menu: false });
+  refreshAccountCounts();
   state.oc.handLegend = false;
   if (push) navPush('#settings'); else navReplace('#settings');
   render();
@@ -445,7 +447,7 @@ function viewSettings() {
 
       <h2 class="list-title">About</h2>
       <div class="list">
-        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, ocarina and flute.</span></div>
+        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</span></div>
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
       </div>
     </div>`;
@@ -6876,6 +6878,23 @@ window.addEventListener('online', () => {
 let _offlineSessionLogged = false;
 
 // ── Settings › Account (§7, §8) ─────────────────────────────────────────────
+// What the account holds on the server and what this device holds, side by
+// side, so a difference between two devices can be seen (and told to us).
+function refreshAccountCounts() {
+  if (!accountOn() || !isLoggedIn()) return;
+  fetchAccountCounts().then(c => { state.accountCounts = c ?? 'error'; if (state.view === 'settings') render(); });
+}
+const COUNT_WORDS = [['layout', 'handpan/drum/kalimba', 'handpans, drums and kalimbas'], ['instrument', 'ocarina or flute', 'ocarinas and flutes'], ['playlist', 'playlist', 'playlists'], ['progression', 'progression', 'progressions']];
+function countsText(c) {
+  const parts = COUNT_WORDS.map(([k, one, many]) => c[k] ? `${c[k]} ${c[k] === 1 ? one : many}` : '').filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'nothing yet';
+}
+function deviceCounts() {
+  const c = {};
+  for (const { kind, data } of syncLocal.items().values()) if (kind !== 'prefs' && !data?.deletedAt) c[kind] = (c[kind] ?? 0) + 1;
+  return c;
+}
+
 function accountSettingsHtml() {
   if (!accountOn()) {
     return `
@@ -6886,10 +6905,13 @@ function accountSettingsHtml() {
   const status = state.isOffline
     ? (n ? `${n} change${n !== 1 ? 's' : ''} will sync when you're online` : 'Offline · everything is on this device')
     : !isLoggedIn() ? 'Connecting…'
+    : state.syncError === 'error' ? 'Couldn’t sync just now · tap ⟳ to try again'
     : n ? `${n} change${n !== 1 ? 's' : ''} waiting to sync`
     : state.lastSynced ? 'Everything is synced' : 'Getting your things…';
   return `
     ${uiRow({ lead: 'user', title: getUserEmail() ?? 'Signed in', meta: escHtml(status), trail: isLoggedIn() ? uiIconBtn('refresh', 'Sync now', { action: 'account-sync' }) : '' })}
+    ${uiRow({ lead: 'cloud', title: 'In your account', meta: state.accountCounts === 'error' ? 'Couldn’t be read just now' : state.accountCounts ? escHtml(countsText(state.accountCounts)) : 'Checking…' })}
+    ${uiRow({ lead: 'smartphone', title: 'On this device', meta: escHtml(countsText(deviceCounts())) })}
     ${uiRow({ lead: 'cloud-off', title: 'Offline', meta: state.offlineReady ? 'Ready: the app opens without a connection on this device' : 'Getting ready on this device…' })}
     ${uiRow({ lead: 'download', title: 'Export my data', meta: 'Everything in your account, as one file', action: 'account-export', chevron: true })}
     ${uiRow({ lead: 'shield', title: 'Privacy notice', meta: 'What we keep and why', action: 'open-privacy', chevron: true })}
@@ -6960,7 +6982,13 @@ async function exportMyData() {
 
 function accountAction(action) {
   if (action === 'open-privacy') { window.open(PRIVACY_URL, '_blank', 'noopener'); return true; }
-  if (action === 'account-sync') { syncNow().then(() => showToast(state.syncPending ? 'Some changes are still waiting' : 'Synced')); return true; }
+  if (action === 'account-sync') {
+    syncNow().then(() => {
+      refreshAccountCounts();
+      showToast(state.syncError === 'error' ? 'Couldn’t sync just now' : state.syncPending ? 'Some changes are still waiting' : 'Synced');
+    });
+    return true;
+  }
   if (action === 'account-export') { exportMyData(); return true; }
   if (action === 'account-signout') {
     pendingCount().then(n => { state.syncPending = n; state.accountConfirm = 'signout'; render(); });
