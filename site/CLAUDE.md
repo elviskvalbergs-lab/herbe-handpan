@@ -18,6 +18,17 @@ Scales, notes, chords, fingering charts, deep links and the pan drawing are the
 app's (`../js`), through `src/lib/engine.ts`. Never copy or re-implement them here,
 and never put tunings or fingerings into Sanity.
 
+## Every instrument gets the same pages
+
+Handpan, tongue drum, ocarina, flute and any instrument added later have the same
+instrument page and tuning pages, built from the same components, each with a
+**playable demo**: the instrument's picture from the app's engine, and chord buttons
+that play the chord with the app's sound (`src/lib/sound.ts`, which uses `../js/audio.js`)
+and light it on the picture. One-note instruments play the chord as an arpeggio and
+show each fingering in turn. A new instrument only adds its picture and its engine
+functions in `src/lib/engine.ts`; the full checklist is "Adding an instrument" in the
+root CLAUDE.md.
+
 ## Before you say it is done
 
 `pnpm typecheck && pnpm lint && pnpm test && pnpm build` all pass, and the root
