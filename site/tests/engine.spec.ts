@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appLink, chartTunings, findTuning, handpanChords, handpanTunings, panSvg, triads, tuningsFor } from "@/lib/engine";
+import { appLink, chartTunings, findTuning, handpanChords, handpanTunings, panSvg, triads, tuningsFor, windChords, windFingering, windVoice } from "@/lib/engine";
 import { instrumentTunings } from "@/lib/instruments";
 import * as seed from "@/content/seed";
 
@@ -59,4 +59,18 @@ it("tongue drums come from the app: every tuning, its chords and its drawing", (
   expect(chords.map((c) => c.short)).toContain("Dm");
   expect(panSvg("d-kurd-9", ["D3", "F4", "A4"], "tongue-drum")).toMatch(/pan-note tongue/);
   expect(panSvg("d-kurd-9", [], "handpan")).toBe("");
+});
+
+it("ocarinas and flutes get a playable demo: the chords of their key, as arpeggios with fingerings", () => {
+  const alto = chartTunings("ocarina").find((t) => t.slug === "alto-c-12")!;
+  const chords = windChords(alto);
+  expect(chords.map((c) => c.short)).toEqual(["C", "Dm", "Em", "F", "G", "Am"]);
+  expect(chords[0].arpeggio.length).toBe(3);
+  expect(windFingering(alto, chords[0].arpeggio[0])).toMatch(/class="fingering/);
+  expect(windVoice(alto)).toBe("ocarina");
+  for (const t of chartTunings("flute")) {
+    expect(windChords(t).length, t.slug).toBeGreaterThan(0);
+    expect(["flute", "whistle"]).toContain(windVoice(t));
+  }
+  expect(windVoice(chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!)).toBe("whistle");
 });

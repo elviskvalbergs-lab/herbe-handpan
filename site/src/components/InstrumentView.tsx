@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Faq } from "@/components/Faq";
 import { HandpanDemo } from "@/components/HandpanDemo";
-import { appLink, displayNotes, handpanChords, triads, type Tuning } from "@/lib/engine";
+import { WindDemo } from "@/components/WindDemo";
+import { appLink, displayNotes, handpanChords, triads, windChords, windVoice, type Tuning } from "@/lib/engine";
 import { btnPrimary, btnSecondary, container, h2 } from "@/lib/ui";
 import type { InstrumentDoc } from "@/sanity/lib/types";
 
@@ -53,6 +54,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
   const panFamily = tuning.family === "handpan" || tuning.family === "tongue-drum" ? tuning.family : null;
   const isPan = !!panFamily;
   const chords = panFamily ? handpanChords(tuning.slug, panFamily) : [];
+  const wind = panFamily ? [] : windChords(tuning);
   const simple = triads(chords);
   const more = chords.length - simple.length;
   const base = `/instruments/${instrument.slug}`;
@@ -117,8 +119,10 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
             </>
           ) : (
             <>
-              <h2 className="m-0 mb-2 text-[30px] font-semibold tracking-[-0.015em]">In the app</h2>
-              <p className="m-0 text-body">The fingering for every note, chords played as arpeggios with each fingering in turn, and practice mode for playlists.</p>
+              <h2 className="m-0 mb-2 text-[30px] font-semibold tracking-[-0.015em]">Chords you can play</h2>
+              <p className="m-0 text-body">
+                {wind.length ? `${wind.length} chords of its key. ` : ""}An {tuning.family === "ocarina" ? "ocarina" : "flute"} plays one note at a time, so a chord is played as an arpeggio: tap one to hear it and see the fingering for each note. The app has every note, all chords and practice mode for playlists.
+              </p>
             </>
           )}
         </div>
@@ -127,6 +131,10 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
           {isPan ? (
             <div className="rounded-card bg-pan-stage p-5">
               <HandpanDemo slug={tuning.slug} family={panFamily ?? "handpan"} chords={simple} caption={`${tuning.name} layout`} />
+            </div>
+          ) : wind.length ? (
+            <div className="rounded-card bg-surface p-5 shadow-[inset_0_0_0_1px_var(--border)]">
+              <WindDemo tuning={tuning} chords={wind} voice={windVoice(tuning)} caption={`${tuning.name}: fingering for each note`} />
             </div>
           ) : (
             <NoteStrip tuning={tuning} />

@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 // The pan drawing on the site uses the app's light-theme pan colours. They are
 // written out in globals.css (the site's one token file); this keeps them in
 // step with the app's styles.css.
-const tokens = (css: string) => Object.fromEntries([...css.matchAll(/--((?:pan|note|chord|alt-c|faint)[a-z0-9-]*):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+const tokens = (css: string) => Object.fromEntries([...css.matchAll(/--((?:pan|note|chord|alt-c|faint|surface-0|text-[123]|hole|move)[a-z0-9-]*):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 
 it("the site's pan colours are the app's light theme", () => {
   const app = readFileSync(join(__dirname, "..", "..", "styles.css"), "utf8");

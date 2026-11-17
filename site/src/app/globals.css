@@ -1,6 +1,8 @@
 @import "tailwindcss";
 /* The handpan drawing's note styles, shared with the app (js/pan.js renderPan). */
 @import "../../../css/pan-drawing.css";
+/* The fingering diagram's styles, shared with the app (js/ocarina-ui.js renderFingering). */
+@import "../../../css/fingering.css";
 
 /*
  * Design tokens. This is the only file where raw colour values may appear;
@@ -66,6 +68,11 @@
   --status-ready-soft: #E1E6CF;
   --status-soon-soft: #F3E3BF;
   --danger: #A3311F;
+
+  /* The fingering diagram (css/fingering.css): the app's light theme values.
+     tests/pan-tokens.spec.ts checks they match ../styles.css. */
+  --surface-0: #EADBC3; --text-1: #28271F; --text-2: #46432F; --text-3: #66614B;
+  --hole-covered: #28271F; --hole-open: #FBF6EC; --move-lift: #2F6F73; --move-cover: #8A5A00;
 
   /* The handpan drawing (js/pan.js): the app's light theme values, unchanged.
      tests/pan-tokens.spec.ts checks they match ../styles.css. */

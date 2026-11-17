@@ -8,6 +8,7 @@ import { findAllChords } from "@engine/chords.js";
 import { TRADITIONAL_CHARTS, chartsForFamily, chartDefaultKey, instrumentFromChart } from "@engine/charts.js";
 import { linkFor as appLinkFor, linkSlug, linkTitle, parseLink } from "@engine/links.js";
 import { renderPan } from "@engine/pan.js";
+import { ocarinaToLayout, arpeggioOrder, renderFingering } from "@engine/ocarina-ui.js";
 import { TONGUE_DRUMS } from "@engine/tonguedrums.js";
 
 export type Family = "handpan" | "tongue-drum" | "ocarina" | "flute";
@@ -79,6 +80,10 @@ export function chartTunings(family: "ocarina" | "flute"): Tuning[] {
   return CHART_TUNINGS[family];
 }
 
+// The app's instrument behind each chart tuning, by path (filled below).
+type WindInstrument = { inst: ReturnType<typeof instrumentFromChart>; chartId: string; keyId: string };
+const WIND_INSTRUMENTS = new Map<string, WindInstrument>();
+
 // Built once, when the module loads: the app's instrumentFromChart gives each
 // instrument a random id, which Next.js must not see during a page render.
 function buildChartTunings(family: "ocarina" | "flute"): Tuning[] {
@@ -86,6 +91,7 @@ function buildChartTunings(family: "ocarina" | "flute"): Tuning[] {
     chart.keys.map((key: { id: string }) => {
       const inst = instrumentFromChart(chart.id, key.id, { now: "2026-01-01T00:00:00.000Z" });
       const path = linkFor({ chartId: chart.id, keyId: key.id });
+      WIND_INSTRUMENTS.set(path, { inst, chartId: chart.id, keyId: key.id });
       return {
         slug: lastSegment(path),
         // The app's own short name for the link: "Alto C 12-hole ocarina", "Tin whistle in D".
@@ -164,3 +170,62 @@ export function appLink(tuning: Tuning, opts: { tab?: string; chord?: string } =
 export function displayNotes(notes: string[]): string {
   return notes.map((n) => display(n)).join(" ");
 }
+
+// ── Ocarinas and flutes: the playable demo (WindDemo) ──────────────────────
+// One note at a time, so a chord plays as an arpeggio and shows each note's
+// fingering in turn, as the app does (docs: "Adding an instrument").
+
+export type WindChord = Chord & {
+  /** The chord's notes in playing order (MIDI): root first, then up, as the app's arpeggios. */
+  arpeggio: number[];
+};
+
+const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];
+
+/**
+ * The major and minor chords to try on an ocarina or flute: those of its own
+ * key (the chart key's tonic), I ii iii IV V vi, as found by the app on its
+ * notes; on an instrument with few chords, every one it has.
+ */
+export function windChords(tuning: Tuning): WindChord[] {
+  const w = WIND_INSTRUMENTS.get(tuning.path);
+  if (!w) return [];
+  const all = findAllChords(ocarinaToLayout(w.inst)).filter((c: { type: { id: string } }) => c.type.id === "maj" || c.type.id === "min");
+  // The key's tonic from its id: "C-A4" (an ocarina in C), "D" (a whistle), "Fs-…".
+  const tonicName = String(w.keyId).split("-")[0].replace(/\d+$/, "").replace(/s$/, "#");
+  const tonic = tonicName ? noteToMidi(tonicName + "4") % 12 : -1;
+  const pc = (n: string) => noteToMidi(n) % 12;
+  const degree = (c: { notes: string[]; rootNote: string }) => MAJOR_STEPS.indexOf((((pc(c.rootNote) - tonic) % 12) + 12) % 12);
+  const inKey = tonic >= 0 && all.length > 8
+    ? all.filter((c: { notes: string[]; rootNote: string }) => degree(c) >= 0 && degree(c) < 6 && c.notes.every((n) => MAJOR_STEPS.includes((((pc(n) - tonic) % 12) + 12) % 12)))
+    : all;
+  const seen = new Set<string>();
+  return inKey
+    .sort((a: { notes: string[]; rootNote: string }, b: { notes: string[]; rootNote: string }) => degree(a) - degree(b) || noteToMidi(a.rootNote) - noteToMidi(b.rootNote))
+    .filter((c: { id: string }) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
+    .map((c: { id: string; rootName: string; rootNote: string; type: { id: string; name: string; category: string }; notes: string[] }) => ({
+      id: linkSlug(c.id),
+      short: `${display(c.rootName)}${SHORT[c.type.id] ?? ` ${c.type.name}`}`,
+      name: `${display(c.rootName)} ${c.type.name}`,
+      category: c.type.category,
+      pitches: [...new Set(c.notes.map((n) => display(n.replace(/\d+$/, ""))))],
+      notes: c.notes,
+      arpeggio: arpeggioOrder(c.notes, c.rootNote),
+    }));
+}
+
+/** The app's fingering diagram for one note of an ocarina or flute. */
+export function windFingering(tuning: Tuning, midi: number, size: "large" | "medium" | "mini" = "large"): string {
+  const w = WIND_INSTRUMENTS.get(tuning.path);
+  return w ? renderFingering(w.inst, midi, { size, useFlats: true }) : "";
+}
+
+/** The app's voice for the instrument: ocarina, tin whistle or (wooden) flute. */
+export function windVoice(tuning: Tuning): "ocarina" | "whistle" | "flute" {
+  const w = WIND_INSTRUMENTS.get(tuning.path);
+  if (!w || tuning.family === "ocarina") return "ocarina";
+  return String(w.inst.type ?? w.chartId).startsWith("tin-whistle") ? "whistle" : "flute";
+}
+
+/** A MIDI note as the app names it ("Bb4"), for playing. */
+export const midiNoteName = midiName;
