@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Faq } from "@/components/Faq";
 import { HandpanDemo } from "@/components/HandpanDemo";
 import { WindDemo } from "@/components/WindDemo";
-import { appLink, displayNotes, handpanChords, triads, windChords, windVoice, type Tuning } from "@/lib/engine";
+import { appLink, displayNotes, handpanChords, isPanFamily, panWord, triads, windChords, windVoice, type Tuning } from "@/lib/engine";
 import { btnPrimary, btnSecondary, container, h2 } from "@/lib/ui";
 import type { InstrumentDoc } from "@/sanity/lib/types";
 
@@ -50,8 +50,9 @@ function ComingSoon({ instrument }: { instrument: InstrumentDoc }) {
 }
 
 function Available({ instrument, tuning, featured, all }: { instrument: InstrumentDoc; tuning: Tuning; featured: Tuning[]; all: Tuning[] }) {
-  // Handpans and tongue drums: a middle note and a ring, chords played together.
-  const panFamily = tuning.family === "handpan" || tuning.family === "tongue-drum" ? tuning.family : null;
+  // Handpans, tongue drums and kalimbas: a fixed set of notes, chords played together.
+  const panFamily = isPanFamily(tuning.family) ? tuning.family : null;
+  const tuned = panFamily && panFamily !== "handpan"; // tunings, not scales
   const isPan = !!panFamily;
   const chords = panFamily ? handpanChords(tuning.slug, panFamily) : [];
   const wind = panFamily ? [] : windChords(tuning);
@@ -66,11 +67,11 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
       <div className="flex flex-wrap items-start gap-14">
         <div className="min-w-0 flex-[1_1_460px]">
           <h1 className="m-0 mb-5 text-[clamp(38px,5.5vw,60px)] font-semibold leading-[1.04] tracking-[-0.025em]">
-            {tuning.slug === featured[0]?.slug ? instrument.title : `${tuning.name} ${panFamily === "tongue-drum" ? "tongue drum chords" : isPan ? "handpan chords" : "fingerings"}`}
+            {tuning.slug === featured[0]?.slug ? instrument.title : `${tuning.name} ${panFamily ? `${panWord(panFamily)} chords` : "fingerings"}`}
           </h1>
           <p className="m-0 mb-8 max-w-[560px] text-[20px] text-body">{instrument.intro}</p>
 
-          <h2 className="m-0 mb-2.5 text-[16px] font-semibold text-muted">{panFamily === "tongue-drum" ? "Your tuning" : isPan ? "Your scale" : "Your instrument"}</h2>
+          <h2 className="m-0 mb-2.5 text-[16px] font-semibold text-muted">{tuned ? "Your tuning" : isPan ? "Your scale" : "Your instrument"}</h2>
           <div className="mb-3 flex flex-wrap gap-2">
             {featured.map((t) => {
               const on = t.slug === tuning.slug;
@@ -88,7 +89,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
           </div>
           {others.length ? (
             <details className="mb-9">
-              <summary className="cursor-pointer py-2 font-semibold text-link">All {all.length} {panFamily === "tongue-drum" ? "tunings" : isPan ? "scales" : "keys and charts"}</summary>
+              <summary className="cursor-pointer py-2 font-semibold text-link">All {all.length} {tuned ? "tunings" : isPan ? "scales" : "keys and charts"}</summary>
               <ul className="m-0 mt-3 grid list-none grid-cols-2 gap-x-4 gap-y-1.5 p-0 text-[15px] sm:grid-cols-3">
                 {all.map((t) => (
                   <li key={t.slug}><Link href={hrefFor(t)} aria-current={t.slug === tuning.slug ? "page" : undefined}>{shortName(t, instrument.name)}</Link></li>
@@ -162,7 +163,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
           </div>
           <div className="flex flex-wrap gap-3">
             <a href={appLink(tuning, { tab: isPan ? "chords" : undefined })} className={btnPrimary}>Open {tuning.name} in the app</a>
-            <Link href={`/request?instrument=${encodeURIComponent(instrument.name)}`} className={btnSecondary}>{panFamily === "tongue-drum" ? "Request a tuning" : isPan ? "Request a scale" : "Request a chart"}</Link>
+            <Link href={`/request?instrument=${encodeURIComponent(instrument.name)}`} className={btnSecondary}>{tuned ? "Request a tuning" : isPan ? "Request a scale" : "Request a chart"}</Link>
           </div>
         </div>
       </section>

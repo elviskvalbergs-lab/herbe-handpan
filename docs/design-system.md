@@ -979,6 +979,15 @@ A steel tongue drum is played like a handpan (struck notes, chords together, oft
 - **Sound:** its own struck voice (`'tongue-drum'` in `js/audio.js`), purer than the handpan's.
 - **Data:** `js/tonguedrums.js`, each tuning with the maker's listing as its source.
 
+### Kalimbas: the same screens, a row of keys
+
+A kalimba is the third layout family. What differs between handpans, tongue drums and kalimbas lives in one registry, `LAYOUT_FAMILIES` in `js/layoutfamilies.js`: each family's tunings, its word ("kalimba"), the instrument tab's name (Pan, Drum, **Keys**), its most notes, its voice and the setup's words ("play the lowest note (the longest key, in the middle)", "then play each key"). The setup, Play list, editor, links (`/kalimba/<slug>`, `/kalimba/custom`), saving and the website read it, so a new family of this kind is one entry, its data file and its picture.
+
+- **Picture:** `renderPan` draws a layout with `instrument: 'kalimba'` as a board with a sound hole and a bridge; each note a key (`rect.pan-note.kalimba-key`), longer the lower it is, labelled at its tip. Keys follow the tuning's `order` (left to right, as the maker's chart shows them) or the standard layout (`kalimbaOrder`: lowest in the middle, then alternately left and right).
+- **Keys tab:** one **Keys** count (up to 21), no shells and no rotation.
+- **Sound:** a plucked voice (`'kalimba'` in `js/audio.js`): a clear fundamental with a shorter ring than the drums and a quick bright pluck.
+- **Data:** `js/kalimbas.js`, each tuning with its makers' charts as sources.
+
 ### Rule: one pattern per screen, for every instrument
 
 Handpan, ocarina, flute and any instrument added later share their screens. Each screen is made of shared parts; an instrument supplies only what really differs (the picture of the instrument, its fingerings), never its own version of a screen.

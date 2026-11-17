@@ -71,6 +71,31 @@ const FIXES: Fix[] = [
       return `available; filled ${Object.keys(set).join(", ")}`;
     },
   },
+  {
+    // The kalimba is in the app (owner, 2026-11-17): its page becomes
+    // available, filling only what still holds the "coming soon" text.
+    name: "2026-11-17-kalimba-available",
+    async run() {
+      const doc = await client.fetch<Record<string, unknown> | null>(`*[_id == "instrument-kalimba"][0]`);
+      if (!doc) return "no kalimba document";
+      if (doc.status !== "soon" || doc.family !== "none") return "left as edited in the Studio";
+      const start = seed.instruments.find((i) => i._id === "instrument-kalimba")!;
+      const OLD: Record<string, unknown> = {
+        tuningsLine: "17-key in C, 21-key and custom",
+        title: "Kalimba chords",
+        intro: "Kalimba support is on the list. Tell us which kalimba you play and its notes, and vote for it to move it up.",
+      };
+      const set: Record<string, unknown> = { family: "kalimba", status: "available" };
+      for (const key of ["tuningsLine", "title", "intro"]) if (doc[key] === OLD[key] || !doc[key]) set[key] = start[key as keyof typeof start];
+      for (const key of ["featuredTunings", "playAlongTitle", "playAlongText", "ctaTitle", "ctaText"]) {
+        const v = doc[key];
+        if (v == null || (Array.isArray(v) && !v.length)) set[key] = start[key as keyof typeof start];
+      }
+      if (!(doc.faqs as unknown[] | undefined)?.length) set.faqs = (start.faqs ?? []).map((f, i) => ({ _key: `k${i}`, ...f }));
+      await client.transaction().patch("instrument-kalimba", (p) => p.set(set)).commit();
+      return `available; filled ${Object.keys(set).join(", ")}`;
+    },
+  },
 ];
 
 async function main() {
