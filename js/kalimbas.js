@@ -25,7 +25,9 @@ const KM_LAYOUT = 'https://www.kalimbamagic.com/blog/item/how-does-the-kalimba-r
 function kl(id, { name, slug, family, desc, notes, order = null, sources }) {
   const [ding, ...rest] = notes;
   return {
-    id, name, slug, family, desc, order, sources, instrument: 'kalimba',
+    // The key it is sold in (the makers' names: "C major", "in G"), which is
+    // not always its lowest key: a 21-key C kalimba starts on F3.
+    id, name, slug, family, desc, order, sources, instrument: 'kalimba', key: id.split('-')[1],
     top: { ding, notes: rest, capacity: rest.length },
     bottom: { notes: [], capacity: 0 },
   };

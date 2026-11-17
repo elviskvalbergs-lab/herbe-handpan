@@ -58,6 +58,8 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
   const wind = panFamily ? [] : windChords(tuning);
   const simple = triads(chords);
   const more = chords.length - simple.length;
+  // The chords a guitarist or pianist plays along with: the same list on every instrument.
+  const playAlong = (isPan ? simple : wind).map((c) => c.short);
   const base = `/instruments/${instrument.slug}`;
   const hrefFor = (t: Tuning) => (t.slug === featured[0]?.slug ? base : `${base}/${t.slug}`);
   const others = all.filter((t) => !featured.some((f) => f.slug === t.slug));
@@ -148,10 +150,10 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
           <div className="on-dark flex-[1_1_440px] rounded-card bg-dark p-9 text-on-dark">
             <h2 className="m-0 mb-3 text-[30px] font-semibold tracking-[-0.015em]">{instrument.playAlongTitle}</h2>
             {instrument.playAlongText ? <p className="m-0 mb-5 text-on-dark-muted">{instrument.playAlongText}</p> : null}
-            {isPan && simple.length ? (
+            {playAlong.length ? (
               <>
                 <p className="m-0 text-[15px] text-on-dark-muted">Chords for them</p>
-                <p className="m-0 mt-0.5 text-[22px] font-semibold">{simple.map((c) => c.short).join(", ")}</p>
+                <p className="m-0 mt-0.5 text-[22px] font-semibold">{playAlong.join(", ")}</p>
               </>
             ) : null}
           </div>
@@ -162,7 +164,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
             {instrument.ctaText ? <p className="m-0 text-body">{instrument.ctaText}</p> : null}
           </div>
           <div className="flex flex-wrap gap-3">
-            <a href={appLink(tuning, { tab: isPan ? "chords" : undefined })} className={btnPrimary}>Open {tuning.name} in the app</a>
+            <a href={appLink(tuning, { tab: "chords" })} className={btnPrimary}>Open {tuning.name} in the app</a>
             <Link href={`/request?instrument=${encodeURIComponent(instrument.name)}`} className={btnSecondary}>{tuned ? "Request a tuning" : isPan ? "Request a scale" : "Request a chart"}</Link>
           </div>
         </div>

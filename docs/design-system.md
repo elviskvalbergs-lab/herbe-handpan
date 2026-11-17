@@ -548,7 +548,7 @@ Desktop: a two-column card, form fields on the left and a medium fingering previ
 └──────────────────────────────────────┘
 ```
 
-- Row ⋯ menu: **Share…** (ocarina/flute), **Remove** (danger → confirm sheet). The corner × goes.
+- Row ⋯ menu: **Edit instrument**, **Share…**, **Remove** (danger → confirm sheet), the same for every instrument. The corner × goes. A shared handpan, tongue drum or kalimba carries a copy of its notes (`layout`, refreshed each time it is shared) and opens from its code as a visiting instrument on its own screens (`openSharedLayout`).
 - Add instrument is a secondary button, not red: it's the action you take once. (A red button on a screen you visit daily trains people to ignore red.) When the list is empty, the empty state shows Add instrument as a primary `btn-lg`.
 - No tab bar on Home. The tuner works here with no target (it shows the nearest note).
 - Desktop: two columns within `--content-max`, instruments `2fr` and Playlists `1fr`. The instrument list becomes a grid of row-cards `minmax(320px, 1fr)`.
