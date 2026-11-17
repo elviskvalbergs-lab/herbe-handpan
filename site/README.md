@@ -67,7 +67,7 @@ Readable stack traces in production need source maps: create a Sentry auth token
 
 ## Content fixes
 
-`scripts/content-fixes.ts` runs on every Vercel build (`prebuild`) and applies
+`scripts/content-fixes.ts` runs on every production build on Vercel (`prebuild`; previews skip it, since they share the dataset) and applies
 named, one-time changes to the live Sanity content, like database migrations:
 each runs once and is recorded in the `contentFixes` document. A fix changes a
 text only while it still reads exactly as the starting content had it, so

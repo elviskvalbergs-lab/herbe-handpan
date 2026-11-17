@@ -8,7 +8,9 @@
 import { createClient } from "next-sanity";
 import { apiVersion, dataset, projectId, writeToken } from "../src/sanity/env";
 
-if (!projectId || !writeToken) process.exit(0);
+// Production builds only: previews share the dataset, so a pull request's
+// preview must not change the live content before it's merged.
+if (!projectId || !writeToken || process.env.VERCEL_ENV !== "production") process.exit(0);
 const client = createClient({ projectId, dataset, apiVersion, token: writeToken, useCdn: false });
 
 type Fix = { name: string; run: () => Promise<string> };
