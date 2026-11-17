@@ -10,7 +10,7 @@ import { linkFor, parseLink, linkTitle, layoutFromCustomParams, linkPreview } fr
 import { renderPan } from '../js/pan.js';
 import { reconcileInstruments, usesLayout, instrumentStatus } from '../js/instruments.js';
 import { rankScalesByNotes } from '../js/scalefinder.js';
-import { setupRoots, setupFirstChord } from '../js/setup.js';
+import { setupRoots, setupScalesFor, setupFirstChord, setupKeyNote } from '../js/setup.js';
 
 const all = t => [t.top.ding, ...t.top.notes];
 
@@ -57,7 +57,7 @@ test('chords are found on every tuning, and a first chord to play', () => {
   for (const t of KALIMBAS) {
     const chords = findAllChords(createLayoutFromScale(t));
     assert.ok(chords.some(c => c.type.id === 'maj' || c.type.id === 'min'), t.id);
-    assert.ok(setupFirstChord(chords, t.top.ding), t.id);
+    assert.ok(setupFirstChord(chords, setupKeyNote(t)), t.id);
   }
 });
 
@@ -84,5 +84,9 @@ test('a saved kalimba is a Kalimba in My instruments', () => {
 test('Listen and the setup work on kalimbas', () => {
   const t = findTuning('KL-C-Major-10');
   assert.equal(rankScalesByNotes(all(t).map(noteToMidi), KALIMBAS)[0].scale.id, 'KL-C-Major-10');
-  assert.ok(setupRoots(KALIMBAS).length > 0);
+  // "I know my key" goes by the key it is sold in, not its lowest key.
+  const roots = setupRoots(KALIMBAS).map(r => r.pc);
+  assert.deepEqual(roots.slice(0, 1), [0], 'C first: most kalimbas are in C');
+  assert.ok(setupScalesFor(KALIMBAS, 0).some(s => s.id === 'KL-C-Major-21'), 'the 21-key C kalimba (lowest F3) is a C kalimba');
+  assert.equal(setupKeyNote(findTuning('KL-G-Alto-15')), 'G4');
 });

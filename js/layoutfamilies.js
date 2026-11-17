@@ -15,16 +15,19 @@ export const LAYOUT_FAMILIES = {
     tunings: SCALES, word: 'handpan', name: 'Handpan', tab: 'Pan', idPrefix: '', maxNotes: 12, voice: 'handpan',
     first: 'big note in the middle', each: 'note around it', firstShort: 'the big note in the middle',
     knowTitle: 'Which note is in the middle?', thing: 'note',
+    knowSub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
   },
   'tongue-drum': {
     tunings: TONGUE_DRUMS, word: 'tongue drum', name: 'Tongue drum', tab: 'Drum', idPrefix: 'TD-', maxNotes: 15, voice: 'tongue-drum',
     first: 'lowest note (the biggest tongue)', each: 'tongue', firstShort: 'the lowest note',
     knowTitle: 'What’s its lowest note?', thing: 'tongue',
+    knowSub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
   },
   kalimba: {
     tunings: KALIMBAS, word: 'kalimba', name: 'Kalimba', tab: 'Keys', idPrefix: 'KL-', maxNotes: 20, voice: 'kalimba',
     first: 'lowest note (the longest key, in the middle)', each: 'key', firstShort: 'the lowest note',
-    knowTitle: 'What’s its lowest note?', thing: 'key',
+    knowTitle: 'What key is it in?', thing: 'key',
+    knowSub: 'It’s usually printed on the box or the keys, like the C in “C major, 17 keys”.',
   },
 };
 
