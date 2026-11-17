@@ -74,3 +74,8 @@ it("ocarinas and flutes get a playable demo: the chords of their key, as arpeggi
   }
   expect(windVoice(chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!)).toBe("whistle");
 });
+
+it("a wind instrument's chords are spelled as its key: F#m on a D whistle", () => {
+  const whistle = chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!;
+  expect(windChords(whistle).map((c) => c.short)).toContain("F#m");
+});

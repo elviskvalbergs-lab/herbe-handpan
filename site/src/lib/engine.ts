@@ -199,16 +199,19 @@ export function windChords(tuning: Tuning): WindChord[] {
   const inKey = tonic >= 0 && all.length > 8
     ? all.filter((c: { notes: string[]; rootNote: string }) => degree(c) >= 0 && degree(c) < 6 && c.notes.every((n) => MAJOR_STEPS.includes((((pc(n) - tonic) % 12) + 12) % 12)))
     : all;
+  // Spelled as the key is: sharps in G, D, A… (F♯m on a D whistle), flats in F, B♭, E♭…
+  const flats = [5, 10, 3, 8, 1, 6].includes(tonic);
+  const spell = (x: string) => displayNote(x, flats).replace("b", "♭");
   const seen = new Set<string>();
   return inKey
     .sort((a: { notes: string[]; rootNote: string }, b: { notes: string[]; rootNote: string }) => degree(a) - degree(b) || noteToMidi(a.rootNote) - noteToMidi(b.rootNote))
     .filter((c: { id: string }) => (seen.has(c.id) ? false : (seen.add(c.id), true)))
     .map((c: { id: string; rootName: string; rootNote: string; type: { id: string; name: string; category: string }; notes: string[] }) => ({
       id: linkSlug(c.id),
-      short: `${display(c.rootName)}${SHORT[c.type.id] ?? ` ${c.type.name}`}`,
-      name: `${display(c.rootName)} ${c.type.name}`,
+      short: `${spell(c.rootName)}${SHORT[c.type.id] ?? ` ${c.type.name}`}`,
+      name: `${spell(c.rootName)} ${c.type.name}`,
       category: c.type.category,
-      pitches: [...new Set(c.notes.map((n) => display(n.replace(/\d+$/, ""))))],
+      pitches: [...new Set(c.notes.map((n) => spell(n.replace(/\d+$/, ""))))],
       notes: c.notes,
       arpeggio: arpeggioOrder(c.notes, c.rootNote),
     }));
