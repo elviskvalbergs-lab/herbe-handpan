@@ -6,6 +6,9 @@ export type SiteSettings = {
   description: string;
   storyTitle?: string;
   story?: string;
+  storyVerse?: string;
+  storyVerseTranslation?: string;
+  storyVerseSource?: string;
   contactEmail: string;
 };
 

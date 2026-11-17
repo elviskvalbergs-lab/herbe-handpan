@@ -89,3 +89,15 @@ it("kalimbas come from the app: every tuning, its chords and its drawing of keys
   expect(svg).toMatch(/pan-note kalimba-key/);
   expect(svg).toContain('aria-label="C Major (17) kalimba layout"');
 });
+
+it("a demo's app link opens the app on that tuning with the chord just played", async () => {
+  const { parseLink } = await import("@engine/links.js");
+  const kurd = findTuning("handpan", "d-kurd")!;
+  const dm = handpanChords("d-kurd").find((c) => c.short === "Dm")!;
+  const l = parseLink(`${kurd.path}/chords/${dm.id}`)!;
+  expect([l.kind, l.tab, l.chord]).toEqual(["scale", "chords", dm.id]);
+  const alto = chartTunings("ocarina").find((t) => t.slug === "alto-c-12")!;
+  const c = windChords(alto)[0];
+  const w = parseLink(`${alto.path}/chords/${c.id}`)!;
+  expect([w.kind, w.tab, w.chord]).toEqual(["chart", "chords", c.id]);
+});

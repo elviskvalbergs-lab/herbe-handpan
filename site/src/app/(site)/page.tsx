@@ -4,7 +4,7 @@ import { Faq } from "@/components/Faq";
 import { Features } from "@/components/Features";
 import { HandpanDemo } from "@/components/HandpanDemo";
 import { InstrumentList } from "@/components/InstrumentList";
-import { handpanChords, triads } from "@/lib/engine";
+import { findTuning, handpanChords, triads } from "@/lib/engine";
 import { APP_URL } from "@/lib/site";
 import { btnCta, btnInk, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
 import * as seed from "@/content/seed";
@@ -20,6 +20,7 @@ const { props: heroImg } = getImageProps({ src: "/brand/hero-sky-tall.webp", alt
 export default async function HomePage() {
   const [home, instruments, features] = await Promise.all([getHome(), getInstruments(), getFeatures()]);
   const demoChords = triads(handpanChords(DEMO_SCALE)).slice(0, 7);
+  const demoPath = findTuning("handpan", DEMO_SCALE)?.path;
   const dm = Math.max(0, demoChords.findIndex((c) => c.id === "d-min"));
 
   return (
@@ -31,7 +32,7 @@ export default async function HomePage() {
           <source media="(min-width: 768px)" srcSet={heroWide} sizes="100vw" />
           <img {...heroImg} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover object-[80%_100%] md:object-[75%_100%]" />
         </picture>
-        <div className={`${container} relative flex min-h-[175vw] flex-col pt-[44vw] pb-10 sm:min-h-[150vw] md:min-h-[max(560px,min(56vw,calc(100svh-84px)))] md:pt-[max(64px,6vw)] md:pb-28`}>
+        <div className={`${container} relative flex min-h-[185vw] flex-col pt-[58vw] pb-10 sm:min-h-[150vw] sm:pt-[44vw] md:min-h-[max(560px,min(56vw,calc(100svh-84px)))] md:pt-[max(64px,6vw)] md:pb-28`}>
           <div className="max-w-[80%] md:max-w-[min(54%,720px)]">
             <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,70px)] font-bold leading-[1.03] tracking-[-0.03em] text-text">{home.heroTitle}</h1>
             <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{home.heroText}</p>
@@ -53,25 +54,29 @@ export default async function HomePage() {
             {home.heroNote ? <p className="m-0 text-[17px] text-on-dark-muted">{home.heroNote}</p> : null}
           </div>
           <div className="min-w-0 flex-[1_1_420px]">
-            <HandpanDemo slug={DEMO_SCALE} chords={demoChords} initial={dm} caption={home.demoCaption} tone="dark" />
+            <HandpanDemo slug={DEMO_SCALE} chords={demoChords} initial={dm} caption={home.demoCaption} tone="dark" appPath={demoPath} />
           </div>
         </div>
       </section>
 
-      <section id="how" className={`${container} py-20 lg:py-24`}>
-        {home.howTitle ? <h2 className={`${h2} m-0 mb-12 max-w-[680px]`}>{home.howTitle}</h2> : null}
-        <ol className="m-0 grid list-none gap-10 p-0 md:grid-cols-3">
-          {(home.steps ?? []).map((s, i) => (
-            <li key={i} className="flex flex-col gap-2.5">
-              <span aria-hidden="true" className="text-[52px] font-semibold leading-none text-accent">{i + 1}</span>
-              <h3 className={`${h3} m-0`}>{s.title}</h3>
-              <p className="m-0 text-body">{s.text}</p>
-            </li>
-          ))}
-        </ol>
+      {/* How it works: its own quiet band, the steps as cards that rise in
+          as they scroll into view (.step-rise in globals.css). */}
+      <section id="how" className="scroll-mt-4 bg-band">
+        <div className={`${container} py-16 lg:py-24`}>
+          {home.howTitle ? <h2 className={`${h2} m-0 mb-10 max-w-[680px] lg:mb-12`}>{home.howTitle}</h2> : null}
+          <ol className="m-0 grid list-none gap-4 p-0 md:grid-cols-3 md:gap-6">
+            {(home.steps ?? []).map((s, i) => (
+              <li key={i} className="step-rise flex flex-col gap-3 rounded-card bg-surface p-6 shadow-[inset_0_0_0_1px_var(--border)] lg:p-8">
+                <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-pill bg-accent text-[24px] font-semibold leading-none text-on-primary">{i + 1}</span>
+                <h3 className={`${h3} m-0`}>{s.title}</h3>
+                <p className="m-0 text-body">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
-      <section id="instruments" className={`${container} pt-20 pb-24`}>
+      <section id="instruments" className={`${container} pt-16 pb-24 lg:pt-24`}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <h2 className={`${h2} m-0`}>Instruments</h2>
           {home.instrumentsText ? <p className="m-0 max-w-[440px] text-body">{home.instrumentsText}</p> : null}

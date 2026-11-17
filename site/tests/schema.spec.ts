@@ -15,3 +15,8 @@ it("the home hero's words are content: title, text and the three labels", () => 
   const home = schemaTypes.find((t) => t.name === "homePage") as unknown as { fields: { name: string }[] };
   expect(home.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["heroTitle", "heroText", "heroCta", "heroListen", "heroTry"]));
 });
+
+it("the footer story can carry a verse, its translation and its source", () => {
+  const settings = schemaTypes.find((t) => t.name === "siteSettings") as unknown as { fields: { name: string }[] };
+  expect(settings.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["story", "storyVerse", "storyVerseTranslation", "storyVerseSource"]));
+});

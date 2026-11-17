@@ -3,14 +3,15 @@
 import { useRef, useState, type MouseEvent } from "react";
 import { panSvg, type Chord, type PanFamily } from "@/lib/engine";
 import { playPanChord, playPanNote } from "@/lib/sound";
+import { btnCta, btnPrimary } from "@/lib/ui";
 
 // The app's own drawing of a handpan or tongue drum (js/pan.js renderPan) with a chord lit. Tapping a
 // chord re-draws it with that chord's notes, coloured root, third, fifth… and
 // plays it as the app does: each note in turn, then all together, with the
 // sounding note lit. Tapping a note on the drawing plays that note.
 export function HandpanDemo({
-  slug, chords, caption, tone = "light", initial = 0, family = "handpan",
-}: { slug: string; chords: Chord[]; caption?: string; tone?: "light" | "dark"; initial?: number; family?: PanFamily }) {
+  slug, chords, caption, tone = "light", initial = 0, family = "handpan", appPath,
+}: { slug: string; chords: Chord[]; caption?: string; tone?: "light" | "dark"; initial?: number; family?: PanFamily; appPath?: string }) {
   const [index, setIndex] = useState(Math.min(initial, Math.max(0, chords.length - 1)));
   const drawingRef = useRef<HTMLDivElement>(null);
   const chord = chords[index];
@@ -59,6 +60,10 @@ export function HandpanDemo({
         <p aria-live="polite" className={`m-0 text-[15px] ${dark ? "text-on-dark-muted" : "text-muted"}`}>
           {chord.name}: {chord.pitches.join(" · ")}
         </p>
+      ) : null}
+      {/* Straight on to the app, on this tuning with the chord just played. */}
+      {appPath && chord ? (
+        <a href={`${appPath}/chords/${chord.id}`} className={dark ? btnCta : btnPrimary}>Play {chord.short} in the app</a>
       ) : null}
     </div>
   );
