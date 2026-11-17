@@ -5,6 +5,10 @@
 @font-face { font-family: 'Oakhum Text'; font-weight: 700; font-style: normal; font-display: swap; src: url('/fonts/oakhum-text-700.woff2') format('woff2'); }
 
 :root {
+  /* The top inset under the phone's status bar. In an installed app iOS
+     softens whatever sits right under the status bar, so the header keeps a
+     little more room there (below, display-mode: standalone). */
+  --safe-top: env(safe-area-inset-top);
   /* ── Type ─────────────────────────────────────────────── */
   --font: 'Oakhum Text', 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --fs-12: 12px;  --lh-12: 16px;   /* minimum: captions, badges, tab labels */
@@ -205,7 +209,7 @@ input[type="number"], .chord-count, .tuner-hz, .share-code, .b-result, .rec-inpu
 /* App bar (§5.9) */
 .appbar {
   position: sticky; top: 0; z-index: var(--z-appbar);
-  padding: env(safe-area-inset-top) 4px 0; background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: var(--safe-top) 4px 0; background: var(--bg); border-bottom: 1px solid var(--border);
 }
 .appbar-inner {
   max-width: var(--content-max); margin: 0 auto; height: var(--appbar-h);
@@ -528,7 +532,7 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .ed-actions .btn { flex: 1 1 0; }
 .ed-status { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--success); }
 .ed-status .ico { width: 16px; height: 16px; }
-@media (min-width: 721px) { .editor-sidebar { position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); } }
+@media (min-width: 721px) { .editor-sidebar { position: sticky; top: calc(var(--appbar-h) + var(--safe-top) + var(--space-4)); } }
 
 /* Banner under the app bar: an unsaved handpan (§5.9) */
 .banner {
@@ -604,7 +608,7 @@ body:has(.sheet-root) { overflow: hidden; }
   .sheet-menu { align-items: flex-start; justify-content: flex-end; padding: 0; }
   .sheet-menu .sheet-scrim { background: transparent; }
   .sheet-menu .sheet {
-    position: absolute; top: calc(env(safe-area-inset-top) + var(--appbar-h) - 4px);
+    position: absolute; top: calc(var(--safe-top) + var(--appbar-h) - 4px);
     right: max(4px, calc((100% - var(--content-max)) / 2 + 4px));
     width: auto; min-width: 240px; max-width: 320px; border: 1px solid var(--border-strong); box-shadow: var(--e-2);
   }
@@ -731,7 +735,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 }
 @media (min-width: 1024px) {
   .prog-view.has-pan { display: grid; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); align-items: start; gap: var(--space-6); max-width: var(--content-max); }
-  .prog-view.has-pan .prog-side { position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); }
+  .prog-view.has-pan .prog-side { position: sticky; top: calc(var(--appbar-h) + var(--safe-top) + var(--space-4)); }
   .prog-view.has-pan .prog-pan svg { width: min(100%, 56dvh); }
 }
 .sheet-progrow .row.is-danger .row-lead { color: var(--danger); }
@@ -796,7 +800,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font);
 }
 .fg-stage-wrap {
-  position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top)); z-index: 5;
+  position: sticky; top: calc(var(--appbar-h) + var(--safe-top)); z-index: 5;
   margin: 0 calc(-1 * var(--gutter)); padding: var(--space-2) var(--gutter); background: var(--bg);
 }
 
@@ -849,7 +853,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   .oc-notes { display: grid; grid-template-columns: minmax(360px, 440px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
   .oc-notes-side {
     display: flex; flex-direction: column; gap: var(--space-3);
-    position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4));
+    position: sticky; top: calc(var(--appbar-h) + var(--safe-top) + var(--space-4));
   }
   .fg-stage-wrap { position: static; margin: 0; padding: 0; background: none; }
   .fg-stage { width: 100%; }
@@ -990,7 +994,7 @@ body.tuner-on.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + va
 @media (min-width: 1024px) {
   .b-layout { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
   .b-layout.is-single { grid-template-columns: minmax(0, 640px); justify-content: center; }
-  .b-aside { display: block; position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4)); max-width: 360px; }
+  .b-aside { display: block; position: sticky; top: calc(var(--appbar-h) + var(--safe-top) + var(--space-4)); max-width: 360px; }
   .b-aside .fingering { max-height: 60dvh; }
   .b-preview { display: none; }
 }
@@ -1157,7 +1161,7 @@ button.set-row[role="switch"] { cursor: pointer; }
 
 /* Search and note-count chips, sticky under the app bar (Try a scale, wizard) */
 .scale-tools {
-  position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top) + 1px); z-index: 5;
+  position: sticky; top: calc(var(--appbar-h) + var(--safe-top) + 1px); z-index: 5;
   display: flex; flex-direction: column; gap: var(--space-2);
   margin: 0 calc(-1 * var(--gutter)); padding: var(--space-2) var(--gutter) var(--space-3);
   background: var(--bg);
@@ -1278,7 +1282,7 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
    at the right. */
 .hp-chords { display: flex; flex-direction: column; gap: var(--space-4); }
 .hp-stage {
-  position: sticky; top: calc(var(--appbar-h) + env(safe-area-inset-top)); z-index: 5;
+  position: sticky; top: calc(var(--appbar-h) + var(--safe-top)); z-index: 5;
   display: flex; flex-direction: column; gap: var(--space-2);
   margin: calc(-1 * var(--space-3)) calc(-1 * var(--gutter)) 0;
   padding: var(--space-3) var(--gutter); background: var(--bg); border-bottom: 1px solid var(--border);
@@ -1339,7 +1343,7 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 @media (min-width: 600px) {
   .hp-narrow { display: none !important; }
   .hp-chords {
-    --hp-top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--space-4));
+    --hp-top: calc(var(--appbar-h) + var(--safe-top) + var(--space-4));
     --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - env(safe-area-inset-bottom) - var(--space-4));
     display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-4); align-items: start;
   }
@@ -1377,7 +1381,7 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 @media (max-height: 500px) and (min-width: 620px) {
   .main { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
   body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 6px); }
-  .hp-chords { --hp-top: calc(var(--appbar-h) + env(safe-area-inset-top) + 6px); grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-2); }
+  .hp-chords { --hp-top: calc(var(--appbar-h) + var(--safe-top) + 6px); grid-template-columns: 220px minmax(0, 1fr); gap: var(--space-2); }
   .hp-stage { display: grid; grid-template-columns: minmax(170px, 240px) minmax(0, 1fr); gap: var(--space-2); align-items: start; }
   .hp-stage .hp-card { grid-column: 1; grid-row: 1; padding: var(--space-3); }
   .hp-stage .hp-pan { grid-column: 2; grid-row: 1; }
@@ -1543,7 +1547,7 @@ html { touch-action: manipulation; }
 
   /* The filters stay in view: pinned under the stage while the list scrolls. */
   .hp-list-head {
-    position: sticky; z-index: 4; top: calc(var(--appbar-h) + env(safe-area-inset-top) + var(--chords-stage-h, 0px));
+    position: sticky; z-index: 4; top: calc(var(--appbar-h) + var(--safe-top) + var(--chords-stage-h, 0px));
     margin: 0 calc(-1 * var(--gutter)) var(--space-2); padding: var(--space-2) var(--gutter);
     background: var(--bg); border-bottom: 1px solid var(--border); gap: var(--space-2);
   }
@@ -1736,3 +1740,7 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .setup-result-name { margin: 0; font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); }
 .setup-result-desc { margin: 0; color: var(--text-2); max-width: 40ch; }
 .setup-result-notes { margin: 0; color: var(--text-3); font-size: var(--fs-13); letter-spacing: .02em; }
+
+@media (display-mode: standalone) {
+  :root { --safe-top: calc(env(safe-area-inset-top) + 10px); }
+}
