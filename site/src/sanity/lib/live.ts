@@ -29,11 +29,24 @@ export const { sanityFetch, SanityLive } = defineLive({
  * stays cached and published-only, and an editor in the Presentation tool gets
  * the drafts perspective with stega (click-to-edit) encoding, uncached.
  */
-export async function fetchData<T>(
+export function fetchData<T>(query: string, params: Record<string, string | number | boolean> = {}): Promise<T | null> {
+  return fetchCached<T>(query, params, DEPLOYMENT);
+}
+
+// Vercel keeps `'use cache'` entries from one deployment to the next. The
+// deployment id is part of the cache key, so each deployment reads Sanity
+// afresh: a content fix written during its build (scripts/content-fixes.ts)
+// shows straight away instead of an older deployment's cached copy.
+const DEPLOYMENT = process.env.VERCEL_DEPLOYMENT_ID ?? process.env.VERCEL_GIT_COMMIT_SHA ?? "local";
+
+async function fetchCached<T>(
   query: string,
-  params: Record<string, string | number | boolean> = {},
+  params: Record<string, string | number | boolean>,
+  // Only part of the cache key (see DEPLOYMENT).
+  deployment: string,
 ): Promise<T | null> {
   "use cache";
+  void deployment;
   if (!hasSanity) return null;
   const { isEnabled } = await draftMode();
   const { data } = await sanityFetch({

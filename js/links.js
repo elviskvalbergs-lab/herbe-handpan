@@ -200,7 +200,11 @@ export function parseLink(pathname, search = '') {
   }
   const kind = target.scaleId ? 'scale' : 'chart';
   const t = target.scaleId ? { scaleId: target.scaleId } : { chartId: target.chartId, keyId: target.keyId };
-  return { kind, family, ...t, tab, chord, path: linkFor(t, { tab, chord }) };
+  // A tongue drum from the catalogue drawn the other way round: centre=1 puts
+  // its lowest note in the middle, centre=0 round the edge with the others.
+  const centre = family === 'tongue-drum' ? new URLSearchParams(String(search)).get('centre') : null;
+  const drawn = centre === '1' || centre === '0' ? { centre: centre === '1' } : {};
+  return { kind, family, ...t, ...drawn, tab, chord, path: linkFor(t, { tab, chord }) + (drawn.centre != null ? `?centre=${centre}` : '') };
 }
 
 // A custom handpan link's query (ding, top, bottom, tc, bc, name) as a
