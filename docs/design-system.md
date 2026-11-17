@@ -78,7 +78,9 @@ Ranked by how much each one costs a player using the app on a phone on a stand, 
 ### Screen map
 
 ```
-Wizard (first run, or Add instrument)       full screen, own bottom action bar
+Setup (first run, or Add instrument)        #setup: What do you play? (tiles) → handpan: Play my notes /
+                                             I know my scale → Ready; ocarina, flute → the wizard's step
+Wizard (ocarina and flute steps)            full screen, own bottom action bar
 Home = My instruments                        #  (empty hash)
  ├─ Try a scale (catalogue, unsaved)         (existing selector view)
  ├─ Settings                                 #settings
@@ -322,6 +324,9 @@ One component replaces `.modal`, `.picker-modal`, `.share-modal`, the note picke
 
 - **Save** sheet (`saveSheetHtml`, docs/free-to-play.md §3): every save a guest makes opens it. A headline and one line matched to what was tapped (`SAVE_TEXTS` in `js/store.js`), "Free · takes seconds · also lets you play offline", Continue with Google / Apple (only when switched on in Supabase), an email field with Send code, then the code in the same sheet, the privacy line, and Not now. A new save action is one entry in `SAVE_ACTIONS`, never a sheet of its own.
 - **Offline pill** `.offline-pill` (accounts only): a small `cloud-off` "Offline" chip at the start of the app bar's right slot while offline. **Guest offline card** `.offline-card`: sits where toasts do, with "Remind me when I'm back online" and OK.
+
+- **Guided steps** (`stepFrame` in `js/app.js`): the add-instrument wizard and the beginner setup share one frame: app bar, optional brand hero, "Step n of m", title, text, content and the bottom action bar. A new guided flow uses it, not a frame of its own.
+- **Setup tiles** `.setup-tile` (plain, no instrument pictures, owner's decision): name and one hint line; and **root buttons** `.setup-root` for "Which note is in the middle?", the most common first and filled.
 
 ### 5.7 Toast `.toast`
 

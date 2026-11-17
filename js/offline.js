@@ -24,6 +24,9 @@ export const offline = {
 
   // Unregisters every service worker of this site and deletes their caches.
   async disable() {
+    // The worker controlling this page keeps it until it closes: tell it to
+    // stop caching first, so nothing is written after the caches go.
+    try { navigator.serviceWorker?.controller?.postMessage({ type: 'oakhum-off' }); } catch { /* none */ }
     try {
       const regs = await navigator.serviceWorker?.getRegistrations?.() ?? [];
       await Promise.all(regs.map(r => r.unregister()));
