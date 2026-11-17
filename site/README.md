@@ -64,3 +64,12 @@ public one. Both answer 503 with a plain message until the write token is set.
 Errors and 10% of traces go to the Sentry project **oakhum-site** (organisation burti, EU region); the app reports to **oakhum-app**. Settings are in `src/lib/sentry.ts` and the `instrumentation*.ts` / `sentry.*.config.ts` files. Session replay is off (it needs consent) and no user identity or IP is stored.
 
 Readable stack traces in production need source maps: create a Sentry auth token (Sentry › Settings › Auth Tokens, scope `project:releases`) and add it in Vercel as `SENTRY_AUTH_TOKEN` (sensitive) on the oakhum-site project. Without it the build still works.
+
+## Content fixes
+
+`scripts/content-fixes.ts` runs on every production build on Vercel (`prebuild`; previews skip it, since they share the dataset) and applies
+named, one-time changes to the live Sanity content, like database migrations:
+each runs once and is recorded in the `contentFixes` document. A fix changes a
+text only while it still reads exactly as the starting content had it, so
+edits made in the Studio are never overwritten. Without the write token
+(local builds) it does nothing. Add a new fix to its `FIXES` list.
