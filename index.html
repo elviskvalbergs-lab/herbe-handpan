@@ -10556,8 +10556,10 @@ function ocTabs(inst) {
   const tabs = [];
   const playable = playableMidis(inst).length > 0;
   if (playable) tabs.push(['notes', 'Notes', 'layout-grid'], ['chords', 'Chords', 'music']);
+  // Playlists on every instrument, saved or opened from a link (as on a
+  // handpan); not on someone's instrument shared by code, which is read-only.
+  if (playable && (inst.id !== SHARED_ID || inst.link)) tabs.push(['playlists', 'Playlists', 'list-music']);
   if (inst.id === SHARED_ID) return tabs;
-  if (playable) tabs.push(['playlists', 'Playlists', 'list-music']);
   if (inst.kind === 'scale' && canBuild()) tabs.push(['builder', 'Build', 'hammer']);
   if (inst.kind === 'custom' || inst.kind === 'traditional') tabs.push(['setup', 'Set up', 'wrench']);
   return tabs;
@@ -10636,7 +10638,7 @@ function playlistsListHtml(inst) {
   return `
     <div class="list">
       ${state.playlists.map(pl => {
-        const here = pl.chords.filter(c => (inst ? c.instrumentId === inst.id : !c.instrumentId && c.layoutId === layoutId)).length;
+        const here = pl.chords.filter(c => (inst ? entryIsFor(c, inst) : !c.instrumentId && c.layoutId === layoutId)).length;
         const trail = inst
           ? `<button type="button" class="btn btn-primary btn-sm" data-action="oc-practice-start" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
           : `<button type="button" class="btn btn-primary btn-sm" data-action="hp-play-playlist" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
@@ -10677,7 +10679,36 @@ function newOcState() {
 
 // Playlist-entry identity for an ocarina chord, mirroring favIdForChord():
 // the plain form for the default voicing, a notes suffix for any other.
-function ocLayoutId(inst) { return 'oc:' + inst.id; }
+function ocLayoutId(inst) { return 'oc:' + entryInstId(inst); }
+
+// The instrument id a playlist or progression entry carries. A saved
+// instrument's own id; an ocarina or flute opened from a link (not saved)
+// gets its chart and key, as a handpan scale is known by its scale id, so
+// what is added to a playlist finds it again: opened from the link later,
+// or saved from that chart.
+function entryInstId(inst) {
+  return inst.id === SHARED_ID && inst.link ? `chart:${inst.link.chartId}/${inst.link.keyId}` : inst.id;
+}
+function chartEntryId(inst) { return inst.kind === 'traditional' && inst.type ? `chart:${inst.type}/${inst.key}` : null; }
+function entryIsFor(en, inst) {
+  return !!en?.instrumentId && !!inst && (en.instrumentId === entryInstId(inst) || en.instrumentId === chartEntryId(inst));
+}
+// The instrument an entry plays on: the saved one, else a saved one from the
+// same chart and key, else that chart opened as a visiting instrument.
+function entryInstrument(en) {
+  const id = en?.instrumentId;
+  if (!id) return null;
+  const own = getInstrument(id);
+  if (own) return own;
+  const m = /^chart:([^/]+)\/(.+)$/.exec(id);
+  if (!m) return null;
+  const saved = getInstruments().find(i => chartEntryId(i) === id);
+  if (saved) return saved;
+  try {
+    const link = { chartId: m[1], keyId: m[2] };
+    return { ...instrumentFromChart(m[1], m[2], { name: linkTitle(parseLink(linkFor(link))) }), id: SHARED_ID, link };
+  } catch { return null; }
+}
 function ocFavId(inst, chordId, noteNames, canonicalNames) {
   const base = `${ocLayoutId(inst)}-${chordId}`;
   const sorted = names => [...names].sort((a, b) => noteToMidi(a) - noteToMidi(b)).join(',');
@@ -10930,11 +10961,11 @@ function practiceSource(inst, pr = state.oc.practice) {
   if (pr.progressionId) {
     const prog = state.progressions.find(p => p.id === pr.progressionId);
     if (!prog) return null;
-    return { name: prog.name, unit: 'Step', entries: prog.steps.filter(s => s.instrumentId === inst.id && !s.missing).map(s => ({ ...s, id: s.stepId })) };
+    return { name: prog.name, unit: 'Step', entries: prog.steps.filter(s => entryIsFor(s, inst) && !s.missing).map(s => ({ ...s, id: s.stepId })) };
   }
   const pl = state.playlists.find(p => p.id === pr.playlistId);
   if (!pl) return null;
-  return { name: pl.name, unit: 'Chord', entries: pl.chords.filter(c => c.instrumentId === inst.id) };
+  return { name: pl.name, unit: 'Chord', entries: pl.chords.filter(c => entryIsFor(c, inst)) };
 }
 
 function practiceSteps(entries) {
@@ -11109,7 +11140,7 @@ function legendHole(state) {
 // playlist), otherwise the instrument on screen.
 function ocCardInstrument(key) {
   const en = key?.startsWith('e:') ? state.playlists.flatMap(p => p.chords).find(c => 'e:' + c.id === key) : null;
-  return (en?.instrumentId && getInstrument(en.instrumentId)) || currentInstrument();
+  return (en?.instrumentId && entryInstrument(en)) || currentInstrument();
 }
 
 function ocCardData(inst, key) {
@@ -11159,12 +11190,14 @@ function playPracticeStep() {
 // An ocarina or flute entry opens its instrument, showing the playlist with
 // that instrument's chord cards (entry expanded) and Practice.
 function openPlaylistEntryOnInstrument(pl, entry) {
-  if (!openInstrument(entry.instrumentId, { push: false })) { showToast('That instrument is no longer in My instruments'); return false; }
+  const inst = entryInstrument(entry);
+  if (inst?.id === SHARED_ID) openChartLink(inst.link);
+  else if (!inst || !openInstrument(inst.id, { push: false })) { showToast('That instrument is no longer in My instruments'); return false; }
   // Like a handpan entry: the chord opens on the instrument's Chords screen,
   // in the voicing saved in the playlist, with the filters cleared so it's there.
   Object.assign(state.oc, { tab: 'chords', scaleFilter: 'All', category: 'All', expanded: entry.chordId, chordStep: {}, practice: null });
   state.oc.voicings[entry.chordId] = entry.notes.map(noteToMidi).sort((a, b) => a - b);
-  navPush(`#i/${entry.instrumentId}/chords`);
+  navPush(instUrl(state.currentInstrumentId, 'chords'));
   return true;
 }
 
@@ -13518,9 +13551,9 @@ function menuAppBtn() { return uiIconBtn('ellipsis', 'More', { action: 'menu-ope
 
 // The instrument the playlist was opened from and how many entries are its.
 function plHere(pl) {
-  const inst = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
+  const inst = state.currentInstrumentId ? currentInstrument() : null;
   if (inst && !usesLayout(inst)) {
-    return { kind: 'oc', name: inst.name, n: pl.chords.filter(c => c.instrumentId === inst.id).length };
+    return { kind: 'oc', name: inst.name, n: pl.chords.filter(c => entryIsFor(c, inst)).length };
   }
   const layoutId = hpCurrentLayoutId();
   if (!layoutId) return null;
@@ -13562,7 +13595,7 @@ function viewPlaylist() {
     })).join('')}</div>`;
   } else {
     entries = `<div class="pl-entries">${pl.chords.map((en, idx) => {
-      const inst = en.instrumentId ? getInstrument(en.instrumentId) : null;
+      const inst = en.instrumentId ? entryInstrument(en) : null;
       if (inst && playableMidis(inst).length) {
         // Same row as a handpan entry: it opens the chord on its instrument.
         return `<div class="list">${uiRow({
@@ -13661,7 +13694,7 @@ function progStepLayout(s) {
 }
 
 function progOcContext(inst) {
-  return { kind: 'oc', inst, name: inst.name, isHere: s => s.instrumentId === inst.id && !s.missing };
+  return { kind: 'oc', inst, name: inst.name, isHere: s => entryIsFor(s, inst) && !s.missing };
 }
 function progHpContext(layoutId, name) {
   return { kind: 'hp', layoutId, name, isHere: s => !s.instrumentId && s.layoutId === layoutId && !s.missing };
@@ -13675,9 +13708,9 @@ function progContext(prog) {
   if (cur && !usesLayout(cur)) return progOcContext(cur);
   const layoutId = hpCurrentLayoutId();
   if (layoutId) return progHpContext(layoutId, state.layout.name);
-  const first = prog?.steps.find(s => (s.instrumentId ? !!getInstrument(s.instrumentId) : !!progStepLayout(s)));
+  const first = prog?.steps.find(s => (s.instrumentId ? !!entryInstrument(s) : !!progStepLayout(s)));
   if (!first) return null;
-  if (first.instrumentId) return { ...progOcContext(getInstrument(first.instrumentId)), open: true };
+  if (first.instrumentId) return { ...progOcContext(entryInstrument(first)), open: true };
   return { ...progHpContext(first.layoutId, first.scaleName), load: first };
 }
 
@@ -14049,7 +14082,7 @@ function progressionRowsHtml(inst, { home = false } = {}) {
         meta: `${n} step${n !== 1 ? 's' : ''} · ${p.bpm} BPM`,
       });
     }
-    const here = p.steps.filter(s => !s.missing && (inst ? s.instrumentId === inst.id : !s.instrumentId && s.layoutId === layoutId)).length;
+    const here = p.steps.filter(s => !s.missing && (inst ? entryIsFor(s, inst) : !s.instrumentId && s.layoutId === layoutId)).length;
     const trail = inst
       ? `<button type="button" class="btn btn-primary btn-sm" data-action="prog-practice" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
       : `<button type="button" class="btn btn-primary btn-sm" data-action="prog-play" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
@@ -14150,7 +14183,7 @@ function csProgressionStep(s, target, chords, semis, beatsPerBar) {
     : { chordId: null, rootName: symbol.match(/^[A-G][#b]?/)?.[0] ?? '', typeName: s.chord.type?.name ?? s.chord.suffix, category: s.chord.type?.category ?? '', notes: [], noteCount: 0, missing: true };
   const where = target.kind === 'hp'
     ? { layoutId: target.layoutId, layoutData: target.layout.isCustom ? JSON.parse(JSON.stringify(target.layout)) : null, scaleName: target.name }
-    : { layoutId: ocLayoutId(target.inst), layoutData: null, scaleName: target.inst.name, family: target.inst.family, instrumentId: target.inst.id };
+    : { layoutId: ocLayoutId(target.inst), layoutData: null, scaleName: target.inst.name, family: target.inst.family, instrumentId: entryInstId(target.inst) };
   const len = stepLength(s.beats, beatsPerBar);
   const step = newProgressionStep({ ...chord, ...where, symbol, section: s.section ?? null }, { bars: len.bars });
   if (len.beats != null) step.beats = len.beats;
@@ -14337,7 +14370,7 @@ function playlistEntryFor(chord, favId) {
   const inst = state.view === 'instrument' ? currentInstrument()
     : state.view === 'playlist' && state.pickerInstrumentId ? getInstrument(state.pickerInstrumentId) : null;
   if (inst) {
-    return { ...common, layoutId: ocLayoutId(inst), layoutData: null, scaleName: inst.name, family: inst.family, instrumentId: inst.id };
+    return { ...common, layoutId: ocLayoutId(inst), layoutData: null, scaleName: inst.name, family: inst.family, instrumentId: entryInstId(inst) };
   }
   const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
   return {
@@ -14495,6 +14528,16 @@ function urlIsLink() {
 
 // A handpan from the catalogue: my saved copy of it when I have one, so it
 // opens as that instrument.
+// An ocarina or flute from a published chart, opened as a visiting
+// instrument (a deep link, or a playlist entry added from one).
+function openChartLink({ chartId, keyId }) {
+  const inst = instrumentFromChart(chartId, keyId, { name: linkTitle(parseLink(linkFor({ chartId, keyId }))) });
+  Object.assign(state, {
+    view: 'instrument', layout: null, currentInstrumentId: SHARED_ID, sharedStatus: null, oc: newOcState(),
+    shared: { ...inst, id: SHARED_ID, link: { chartId, keyId } },
+  });
+}
+
 function openScaleLayout(scale) {
   const owned = getInstrument(handpanInstrumentId(scale.id));
   const saved = owned && state.savedLayouts.find(l => l.id === scale.id);
@@ -14522,11 +14565,7 @@ function openLink(link) {
     return;
   }
   if (link.kind === 'chart') {
-    const inst = instrumentFromChart(link.chartId, link.keyId, { name: linkTitle(link) });
-    Object.assign(state, {
-      view: 'instrument', layout: null, currentInstrumentId: SHARED_ID, sharedStatus: null, oc: newOcState(),
-      shared: { ...inst, id: SHARED_ID, link: { chartId: link.chartId, keyId: link.keyId } },
-    });
+    openChartLink(link);
     if (link.tab === 'chords' || link.tab === 'listen') state.oc.tab = 'chords';
     return;
   }
@@ -14741,7 +14780,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = '9384cca6362c'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = '8f62c55c9395'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 
@@ -15915,7 +15954,9 @@ document.addEventListener('click', e => {
       render();
       return;
     }
-    // Playlist picker, reusing the handpan one.
+    // Playlist picker, reusing the handpan one. Someone's instrument shared
+    // by code is read-only: its chords go into playlists once it's added.
+    if (inst.id === SHARED_ID && !inst.link) { showToast('Add it to My instruments to keep its chords'); return; }
     const names = card.midis.map(midiToNoteName);
     state.pickerChordFavId = card.entry
       ? (card.midis.join() === card.entry.notes.map(noteToMidi).join() ? card.entry.id : ocFavId(inst, card.chordId, names, null))
