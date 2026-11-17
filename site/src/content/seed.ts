@@ -10,7 +10,7 @@ import type { FeatureDoc, HomePage, InstrumentDoc, PageDoc, SiteSettings } from 
 
 export const settings: SiteSettings = {
   title: "Oakhum",
-  description: "Chords, arpeggios and play-along for handpan, ocarina and flute. Free in your browser, nothing to install.",
+  description: "Chords, arpeggios and play-along for handpan, tongue drum, kalimba, ocarina and flute. Free in your browser, nothing to install.",
   storyTitle: "Why “oakhum”?",
   story:
     "Oakhum is made in Latvia, on a street lined with old oaks. In Latvian folklore the oak is the tree of strength, and it has stood for as long as people have made music. The hum is what handpans, ocarinas and flutes share: hollow bodies that sing when you play them.",
@@ -67,7 +67,7 @@ export const home: HomePage = {
     { question: "Is Oakhum free?", answer: "Yes. Every instrument and feature is free." },
     { question: "Do I need an account?", answer: "Not to play. You can open any instrument and use every feature without signing up. A free account is only needed to keep things: your instruments, favourite chords and playlists, on all your devices." },
     { question: "Which phones and computers does it run on?", answer: "Any phone, tablet or computer with a modern browser, such as Chrome, Safari, Firefox or Edge. There's nothing to install, and you can add it to your home screen so it opens like an app." },
-    { question: "Does it work offline?", answer: "Not yet. Offline use for account holders is being built: sign in once while connected, and your instruments and playlists will keep working with no signal." },
+    { question: "Does it work offline?", answer: "Yes, with a free account: sign in once while connected, and your instruments, chords and playlists keep working with no signal." },
     { question: "My instrument isn't listed. What can I do?", answer: "Ask for it on the request page with its name and notes. Popular requests are built first." },
   ],
 };
@@ -178,7 +178,8 @@ export const instruments: InstrumentDoc[] = [
 ];
 
 export const features: FeatureDoc[] = [
-  { _id: "feature-instruments", title: "My instruments", text: "Every handpan, ocarina and flute you own, with its exact setup, one tap apart.", status: "ready", order: 1 },
+  { _id: "feature-instruments", title: "My instruments", text: "Every handpan, tongue drum, kalimba, ocarina and flute you own, with its exact setup, one tap apart.", status: "ready", order: 1 },
+  { _id: "feature-setup-listen", title: "Set up by ear", text: "Don't know your tuning? Play each note and the app works out which instrument you have.", status: "ready", order: 1.5 },
   { _id: "feature-chords", title: "Chord finder", text: "Every chord your notes can make, drawn on your instrument's own layout. Or tap notes to name the chord they make.", status: "ready", order: 2 },
   { _id: "feature-arpeggios", title: "Arpeggios and autoplay", text: "Play any chord note by note, or let the app step through chords at your pace.", status: "ready", order: 3 },
   { _id: "feature-playlists", title: "Playlists and progressions", text: "Sets of chords and progressions in order, for practice, a jam or a gig.", status: "ready", order: 4 },
@@ -186,10 +187,10 @@ export const features: FeatureDoc[] = [
   { _id: "feature-fingerings", title: "Fingering charts", text: "Ocarina and flute fingerings for every note, from published charts.", status: "ready", order: 6 },
   { _id: "feature-tuner", title: "Tuner", text: "A built-in tuner, also for tuning an ocarina you made hole by hole.", status: "ready", order: 7 },
   { _id: "feature-share", title: "Share an instrument", text: "Send your exact setup as a link, a code or a QR code.", status: "ready", order: 9 },
-  { _id: "feature-listen", title: "Hear a chord, see it on your instrument", text: "When a friend plays a chord on guitar or piano, the app listens and shows it on your instrument, or the closest version your notes allow.", status: "next", order: 20 },
-  { _id: "feature-offline", title: "Play offline", text: "With a free account, your instruments, chords and playlists keep working with no signal.", status: "next", order: 21 },
+  { _id: "feature-listen", title: "Hear a chord, see it on your instrument", text: "When a friend plays a chord on guitar or piano, the app listens and shows it on your instrument, or the closest version your notes allow.", status: "ready", order: 8 },
+  { _id: "feature-offline", title: "On every device, and offline", text: "With a free account, your instruments, chords and playlists sync between your devices and keep working with no signal.", status: "ready", order: 10 },
   { _id: "feature-signin", title: "Sign in with Google or Apple", text: "Besides the email code.", status: "next", order: 22 },
-  { _id: "feature-more", title: "More instruments", text: "Kalimba is next. Vote for what you play.", status: "next", order: 23 },
+  { _id: "feature-more", title: "More instruments", text: "Recorder is next. Vote for what you play.", status: "next", order: 23 },
 ];
 
 export const pages: PageDoc[] = [
