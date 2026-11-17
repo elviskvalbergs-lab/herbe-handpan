@@ -13,7 +13,10 @@ export const settings: SiteSettings = {
   description: "Chords, arpeggios and play-along for handpan, ocarina and flute. Free in your browser, nothing to install.",
   storyTitle: "Why “oakhum”?",
   story:
-    "Oakhum is made in Latvia, on a street lined with old oaks. In Latvian folklore the oak is the tree of strength, and it has stood for as long as people have made music. The hum is what handpans, ocarinas and flutes share: hollow bodies that sing when you play them.",
+    "Oakhum is made in Latvia, on Oak Street. In Latvian folklore the oak is the tree of strength.\n\nThe hum is the oaks themselves: the wind whistling through their crowns, the low hum of the whole forest. In Latvia we still live close to that forest and to its strength. Playing an instrument like these, near the trees or simply on your own, is a way back to it: it grounds you, and sometimes it heals. That is what Oakhum is for.",
+  storyVerse: "Ozoliņi, ozoliņi,\nTavu lielu vecumiņu,\nEs piedzimu, tev atradu,\nEs nomiršu, tu paliksi.",
+  storyVerseTranslation: "Little oak, little oak,\nhow great your age:\nI was born, and found you here;\nI will die, and you will stay.",
+  storyVerseSource: "Latvian folk song (daina)",
   contactEmail: "oakhummusic@gmail.com",
 };
 
