@@ -2800,12 +2800,16 @@ const SETUP_FAMILY_ORDER = [
 // How many scales "Which D scale?" shows before Show all.
 const SETUP_TOP = 5;
 
-// The middle notes (dings) handpans come in, as pitch classes, D first and
-// then by how many scales use them.
+// The note a tuning is known by: a handpan's middle note, a tongue drum's
+// lowest, a kalimba's key (js/kalimbas.js).
+function setupKeyNote(s) { return s.key ? `${s.key}4` : s.top.ding; }
+
+// The notes tunings come in, as pitch classes, D first and then by how many
+// tunings use them.
 function setupRoots(scales) {
   const count = new Map();
   for (const s of scales) {
-    const pc = notePC(s.top.ding);
+    const pc = notePC(setupKeyNote(s));
     count.set(pc, (count.get(pc) ?? 0) + 1);
   }
   return [...count.entries()]
@@ -2823,7 +2827,7 @@ function setupFamilyRank(scale) {
 function setupScalesFor(scales, pc) {
   return scales
     .map((s, order) => ({ s, order }))
-    .filter(({ s }) => notePC(s.top.ding) === pc)
+    .filter(({ s }) => notePC(setupKeyNote(s)) === pc)
     .sort((a, b) => setupFamilyRank(a.s) - setupFamilyRank(b.s) || a.order - b.order)
     .map(({ s }) => s);
 }
@@ -4854,7 +4858,9 @@ const KM_LAYOUT = 'https://www.kalimbamagic.com/blog/item/how-does-the-kalimba-r
 function kl(id, { name, slug, family, desc, notes, order = null, sources }) {
   const [ding, ...rest] = notes;
   return {
-    id, name, slug, family, desc, order, sources, instrument: 'kalimba',
+    // The key it is sold in (the makers' names: "C major", "in G"), which is
+    // not always its lowest key: a 21-key C kalimba starts on F3.
+    id, name, slug, family, desc, order, sources, instrument: 'kalimba', key: id.split('-')[1],
     top: { ding, notes: rest, capacity: rest.length },
     bottom: { notes: [], capacity: 0 },
   };
@@ -4994,16 +5000,19 @@ const LAYOUT_FAMILIES = {
     tunings: SCALES, word: 'handpan', name: 'Handpan', tab: 'Pan', idPrefix: '', maxNotes: 12, voice: 'handpan',
     first: 'big note in the middle', each: 'note around it', firstShort: 'the big note in the middle',
     knowTitle: 'Which note is in the middle?', thing: 'note',
+    knowSub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
   },
   'tongue-drum': {
     tunings: TONGUE_DRUMS, word: 'tongue drum', name: 'Tongue drum', tab: 'Drum', idPrefix: 'TD-', maxNotes: 15, voice: 'tongue-drum',
     first: 'lowest note (the biggest tongue)', each: 'tongue', firstShort: 'the lowest note',
     knowTitle: 'What’s its lowest note?', thing: 'tongue',
+    knowSub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
   },
   kalimba: {
     tunings: KALIMBAS, word: 'kalimba', name: 'Kalimba', tab: 'Keys', idPrefix: 'KL-', maxNotes: 20, voice: 'kalimba',
     first: 'lowest note (the longest key, in the middle)', each: 'key', firstShort: 'the lowest note',
-    knowTitle: 'What’s its lowest note?', thing: 'key',
+    knowTitle: 'What key is it in?', thing: 'key',
+    knowSub: 'It’s usually printed on the box or the keys, like the C in “C major, 17 keys”.',
   },
 };
 
@@ -8989,9 +8998,7 @@ function handpanAppBar(tabs = '') {
   return uiAppBar({
     switcher: saved
       ? { name: state.layout.name, action: 'back-home', title: 'My instruments' }
-      : layoutInstrument(state.layout) !== 'handpan'
-      ? { name: state.layout.name, action: 'open-play', data: { family: layoutInstrument(state.layout) }, title: 'Other tunings' }
-      : { name: state.layout.name, action: 'back-selector', title: 'Other scales' },
+      : { name: state.layout.name, action: 'open-play', data: { family: layoutInstrument(state.layout) }, title: layoutInstrument(state.layout) === 'handpan' ? 'Other scales' : 'Other tunings' },
     badge: saved ? '' : uiBadge('Not saved'),
     actions: [tunerAppBtn(), menuAppBtn()],
     tabs,
@@ -9903,12 +9910,12 @@ function viewBeginnerSetup() {
     const roots = setupRoots(tunings);
     return stepFrame({
       header, count: count(3), title: fi.knowTitle,
-      sub: 'It’s usually written on the sticker or the box: the first letter of the scale name, like the D in “D Kurd”.',
+      sub: fi.knowSub,
       body: `
         <div class="setup-roots">
-          ${roots.map(r => `<button type="button" class="setup-root${r.pc === 2 ? ' is-first' : ''}" data-action="setup-root" data-pc="${r.pc}">${escHtml(setupRootName(r.pc))}</button>`).join('')}
+          ${roots.map((r, i) => `<button type="button" class="setup-root${i === 0 ? ' is-first' : ''}" data-action="setup-root" data-pc="${r.pc}">${escHtml(setupRootName(r.pc))}</button>`).join('')}
         </div>
-        <p class="wizard-foot">Most ${word}s are in D, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
+        <p class="wizard-foot">Most ${word}s are in ${escHtml(setupRootName(roots[0]?.pc ?? 2))}, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
     });
   }
 
@@ -9932,7 +9939,7 @@ function viewBeginnerSetup() {
   // done
   const s = findTuning(st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
-  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
+  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s));
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
     header, count: count(4), title: `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
@@ -10032,7 +10039,7 @@ function setupAction(action, el) {
   if (action === 'setup-first-chord' || action === 'setup-save') {
     const s = findTuning(st.scaleId);
     if (!s) return true;
-    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), s.top.ding);
+    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s));
     const path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
     state.setup = null;
     openLink(parseLink(path, ''));
@@ -10657,7 +10664,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
   const tabs = practice ? '' : uiTabBar(ocTabs(inst).map(([id, label, ic]) => ({ id, label, icon: ic, action: 'oc-tab', data: { tab: id } })), view);
   return `
     ${uiAppBar({
-      switcher: inst.link ? { name: inst.name, action: 'open-play', title: 'Other instruments' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
+      switcher: inst.link ? { name: inst.name, action: 'open-play', data: { family: inst.family }, title: inst.family === 'flute' ? 'Other flutes' : 'Other ocarinas' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
       badge: inst.link ? uiBadge('Not saved') : shared ? uiBadge(inst.publicId) : '',
       actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
@@ -14887,7 +14894,7 @@ function savePrefs() {
 // moves this visit's work into the account, completes the started save,
 // syncs item by item (js/sync.js) and turns offline on (js/offline.js).
 
-const BUILD_HASH = 'e742bf1223be'; // build.py writes the build's hash: the offline cache version
+const BUILD_HASH = '561572eceb9f'; // build.py writes the build's hash: the offline cache version
 const PRIVACY_URL = '/privacy'; // the website's, on the same domain (vercel.json sends the app's own address there)
 const PRIVACY_VERSION = '2026-11';
 
