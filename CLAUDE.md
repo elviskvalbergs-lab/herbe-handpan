@@ -40,10 +40,10 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - Fingering charts and instrument ranges must come from a published source (maker or manufacturer chart), with the source URL noted in the data file. Never fill them in from memory. If no reliable source is found, leave a clearly marked TODO with the data structure in place.
 
 ## Build
-- `build.py` bundles `styles.css` and the files in its `js_files` list into `index.html` (imports and `export` keywords are stripped, everything shares one script scope). Vercel runs it on deploy, and `index.html` is also committed: run `python3 build.py` and commit the regenerated `index.html` with every JS or CSS change.
+- `build.py` bundles `styles.css` and the files in its `js_files` list into `index.html` (imports and `export` keywords are stripped, everything shares one script scope). Vercel runs it on every deploy. `index.html` is build output and is **not committed** (it's in `.gitignore`): run `python3 build.py` locally to try the app, but never add `index.html` to a commit.
 - New JS files go into `js_files` in the order the brief gives: `js/ocarina.js` and `js/tuner.js` after `js/chords.js`, `js/ocarina-ui.js` after `js/pan.js`.
 - Because the bundle is one scope, top-level names must be unique across all `js/` files.
 
 ## Tests
 - Unit tests live in `tests/*.test.mjs` and use only `node:test` and `node:assert` (no dependencies, no package.json). Run them with `node --test` from the repo root.
-- Run the tests and `python3 build.py` before every commit.
+- Run the tests and `python3 build.py` before every commit (the build checks the bundle; its output stays uncommitted).
