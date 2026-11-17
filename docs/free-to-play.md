@@ -141,7 +141,7 @@ Real paths, so the website links read well and work as shared links:
 ### 2. Guest experience
 - **No wall, no popup on entry.** A deep link opens the instrument ready to play.
 - **Opening the app with no link** (e.g. from the home screen) shows the **beginner setup** (`js/setup.js`, owner-approved mock-up, built after Phase 4):
-  - "What do you play?": plain tiles (Handpan, Ocarina, Flute or whistle; the tongue drum joins when it's added), "Something else? Ask for your instrument", and "Just looking? Play a popular tuning" (the **Play** picker)
+  - "What do you play?": tiles with each instrument's picture (Handpan, Ocarina, Flute or whistle; the tongue drum joins when it's added), "Something else? Ask for your instrument", and "Just looking? Play a popular tuning" (the **Play** picker)
   - a handpan: **Play my notes** first (the app listens: middle note, then each note around it, and names the scale, stopping by itself once every note of the best match was heard), or **I know my scale** (which note is in the middle, D first; the common scales in that key, one per kind; the rest behind Show all)
   - **Ready**: the first chord to play (the minor or major chord on the middle note), Play my first chord, and Save
   - an ocarina or flute: the wizard's step for it

@@ -1744,6 +1744,7 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
   transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
 }
 .setup-tile:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.setup-tile-pic { width: 72px; height: 72px; margin: calc(-1 * var(--space-1)) 0 var(--space-1) calc(-1 * var(--space-1)); }
 .setup-tile-name { font: var(--fw-semibold) 18px/24px var(--font); }
 .setup-tile-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
 .setup-how { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: var(--space-3); color: var(--text-2); }
