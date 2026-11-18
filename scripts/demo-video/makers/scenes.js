@@ -68,13 +68,12 @@ const phone = inner => `<div class="phone"></div><div class="screen">${inner ?? 
 
   // 4–5: how
   await shot('s4', `${copy('Set it up once', 'Exactly as you built it: your scale, your layout, every bottom note.', 1)}${phone(`<img src="file://${OUT}app-pan.png">`)}`);
-  // 5a–5c: the QR code and the NFC tag, one idea each.
+  // 5a–5b: the QR code and the NFC tag, one idea each.
   const qrCard = (left, top, w, rot, label) => `<div style="position:absolute;left:${left}px;top:${top}px;width:${w}px;padding:${w * .09}px;border-radius:${w * .05}px;background:#FBF6EC;box-shadow:0 24px 60px rgba(42,40,32,.22);display:flex;flex-direction:column;align-items:center;gap:${w * .06}px;transform:rotate(${rot}deg)">
       <div class="svg" style="width:${w * .55}px">${logo}</div><div class="svg" style="width:${w * .62}px">${qr}</div>
       <div style="font-size:${w * .062}px;font-weight:600;text-align:center;line-height:1.25">${label}</div></div>`;
   const tag = (left, top, size) => `<div style="position:absolute;left:${left}px;top:${top}px;width:${size}px;height:${size}px;border-radius:50%;background:#2A2820;color:#F2E6D3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${size * .03}px;box-shadow:0 18px 44px rgba(42,40,32,.3)">
       <div class="svg" style="width:${size * .28}px">${leaf}</div><div style="font-size:${size * .15}px;font-weight:700;letter-spacing:.08em">NFC</div></div>`;
-  const badge = (left, top, ok) => `<div style="position:absolute;left:${left}px;top:${top}px;width:96px;height:96px;border-radius:50%;background:${ok ? '#4F5B2E' : '#A63A2B'};color:#fff;font-size:60px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(42,40,32,.3)">${ok ? '✓' : '✕'}</div>`;
   const label = (left, top, text) => `<div style="position:absolute;left:${left}px;top:${top}px;font-size:30px;font-weight:600;color:#6B5E48">${text}</div>`;
 
   await shot('s5a', `${copy('Print its QR code', 'On a card in the case, on the certificate, or on a sticker inside the lid. It opens this exact instrument.', 2)}
@@ -96,13 +95,6 @@ const phone = inner => `<div class="phone"></div><div class="screen">${inner ?? 
     ${tag(1560, 520, 230)}
     ${label(1560, 780, 'NFC sticker, 25 mm')}`);
 
-  await shot('s5c', `${copy('On steel, keep the tag off the shell', 'Steel blocks a normal tag: put it on the case or the card, or use an on-metal tag. Android phones and iPhone XS or newer read it without an app.', 2)}
-    <img src="${pic('handpan')}" style="position:absolute;left:1070px;top:250px;width:400px">
-    ${tag(1225, 330, 110)}${badge(1360, 230, false)}
-    ${label(1150, 690, 'On the steel')}
-    ${qrCard(1540, 230, 300, 4, 'Scan to play<br>your D Kurd')}
-    ${tag(1735, 560, 120)}${badge(1760, 170, true)}
-    ${label(1560, 760, 'On the card or the case')}`);
 
   // 6–7: the buyer's phone (recording laid on top)
   await shot('s6', `${copy('One tap: their own instrument opens', 'No app store, no sign-up.', 3)}${phone()}`);

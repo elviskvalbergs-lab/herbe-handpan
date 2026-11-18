@@ -2,7 +2,7 @@
 
 Version 1, 18 Nov 2026. **Status:** for review. This document works out the message first; voice and footage come after it's agreed.
 
-**Cut 1 exists** (`scripts/demo-video/makers/`, 16:9, about 99 s), with a voice-over. The voice is a man's, pleasant, joyful and approachable: Kokoro "Liam", an open text-to-speech model run locally by `voiceover.py` (no account; it can also use OpenAI's voices when that account has credit). The app's own handpan plays under it and gets quieter while he speaks, and each scene is as long as its line needs. Still to do: real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
+**Cut 1 exists** (`scripts/demo-video/makers/`, 16:9, about 90 s), with a voice-over. The voice is a man's, pleasant, joyful and approachable: Kokoro "Liam", an open text-to-speech model run locally by `voiceover.py` (no account; it can also use OpenAI's voices when that account has credit). The app's own handpan plays under it and gets quieter while he speaks, and each scene is as long as its line needs. Still to do: real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
 
 The rules from `docs/video-script.md` apply: why, then how, then what; "handpans, kalimbas, flutes and more"; one thing per scene; captions burned in.
 
@@ -38,7 +38,7 @@ People and small workshops who make or sell handpans, steel tongue drums, kalimb
 
 Not promised yet: embedding the playable picture on the maker's own site, or showing the maker's name and logo when the instrument opens. Both are possible later if makers ask for them.
 
-## The video (about 60 s; cut 1 runs about 99 s with the voice-over)
+## The video (about 60 s; cut 1 runs about 90 s with the voice-over)
 
 **The voice tells the story; the captions say the point.** People can read the captions themselves, so the voice doesn't repeat them. It tells what happens around them, in a friendly, excited way, and adds what the captions leave out: listening along with a friend's guitar, working offline, made in Latvia on Oak Street, free for the maker and every player. The voice-over below is what cut 1 says (`LINES` in `voiceover.py`).
 
@@ -55,7 +55,7 @@ Not promised yet: embedding the playable picture on the maker's own site, or sho
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
 | 4 | The maker sets up a custom instrument in Oakhum (the layout, bottom notes) and gets its link and QR code. | "Here's how it works. You set up the instrument once, even a scale nobody else makes. Save it with a free account, and it gets its very own link." | Set it up once, exactly as you built it |
-| 5 | A QR card goes into the case. An NFC sticker goes inside the lid. (Cut 1 shows this as three scenes: the QR code, the NFC tag, the tip for steel.) | QR code: "That link travels in the box. And it answers every 'so, what can I play?' email, before it's ever written." NFC tag: "Want a little magic? Hide it in an NFC sticker. Writing one takes a few seconds." Steel: "Making handpans or drums? Stick the tag on the case or the card. Steel blocks the signal." | A QR code or NFC tag in the box |
+| 5 | A QR card goes into the case. An NFC sticker goes inside the lid. (Cut 1 shows this as two scenes: the QR code, then the NFC tag. It leaves out where to put a tag on steel until on-metal tags have been tried on a real handpan.) | QR code: "That link travels in the box. So your buyers never have to write and ask you what to play." NFC tag: "Want a little magic? Hide it in an NFC sticker. Writing one takes a few seconds." | A QR code or NFC tag in the box |
 | 6 | The buyer unboxes it, holds the phone to the tag, and their instrument opens in Oakhum. | "And now the best part. They unbox it, tap their phone… and there it is: ready to play!" | One tap: their own instrument |
 
 ### 3. What

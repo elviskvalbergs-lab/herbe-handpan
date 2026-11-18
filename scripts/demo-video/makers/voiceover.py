@@ -52,12 +52,9 @@ LINES = {
     's4':   ["Here's how it works.", "You set up the instrument once, even a scale nobody else makes.",
              "Save it with a free account, and it gets its very own link."],
     # [Print its QR code. On a card in the case, on the certificate...]
-    's5a':  ["That link travels in the box.",
-             "And it answers every \"so, what can I play?\" email, before it's ever written."],
+    's5a':  ["That link travels in the box.", "So your buyers never have to write and ask you what to play."],
     # [Or write it to an NFC tag. A sticker costs cents...]
     's5b':  ["Want a little magic?", "Hide it in an NFC sticker. Writing one takes a few seconds."],
-    # [On steel, keep the tag off the shell...]
-    's5c':  ["Making handpans or drums?", "Stick the tag on the case or the card. Steel blocks the signal."],
     # [One tap: their own instrument opens. No app store, no sign-up.]
     's6':   ["And now the best part.", "They unbox it, tap their phone…", "and there it is: ready to play!"],
     # [Every chord it can play. Songs step by step, and help to join any jam.]
