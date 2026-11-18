@@ -319,11 +319,13 @@ function fgFluteBody(style, y0, blown) {
 }
 const FG_STRIP_H = 34;
 
-// Round pendant body only for small single-chamber ocarinas (4 holes or
-// fewer, like the English-system pendants); everything else is transverse.
+// Round pendant body for small single-chamber ocarinas (up to 4 holes on top,
+// like the English-system pendants); everything else is transverse.
 function fgIsPendant(inst) {
   const chambers = inst.chambers ?? [];
-  const holes = Math.max(0, ...chambers.map(c => c.holes.length));
+  // Up to four finger holes on top; thumb holes underneath don't count
+  // (a 6-hole English pendant is four on top and two thumbs).
+  const holes = Math.max(0, ...chambers.map(c => c.holes.filter(h => h.side !== 'bottom').length));
   return chambers.length === 1 && holes <= 4;
 }
 
@@ -585,7 +587,7 @@ function fgFlatParts(ctx, tube) {
       let x, y;
       if (h.side === 'bottom') { x = FG_THUMB_X[h.finger] ?? FG_W / 2; y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2; }
       else if (tube) [x, y] = tubeXY[i];
-      else { [x, y] = geo.pos[h.finger] ?? [FG_W / 2, geo.bodyH / 2]; y += y0; }
+      else { [x, y] = h.px != null ? [h.px, h.py] : geo.pos[h.finger] ?? [FG_W / 2, geo.bodyH / 2]; y += y0; }
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }
       if (split) y += (sameFinger.indexOf(h) - (sameFinger.length - 1) / 2) * (16 / Math.max(1, sameFinger.length - 1));
       if (h.sub) { x += 13; y += 15; }

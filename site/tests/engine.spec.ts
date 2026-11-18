@@ -8,7 +8,10 @@ describe("the site reads the app's catalogue", () => {
     const hp = handpanTunings();
     expect(hp.length).toBe(62);
     expect(new Set(hp.map((t) => t.slug)).size).toBe(hp.length);
-    expect(chartTunings("ocarina").length).toBe(36);
+    const oc = chartTunings("ocarina");
+    expect(oc.length).toBe(72); // 12-hole (36 keys) and 6-hole pendant (36 keys)
+    expect(new Set(oc.map((t) => t.slug)).size).toBe(oc.length);
+    expect(oc.some((t) => t.slug === "pendant-6-c-c6")).toBe(true);
     for (const t of [...hp, ...chartTunings("ocarina"), ...chartTunings("flute")]) expect(t.path).toMatch(/^\/(handpan|ocarina|flute)\/[a-z0-9-]+$/);
   });
 

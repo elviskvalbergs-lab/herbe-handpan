@@ -1733,6 +1733,10 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .setup-count { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .setup-guide-pan .pan-note { cursor: pointer; }
 .setup-wind-steps { justify-content: center; margin-bottom: var(--space-2); }
+/* Identify on an ocarina or flute: the fingering of the last note tapped, then its notes to tap. */
+.oc-id { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; }
+.oc-id-fg { width: min(100%, 260px); }
+.oc-id-notes { justify-content: center; }
 .setup-wind-steps .chip.is-done { color: var(--text-2); }
 .setup-wind-finger { padding: var(--space-2) 0; }
 /* The place to play next: over the empty-place style (pan-drawing.css uses !important). */

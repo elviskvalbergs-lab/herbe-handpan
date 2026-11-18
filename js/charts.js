@@ -216,6 +216,39 @@ export const TRADITIONAL_CHARTS = [
       [20, 'OOOOO|OOOOO|OO'],
     ]),
   },
+  {
+    // 6-hole pendant ocarina, English system: four finger holes on top in a
+    // 2 × 2 grid and two thumb holes underneath.
+    id: 'ocarina-6-stl-c',
+    family: 'ocarina',
+    name: '6-hole pendant ocarina in C',
+    sourceName: 'STL Ocarina',
+    source: [
+      'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/6_Hole_C_Major_Chart.pdf',
+      'https://cdn.shopify.com/s/files/1/0103/7756/0119/files/6HoleFinalPDF.pdf',
+      'https://www.stlocarina.com/pages/booklets',
+    ],
+    notes: 'STL Ocarina "A Complete Fingering Chart for 6 Hole Ocarina in C Major" (© 2020), read from the chart at high resolution and checked note by note: 17 notes, C to E an octave and a third up, fully chromatic; the only half-holes are C# (right middle half) and D# (right index half); no alternates. Which finger covers which hole is from STL\'s booklet "The Art of Ocarina – A Guide for Your New 4 or 6-Hole Ocarina", page 2: middle fingers on the upper pair, index fingers on the lower pair, thumbs on the two holes under the body. Hole sizes are relative, as drawn on the chart (upper pair and thumb holes small, lower pair large; not to scale). The chart is written in C and "the actual pitch will be higher than written": STL\'s 6-hole soprano in C sounds C6 to E7. Other keys use the same fingerings shifted, as STL publishes the same chart in E, F, G, B-flat and B. Positions (px, py) place the holes as on the chart\'s drawing.',
+    writtenKey: 'C',
+    tonicOffset: 0,
+    lowestOctaves: [4, 5, 6],
+    defaultKey: 'C-C6',
+    holes: [
+      { id: 'L2', finger: 'L2', side: 'top', rel: 0.6, px: 122, py: 62 },
+      { id: 'R2', finger: 'R2', side: 'top', rel: 0.6, px: 178, py: 62 },
+      { id: 'L1', finger: 'L1', side: 'top', rel: 1, px: 116, py: 112 },
+      { id: 'R1', finger: 'R1', side: 'top', rel: 1, px: 184, py: 112 },
+      { id: 'LT', finger: 'LT', side: 'bottom', rel: 0.6 },
+      { id: 'RT', finger: 'RT', side: 'bottom', rel: 0.6 },
+    ],
+    keys: tonicKeys(0, [4, 5, 6]),
+    // Holes in the order above: left middle, right middle, left index, right index | left thumb, right thumb.
+    fingerings: rows([
+      [0, 'XXXX|XX'], [1, 'XHXX|XX'], [2, 'XOXX|XX'], [3, 'XOXH|XX'], [4, 'XXXO|XX'], [5, 'XOXO|XX'],
+      [6, 'OXXX|XX'], [7, 'OOXX|XX'], [8, 'OXXO|XX'], [9, 'OOXO|XX'], [10, 'OOOX|XX'], [11, 'OXOO|XX'],
+      [12, 'OOOO|XX'], [13, 'OXOO|OX'], [14, 'OOOO|OX'], [15, 'OXOO|OO'], [16, 'OOOO|OO'],
+    ]),
+  },
 ];
 
 export function getChart(id) {

@@ -45,24 +45,47 @@ test('listening stops by itself once every note of the best match was heard', ()
 });
 
 test('ocarinas and flutes in the same setup: every chart key a tuning, matched by the notes heard', async () => {
-  const { chartSetupTunings, setupRoots, setupScalesFor, setupFirstChord, setupKeyNote } = await import('../js/setup.js');
+  const { chartSetupTunings, setupRoots, setupScalesFor, setupFirstChord, setupKeyNote, preferCommonChart } = await import('../js/setup.js');
   const { rankScalesByNotes } = await import('../js/scalefinder.js');
   const { findAllChords } = await import('../js/chords.js');
   const { createLayoutFromScale } = await import('../js/data.js');
   const oc = chartSetupTunings('ocarina');
-  assert.equal(oc.length, 36);
-  assert.ok(oc.every(t => t.id.startsWith('chart:ocarina-12-stl-c/') && t.chartId && t.keyId));
+  assert.equal(oc.filter(t => t.chartId === 'ocarina-12-stl-c').length, 36);
+  assert.ok(oc.every(t => t.id.startsWith('chart:ocarina-') && t.chartId && t.keyId));
   // An alto C ocarina: the lowest note (every hole closed) A4, then up the scale.
-  const alto = rankScalesByNotes([69, 71, 72, 74, 76, 77, 79, 81], oc)[0].scale;
+  // A 6-hole pendant in A plays these notes too: the more common 12-hole goes first.
+  const alto = preferCommonChart(rankScalesByNotes([69, 71, 72, 74, 76, 77, 79, 81], oc), 'ocarina')[0].scale;
   assert.equal(alto.id, 'chart:ocarina-12-stl-c/C-A4');
   assert.equal(alto.name, 'Alto C 12-hole ocarina');
   // "I know my key": C first, and C's three ocarinas.
   assert.equal(setupRoots(oc, { first: 0 })[0].pc, 0);
-  assert.deepEqual(setupScalesFor(oc, 0).map(t => t.keyId).sort(), ['C-A3', 'C-A4', 'C-A5']);
+  assert.deepEqual(setupScalesFor(oc, 0).filter(t => t.chartId === 'ocarina-12-stl-c').map(t => t.keyId).sort(), ['C-A3', 'C-A4', 'C-A5']);
   // A tin whistle in D, told from a Native American flute in D by its F#.
   const fl = chartSetupTunings('flute');
   assert.equal(rankScalesByNotes([62, 64, 66, 67, 69, 71, 73, 74], fl)[0].scale.id, 'chart:tin-whistle-d/D');
   // The first chord on an instrument in a major key is its major chord.
   const c = setupFirstChord(findAllChords(createLayoutFromScale(alto)), setupKeyNote(alto), { prefer: 'maj' });
   assert.equal(c.id, 'C-maj');
+});
+
+test('the 6-hole pendant ocarina: STL\'s chart, chromatic over 16 semitones, drawn as a pendant', async () => {
+  const { getChart, instrumentFromChart } = await import('../js/charts.js');
+  const { renderFingering } = await import('../js/ocarina-ui.js');
+  const { linkFor, parseLink } = await import('../js/links.js');
+  const chart = getChart('ocarina-6-stl-c');
+  assert.ok(chart.source.every(u => /^https:\/\//.test(u)));
+  assert.deepEqual(chart.fingerings.map(f => f.offset), [...Array(17).keys()]);
+  assert.ok(chart.fingerings.every(f => f.states.length === 6));
+  const inst = instrumentFromChart(chart.id, 'C-C6');
+  assert.equal(inst.name, '6-hole pendant ocarina in C (C6)');
+  assert.equal(inst.chambers[0].notes.length, 17);
+  // C D E on top of the scale: D lifts the right middle finger, E the right index.
+  const f = midi => inst.chambers[0].fingerings[midi].join('');
+  assert.equal(f(84), 'cccccc');
+  assert.equal(f(86), 'cocccc');
+  assert.equal(f(88), 'ccocc'.slice(0, 2) + 'coc' + 'c');
+  assert.match(renderFingering(inst, 84), /fg-body/);
+  const path = linkFor({ chartId: chart.id, keyId: 'C-C6' });
+  assert.equal(path, '/ocarina/pendant-6-c-c6');
+  assert.deepEqual([parseLink(path).chartId, parseLink(path).keyId], [chart.id, 'C-C6']);
 });

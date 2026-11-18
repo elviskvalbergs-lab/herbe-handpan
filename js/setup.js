@@ -111,3 +111,13 @@ export function chartSetupTunings(family) {
   chartTuningCache.set(family, list);
   return list;
 }
+
+// Two charts that explain the notes heard equally well (both chromatic from
+// the same lowest note: a 12-hole alto C and a 6-hole pendant in A) can't be
+// told apart by ear; the more common type, listed first, goes first.
+export function preferCommonChart(ranked, family) {
+  const order = chartsForFamily(family).map(c => c.id);
+  const tie = (a, b) => a.scale.chartId && b.scale.chartId && a.matched.length === b.matched.length
+    && a.ding === b.ding && a.missing.length === b.missing.length;
+  return [...ranked].sort((a, b) => (tie(a, b) ? order.indexOf(a.scale.chartId) - order.indexOf(b.scale.chartId) : b.score - a.score));
+}

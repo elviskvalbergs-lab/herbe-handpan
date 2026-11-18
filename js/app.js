@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -1371,7 +1371,7 @@ const SETUP_WIND_TYPES = {
   ocarina: [
     { name: '12 holes', hint: 'Transverse (“sweet potato”), the most common', group: ['ocarina-12-stl-c'] },
     { name: '4 holes', hint: 'Small pendant', holes: 4 },
-    { name: '6 holes', hint: 'Pendant, English system', holes: 6 },
+    { name: '6 holes', hint: 'Pendant, English system (4 on top, 2 thumbs)', group: ['ocarina-6-stl-c'] },
     { name: '7 holes', hint: 'Pendant', holes: 7 },
     { name: '8 holes', hint: 'Pendant', holes: 8 },
     { name: '10 holes', hint: 'Transverse', holes: 10 },
@@ -1604,7 +1604,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'match') {
     const notes = state.listen?.notes ?? [];
-    const ranked = rankScalesByNotes(notes, tunings).filter(r => r.ding !== 'none');
+    const ranked = (fi.wind ? preferCommonChart(rankScalesByNotes(notes, tunings), st.family) : rankScalesByNotes(notes, tunings)).filter(r => r.ding !== 'none');
     const best = ranked[0];
     if (!best) {
       return stepFrame({
@@ -2759,14 +2759,52 @@ function viewOcarinaChords(inst) {
     ${chordFilterRowHtml({ open: 'oc-filters-open', count: nFilters, roots: chordRootsOf(model.chords), root: oc.root ?? 'All', rootAction: 'oc-filter-root' })}
     <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>`;
   const stage = oc.listen ? listenOcStageParts(inst)
+    : oc.identify ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
-  const modeSeg = uiSeg([{ value: 'browse', label: 'Browse' }, { value: 'listen', label: 'Listen' }], oc.listen ? 'listen' : 'browse',
-    { action: 'oc-listen-mode', label: 'Find chords by' });
+  const modeSeg = uiSeg([{ value: 'browse', label: 'Browse' }, { value: 'identify', label: 'Identify' }, { value: 'listen', label: 'Listen' }],
+    oc.listen ? 'listen' : oc.identify ? 'identify' : 'browse', { action: 'oc-listen-mode', label: 'Find chords by' });
   return `${ocHeader(inst, 'chords')}${chordsScreenHtml({
-    cls: ' oc-chords', stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
+    cls: ` oc-chords${oc.identify ? ' is-identify' : ''}`, stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
     picture: stage.picture, card: stage.card,
-    listHead: `${modeSeg}${oc.listen ? '' : listHead}`, list: oc.listen ? listenHistoryHtml() : rows + missing,
+    listHead: `${modeSeg}${oc.listen || oc.identify ? '' : listHead}`,
+    list: oc.listen ? listenHistoryHtml() : oc.identify ? stage.list : rows + missing,
   })}`;
+}
+
+// Identify on an ocarina or flute, as on a handpan: tap notes, see the
+// chords they make. The picture is the instrument's own notes to tap, with
+// the fingering of the last one; a chord found opens in Browse, where its
+// fingerings, playlists and octaves are.
+function ocIdentifyParts(inst, model) {
+  const oc = state.oc;
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const picked = oc.idNotes ?? [];
+  const last = picked[picked.length - 1];
+  const picture = `
+      <div class="oc-id">
+        ${last != null ? `<div class="oc-id-fg">${renderFingering(inst, last, { size: 'medium', useFlats: uf, useSolfege: us })}</div>` : ''}
+        <div class="chips oc-id-notes" role="group" aria-label="Notes of this instrument">
+          ${playableMidis(inst).map(m => `<button type="button" class="chip${picked.includes(m) ? ' is-selected' : ''}" data-action="oc-id-note" data-midi="${m}" aria-pressed="${picked.includes(m)}">${escHtml(nn(m))}</button>`).join('')}
+        </div>
+      </div>`;
+  const card = chordCardHtml({
+    title: picked.length ? picked.map(nn).join(' · ') : 'Tap notes to name a chord',
+    metas: [[picked.length < 2 ? 'Tap two or more notes. Tap again to remove one.' : `${picked.length} notes`]],
+    actions: picked.length ? `
+          <button type="button" class="btn btn-primary hp-play" data-action="oc-id-play"${picked.length < 2 ? ' disabled' : ''}>${icon('play')} Play</button>
+          <button type="button" class="btn btn-secondary" data-action="oc-id-clear">Clear</button>` : '',
+  });
+  const matches = picked.length >= 2 ? identifyChord(picked.map(midiToNoteName)) : [];
+  const known = new Set(model.items.map(x => x.chord.id));
+  const list = picked.length < 2 ? '<p class="hp-hint">Select 2 or more notes to identify a chord.</p>'
+    : !matches.length ? `<div class="list">${uiRow({ title: 'Custom combination', meta: `Not a recognized chord type · ${picked.length} notes` })}</div>`
+    : `<div class="list">${matches.map(m => uiRow({
+      title: `${displayNote(m.rootName, uf, us)} ${escHtml(m.type.name)}`,
+      meta: `${escHtml(m.type.category)} · ${m.notes.map(n => escHtml(displayNote(n, uf, us))).join(', ')}`,
+      ...(known.has(m.id) ? { chevron: true, action: 'oc-id-open', data: { id: m.id } } : {}),
+    })).join('')}</div>`;
+  return { picture, card, list, key: 'identify' };
 }
 
 // What ocarina / flute put into the shared Chords screen: the picture (one
@@ -9102,9 +9140,33 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'oc-listen-mode') {
-    const on = el.dataset.value === 'listen';
-    if (on === !!state.oc.listen) return;
-    state.oc.listen = on;
+    const want = el.dataset.value;
+    const now = state.oc.listen ? 'listen' : state.oc.identify ? 'identify' : 'browse';
+    if (want === now) return;
+    state.oc.listen = want === 'listen';
+    state.oc.identify = want === 'identify';
+    state.oc.idNotes = [];
+    render();
+    return;
+  }
+  if (action === 'oc-id-note') {
+    const m = parseInt(el.dataset.midi, 10);
+    const list = state.oc.idNotes ?? (state.oc.idNotes = []);
+    const i = list.indexOf(m);
+    if (i >= 0) list.splice(i, 1); else list.push(m);
+    if (i < 0) { initAudio(); playNote(midiToNoteName(m)); }
+    render();
+    return;
+  }
+  if (action === 'oc-id-clear') { state.oc.idNotes = []; render(); return; }
+  if (action === 'oc-id-play') {
+    const names = [...(state.oc.idNotes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
+    if (names.length >= 2) { initAudio(); playSequence(names, () => {}, 0.55); }
+    return;
+  }
+  if (action === 'oc-id-open') {
+    // The chord found, in Browse: its fingerings in playing order, playlists, octaves.
+    Object.assign(state.oc, { identify: false, idNotes: [], expanded: el.dataset.id, root: 'All', category: 'All', scaleFilter: 'All', counts: [] });
     render();
     return;
   }
