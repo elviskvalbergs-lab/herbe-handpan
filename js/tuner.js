@@ -54,6 +54,38 @@ export function yinPitch(buf, sampleRate, { threshold = 0.15, minHz = 70, maxHz 
   return { hz: sampleRate / better, clarity: 1 - cmnd[tau] };
 }
 
+// YIN's estimate, checked against the spectrum: the strongest peak within a
+// semitone of it (Goertzel over a Hann-windowed window, 5-cent steps, then a
+// parabola through the top three). On a drum played without damping the
+// last note still rings under the new one and YIN can settle between the
+// two; the spectrum still shows each note where it is. No peak near the
+// estimate (the strongest sound is further away): null, not a note.
+const _hann = new Map();
+export function refinePitch(buf, sampleRate, hz, { cents = 100, step = 5 } = {}) {
+  const n = buf.length;
+  let w = _hann.get(n);
+  if (!w) { w = new Float32Array(n).map((_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1))); _hann.set(n, w); }
+  const x = new Float32Array(n);
+  for (let i = 0; i < n; i++) x[i] = buf[i] * w[i];
+  const power = f => {
+    const c = 2 * Math.cos(2 * Math.PI * f / sampleRate);
+    let s1 = 0, s2 = 0;
+    for (let i = 0; i < n; i++) { const s0 = x[i] + c * s1 - s2; s2 = s1; s1 = s0; }
+    return s1 * s1 + s2 * s2 - c * s1 * s2;
+  };
+  const vals = [];
+  let bi = 0;
+  for (let k = -cents, j = 0; k <= cents; k += step, j++) {
+    vals.push(power(hz * 2 ** (k / 1200)));
+    if (vals[j] > vals[bi]) bi = j;
+  }
+  if (bi === 0 || bi === vals.length - 1) return null;
+  const a = vals[bi - 1], b = vals[bi], c = vals[bi + 1];
+  const den = a - 2 * b + c;
+  const d = den ? (a - c) / (2 * den) : 0;
+  return hz * 2 ** ((-cents + (bi + d) * step) / 1200);
+}
+
 // Reports a note only after it has held for `holdMs` within `toleranceCents`.
 // push(hz | null, timeMs) → { hz, midi, stable, since } where midi is
 // fractional and `since` is when the current stable stretch began.
@@ -229,7 +261,8 @@ export async function startTuner(onReading, { a4 = 440, minRms = TUNER_MIN_RMS }
   const timer = setInterval(() => {
     analyser.getFloatTimeDomainData(buf);
     const res = yinPitch(buf, ctx.sampleRate, { minRms });
-    onReading({ ...tracker.push(res && res.clarity > 0.8 ? res.hz : null, performance.now()), level: rmsLevel(buf) });
+    const hz = res && res.clarity > 0.8 ? refinePitch(buf, ctx.sampleRate, res.hz) : null;
+    onReading({ ...tracker.push(hz, performance.now()), level: rmsLevel(buf) });
   }, 50);
   return () => {
     clearInterval(timer);

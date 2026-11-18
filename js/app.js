@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -991,7 +991,8 @@ function startListen() {
   const where = listenScreen();
   if (!where) return;
   const notes = state.listen?.where === where ? state.listen.notes : [];
-  state.listen = { where, listening: true, notes, lastSince: null, startedTuner: !state.tuner.on || !!state.tuner.error, error: null, stopped: '', startedAt: performance.now(), heardAt: null };
+  const raw = state.listen?.where === where ? state.listen.raw : undefined;
+  state.listen = { where, listening: true, notes, raw, lastSince: null, startedTuner: !state.tuner.on || !!state.tuner.error, error: null, stopped: '', startedAt: performance.now(), heardAt: null };
   armListenIdle();
   if (state.listen.startedTuner) {
     if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
@@ -1059,9 +1060,18 @@ function onListenReading(reading) {
     setupGuideOnNote(reading.midi);
     return true;
   }
-  const next = addHeardNote(L.notes, reading.midi);
+  // Named on the instrument's own tuning, as in the guided round.
+  L.raw ??= [];
+  const off = L.where === 'setup' ? tuningOffsetCents([...L.raw, reading.midi]) : 0;
+  const next = addHeardNote(L.notes, reading.midi - off / 100);
   if (!next) return false;
-  L.notes = next;
+  L.raw.push(reading.midi);
+  if (L.where === 'setup' && state.setup) {
+    state.setup.tuningCents = off;
+    const renamed = [];
+    for (const x of L.raw) { const n = noteOnTuning(x, off); if (!renamed.includes(n)) renamed.push(n); }
+    L.notes = renamed;
+  } else L.notes = next;
   armListenIdle();
   render();
   setupOnHeard();
@@ -1340,7 +1350,12 @@ function setupGuideHeard(g) {
 function setupGuideOnNote(midi) {
   const st = state.setup;
   const g = st.guide;
-  const m = Math.round(midi);
+  // Named on the instrument's own tuning (A = 432 Hz drums): the offset
+  // from every place heard so far and this note.
+  g.raw ??= Array(g.count).fill(null);
+  const others = g.raw.filter((x, i) => x != null && i !== g.active);
+  const off = tuningOffsetCents([...others, midi]);
+  const m = noteOnTuning(midi, off);
   const name = displayNote(midiToNoteName(m), state.useFlats, state.useSolfege);
   const twin = g.notes.findIndex((x, i) => x === m && i !== g.active);
   if (twin >= 0) {
@@ -1348,9 +1363,14 @@ function setupGuideOnNote(midi) {
     render();
     return;
   }
-  g.notes[g.active] = m;
+  g.raw[g.active] = midi;
+  // The offset can change with a new note: every place heard is named again.
+  const was = st.tuningCents ?? 0;
+  st.tuningCents = tuningOffsetCents(g.raw.filter(x => x != null));
+  g.notes = g.raw.map(x => (x == null ? null : noteOnTuning(x, st.tuningCents)));
   const done = setupSlotLabel(st.family, g.active);
-  Object.assign(g, { msg: `${done[0].toUpperCase()}${done.slice(1)}: ${name} ✓`, tone: 'ok' });
+  const tuned = st.tuningCents && !was ? ` · tuned to A = ${a4ForOffset(st.tuningCents)} Hz` : '';
+  Object.assign(g, { msg: `${done[0].toUpperCase()}${done.slice(1)}: ${name} ✓${tuned}`, tone: 'ok' });
   state.listen.notes = setupGuideHeard(g);
   const next = setupGuideNextEmpty(g);
   if (next < 0) { stopListen(); setupGo('match'); return; }
@@ -1627,6 +1647,7 @@ function viewBeginnerSetup() {
           <p class="setup-result-name">${escHtml(s.name)}</p>
           ${s.desc ? `<p class="setup-result-desc">${escHtml(s.desc)}</p>` : ''}
           <p class="setup-result-notes">${escHtml(setupNotesText(s))}</p>
+          ${st.tuningCents ? `<p class="setup-result-desc">Tuned to A = ${a4ForOffset(st.tuningCents)} Hz, not the usual 440: Oakhum names its notes on that tuning.</p>` : ''}
           ${setupPanHtml({ scale: s, family: st.family })}
           <button type="button" class="btn btn-secondary" data-action="setup-hear" data-id="${escHtml(s.id)}">${icon('play')} Hear it</button>
         </div>
@@ -1785,6 +1806,7 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-guide-start') {
+    st.tuningCents = 0;
     st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
     return setupAction('setup-listen', el);
   }

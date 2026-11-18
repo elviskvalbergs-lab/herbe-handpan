@@ -1039,3 +1039,8 @@ The Chords screen's segment is Browse | Identify | Listen on every instrument. O
 ### Pendant ocarinas
 
 An ocarina with up to four finger holes on top is drawn as a round pendant (`fgIsPendant`; thumb holes underneath don't count), its holes where the chart draws them when the chart gives positions (`px`, `py`) and sizes (`rel`), else by finger. The 6-hole English pendant is STL's chart (`ocarina-6-stl-c`, links `/ocarina/pendant-6-…`).
+
+### Listening to real instruments
+
+- **Pitch:** YIN, then checked against the spectrum (`refinePitch`): the strongest peak within a semitone of YIN's estimate, or no note when there is none. On a drum played without damping, the last note rings under the new one and YIN alone can settle between them (a phantom note).
+- **Not on A = 440:** setting up by ear names notes on the instrument's own tuning (`tuningOffsetCents`: the offset most notes agree on, from three notes; one badly tuned note doesn't move it). A drum in 432 Hz sits about 32 cents low; its lowest tongue, struck a little lower still, read as the semitone below. The result says "Tuned to A = 432 Hz".

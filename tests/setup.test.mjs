@@ -89,3 +89,17 @@ test('the 6-hole pendant ocarina: STL\'s chart, chromatic over 16 semitones, dra
   assert.equal(path, '/ocarina/pendant-6-c-c6');
   assert.deepEqual([parseLink(path).chartId, parseLink(path).keyId], [chart.id, 'C-C6']);
 });
+
+test('an instrument tuned to A = 432 Hz: its lowest note, struck a little low, still gets its name', async () => {
+  const { tuningOffsetCents, noteOnTuning, a4ForOffset } = await import('../js/setup.js');
+  // A user's tongue drum, as the tuner reads its recording: 252.4, 288.7, 342.1, 385.8, 433.8, 486.8 Hz.
+  const raw = [252.4, 288.7, 342.1, 385.8, 433.8, 486.8].map(hz => 69 + 12 * Math.log2(hz / 440));
+  assert.equal(Math.round(raw[0]), 59, 'on A = 440 the lowest reads as B3');
+  const off = tuningOffsetCents(raw);
+  assert.ok(off <= -25 && off >= -40, `offset ${off}`);
+  assert.equal(a4ForOffset(off), 432);
+  assert.deepEqual(raw.map(m => noteOnTuning(m, off)), [60, 62, 65, 67, 69, 71], 'C4 D4 F4 G4 A4 B4');
+  // In tune on 440, or too few notes to tell: nothing moves.
+  assert.equal(tuningOffsetCents([60.02, 62.0, 64.05, 67.0]), 0);
+  assert.equal(tuningOffsetCents([59.45, 62.7]), 0);
+});
