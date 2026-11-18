@@ -2,6 +2,8 @@
 
 Version 1, 18 Nov 2026. **Status:** for review. This document works out the message first; voice and footage come after it's agreed.
 
+**Cut 1 exists** (`scripts/demo-video/makers/`, 16:9, about 65 s). The captions carry the script for now, and the sound is the app's own handpan. Still to do: the voice-over, real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
+
 The rules from `docs/video-script.md` apply: why, then how, then what; "handpans, kalimbas, flutes and more"; one thing per scene; captions burned in.
 
 ## Who it's for
