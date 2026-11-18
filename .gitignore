@@ -18,3 +18,4 @@ scripts/demo-video/makers/scenes/
 scripts/demo-video/makers/*.mp4
 scripts/demo-video/makers/*.m4a
 scripts/demo-video/makers/segments.txt
+scripts/demo-video/makers/vo*/
