@@ -8,6 +8,7 @@
 import { createClient } from "next-sanity";
 import { apiVersion, dataset, projectId, writeToken } from "../src/sanity/env";
 import * as seed from "../src/content/seed";
+import { toBlocks } from "../src/sanity/lib/blocks";
 
 // Production builds only: previews share the dataset, so a pull request's
 // preview must not change the live content before it's merged.
@@ -168,6 +169,33 @@ const FIXES: Fix[] = [
       if (doc?.storyVerseTranslation !== "Little oak, little oak,\nhow great your age:\nI was born, and found you here;\nI will die, and you will stay.") return "left as edited in the Studio";
       await client.patch("siteSettings").set({ storyVerseTranslation: seed.settings.storyVerseTranslation }).commit();
       return "set storyVerseTranslation";
+    },
+  },
+  {
+    // The privacy notice names every service that handles data (owner,
+    // 2026-11-17): Vercel, Supabase, PostHog, Sentry and Sanity. Replaced
+    // only while the page still reads exactly as the first version.
+    name: "2026-11-17-privacy-services",
+    async run() {
+      const OLD = [
+        "Oakhum is free to use without an account. This page explains what we keep and why, in plain words.",
+        "Who we are",
+        "Oakhum is made by Elvis Kvalbergs in Latvia. For anything about your data, write to oakhummusic@gmail.com.",
+        "Playing without an account",
+        "We don't ask who you are. What you set up stays in your browser until you close the tab. To see which parts of the app are used, we count visits and taps without cookies and without storing an id on your device (PostHog, with data stored in the EU). We don't record your screen.",
+        "With an account",
+        "We keep your email address and what you save: instruments, favourite chords and playlists. They are stored with Supabase in the EU. You can delete your account and everything in it from the app's settings, any time.",
+        "Requests on this website",
+        "If you send a request and leave your email, we use it only to tell you when your request is ready, then delete it. Your email is never shown on the site.",
+        "Your rights",
+        "You can ask us for a copy of your data, to correct it or to delete it, and you can complain to the Latvian Data State Inspectorate (dvi.gov.lv)."
+      ];
+      const doc = await client.fetch<{ _id: string; t?: string[] } | null>(`*[_id == "page-privacy"][0]{_id, "t": body[].children[].text}`);
+      if (!doc) return "no privacy page";
+      if (JSON.stringify(doc.t ?? []) !== JSON.stringify(OLD)) return "left as edited in the Studio";
+      const page = seed.pages.find((p) => p._id === "page-privacy")!;
+      await client.patch("page-privacy").set({ body: toBlocks(page.body), updated: page.updated }).commit();
+      return "privacy notice updated";
     },
   },
 ];
