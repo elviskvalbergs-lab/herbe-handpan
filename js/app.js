@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -1371,7 +1371,7 @@ const SETUP_WIND_TYPES = {
   ocarina: [
     { name: '12 holes', hint: 'Transverse (“sweet potato”), the most common', group: ['ocarina-12-stl-c'] },
     { name: '4 holes', hint: 'Small pendant', holes: 4 },
-    { name: '6 holes', hint: 'Pendant, English system', holes: 6 },
+    { name: '6 holes', hint: 'Pendant, English system (4 on top, 2 thumbs)', group: ['ocarina-6-stl-c'] },
     { name: '7 holes', hint: 'Pendant', holes: 7 },
     { name: '8 holes', hint: 'Pendant', holes: 8 },
     { name: '10 holes', hint: 'Transverse', holes: 10 },
@@ -1604,7 +1604,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'match') {
     const notes = state.listen?.notes ?? [];
-    const ranked = rankScalesByNotes(notes, tunings).filter(r => r.ding !== 'none');
+    const ranked = (fi.wind ? preferCommonChart(rankScalesByNotes(notes, tunings), st.family) : rankScalesByNotes(notes, tunings)).filter(r => r.ding !== 'none');
     const best = ranked[0];
     if (!best) {
       return stepFrame({

@@ -44,6 +44,7 @@ const LINK_CHART_SLUGS = {
   'naf5-a': 'naf-5-in-a',
   'naf6-fs': 'naf-6-in-fs',
   'naf5-fs': 'naf-5-in-fs',
+  'ocarina-6-stl-c': 'pendant-6',
 };
 
 // 12-hole ocarinas go by voice and key, as players and makers name them
