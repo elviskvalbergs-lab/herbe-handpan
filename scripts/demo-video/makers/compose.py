@@ -50,7 +50,8 @@ def still(name, dur, zoom=True):
          '-r', str(FPS), '-t', str(dur), '-c:v', 'libx264', '-crf', '18', out])
     segs.append((out, dur))
 
-still('s1', 5.0); still('s2', 5.0); still('s3', 5.5); still('s4', 5.5); still('s5', 6.0)
+still('s1', 5.0); still('s2', 5.0); still('s3', 5.5); still('s4', 5.5)
+still('s5a', 5.5); still('s5b', 5.5); still('s5c', 6.5)  # the QR code and the NFC tag, in more detail
 
 # 6–7: the phone recording inside the phone, the words change after 6 s.
 run(['-loop', '1', '-i', 'scenes/s6.png', '-loop', '1', '-i', 'scenes/s7.png',
@@ -85,7 +86,8 @@ phone_audio = os.path.join(PARENT, 'audio.webm')
 clips = [
     clip(phone_audio, p_scale - p_audio, 7.0, 0.6, 0.55),          # the scale, under "you put weeks…"
     clip(phone_audio, p_dm - p_audio, 4.6, starts['seg_s3.mp4'] + 0.6, 0.5),  # D minor, "keep playing"
-    clip(phone_audio, p_f - p_audio, 4.6, starts['seg_s5.mp4'] + 0.8, 0.45),  # F major, the QR card
+    clip(phone_audio, p_f - p_audio, 4.6, starts['seg_s5a.mp4'] + 0.8, 0.45),  # F major, the QR card
+    clip(phone_audio, p_scale - p_audio, 6.5, starts['seg_s5c.mp4'] + 0.3, 0.35),  # the scale, softly, under the steel tip
     clip(phone_audio, p_ss - p_audio, PHONE_LEN, starts['seg_phone.mp4'], 1.0),
     clip('shop/audio.webm', 0.0, SHOP_LEN, starts['seg_shop.mp4'] + max(0.0, stl['audioOffset'] - SHOP_SS), 1.0),
 ]

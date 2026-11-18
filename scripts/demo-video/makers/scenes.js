@@ -68,14 +68,41 @@ const phone = inner => `<div class="phone"></div><div class="screen">${inner ?? 
 
   // 4–5: how
   await shot('s4', `${copy('Set it up once', 'Exactly as you built it: your scale, your layout, every bottom note.', 1)}${phone(`<img src="file://${OUT}app-pan.png">`)}`);
-  await shot('s5', `${copy('Put its QR code or an NFC tag in the box', 'On steel, put the tag on the case or the card. A QR code works on every phone.', 2)}
-    <div style="position:absolute;left:1120px;top:200px;width:560px;height:680px;border-radius:28px;background:#FBF6EC;box-shadow:0 30px 80px rgba(42,40,32,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;transform:rotate(-3deg)">
-      <div class="svg" style="width:300px">${logo}</div>
-      <div class="svg" style="width:330px">${qr}</div>
-      <div style="font-size:34px;font-weight:600;text-align:center;line-height:1.25">Scan to play<br>your D Kurd</div>
-    </div>
-    <div style="position:absolute;left:1600px;top:690px;width:200px;height:200px;border-radius:50%;background:#2A2820;color:#F2E6D3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:0 20px 50px rgba(42,40,32,.3)">
-      <div class="svg" style="width:56px">${leaf}</div><div style="font-size:30px;font-weight:700;letter-spacing:.08em">NFC</div></div>`);
+  // 5a–5c: the QR code and the NFC tag, one idea each.
+  const qrCard = (left, top, w, rot, label) => `<div style="position:absolute;left:${left}px;top:${top}px;width:${w}px;padding:${w * .09}px;border-radius:${w * .05}px;background:#FBF6EC;box-shadow:0 24px 60px rgba(42,40,32,.22);display:flex;flex-direction:column;align-items:center;gap:${w * .06}px;transform:rotate(${rot}deg)">
+      <div class="svg" style="width:${w * .55}px">${logo}</div><div class="svg" style="width:${w * .62}px">${qr}</div>
+      <div style="font-size:${w * .062}px;font-weight:600;text-align:center;line-height:1.25">${label}</div></div>`;
+  const tag = (left, top, size) => `<div style="position:absolute;left:${left}px;top:${top}px;width:${size}px;height:${size}px;border-radius:50%;background:#2A2820;color:#F2E6D3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${size * .03}px;box-shadow:0 18px 44px rgba(42,40,32,.3)">
+      <div class="svg" style="width:${size * .28}px">${leaf}</div><div style="font-size:${size * .15}px;font-weight:700;letter-spacing:.08em">NFC</div></div>`;
+  const badge = (left, top, ok) => `<div style="position:absolute;left:${left}px;top:${top}px;width:96px;height:96px;border-radius:50%;background:${ok ? '#4F5B2E' : '#A63A2B'};color:#fff;font-size:60px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(42,40,32,.3)">${ok ? '✓' : '✕'}</div>`;
+  const label = (left, top, text) => `<div style="position:absolute;left:${left}px;top:${top}px;font-size:30px;font-weight:600;color:#6B5E48">${text}</div>`;
+
+  await shot('s5a', `${copy('Print its QR code', 'On a card in the case, on the certificate, or on a sticker inside the lid. It opens this exact instrument.', 2)}
+    <div style="position:absolute;left:1090px;top:150px;width:440px;height:600px;background:#FBF6EC;border-radius:10px;box-shadow:0 24px 60px rgba(42,40,32,.18);padding:44px;transform:rotate(-4deg)">
+      <div style="font-size:22px;letter-spacing:.2em;color:#6B5E48">CERTIFICATE</div>
+      <div style="font-size:44px;font-weight:700;margin:14px 0 6px">D Kurd</div>
+      <div style="font-size:24px;color:#6B5E48">D3 · A3 B♭3 C4 D4 E4 F4 G4 A4</div>
+      ${[0, 1, 2, 3].map(i => `<div style="height:12px;border-radius:6px;background:#E7D9C2;margin-top:${i ? 18 : 40}px;width:${[92, 80, 86, 60][i]}%"></div>`).join('')}
+      <div class="svg" style="position:absolute;right:44px;bottom:44px;width:130px">${qr}</div></div>
+    ${qrCard(1450, 330, 380, 5, 'Scan to play<br>your D Kurd')}
+    ${label(1130, 830, 'Opens oakhum.com/handpan/d-kurd')}`);
+
+  await shot('s5b', `${copy('Or write it to an NFC tag', 'A sticker costs cents. Any free NFC app writes the link to it in a few seconds.', 2)}
+    <div class="phone" style="left:1130px;top:120px;width:380px;height:780px;border-radius:56px"></div>
+    <div class="screen" style="left:1148px;top:140px;width:344px;height:740px;border-radius:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:30px;text-align:center">
+      <div style="font-size:26px;color:#6B5E48">Write to tag</div>
+      <div style="font-size:30px;font-weight:600;word-break:break-all;background:#FBF6EC;border-radius:16px;padding:18px 16px;box-shadow:inset 0 0 0 2px #E7D9C2">oakhum.com/<br>handpan/d-kurd</div>
+      <div style="width:150px;height:150px;border-radius:50%;box-shadow:0 0 0 14px rgba(179,99,63,.18),0 0 0 32px rgba(179,99,63,.09);background:#B3633F;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:600">Hold<br>near tag</div></div>
+    ${tag(1560, 520, 230)}
+    ${label(1560, 780, 'NFC sticker, 25 mm')}`);
+
+  await shot('s5c', `${copy('On steel, keep the tag off the shell', 'Steel blocks a normal tag: put it on the case or the card, or use an on-metal tag. Android phones and iPhone XS or newer read it without an app.', 2)}
+    <img src="${pic('handpan')}" style="position:absolute;left:1070px;top:250px;width:400px">
+    ${tag(1225, 330, 110)}${badge(1360, 230, false)}
+    ${label(1150, 690, 'On the steel')}
+    ${qrCard(1540, 230, 300, 4, 'Scan to play<br>your D Kurd')}
+    ${tag(1735, 560, 120)}${badge(1760, 170, true)}
+    ${label(1560, 760, 'On the card or the case')}`);
 
   // 6–7: the buyer's phone (recording laid on top)
   await shot('s6', `${copy('One tap: their own instrument opens', 'No app store, no sign-up.', 3)}${phone()}`);
