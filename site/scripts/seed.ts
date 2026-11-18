@@ -32,6 +32,10 @@ async function main() {
     _id: "homePage", _type: "homePage", ...seed.home,
     steps: withKeys(seed.home.steps), why: withKeys(seed.home.why), memberPoints: withKeys(seed.home.memberPoints), faqs: withKeys(seed.home.faqs),
   });
+  put({
+    _id: "makersPage", _type: "makersPage", ...seed.makers,
+    why: withKeys(seed.makers.why), steps: withKeys(seed.makers.steps), offer: withKeys(seed.makers.offer), faqs: withKeys(seed.makers.faqs),
+  });
   for (const i of seed.instruments) {
     put({ ...i, _type: "instrument", slug: { _type: "slug", current: i.slug }, faqs: withKeys(i.faqs) });
   }

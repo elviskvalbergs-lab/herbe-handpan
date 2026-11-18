@@ -13,3 +13,8 @@ scripts/demo-video/*.webm
 scripts/demo-video/*.png
 scripts/demo-video/*.ffconcat
 scripts/demo-video/timeline.json
+scripts/demo-video/makers/shop/
+scripts/demo-video/makers/scenes/
+scripts/demo-video/makers/*.mp4
+scripts/demo-video/makers/*.m4a
+scripts/demo-video/makers/segments.txt

@@ -40,6 +40,28 @@ export type HomePage = {
   faqs?: QA[];
 };
 
+export type MakersPage = {
+  heroTitle: string;
+  heroText: string;
+  heroCta?: string;
+  heroSecondary?: string;
+  whyTitle?: string;
+  why?: Point[];
+  howTitle?: string;
+  steps?: Point[];
+  howNote?: string;
+  demoTitle?: string;
+  demoText?: string;
+  offerTitle?: string;
+  offer?: Point[];
+  ctaTitle?: string;
+  ctaText?: string;
+  emailSubject?: string;
+  faqTitle?: string;
+  faqs?: QA[];
+  seo?: { title?: string; description?: string };
+};
+
 export type InstrumentDoc = {
   _id: string;
   name: string;

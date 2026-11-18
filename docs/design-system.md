@@ -42,6 +42,8 @@ The four **chord colours** are earth tones that stay apart from each other in bo
 ### The website
 The website (`site/`, Next.js + Sanity) uses the same brand: Oakhum Text, the cream page, ink bands, Oak Olive buttons on cream and a lighter Clay (`#D98A63`, ink text) for the call to action on ink. Its tokens are in `site/src/app/globals.css`, with contrast checked by its tests. The handpan picture on the site is the app's own drawing (`js/pan.js` + `css/pan-drawing.css`, shared), so a change to the pan shows on both. Every instrument on the website has the same playable demo (its picture from the app's engine, chord buttons that play and light the chord); a new instrument plugs its picture into it. See "Adding an instrument" in the root CLAUDE.md.
 
+Pages are built from shared sections, so a new page (like `/makers`) reuses them instead of copying markup: `Steps` (numbered cards on a band, with an optional note under them), `Reasons` (a title on the left, title-and-text reasons on the right; `band={false}` when the next section is a band), the playable `HandpanDemo` on an ink band, `Faq`, and the ink call-to-action band. Every word comes from a Sanity document (a singleton per page, with seed text in `site/src/content/seed.ts`).
+
 ### Theme
 - Both themes are brand themes: **cream** (light) and **ink** (dark). New users get `auto`, which follows the phone's setting. A saved choice still wins.
 

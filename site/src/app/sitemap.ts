@@ -5,7 +5,7 @@ import { getInstruments, getPageSlugs } from "@/sanity/lib/data";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [instruments, pages] = await Promise.all([getInstruments(), getPageSlugs()]);
-  const urls = [SITE_URL, `${SITE_URL}/request`, ...pages.map((s) => `${SITE_URL}/${s}`)];
+  const urls = [SITE_URL, `${SITE_URL}/request`, `${SITE_URL}/makers`, ...pages.map((s) => `${SITE_URL}/${s}`)];
   for (const doc of instruments) {
     urls.push(`${SITE_URL}/instruments/${doc.slug}`);
     const { featured, all } = instrumentTunings(doc);

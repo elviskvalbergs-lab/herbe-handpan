@@ -38,7 +38,7 @@ export function RequestForm() {
     return (
       <div role="status" className="rounded-card bg-surface p-9 shadow-[inset_0_0_0_1px_var(--border)]">
         <h2 className="m-0 mb-2.5 text-[30px] font-semibold">{feedback ? "Feedback sent" : "Request sent"}</h2>
-        <p className="m-0 mb-6 text-body">{feedback ? "Thank you, every message is read. If you left your email, we may write back with a question." : "Thank you. If you left your email, we’ll write when it’s ready."}</p>
+        <p className="m-0 mb-6 text-body">{feedback ? "Thank you, every message is read. If you left your email, we’ll tell you when it’s fixed." : "Thank you. If you left your email, we’ll write when it’s ready."}</p>
         <button type="button" className={btnSecondary} onClick={() => setState("idle")}>{feedback ? "Send more feedback" : "Send another request"}</button>
       </div>
     );
@@ -77,7 +77,7 @@ export function RequestForm() {
         </div>
       ) : null}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="r-email" className="font-semibold">Email <span className="font-normal text-muted">{feedback ? "(optional, if we may ask you more)" : "(optional, to hear when it’s ready)"}</span></label>
+        <label htmlFor="r-email" className="font-semibold">Email <span className="font-normal text-muted">{feedback ? "(optional, so we can tell you when it’s fixed)" : "(optional, to hear when it’s ready)"}</span></label>
         <input id="r-email" name="email" type="email" maxLength={200} autoComplete="email" placeholder="you@example.com" className={field} />
       </div>
       <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">

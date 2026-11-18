@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateRequest } from "@/lib/requests";
+import { jiraOn, sendFeedbackToJira } from "@/lib/jiraSend";
 import { writeClient } from "@/sanity/lib/writeClient";
 
 // A new request from /request. Saved hidden (public: false): the owner decides
@@ -10,6 +11,16 @@ export async function POST(req: Request) {
   try { body = await req.json(); } catch { body = null; }
   const check = validateRequest(body);
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: 400 });
+  // Feedback goes to Jira when it's set up (src/lib/jira.ts), so it can be sorted
+  // and answered there. If Jira fails, it falls back to Sanity so nothing is lost.
+  if (check.value.kind === "feedback" && jiraOn) {
+    try {
+      await sendFeedbackToJira(check.value);
+      return NextResponse.json({ ok: true });
+    } catch (e) {
+      console.error("Feedback to Jira failed, saving it in Sanity instead", e);
+    }
+  }
   if (!writeClient) {
     return NextResponse.json({ error: "Requests can't be saved yet. Please email oakhummusic@gmail.com instead." }, { status: 503 });
   }

@@ -4,6 +4,8 @@ import { Faq } from "@/components/Faq";
 import { Features } from "@/components/Features";
 import { HandpanDemo } from "@/components/HandpanDemo";
 import { InstrumentList } from "@/components/InstrumentList";
+import { Reasons } from "@/components/Reasons";
+import { Steps } from "@/components/Steps";
 import { findTuning, handpanChords, triads } from "@/lib/engine";
 import { APP_URL } from "@/lib/site";
 import { btnCta, btnInk, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
@@ -59,22 +61,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* How it works: its own quiet band, the steps as cards that rise in
-          as they scroll into view (.step-rise in globals.css). */}
-      <section id="how" className="scroll-mt-4 bg-band">
-        <div className={`${container} py-16 lg:py-24`}>
-          {home.howTitle ? <h2 className={`${h2} m-0 mb-10 max-w-[680px] lg:mb-12`}>{home.howTitle}</h2> : null}
-          <ol className="m-0 grid list-none gap-4 p-0 md:grid-cols-3 md:gap-6">
-            {(home.steps ?? []).map((s, i) => (
-              <li key={i} className="step-rise flex flex-col gap-3 rounded-card bg-surface p-6 shadow-[inset_0_0_0_1px_var(--border)] lg:p-8">
-                <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-pill bg-accent text-[24px] font-semibold leading-none text-on-primary">{i + 1}</span>
-                <h3 className={`${h3} m-0`}>{s.title}</h3>
-                <p className="m-0 text-body">{s.text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <Steps id="how" title={home.howTitle} steps={home.steps} />
 
       <section id="instruments" className={`${container} pt-16 pb-24 lg:pt-24`}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -87,19 +74,7 @@ export default async function HomePage() {
         </p>
       </section>
 
-      <section className="bg-band">
-        <div className={`${container} flex flex-wrap gap-14 py-24`}>
-          <div className="flex-[1_1_300px]">{home.whyTitle ? <h2 className={`${h2} m-0`}>{home.whyTitle}</h2> : null}</div>
-          <div className="flex flex-[2_1_560px] flex-col gap-8">
-            {(home.why ?? []).map((w, i) => (
-              <div key={i}>
-                <h3 className={`${h3} m-0 mb-1.5`}>{w.title}</h3>
-                <p className="m-0 text-body">{w.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Reasons title={home.whyTitle} items={home.why} />
 
       <section className={`${container} pt-24`}>
         {home.accountTitle ? <h2 className={`${h2} m-0 mb-3 max-w-[760px]`}>{home.accountTitle}</h2> : null}

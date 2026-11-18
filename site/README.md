@@ -36,6 +36,12 @@ Without a Sanity project the site shows the starting content in
      manifest, icons and preview images, are fetched from there (`rewrites` in
      `next.config.ts`). Links to the app are plain paths (`/play`, `/handpan/d-kurd`).
    - `NEXT_PUBLIC_SITE_URL`: the site's own address (for the sitemap and link previews).
+   - Feedback to Jira (optional; without these, feedback is saved in Sanity):
+     `JIRA_BASE_URL` (e.g. `https://burti.atlassian.net`), `JIRA_EMAIL` and
+     `JIRA_API_TOKEN` (an Atlassian API token of the account that creates the issues),
+     `JIRA_FEEDBACK_PROJECT` (the project key) and, if not "Task",
+     `JIRA_FEEDBACK_ISSUE_TYPE`. Each piece of feedback becomes an issue labelled
+     `feedback` and `can-reply` or `anonymous`. If Jira fails, it is saved in Sanity instead.
 4. In sanity.io/manage → API → CORS origins, add the site's address with
    credentials allowed, so `/studio` can sign in.
 5. Load the starting content once: `SANITY_API_WRITE_TOKEN=… NEXT_PUBLIC_SANITY_PROJECT_ID=… pnpm seed`.
