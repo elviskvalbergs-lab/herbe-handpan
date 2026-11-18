@@ -121,3 +121,43 @@ export function preferCommonChart(ranked, family) {
     && a.ding === b.ding && a.missing.length === b.missing.length;
   return [...ranked].sort((a, b) => (tie(a, b) ? order.indexOf(a.scale.chartId) - order.indexOf(b.scale.chartId) : b.score - a.score));
 }
+
+// ── Instruments not tuned to A = 440 Hz ─────────────────────────────────────
+// Many tongue drums, handpans and kalimbas are tuned to A = 432 Hz: every
+// note about 32 cents low, so a note struck a little low (a drum's lowest
+// tongue, before it settles) is nearer the semitone below and gets the wrong
+// name. From the notes heard (fractional MIDI, as the tuner reads them) this
+// is how far the instrument sits from 440, in cents, when at least three
+// notes agree on it; 0 otherwise. A circular mean, so -30 and +45 cents
+// (a note just past the halfway point) count as the same offset.
+export function tuningOffsetCents(raw) {
+  // Each note's distance from the nearest semitone, in cents (-50..50).
+  const devs = raw.filter(Number.isFinite).map(m => (m - Math.round(m)) * 100);
+  if (devs.length < 3) return 0;
+  // Circular distance in cents (−62 and +38 are the same place).
+  const dist = (a, b) => { const d = Math.abs(a - b) % 100; return Math.min(d, 100 - d); };
+  // The offset most notes agree on (within 20 cents); one badly tuned note
+  // doesn't move it.
+  let best = 0, bestN = -1;
+  for (let c = -50; c < 50; c++) {
+    const n = devs.filter(d => dist(d, c) <= 20).length;
+    if (n > bestN || (n === bestN && Math.abs(c) < Math.abs(best))) { best = c; bestN = n; }
+  }
+  if (bestN < 3 || bestN < devs.length * 0.6) return 0;
+  // The mean of the notes that agree, around that offset.
+  const near = devs.filter(d => dist(d, best) <= 20).map(d => best + (((d - best + 150) % 100) - 50));
+  const cents = Math.round(near.reduce((a, b) => a + b, 0) / near.length);
+  return Math.abs(cents) < 12 ? 0 : cents;
+}
+
+// A note heard, named on the instrument's own tuning.
+export function noteOnTuning(rawMidi, offsetCents) { return Math.round(rawMidi - offsetCents / 100); }
+
+// What A is tuned to, for "Tuned to A = 432 Hz".
+// The common references (432 Hz, 442 Hz…) when it's within 2 Hz of one:
+// makers sell drums "in 432 Hz".
+export function a4ForOffset(offsetCents) {
+  const hz = 440 * 2 ** (offsetCents / 1200);
+  const common = [432, 435, 440, 442, 443, 444].find(c => Math.abs(c - hz) <= 2);
+  return common ?? Math.round(hz);
+}

@@ -58,3 +58,18 @@ test('the live tuner hears a quiet drum: a note at −50 dB is found, silence is
   assert.ok(res && Math.abs(res.hz - 146.83) < 1, `heard ${res?.hz}`);
   assert.equal(yinPitch(new Float32Array(4096), sr, { minRms: TUNER_MIN_RMS }), null);
 });
+
+test('a drum played without damping: the spectrum keeps each note where it is', async () => {
+  const { yinPitch, refinePitch } = await import('../js/tuner.js');
+  const sr = 48000, n = 4096;
+  // F4 (342 Hz, just struck) over D4 (289 Hz, still ringing), as in a user's recording.
+  const buf = new Float32Array(n).map((_, i) => 0.5 * Math.sin(2 * Math.PI * 342 * i / sr) + 0.3 * Math.sin(2 * Math.PI * 289 * i / sr + 1));
+  const f = refinePitch(buf, sr, 335); // a YIN estimate pulled towards the old note
+  assert.ok(f && Math.abs(f - 342) < 2, `refined to ${f}`);
+  // An estimate with no peak near it is not a note.
+  assert.equal(refinePitch(buf, sr, 307), null);
+  // A clean note stays where YIN put it.
+  const clean = new Float32Array(n).map((_, i) => Math.sin(2 * Math.PI * 261.6 * i / sr));
+  const y = yinPitch(clean, sr);
+  assert.ok(Math.abs(refinePitch(clean, sr, y.hz) - 261.6) < 1);
+});
