@@ -200,6 +200,7 @@ function render() {
   const cut = html.indexOf('<!--appbar-end-->');
   app.innerHTML = cut < 0 ? `<main class="main">${html}</main>`
     : `${html.slice(0, cut)}<main class="main">${html.slice(cut)}</main>`;
+  if (state.view === 'setup' && state.setup?.guide && !state.setup.guide.order) setupGuideOrder();
   // One listening bar whenever the microphone is on: the tuner, or Listen.
   if (state.tuner.on || listenUi().on) app.insertAdjacentHTML('beforeend', tunerStripHtml());
   ensureMicWave();
@@ -1048,6 +1049,11 @@ function onListenReading(reading) {
   const L = state.listen;
   if (!reading.stable || !(reading.hz > 0) || reading.since === L.lastSince) return false;
   L.lastSince = reading.since;
+  if (L.where === 'setup' && state.setup?.guide && state.setup.step === 'listen') {
+    armListenIdle();
+    setupGuideOnNote(reading.midi);
+    return true;
+  }
   const next = addHeardNote(L.notes, reading.midi);
   if (!next) return false;
   L.notes = next;
@@ -1215,7 +1221,29 @@ function setupRootName(pc) {
 
 // The handpan drawing of a scale, or of the notes heard so far (empty
 // places up to eight around the middle note while listening).
-function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'handpan' }) {
+function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'handpan', guide = null }) {
+  // A tongue drum's tuning drawn as the drum was described (a round note in
+  // the middle or not), when the guided round asked.
+  if (scale && !scale.chartId && family === 'tongue-drum' && state.setup?.guide) {
+    const layout = createLayoutFromScale(scale);
+    layout.centre = !!state.setup.guide.centre;
+    return `<div class="setup-pan pan-wrap">${renderPan(layout, { highlightNotes: highlight, rotated: state.ringRotated, useFlats: state.useFlats })}</div>`;
+  }
+  // The guided round: every note of the instrument as a place, the ones heard
+  // filled in where they were played, the one to play next lit.
+  if (guide && isLayoutFamily(family)) {
+    const names = guide.notes.map(m => (m == null ? 'null' : midiToNoteName(m)));
+    const rest = names.slice(1);
+    const layout = layoutFromCustomParams(new URLSearchParams({
+      ding: names[0] === 'null' ? 'D3' : names[0], top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0',
+      ...(guide.centre ? { centre: '1' } : {}),
+    }), family);
+    if (guide.notes[0] == null) layout.top.ding = null;
+    let svg = renderPan(layout, { highlightNotes: highlight, rotated: false, useFlats: state.useFlats });
+    const id = guide.active === 0 ? 'ding' : `ring-${guide.active - 1}`;
+    svg = svg.replace(`data-note-id="${id}"`, `data-note-id="${id}" data-next="1"`);
+    return `<div class="setup-pan pan-wrap setup-guide-pan">${svg}</div>`;
+  }
   // An ocarina or flute: its picture and the notes, the ones to play lit.
   if (SETUP_WIND_WORDS[family]) {
     // A chord to play: the fingering of each of its notes, in playing order,
@@ -1253,6 +1281,76 @@ function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'ha
 function setupNotesText(s) {
   const notes = setupScaleNotes(s).map(n => displayNote(n, state.useFlats, state.useSolfege));
   return s.chartId ? `${notes[0]} to ${notes.at(-1)} · ${notes.length} notes` : notes.join(' ');
+}
+
+// ── The guided round (Play my notes on a handpan, tongue drum or kalimba) ──
+// st.guide = { count, centre, notes: [midi|null] (0: the lowest note, then
+// the places around it), active, order: [index] (the playing order: round
+// the drum clockwise from the bottom, or a kalimba's keys left to right),
+// msg, tone }.
+const SETUP_GUIDE_DEFAULT = { handpan: 9, 'tongue-drum': 9, kalimba: 17 };
+function newSetupGuide(family, count = SETUP_GUIDE_DEFAULT[family] ?? 9, centre = false) {
+  return { count, centre, notes: Array(count).fill(null), active: 0, order: null, msg: '', tone: '' };
+}
+// A place by its number in the playing order (1 the lowest, then round).
+function setupSlotLabel(family, i) {
+  if (i === 0) return family === 'handpan' ? 'the ding' : 'the lowest note';
+  const order = state.setup?.guide?.order;
+  const n = order ? order.indexOf(i) + 1 : i + 1;
+  return `${setupFamilyInfo(family).thing} ${n}`;
+}
+// The playing order, read from the drawing on screen: the lowest note first,
+// then round the drum clockwise from the bottom (a kalimba: left to right).
+function setupGuideOrder() {
+  const g = state.setup?.guide;
+  const svg = document.querySelector('.setup-guide-pan svg');
+  if (!g || !svg) return;
+  const box = svg.getBoundingClientRect();
+  const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+  const places = [...svg.querySelectorAll('[data-note-id^="ring-"]')].map(el => {
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2 - cx, y = r.top + r.height / 2 - cy;
+    const a = Math.atan2(-x, y);
+    return { i: parseInt(el.dataset.noteId.slice(5), 10) + 1, key: state.setup.family === 'kalimba' ? x : (a < 0 ? a + 2 * Math.PI : a) };
+  });
+  g.order = [0, ...places.sort((p, q) => p.key - q.key).map(p => p.i)];
+}
+function setupGuideNextEmpty(g) {
+  const order = g.order ?? g.notes.map((_, i) => i);
+  const from = order.indexOf(g.active);
+  for (let k = 1; k <= order.length; k++) {
+    const i = order[(from + k) % order.length];
+    if (g.notes[i] == null) return i;
+  }
+  return -1;
+}
+// The notes heard, the lowest place first, for matching.
+function setupGuideHeard(g) {
+  const filled = g.notes.filter(m => m != null);
+  if (g.notes[0] != null) return [g.notes[0], ...g.notes.slice(1).filter(m => m != null)];
+  return [...filled].sort((a, b) => a - b);
+}
+// A steady note heard during the guided round: it fills the lit place, or
+// says why not.
+function setupGuideOnNote(midi) {
+  const st = state.setup;
+  const g = st.guide;
+  const m = Math.round(midi);
+  const name = displayNote(midiToNoteName(m), state.useFlats, state.useSolfege);
+  const twin = g.notes.findIndex((x, i) => x === m && i !== g.active);
+  if (twin >= 0) {
+    Object.assign(g, { msg: `Heard ${name}: that’s already ${setupSlotLabel(st.family, twin)}. Play a different one, or tap ${setupSlotLabel(st.family, twin)} to play it again.`, tone: 'warn' });
+    render();
+    return;
+  }
+  g.notes[g.active] = m;
+  const done = setupSlotLabel(st.family, g.active);
+  Object.assign(g, { msg: `${done[0].toUpperCase()}${done.slice(1)}: ${name} ✓`, tone: 'ok' });
+  state.listen.notes = setupGuideHeard(g);
+  const next = setupGuideNextEmpty(g);
+  if (next < 0) { stopListen(); setupGo('match'); return; }
+  g.active = next;
+  render();
 }
 
 function setupScaleNotes(scale) {
@@ -1302,6 +1400,49 @@ function viewBeginnerSetup() {
         help: 'Oakhum only listens while this screen is open. Nothing is recorded.',
         left: `<button type="button" class="btn btn-secondary" data-action="setup-know">${fi.knowBtn}</button>`,
         right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play my notes</button>`,
+      },
+    });
+  }
+
+  if (st.step === 'count') {
+    const g = st.guide ?? (st.guide = newSetupGuide(st.family));
+    const max = fi.maxNotes + 1;
+    const what = st.family === 'handpan' ? 'Count the notes on top, the ding in the middle too. Leave out any underneath.'
+      : st.family === 'kalimba' ? 'Count every key.' : 'Count every tongue, a round one in the middle too.';
+    return stepFrame({
+      header, count: count(3), title: `How many notes does your ${word} have?`, sub: what,
+      body: `
+        <div class="setup-count">
+          ${uiStepper({ value: g.count, label: 'Notes', action: 'setup-count', min: g.count <= 3, max: g.count >= max })}
+          ${st.family === 'tongue-drum' ? uiSwitchRow({ label: 'A round note in the middle', help: g.centre ? 'The lowest note is in the middle' : 'Every tongue is round the edge', on: g.centre, action: 'setup-centre' }) : ''}
+        </div>
+        ${setupPanHtml({ guide: g, family: st.family })}`,
+      bar: {
+        left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>',
+        right: `<button type="button" class="btn btn-primary" data-action="setup-guide-start">${icon('mic')} Start</button>`,
+      },
+    });
+  }
+
+  if (st.step === 'listen' && st.guide) {
+    const L = state.listen?.where === 'setup' ? state.listen : { notes: [], listening: false };
+    const g = st.guide;
+    const filled = g.notes.filter(m => m != null).length;
+    const label = setupSlotLabel(st.family, g.active);
+    const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
+      : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `${filled} of ${g.count} · listening` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
+    return stepFrame({
+      header, count: count(3),
+      title: g.notes[g.active] != null ? `Play ${label} again` : `Play ${label}`,
+      sub: `${fi.sound} The one to play is lit; tap another if you’re playing that one instead.`,
+      body: `${setupPanHtml({ guide: g, family: st.family })}
+        ${g.msg ? `<p class="setup-guide-msg is-${g.tone}" aria-live="polite">${escHtml(g.msg)}</p>` : ''}
+        ${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
+      bar: {
+        left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my ${fi.pick} instead</button>`,
+        right: L.listening || filled >= 3
+          ? `<button type="button" class="btn btn-primary" data-action="setup-heard-done"${filled >= 3 ? '' : ' disabled'}>${filled >= g.count ? 'Next' : 'That’s all my notes'}</button>`
+          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
       },
     });
   }
@@ -1458,9 +1599,29 @@ function setupAction(action, el) {
     render();
     return true;
   }
+  // Play my notes on a handpan, tongue drum or kalimba: first how many
+  // notes, then a guided round.
+  if (action === 'setup-listen' && st.step === 'how' && isLayoutFamily(st.family)) {
+    setupGo('count', { guide: newSetupGuide(st.family) });
+    return true;
+  }
+  if (action === 'setup-count') {
+    const g = st.guide;
+    const n = Math.max(3, Math.min(setupFamilyInfo(st.family).maxNotes + 1, g.count + parseInt(el.dataset.delta, 10)));
+    st.guide = newSetupGuide(st.family, n, g.centre);
+    render();
+    return true;
+  }
+  if (action === 'setup-centre') { st.guide = newSetupGuide(st.family, st.guide.count, !st.guide.centre); render(); return true; }
+  if (action === 'setup-listen-free') { st.guide = null; return setupAction('setup-listen', el); }
+  if (action === 'setup-guide-start') {
+    st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
+    return setupAction('setup-listen', el);
+  }
   if (action === 'setup-listen') {
     stopListen();
     state.listen = null;
+    if (st.guide) st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
     if (st.step !== 'listen') { st.history.push(st.step); st.step = 'listen'; }
     logEvent('setup', { step: 'listen' });
     startListen();
@@ -1479,11 +1640,21 @@ function setupAction(action, el) {
   if (action === 'setup-use-heard') {
     // The notes as heard, as the instrument's own: the lowest first, the
     // rest up from it. It opens on its own tab, ready to save.
-    const heard = [...new Set(state.listen?.notes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
-    if (heard.length < 2) return true;
     const fam = st.family;
-    const rest = heard.slice(1, 1 + layoutFamilyInfo(fam).maxNotes);
-    const params = new URLSearchParams({ ding: heard[0], top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0', name: `My ${layoutFamilyInfo(fam).word}` });
+    let params;
+    if (st.guide) {
+      // The guided round: every note where it was played, places not heard left empty to set.
+      const g = st.guide;
+      const ding = g.notes[0] ?? setupGuideHeard(g)[0];
+      if (ding == null) return true;
+      const rest = g.notes.slice(1).map(m => (m == null ? 'null' : midiToNoteName(m)));
+      params = new URLSearchParams({ ding: midiToNoteName(ding), top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0', name: `My ${layoutFamilyInfo(fam).word}`, ...(g.centre ? { centre: '1' } : {}) });
+    } else {
+      const heard = [...new Set(state.listen?.notes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
+      if (heard.length < 2) return true;
+      const rest = heard.slice(1, 1 + layoutFamilyInfo(fam).maxNotes);
+      params = new URLSearchParams({ ding: heard[0], top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0', name: `My ${layoutFamilyInfo(fam).word}` });
+    }
     stopListen();
     logEvent('setup', { step: 'scale', how: 'heard-notes' });
     state.setup = null;
@@ -1523,9 +1694,12 @@ function setupAction(action, el) {
       if (chord) { initAudio(); playSequence(chord.notes, () => {}, 0.55); }
       return true;
     }
-    const path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
+    let path = linkFor({ scaleId: s.id }, action === 'setup-first-chord' && chord ? { chord: chord.id } : {});
+    // A tongue drum described with or without a round middle note opens drawn that way.
+    if (st.family === 'tongue-drum' && st.guide && !!st.guide.centre !== !!s.centre) path += `?centre=${st.guide.centre ? 1 : 0}`;
     state.setup = null;
-    openLink(parseLink(path, ''));
+    const [pathname, search = ''] = path.split('?');
+    openLink(parseLink(pathname, search ? `?${search}` : ''));
     navPush(path);
     render();
     if (action === 'setup-save') { completePendingSave({ action: 'save-layout' }); return true; }
@@ -7159,6 +7333,18 @@ document.addEventListener('click', () => setVoice(voiceForState()), true);
 document.addEventListener('click', e => {
   // ── Pan note click — must be checked BEFORE the data-action early return ──
   const noteEl = e.target.closest('.pan-note');
+  // The guided setup: tapping a place says "this is the one I'm playing".
+  if (noteEl && state.view === 'setup' && state.setup?.guide && noteEl.closest('.setup-guide-pan')) {
+    const id = noteEl.dataset.noteId;
+    const g = state.setup.guide;
+    const i = id === 'ding' ? 0 : id?.startsWith('ring-') ? parseInt(id.slice(5), 10) + 1 : -1;
+    if (i >= 0 && i < g.count) {
+      g.active = i;
+      Object.assign(g, { msg: g.notes[i] != null ? `Play ${setupSlotLabel(state.setup.family, i)} again to change it.` : '', tone: '' });
+      render();
+    }
+    return;
+  }
   if (noteEl && state.layout) {
     const noteId = noteEl.dataset.noteId;
     const isEmpty = noteEl.classList.contains('empty');

@@ -1023,3 +1023,7 @@ A slim banner (`installBannerHtml`, the `.banner` style) on the start screens (M
 ### Page height
 
 Screens sized to the window (the two-column Chords screen) use `--app-h`, the visible height kept up to date by `trackAppHeight()` (`visualViewport`), falling back to `100dvh`: some Android browsers with the address bar at the bottom report a `100dvh` that isn't what's on screen.
+
+### The guided round (Play my notes)
+
+On a handpan, tongue drum or kalimba, "Play my notes" first asks how many notes (`setup-count`, and for a tongue drum whether there's a round note in the middle), then shows the instrument with that many empty places and lights the one to play (`data-next`, pulsing). The order follows the drawing on screen (`setupGuideOrder`): the lowest note first, then round the drum clockwise from the bottom, a kalimba's keys left to right; places are numbered in that order. Each note heard fills the lit place; tapping a place makes it the one being played (a filled one is played again). A note already on another place is never dropped silently: "Heard F4: that's already tongue 3…". "Not sure · just listen" keeps the free listening. The notes keep their places in "Use the notes I played", and a tongue drum keeps the answer about its middle note.
