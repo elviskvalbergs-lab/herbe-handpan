@@ -542,6 +542,11 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
   font: var(--fw-medium) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-1);
 }
 .banner .btn { flex-shrink: 0; }
+/* Add to home screen (installBannerHtml) */
+.install-banner > span:first-child { display: flex; align-items: center; gap: var(--space-2); }
+.install-banner > span:first-child .icon { flex-shrink: 0; }
+.install-banner-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.install-steps { margin: 0 0 var(--space-3); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); color: var(--text-1); }
 
 /* Pan SVG container */
 .pan-wrap { display: flex; justify-content: center; }
@@ -1308,6 +1313,7 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 .hp-card-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
 .hp-play { padding: 0 var(--space-3); }
 .hp-related .overline { margin: var(--space-3) 0 var(--space-2); }
+.hp-card .hp-related { margin-top: var(--space-2); }
 .hp-related .overline:first-child { margin-top: 0; }
 .sheet .hp-related { padding: var(--space-4) 0 var(--space-2); }
 .hp-heart.is-on { color: var(--accent-text); }
@@ -1344,10 +1350,10 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .hp-narrow { display: none !important; }
   .hp-chords {
     --hp-top: calc(var(--appbar-h) + var(--safe-top) + var(--space-4));
-    --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - env(safe-area-inset-bottom) - var(--space-4));
+    --hp-list-h: calc(var(--app-h, 100dvh) - var(--hp-top) - var(--tabbar-h) - env(safe-area-inset-bottom) - var(--space-4));
     display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: var(--space-4); align-items: start;
   }
-  body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tabbar-h) - var(--tuner-h) - env(safe-area-inset-bottom) - var(--space-4)); }
+  body.tuner-on .hp-chords { --hp-list-h: calc(var(--app-h, 100dvh) - var(--hp-top) - var(--tabbar-h) - var(--tuner-h) - env(safe-area-inset-bottom) - var(--space-4)); }
   .hp-list {
     grid-column: 1; grid-row: 1; position: sticky; top: var(--hp-top);
     max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
@@ -1362,17 +1368,19 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
     /* Taller than the window (a small window, many related chords): it scrolls. */
     max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
   }
-  .hp-pan svg { width: min(100%, 60dvh); }
+  /* The pan leaves room for the chord card below it (a tablet or an open
+     foldable is often wider than it is tall). */
+  .hp-pan svg { width: min(100%, 60dvh, max(220px, calc(var(--hp-list-h) - 260px))); }
   .hp-card { padding: var(--space-4); }
   .hp-card-head { flex-wrap: wrap; }
   .hp-card-title { font-size: var(--fs-20); line-height: var(--lh-20); }
 }
 @media (min-width: 1024px) {
   .hp-chords {
-    --hp-list-h: calc(100dvh - var(--hp-top) - var(--space-4));
+    --hp-list-h: calc(var(--app-h, 100dvh) - var(--hp-top) - var(--space-4));
     grid-template-columns: 340px minmax(0, 1fr); gap: var(--space-6);
   }
-  body.tuner-on .hp-chords { --hp-list-h: calc(100dvh - var(--hp-top) - var(--tuner-h) - var(--space-8)); }
+  body.tuner-on .hp-chords { --hp-list-h: calc(var(--app-h, 100dvh) - var(--hp-top) - var(--tuner-h) - var(--space-8)); }
   /* The pan leaves room for the chord card and its related chords below it. */
   .hp-pan svg { width: min(100%, 64dvh, max(240px, calc(100dvh - 400px))); }
   .hp-card { padding: var(--space-5); }
@@ -1721,6 +1729,20 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .setup-wind { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; }
 .setup-wind-pic { width: 160px; height: 160px; object-fit: contain; }
 .setup-wind-notes { justify-content: center; }
+/* The guided round: how many notes, then the place to play lit. */
+.setup-count { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.setup-guide-pan .pan-note { cursor: pointer; }
+/* The place to play next: over the empty-place style (pan-drawing.css uses !important). */
+.setup-guide-pan .pan-note[data-next] rect, .setup-guide-pan .pan-note[data-next] circle {
+  stroke: var(--accent) !important; stroke-width: 4 !important; stroke-dasharray: none !important;
+  fill: var(--accent-soft) !important; animation: guide-pulse 1.1s ease-in-out infinite;
+}
+.setup-guide-pan .pan-note[data-next] text { fill: var(--accent) !important; }
+@keyframes guide-pulse { 50% { stroke-opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .setup-guide-pan [data-next] rect, .setup-guide-pan [data-next] circle { animation: none; } }
+.setup-guide-msg { margin: var(--space-2) 0 0; text-align: center; font: var(--fw-semibold) var(--fs-13)/var(--lh-13) var(--font); color: var(--text-1); }
+.setup-guide-msg.is-warn { color: var(--danger, var(--accent)); }
+.setup-guide-msg.is-ok { color: var(--text-2); }
 .setup-wind-chord { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
 .setup-wind-step { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); max-width: 150px; }
 .setup-wind-step-n { font-size: var(--fs-13); font-weight: 600; color: var(--text-2); }
