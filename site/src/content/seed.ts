@@ -6,7 +6,7 @@
 // Every claim here matches what the app does today (handpan.herbe.app,
 // docs/free-to-play.md in the repository root). "On the way" lists only work
 // that is planned in the repository's design docs.
-import type { FeatureDoc, HomePage, InstrumentDoc, PageDoc, SiteSettings } from "@/sanity/lib/types";
+import type { FeatureDoc, HomePage, InstrumentDoc, MakersPage, PageDoc, SiteSettings } from "@/sanity/lib/types";
 
 export const settings: SiteSettings = {
   title: "Oakhum",
@@ -73,6 +73,51 @@ export const home: HomePage = {
     { question: "Does it work offline?", answer: "Yes, with a free account: sign in once while connected, and your instruments, chords and playlists keep working with no signal." },
     { question: "My instrument isn't listed. What can I do?", answer: "Ask for it on the request page with its name and notes. Popular requests are built first." },
   ],
+};
+
+// /makers: for people who make or sell instruments. Every claim matches the
+// app today; branding and embedding are only "ask us", not promised.
+export const makers: MakersPage = {
+  heroTitle: "Help your instruments get played",
+  heroText:
+    "You make handpans, kalimbas, flutes and more to be played, not to sit on a shelf. Oakhum gives every buyer their own instrument on their phone: every chord it can play, songs step by step, and help to join a jam. Free, for you and for them.",
+  heroCta: "Tell us about your instruments",
+  heroSecondary: "See what buyers see",
+  whyTitle: "Buyers who keep playing are your best advertising",
+  why: [
+    { title: "Past the first week", text: "Most new owners play the scale and then wonder what's next. With Oakhum they see what their notes can do, and keep going, even with no musical background." },
+    { title: "Confidence in unusual scales", text: "Anyone can hear and play a scale on oakhum.com before buying. A custom or unusual tuning is easier to choose when you can hear what it does." },
+    { title: "Fewer “what can I play?” emails", text: "One link answers it, for every instrument you sell." },
+  ],
+  howTitle: "One link in the box",
+  steps: [
+    { title: "Set it up once", text: "Pick the tuning from the list, or enter your own notes and layout, bottom notes included. Save it with a free account, and Share gives it its own link, code and QR code." },
+    { title: "Put it in the case", text: "Print the QR code on a card or the certificate, or write the link to an NFC tag." },
+    { title: "One tap for the buyer", text: "They scan the code or hold their phone to the tag, and their own instrument opens. No app store, no sign-up. They can add it to their phone as an app." },
+  ],
+  howNote:
+    "NFC tags are read without an app by Android phones and iPhone XS or newer. Steel blocks a normal tag, so on a handpan or tongue drum put it on the case or the card, or use an on-metal tag. A QR code works on every phone.",
+  demoTitle: "What your buyer sees",
+  demoText: "Tap a chord: it plays and lights up on the instrument. This is a D Kurd handpan; every scale and instrument has its own.",
+  offerTitle: "Free, for makers and players",
+  offer: [
+    { title: "A page for every scale you sell", text: "Link it from your shop, so people can hear and play a scale before they choose it." },
+    { title: "Your own tunings", text: "If a scale you build is missing, set it up as your own notes, or ask us to add it to the list." },
+    { title: "Handpans, kalimbas, flutes and more", text: "Steel tongue drums and ocarinas too. More instruments are added as people ask for them." },
+    { title: "Works on any phone", text: "In the browser or as an app on the home screen. A free account keeps their setups and works offline." },
+  ],
+  ctaTitle: "Do you make or sell instruments?",
+  ctaText: "Write to us about your instruments and scales. We'll help you set up your first ones, and we'd like to hear what would help your buyers.",
+  emailSubject: "Oakhum for makers",
+  faqTitle: "Questions from makers",
+  faqs: [
+    { question: "What does it cost?", answer: "Nothing, for you and for your buyers. Every instrument and feature is free; sharing an instrument only needs a free account." },
+    { question: "Do my buyers need to install anything or sign up?", answer: "No. The link opens in any modern browser on a phone, tablet or computer. A free account is only needed to save their own setups and use them offline." },
+    { question: "Will an NFC sticker work on a handpan?", answer: "Not directly on the steel: metal blocks a normal tag. Put it on the case, the box or a card, or use an “on-metal” NFC tag. A QR code works everywhere." },
+    { question: "My scale isn't in the list.", answer: "Set it up as your own notes, bottom notes included, and share that. Or ask us on the request page and we add it to the list." },
+    { question: "Can it show my brand or my shop?", answer: "Not yet. If that would help you, write to us: it's on the list of things makers might want." },
+  ],
+  seo: { title: "Oakhum for instrument makers", description: "Help every buyer keep playing the instrument you made: a QR code or NFC tag in the box opens it on their phone with every chord. Free." },
 };
 
 export const instruments: InstrumentDoc[] = [

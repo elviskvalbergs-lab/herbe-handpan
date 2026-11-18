@@ -30,6 +30,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
             <li><a href={APP_URL}>Open the app</a></li>
           </ul>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            <li><Link href="/makers">For instrument makers</Link></li>
             <li><Link href="/request">Request an instrument</Link></li>
             <li><Link href="/request?kind=feature">Suggest a feature</Link></li>
             <li><Link href="/privacy">Privacy</Link></li>

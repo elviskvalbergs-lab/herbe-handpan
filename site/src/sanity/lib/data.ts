@@ -2,10 +2,10 @@ import * as seed from "@/content/seed";
 import { hasSanity } from "../env";
 import { fetchData } from "./live";
 import {
-  FEATURES_QUERY, HOME_QUERY, INSTRUMENTS_QUERY, INSTRUMENT_QUERY, PAGE_QUERY, PAGE_SLUGS_QUERY, PUBLIC_REQUESTS_QUERY, SETTINGS_QUERY,
+  FEATURES_QUERY, HOME_QUERY, MAKERS_QUERY, INSTRUMENTS_QUERY, INSTRUMENT_QUERY, PAGE_QUERY, PAGE_SLUGS_QUERY, PUBLIC_REQUESTS_QUERY, SETTINGS_QUERY,
 } from "./queries";
 import { toBlocks } from "./blocks";
-import type { FeatureDoc, HomePage, InstrumentDoc, PageDoc, PublicRequest, SiteSettings } from "./types";
+import type { FeatureDoc, HomePage, MakersPage, InstrumentDoc, PageDoc, PublicRequest, SiteSettings } from "./types";
 
 // With a Sanity project connected, every getter reads Sanity and only Sanity.
 // Without one (local work, the first preview deploys) it returns the seed
@@ -15,6 +15,9 @@ export const getSettings = async (): Promise<SiteSettings> =>
   (hasSanity ? await fetchData<SiteSettings>(SETTINGS_QUERY) : null) ?? seed.settings;
 
 export const getHome = async (): Promise<HomePage> => (hasSanity ? await fetchData<HomePage>(HOME_QUERY) : null) ?? seed.home;
+
+// Falls back to the seed while the document doesn't exist yet in Sanity (the build's seed creates it).
+export const getMakers = async (): Promise<MakersPage> => (hasSanity ? await fetchData<MakersPage>(MAKERS_QUERY) : null) ?? seed.makers;
 
 export async function getInstruments(): Promise<InstrumentDoc[]> {
   if (!hasSanity) return seed.instruments;
