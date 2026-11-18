@@ -1732,6 +1732,9 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 /* The guided round: how many notes, then the place to play lit. */
 .setup-count { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .setup-guide-pan .pan-note { cursor: pointer; }
+.setup-wind-steps { justify-content: center; margin-bottom: var(--space-2); }
+.setup-wind-steps .chip.is-done { color: var(--text-2); }
+.setup-wind-finger { padding: var(--space-2) 0; }
 /* The place to play next: over the empty-place style (pan-drawing.css uses !important). */
 .setup-guide-pan .pan-note[data-next] rect, .setup-guide-pan .pan-note[data-next] circle {
   stroke: var(--accent) !important; stroke-width: 4 !important; stroke-dasharray: none !important;

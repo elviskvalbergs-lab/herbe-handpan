@@ -1049,6 +1049,11 @@ function onListenReading(reading) {
   const L = state.listen;
   if (!reading.stable || !(reading.hz > 0) || reading.since === L.lastSince) return false;
   L.lastSince = reading.since;
+  if (L.where === 'setup' && state.setup?.windGuide && state.setup.step === 'listen') {
+    armListenIdle();
+    setupWindOnNote(reading.midi);
+    return true;
+  }
   if (L.where === 'setup' && state.setup?.guide && state.setup.step === 'listen') {
     armListenIdle();
     setupGuideOnNote(reading.midi);
@@ -1353,6 +1358,90 @@ function setupGuideOnNote(midi) {
   render();
 }
 
+// ── The guided round for ocarinas and flutes ───────────────────────────────
+// st.windGuide = { group: [chartId], chartId, keyId, offset, seq: [midi],
+// idx, msg, tone }. The first note (every hole covered) gives the key; then
+// the fingering of each next note up is shown and checked against what's
+// heard. offset: octaves between the chart's written notes and the sound
+// (a tin whistle sounds an octave above its chart).
+const SETUP_WIND_TYPES = {
+  ocarina: [{ name: '12-hole ocarina', group: ['ocarina-12-stl-c'] }],
+  flute: [
+    { name: 'Tin whistle', hint: '6 holes, in D', group: ['tin-whistle-d'] },
+    { name: 'Native American flute, 6 holes', hint: 'Any key', group: ['naf6-a', 'naf6-fs', 'naf6-penta'] },
+    { name: 'Native American flute, 5 holes', hint: 'Any key', group: ['naf5-a', 'naf5-fs', 'naf5-penta'] },
+  ],
+};
+const SETUP_WIND_STEPS = 7;
+function newWindGuide(group) {
+  return { group, chartId: group[0], keyId: null, offset: 0, seq: [], idx: 0, msg: '', tone: '' };
+}
+// The key of a chart whose lowest note (every hole covered) is the one heard,
+// in any octave: { key, offset } or null.
+function windKeyFor(chart, midi) {
+  const pc = n => ((n % 12) + 12) % 12;
+  let best = null;
+  for (const k of chart.keys) {
+    const low = noteToMidi(k.lowest);
+    if (pc(low) !== pc(midi)) continue;
+    if (!best || Math.abs(low - midi) < Math.abs(noteToMidi(best.key.lowest) - midi)) best = { key: k, offset: midi - low };
+  }
+  return best;
+}
+function windGuideInst(g) {
+  const chart = getChart(g.chartId);
+  return instrumentFromChart(g.chartId, g.keyId ?? chartDefaultKey(chart));
+}
+function windNoteName(m) { return displayNote(midiToNoteName(m), state.useFlats, state.useSolfege); }
+// A steady note during the guided round.
+function setupWindOnNote(midi) {
+  const st = state.setup;
+  const g = st.windGuide;
+  const m = Math.round(midi);
+  if (g.idx === 0) {
+    // The lowest note: which chart of the type, and its key.
+    for (const id of g.group) {
+      const found = windKeyFor(getChart(id), m);
+      if (!found) continue;
+      const inst = instrumentFromChart(id, found.key.id);
+      const notes = inst.chambers[0].notes;
+      // The notes of its own scale, from the lowest up: the major scale of
+      // its key (an ocarina, a whistle), a Native American flute's minor
+      // pentatonic. No half-holed notes in between.
+      const root = noteToMidi(`${found.key.root ?? found.key.lowest.replace(/-?\d+$/, '')}4`) % 12;
+      const steps = id.startsWith('naf') ? [0, 3, 5, 7, 10] : [0, 2, 4, 5, 7, 9, 11];
+      const inScale = notes.filter(n => steps.includes((((n - root) % 12) + 12) % 12));
+      const seq = (inScale[0] === notes[0] ? inScale : [notes[0], ...inScale]).slice(0, SETUP_WIND_STEPS);
+      Object.assign(g, { chartId: id, keyId: found.key.id, offset: found.offset, seq, idx: 1,
+        msg: (t => `Lowest note ${windNoteName(m)} ✓: ${/^[AEIOU]/i.test(t) ? 'an' : 'a'} ${t}`)(linkTitle(parseLink(linkFor({ chartId: id, keyId: found.key.id })))), tone: 'ok' });
+      state.listen.notes = [m];
+      render();
+      return;
+    }
+    Object.assign(g, { msg: `Heard ${windNoteName(m)}: that isn’t the lowest note of this type. Cover every hole, thumb holes too, and blow gently.`, tone: 'warn' });
+    render();
+    return;
+  }
+  const want = g.seq[g.idx] + g.offset;
+  if (m === want) {
+    g.idx++;
+    state.listen.notes = g.seq.slice(0, g.idx).map(x => x + g.offset);
+    if (g.idx >= g.seq.length) {
+      // On to Ready first: stopping redraws the screen it's on.
+      st.scaleId = `chart:${g.chartId}/${g.keyId}`;
+      setupGo('done');
+      stopListen();
+      return;
+    }
+    Object.assign(g, { msg: `${windNoteName(m)} ✓`, tone: 'ok' });
+  } else if (g.seq.slice(0, g.idx).some(x => x + g.offset === m)) {
+    Object.assign(g, { msg: `That’s ${windNoteName(m)} again. Now play ${windNoteName(want)}: the fingering shown.`, tone: 'warn' });
+  } else {
+    Object.assign(g, { msg: `Heard ${windNoteName(m)}, expected ${windNoteName(want)}. Check that the covered holes are fully closed, and blow gently.`, tone: 'warn' });
+  }
+  render();
+}
+
 function setupScaleNotes(scale) {
   return [scale.top.ding, ...scale.top.notes, ...scale.bottom.notes].sort((a, b) => noteToMidi(a) - noteToMidi(b));
 }
@@ -1420,6 +1509,41 @@ function viewBeginnerSetup() {
       bar: {
         left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>',
         right: `<button type="button" class="btn btn-primary" data-action="setup-guide-start">${icon('mic')} Start</button>`,
+      },
+    });
+  }
+
+  if (st.step === 'windtype') {
+    return stepFrame({
+      header, count: count(3), title: `Which ${word} do you have?`, sub: 'Then Oakhum shows each fingering to play and listens.',
+      body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: t.hint ?? '', chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
+      bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>' },
+    });
+  }
+
+  if (st.step === 'listen' && st.windGuide) {
+    const L = state.listen?.where === 'setup' ? state.listen : { notes: [], listening: false };
+    const g = st.windGuide;
+    const inst = windGuideInst(g);
+    const chart = getChart(g.chartId);
+    const want = g.idx === 0 ? inst.chambers[0].notes[0] : g.seq[Math.min(g.idx, g.seq.length - 1)];
+    const prev = g.idx > 0 ? g.seq[g.idx - 1] : null;
+    const steps = g.idx === 0 ? '' : `<div class="chips setup-wind-steps">${g.seq.map((m, i) => `<button type="button" class="chip${i < g.idx ? ' is-done' : i === g.idx ? ' is-selected' : ''}" data-action="setup-wind-step" data-i="${i}"${i > g.idx ? ' disabled' : ''}>${i < g.idx ? `${icon('check')} ` : ''}${escHtml(windNoteName(m + g.offset))}</button>`).join('')}</div>`;
+    const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
+      : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? (g.idx === 0 ? 'Listening' : `${g.idx} of ${g.seq.length} · listening`) : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
+    return stepFrame({
+      header, count: count(3),
+      title: g.idx === 0 ? 'Cover every hole and blow gently' : `Now play ${windNoteName(want + g.offset)}`,
+      sub: g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.',
+      body: `${steps}
+        <div class="setup-wind setup-wind-finger">${renderFingering(inst, want, { size: 'large', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: prev })}</div>
+        ${g.msg ? `<p class="setup-guide-msg is-${g.tone}" aria-live="polite">${escHtml(g.msg)}</p>` : ''}
+        ${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
+      bar: {
+        left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my key instead</button>`,
+        right: L.listening
+          ? (g.idx > 0 ? '<button type="button" class="btn btn-secondary" data-action="setup-wind-skip">Skip this note</button>' : '')
+          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
       },
     });
   }
@@ -1613,7 +1737,40 @@ function setupAction(action, el) {
     return true;
   }
   if (action === 'setup-centre') { st.guide = newSetupGuide(st.family, st.guide.count, !st.guide.centre); render(); return true; }
-  if (action === 'setup-listen-free') { st.guide = null; return setupAction('setup-listen', el); }
+  if (action === 'setup-listen-free') { st.guide = null; st.windGuide = null; return setupAction('setup-listen', el); }
+  // Play my notes on an ocarina or flute: which type (one type: straight on),
+  // then each fingering shown and checked.
+  if (action === 'setup-listen' && st.step === 'how' && SETUP_WIND_TYPES[st.family]) {
+    const types = SETUP_WIND_TYPES[st.family];
+    if (types.length > 1) { setupGo('windtype'); return true; }
+    st.windGuide = newWindGuide(types[0].group);
+    st.history.push(st.step); st.step = 'listen';
+    stopListen(); state.listen = null; startListen();
+    return true;
+  }
+  if (action === 'setup-windtype') {
+    const t = SETUP_WIND_TYPES[st.family]?.[parseInt(el.dataset.i, 10)];
+    if (!t) return true;
+    st.windGuide = newWindGuide(t.group);
+    st.history.push(st.step); st.step = 'listen';
+    stopListen(); state.listen = null; startListen();
+    return true;
+  }
+  if (action === 'setup-wind-step') {
+    const g = st.windGuide;
+    const i = parseInt(el.dataset.i, 10);
+    if (g && i >= 0 && i <= g.idx) { g.idx = Math.max(1, i); Object.assign(g, { msg: '', tone: '' }); render(); }
+    return true;
+  }
+  if (action === 'setup-wind-skip') {
+    const g = st.windGuide;
+    if (!g || g.idx === 0) return true;
+    g.idx++;
+    if (g.idx >= g.seq.length) { st.scaleId = `chart:${g.chartId}/${g.keyId}`; setupGo('done'); stopListen(); return true; }
+    Object.assign(g, { msg: '', tone: '' });
+    render();
+    return true;
+  }
   if (action === 'setup-guide-start') {
     st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
     return setupAction('setup-listen', el);
@@ -1622,6 +1779,7 @@ function setupAction(action, el) {
     stopListen();
     state.listen = null;
     if (st.guide) st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
+    if (st.windGuide) st.windGuide = newWindGuide(st.windGuide.group);
     if (st.step !== 'listen') { st.history.push(st.step); st.step = 'listen'; }
     logEvent('setup', { step: 'listen' });
     startListen();
