@@ -1364,12 +1364,24 @@ function setupGuideOnNote(midi) {
 // the fingering of each next note up is shown and checked against what's
 // heard. offset: octaves between the chart's written notes and the sound
 // (a tin whistle sounds an octave above its chart).
+// The types asked about. With a published chart (group): the fingerings are
+// shown and checked. Without one yet (holes): the type is set up note by note
+// with the tuner in the add-instrument wizard, its holes filled in.
 const SETUP_WIND_TYPES = {
-  ocarina: [{ name: '12-hole ocarina', group: ['ocarina-12-stl-c'] }],
+  ocarina: [
+    { name: '12 holes', hint: 'Transverse (“sweet potato”), the most common', group: ['ocarina-12-stl-c'] },
+    { name: '4 holes', hint: 'Small pendant', holes: 4 },
+    { name: '6 holes', hint: 'Pendant, English system', holes: 6 },
+    { name: '7 holes', hint: 'Pendant', holes: 7 },
+    { name: '8 holes', hint: 'Pendant', holes: 8 },
+    { name: '10 holes', hint: 'Transverse', holes: 10 },
+    { name: 'Another number, or made by hand', holes: 12 },
+  ],
   flute: [
     { name: 'Tin whistle', hint: '6 holes, in D', group: ['tin-whistle-d'] },
     { name: 'Native American flute, 6 holes', hint: 'Any key', group: ['naf6-a', 'naf6-fs', 'naf6-penta'] },
     { name: 'Native American flute, 5 holes', hint: 'Any key', group: ['naf5-a', 'naf5-fs', 'naf5-penta'] },
+    { name: 'Another flute', hint: 'A recorder, a bansuri, one made by hand', holes: 6 },
   ],
 };
 const SETUP_WIND_STEPS = 7;
@@ -1516,7 +1528,7 @@ function viewBeginnerSetup() {
   if (st.step === 'windtype') {
     return stepFrame({
       header, count: count(3), title: `Which ${word} do you have?`, sub: 'Then Oakhum shows each fingering to play and listens.',
-      body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: t.hint ?? '', chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
+      body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : t.hint ? `${t.hint} · set up note by note with the tuner` : 'Set up note by note with the tuner'), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
       bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>' },
     });
   }
@@ -1719,6 +1731,10 @@ function setupAction(action, el) {
     const fam = st.family;
     const w = newWizard(homeIsEmpty());
     Object.assign(w, { families: [fam], step: fam, queue: [], history: [] });
+    // From "Which ocarina?": straight to charting your own, its holes filled in.
+    const holes = parseInt(el?.dataset?.holes ?? '', 10);
+    if (fam === 'ocarina') Object.assign(w.oc, { path: 'have', chartId: 'custom', ...(holes ? { holeCount: holes } : {}) });
+    if (fam === 'flute' && holes) Object.assign(w.fl, { chartId: 'custom', holeCount: holes });
     Object.assign(state, { wizard: w, view: 'wizard' });
     render();
     return true;
@@ -1741,16 +1757,13 @@ function setupAction(action, el) {
   // Play my notes on an ocarina or flute: which type (one type: straight on),
   // then each fingering shown and checked.
   if (action === 'setup-listen' && st.step === 'how' && SETUP_WIND_TYPES[st.family]) {
-    const types = SETUP_WIND_TYPES[st.family];
-    if (types.length > 1) { setupGo('windtype'); return true; }
-    st.windGuide = newWindGuide(types[0].group);
-    st.history.push(st.step); st.step = 'listen';
-    stopListen(); state.listen = null; startListen();
+    setupGo('windtype');
     return true;
   }
   if (action === 'setup-windtype') {
     const t = SETUP_WIND_TYPES[st.family]?.[parseInt(el.dataset.i, 10)];
     if (!t) return true;
+    if (!t.group) { el.dataset.holes = String(t.holes); return setupAction('setup-own-wind', el); }
     st.windGuide = newWindGuide(t.group);
     st.history.push(st.step); st.step = 'listen';
     stopListen(); state.listen = null; startListen();
