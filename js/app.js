@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset, collectHeardNote } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset, collectHeardNote, setupMatch } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -1149,7 +1149,7 @@ function listenReportContext() {
   const family = st?.family ?? (state.view === 'wizard' || state.view === 'selector' ? 'handpan' : null);
   let matched = null;
   if (st && L?.notes?.length && !w) {
-    const best = rankScalesByNotes(L.notes, setupTunings(st)).filter(r => r.ding !== 'none')[0];
+    const { best } = setupMatchFor(st, L.notes);
     if (best) matched = { id: best.scale.id, name: best.scale.name };
   }
   const notes = g ? g.notes.map(m => (m == null ? null : midiToNoteName(m))) : (L?.notes ?? []).map(midiToNoteName);
@@ -1373,6 +1373,15 @@ function setupOwnRowHtml(st, n) {
   return fi.wind
     ? uiRow({ lead: 'pencil', title: `Set up my ${fi.word} note by note`, meta: 'For one that isn’t in the list, or made by hand: its holes, then each fingering with the tuner.', chevron: true, action: 'setup-own-wind' })
     : uiRow({ lead: 'pencil', title: `Use the ${n} notes I played`, meta: `Your own ${fi.word}, exactly as heard. You can change any note later.`, chevron: true, action: 'setup-use-heard' });
+}
+// The match after listening (setup.js setupMatch): with the guided round's
+// count, only a tuning of that size with every note played.
+function setupMatchFor(st, notes) {
+  const tunings = setupTunings(st);
+  const fi = setupFamilyInfo(st.family);
+  const ranked = fi.wind ? preferCommonChart(rankScalesByNotes(notes, tunings), st.family) : rankScalesByNotes(notes, tunings);
+  const g = st.guide;
+  return { ...setupMatch(ranked, g ? { count: g.count, heard: notes.length } : {}), ranked };
 }
 function setupTunings(st) { return setupFamilyInfo(st?.family).tunings; }
 function setupWord(st) { return setupFamilyInfo(st?.family).word; }
@@ -1779,8 +1788,28 @@ function viewBeginnerSetup() {
 
   if (st.step === 'match') {
     const notes = state.listen?.notes ?? [];
-    const ranked = (fi.wind ? preferCommonChart(rankScalesByNotes(notes, tunings), st.family) : rankScalesByNotes(notes, tunings)).filter(r => r.ding !== 'none');
-    const best = ranked[0];
+    const { best, close: sameSize, ranked } = setupMatchFor(st, notes);
+    // The guided round knew how many notes: none of that size has them all.
+    if (!best && st.guide && notes.length >= 3) {
+      const closeLinks = sameSize.map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
+      return stepFrame({
+        header, count: count(3), title: `We heard ${notes.length} notes`,
+        body: `
+          <div class="setup-result card">
+            <p class="setup-result-lead">Your ${word}</p>
+            <p class="setup-result-name">${escHtml([...notes].sort((a, b) => a - b).map(m => nn(midiToNoteName(m))).join(' '))}</p>
+            <p class="setup-result-desc">None of the ${st.guide.count}-note ${escHtml(word)}s Oakhum knows has exactly these notes, so it’ll use them as you played them. You can change any note later.</p>
+            ${st.tuningCents ? `<p class="setup-result-desc">Tuned to A = ${a4ForOffset(st.tuningCents)} Hz, not the usual 440: Oakhum names its notes on that tuning.</p>` : ''}
+            ${setupPanHtml({ guide: { ...st.guide, active: -1 }, family: st.family })}
+          </div>
+          ${closeLinks ? `<p class="wizard-foot">Closest with ${st.guide.count} notes: ${closeLinks}</p>` : ''}
+          ${listenReportLinkHtml('Did Oakhum mishear a note?')}`,
+        bar: {
+          left: '<button type="button" class="btn btn-ghost" data-action="setup-not-right">Not quite, let me choose</button>',
+          right: `<button type="button" class="btn btn-primary" data-action="setup-use-heard">Use my ${notes.length} notes</button>`,
+        },
+      });
+    }
     if (!best) {
       return stepFrame({
         header, count: count(3), title: `We couldn’t tell which ${fi.pick} that is`,
@@ -1793,7 +1822,7 @@ function viewBeginnerSetup() {
       });
     }
     const s = best.scale;
-    const close = ranked.filter(r => r.scale.family !== s.family).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
+    const close = ranked.filter(r => r.ding !== 'none' && r.scale.family !== s.family && (!st.guide || r.total === st.guide.count)).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
     return stepFrame({
       header, count: count(3), title: `We heard ${notes.length} notes`,
       body: `

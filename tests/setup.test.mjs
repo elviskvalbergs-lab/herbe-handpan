@@ -121,3 +121,21 @@ test('listening freely on a 432 Hz drum: notes heard before the tuning was clear
   assert.equal(collectHeardNote(L, midi(343)), null);
   assert.deepEqual(collectHeardNote({ raw: [], notes: [] }, midi(252.4), { tuned: false }).notes, [59]);
 });
+
+test('a guided round of 8 notes is only matched to an 8-note tuning with all of them', async () => {
+  const { setupMatch } = await import('../js/setup.js');
+  const { TONGUE_DRUMS } = await import('../js/tonguedrums.js');
+  const midis = t => [t.top.ding, ...t.top.notes, ...t.bottom.notes].map(noteToMidi);
+  const c8 = TONGUE_DRUMS.find(t => t.id === 'TD-C-Major-8');
+  const heard8 = midis(c8);
+  assert.equal(setupMatch(rankScalesByNotes(heard8, TONGUE_DRUMS), { count: 8, heard: 8 }).best.scale.id, 'TD-C-Major-8');
+  // 8 notes of a 10-note drum: the 10-note one isn't offered as an 8-note drum.
+  for (const t10 of TONGUE_DRUMS.filter(t => midis(t).length === 10)) {
+    const heard = midis(t10).slice(0, 8);
+    const m = setupMatch(rankScalesByNotes(heard, TONGUE_DRUMS), { count: 8, heard: 8 });
+    assert.ok(!m.best || m.best.total === 8, `${t10.id} offered for 8 notes`);
+    if (m.best) assert.deepEqual([...new Set(midis(m.best.scale))].sort(), [...new Set(heard)].sort());
+  }
+  // Without a count (just listening): the best as ranked.
+  assert.ok(setupMatch(rankScalesByNotes(heard8, TONGUE_DRUMS)).best);
+});

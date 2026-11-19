@@ -179,3 +179,19 @@ export function collectHeardNote({ raw = [], notes = [] } = {}, midi, { tuned = 
   for (const x of all) { const n = noteOnTuning(x, offset); if (!renamed.includes(n)) renamed.push(n); }
   return { raw: all, notes: renamed, offset };
 }
+
+// What the setup offers after listening (ranked: rankScalesByNotes, best
+// first). With the number of notes known (the guided round: `count` places,
+// `heard` of them played), only a tuning with exactly that many notes, its
+// ding the lowest note played and every note played in it, is offered as
+// theirs: a 10-note scale that merely contains 8 notes heard isn't an 8-note
+// drum. Without one, best is null and the setup offers the notes as played,
+// with the same-size tunings that came closest. Without a count (just
+// listening), the best match as ranked.
+export function setupMatch(ranked, { count = null, heard = 0 } = {}) {
+  const withDing = ranked.filter(r => r.ding !== 'none');
+  if (!count) return { best: withDing[0] ?? null, close: [] };
+  const sameSize = withDing.filter(r => r.total === count);
+  const best = sameSize.find(r => r.ding === 'exact' && r.matched.length === heard) ?? null;
+  return { best, close: sameSize.filter(r => r !== best && r.matched.length >= heard - 2).slice(0, 2) };
+}
