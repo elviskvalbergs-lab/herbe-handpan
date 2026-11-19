@@ -16,6 +16,11 @@ it("the home hero's words are content: title, text and the three labels", () => 
   expect(home.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["heroTitle", "heroText", "heroCta", "heroListen", "heroTry"]));
 });
 
+it("the makers video's words are content, not the file", () => {
+  const makers = schemaTypes.find((t) => t.name === "makersPage") as unknown as { fields: { name: string }[] };
+  expect(makers.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["videoTitle", "videoText"]));
+});
+
 it("the footer story can carry a verse, its translation and its source", () => {
   const settings = schemaTypes.find((t) => t.name === "siteSettings") as unknown as { fields: { name: string }[] };
   expect(settings.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["story", "storyVerse", "storyVerseTranslation", "storyVerseSource"]));

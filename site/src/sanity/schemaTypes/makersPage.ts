@@ -1,7 +1,8 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
 
 // The words of /makers, the page for people who make or sell instruments.
-// The layout, the playable demo and the contact address come from the site.
+// The layout, the playable demo, the video file and the contact address come
+// from the site.
 export const makersPage = defineType({
   name: "makersPage",
   title: "Makers page",
@@ -18,6 +19,8 @@ export const makersPage = defineType({
     defineField({ name: "heroText", type: "text", rows: 3, group: "hero", validation: (r) => r.required().max(320) }),
     defineField({ name: "heroCta", title: "Main button", type: "string", group: "hero", description: "Writes an email to the site's contact address.", validation: (r) => r.max(40) }),
     defineField({ name: "heroSecondary", title: "Second button", type: "string", group: "hero", description: "Goes to the playable instrument below.", validation: (r) => r.max(40) }),
+    defineField({ name: "videoTitle", title: "Video title", type: "string", group: "hero", description: "Above the makers video, under the top of the page.", validation: (r) => r.max(70) }),
+    defineField({ name: "videoText", title: "Video text", type: "text", rows: 2, group: "hero", validation: (r) => r.max(240) }),
     defineField({ name: "whyTitle", type: "string", group: "why" }),
     defineField({ name: "why", type: "array", group: "why", of: [defineArrayMember({ type: "point" })], validation: (r) => r.max(4) }),
     defineField({ name: "howTitle", type: "string", group: "how" }),

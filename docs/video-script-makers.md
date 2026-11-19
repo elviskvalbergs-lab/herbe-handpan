@@ -2,7 +2,7 @@
 
 Version 1, 18 Nov 2026. **Status:** for review. This document works out the message first; voice and footage come after it's agreed.
 
-**Cut 1 exists** (`scripts/demo-video/makers/`, 16:9, about 90 s), with a voice-over. The voice is a man's, pleasant, joyful and approachable: Kokoro "Liam", an open text-to-speech model run locally by `voiceover.py` (no account; it can also use OpenAI's voices when that account has credit). The app's own handpan plays under it and gets quieter while he speaks, and each scene is as long as its line needs. Still to do: real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
+**Cut 1 is done and on the website** (`/makers`, `site/public/video/`; built by `scripts/demo-video/makers/`, 16:9, about 94 s). The voice is ElevenLabs' "Liam" (eleven_v4), the owner's pick over the free Kokoro voices: one take per line, kept in `scripts/demo-video/makers/takes-elevenlabs/` so the video can be rebuilt without spending credits (`voiceover.py --from takes-elevenlabs --out vo-elevenlabs`, then `compose.py vo-elevenlabs`). The app's own handpan plays under the voice and gets quieter while he speaks, with chords under every scene including the end card. Still to do: real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
 
 The rules from `docs/video-script.md` apply: why, then how, then what; "handpans, kalimbas, flutes and more"; one thing per scene; captions burned in.
 
@@ -38,7 +38,7 @@ People and small workshops who make or sell handpans, steel tongue drums, kalimb
 
 Not promised yet: embedding the playable picture on the maker's own site, or showing the maker's name and logo when the instrument opens. Both are possible later if makers ask for them.
 
-## The video (about 60 s; cut 1 runs about 90 s with the voice-over)
+## The video (about 60 s; cut 1 runs about 94 s with the voice-over)
 
 **The voice tells the story; the captions say the point.** People can read the captions themselves, so the voice doesn't repeat them. It tells what happens around them, in a friendly, excited way, and adds what the captions leave out: listening along with a friend's guitar, working offline, made in Latvia on Oak Street, free for the maker and every player. The voice-over below is what cut 1 says (`LINES` in `voiceover.py`).
 

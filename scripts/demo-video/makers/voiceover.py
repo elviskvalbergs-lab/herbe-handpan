@@ -8,6 +8,15 @@ compose.py fits each scene to its line and lays the voice over the sound.
   python3 voiceover.py --voice am_puck          # another Kokoro voice, see --list
   python3 voiceover.py --samples                # one line in every male voice, vo/samples/
   python3 voiceover.py --engine openai --out vo-openai   # OpenAI, needs OPENAI_API_KEY
+  python3 voiceover.py --from takes-elevenlabs --out vo-elevenlabs   # takes made elsewhere
+
+The video on the website uses ElevenLabs' "Liam" (eleven_v4), one take per
+line, made through the ElevenLabs connector and kept in takes-elevenlabs/
+(<scene>.mp3), so the video can be rebuilt without spending credits:
+  python3 voiceover.py --from takes-elevenlabs --out vo-elevenlabs
+  python3 compose.py vo-elevenlabs
+The last line was sent as "... [excited] Let's get your instruments PLAYED!" so
+the weight falls on "played".
 
 The captions already say what's on screen, so the voice doesn't read them: it
 tells the story around them and adds what the captions leave out (listening
@@ -112,10 +121,24 @@ def main():
     a.add_argument('--engine', choices=['kokoro', 'openai'], default='kokoro')
     a.add_argument('--voice'); a.add_argument('--speed', type=float, default=SPEED)
     a.add_argument('--out', default='vo')
+    a.add_argument('--from', dest='src', help='a folder of takes made elsewhere, <scene>.mp3')
     a.add_argument('--list', action='store_true'); a.add_argument('--samples', action='store_true')
     o = a.parse_args()
     import soundfile as sf
     out = os.path.join(HERE, o.out)
+    if o.src:
+        import subprocess
+        os.makedirs(out, exist_ok=True)
+        lines = {}
+        for scene, phrases in LINES.items():
+            raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', os.path.join(HERE, o.src, scene + '.mp3'),
+                                  '-ac', '1', '-ar', '24000', '-f', 'f32le', '-'], capture_output=True, check=True).stdout
+            s = trim(np.frombuffer(raw, dtype=np.float32), 24000)
+            sf.write(os.path.join(out, scene + '.wav'), s, 24000)
+            lines[scene] = {'text': ' '.join(phrases), 'seconds': round(len(s) / 24000, 3)}
+            print(f"{scene:6} {lines[scene]['seconds']:5.2f} s")
+        json.dump({'engine': 'takes from ' + o.src, 'lines': lines}, open(os.path.join(out, 'lines.json'), 'w'), indent=2)
+        return
     voice = o.voice or (VOICE if o.engine == 'kokoro' else OPENAI_VOICE)
     k = kokoro() if o.engine == 'kokoro' else None
     say = (lambda ph: say_kokoro(k, ph, voice, o.speed)) if k else (lambda ph: say_openai(ph, voice, o.speed))
