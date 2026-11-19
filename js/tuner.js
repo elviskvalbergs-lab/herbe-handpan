@@ -144,9 +144,11 @@ export async function openMicrophone() {
   scope.fftSize = 2048;
   source.connect(scope);
   scope.connect(sink);
-  const mic = { ctx, scope, buf: new Float32Array(scope.fftSize) };
+  const mic = { ctx, scope, buf: new Float32Array(scope.fftSize), stream };
   _mic = mic;
+  _micRecStart();
   const close = () => {
+    if (_rec?.mic === mic) _micRecStop();
     if (_mic === mic) _mic = null;
     stream.getTracks().forEach(t => t.stop());
     source.disconnect();
@@ -154,6 +156,68 @@ export async function openMicrophone() {
     ctx.close();
   };
   return { ctx, source, sink, close };
+}
+
+// What the microphone hears while Listen is on is recorded, so that someone
+// whose instrument Oakhum heard wrong can send it to us (the listening report
+// in js/app.js). It stays in memory on the device, is sent only when they say
+// so, and is gone when the page closes. One take per listening session; the
+// last three are kept, each at most three minutes (small enough to send).
+const MIC_TAKE_MS = 3 * 60 * 1000;
+const MIC_TAKES_KEPT = 3;
+let _recWanted = false;
+let _rec = null; // { r, mic, timer, take }
+const _takes = [];
+let _recDone = Promise.resolve();
+
+export function micRecordingSupported() { return typeof MediaRecorder !== 'undefined'; }
+
+/** Turns recording on (for the open microphone and any opened later) or off. */
+export function recordMic(on) {
+  _recWanted = !!on;
+  if (on) _micRecStart(); else _micRecStop();
+}
+
+function _micRecStart() {
+  if (!_recWanted || _rec || !_mic?.stream || !micRecordingSupported()) return;
+  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm']
+    .find(t => MediaRecorder.isTypeSupported?.(t)) ?? '';
+  let r;
+  try { r = new MediaRecorder(_mic.stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 48000 }); } catch { return; }
+  const take = { chunks: [], type: (r.mimeType || type || 'audio/webm').split(';')[0], start: Date.now(), ms: 0 };
+  r.ondataavailable = e => { if (e.data?.size) take.chunks.push(e.data); };
+  _recDone = new Promise(resolve => {
+    r.onstop = () => {
+      take.ms = Date.now() - take.start;
+      if (take.chunks.length && take.ms > 500) _takes.push(take);
+      while (_takes.length > MIC_TAKES_KEPT) _takes.shift();
+      resolve();
+    };
+  });
+  try { r.start(1000); } catch { return; }
+  _rec = { r, mic: _mic, take, timer: setTimeout(_micRecStop, MIC_TAKE_MS) };
+}
+
+function _micRecStop() {
+  if (!_rec) return;
+  clearTimeout(_rec.timer);
+  try { if (_rec.r.state !== 'inactive') _rec.r.stop(); } catch { /* already stopped */ }
+  _rec = null;
+}
+
+/** The takes recorded so far, oldest first: [{ blob, seconds, type }]. Waits
+ *  for a take that is still being finished. */
+export async function micTakes() {
+  await _recDone;
+  return _takes.map(t => ({ blob: new Blob(t.chunks, { type: t.type }), seconds: Math.max(1, Math.round(t.ms / 1000)), type: t.type }));
+}
+
+/** Forgets every take (a new setup, Clear). Keeps recording if it's on. */
+export function clearMicTakes() {
+  const on = !!_rec;
+  _micRecStop();
+  _takes.length = 0;
+  _recDone.then(() => { _takes.length = 0; if (on) _micRecStart(); });
 }
 
 // Draws the sound coming in on a canvas: a wave that follows the real signal,

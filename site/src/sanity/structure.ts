@@ -14,5 +14,9 @@ export const structure: StructureResolver = (S) =>
       S.documentTypeListItem("instrument").title("Instruments"),
       S.documentTypeListItem("feature").title("Features"),
       S.documentTypeListItem("request").title("Requests"),
+      // Under the "listenReports." id path, so listed by type rather than the default list.
+      S.listItem().title("Listening reports").id("listenReports").schemaType("listenReport").child(
+        S.documentList().title("Listening reports").schemaType("listenReport").filter('_type == "listenReport"').defaultOrdering([{ field: "createdAt", direction: "desc" }]),
+      ),
       S.documentTypeListItem("page").title("Pages"),
     ]);

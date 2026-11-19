@@ -103,3 +103,21 @@ test('an instrument tuned to A = 432 Hz: its lowest note, struck a little low, s
   assert.equal(tuningOffsetCents([60.02, 62.0, 64.05, 67.0]), 0);
   assert.equal(tuningOffsetCents([59.45, 62.7]), 0);
 });
+
+test('listening freely on a 432 Hz drum: notes heard before the tuning was clear are renamed', async () => {
+  const { collectHeardNote } = await import('../js/setup.js');
+  const midi = hz => 69 + 12 * Math.log2(hz / 440);
+  let L = { raw: [], notes: [] };
+  const named = [];
+  for (const hz of [252.4, 288.7, 342.1, 385.8, 433.8, 486.8]) {
+    L = collectHeardNote(L, midi(hz));
+    named.push(L.notes.join(' '));
+  }
+  // The lowest is B3 on its own, and becomes C4 once three notes agree on the tuning.
+  assert.equal(named[0], '59');
+  assert.deepEqual(L.notes, [60, 62, 65, 67, 69, 71]);
+  assert.ok(L.offset < -25 && L.offset > -40);
+  // A note heard again isn't taken twice; on A = 440 nothing is renamed.
+  assert.equal(collectHeardNote(L, midi(343)), null);
+  assert.deepEqual(collectHeardNote({ raw: [], notes: [] }, midi(252.4), { tuned: false }).notes, [59]);
+});

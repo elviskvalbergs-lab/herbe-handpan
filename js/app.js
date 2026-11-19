@@ -29,13 +29,13 @@ import {
   ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
 } from './ocarina-ui.js';
 import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch, predictFingeringHz } from './ocarina.js';
-import { startTuner, yinPitch, openMic, drawMicWave } from './tuner.js';
+import { startTuner, yinPitch, openMic, drawMicWave, recordMic, micTakes, clearMicTakes, micRecordingSupported } from './tuner.js';
 import {
   listenTracker, listenOverallConfidence, listenChordOnNotes, LISTEN_DEFAULTS,
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset, collectHeardNote } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -993,6 +993,7 @@ function startListen() {
   const notes = state.listen?.where === where ? state.listen.notes : [];
   const raw = state.listen?.where === where ? state.listen.raw : undefined;
   state.listen = { where, listening: true, notes, raw, lastSince: null, startedTuner: !state.tuner.on || !!state.tuner.error, error: null, stopped: '', startedAt: performance.now(), heardAt: null };
+  recordMic(true);
   armListenIdle();
   if (state.listen.startedTuner) {
     if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
@@ -1016,6 +1017,7 @@ function armListenIdle() {
 function stopListen(extra = {}) {
   clearTimeout(_listenTimer);
   const L = state.listen;
+  recordMic(false);
   if (!L?.listening) return;
   const startedTuner = L.startedTuner;
   Object.assign(L, { listening: false, startedTuner: false }, extra);
@@ -1061,17 +1063,11 @@ function onListenReading(reading) {
     return true;
   }
   // Named on the instrument's own tuning, as in the guided round.
-  L.raw ??= [];
-  const off = L.where === 'setup' ? tuningOffsetCents([...L.raw, reading.midi]) : 0;
-  const next = addHeardNote(L.notes, reading.midi - off / 100);
+  const next = collectHeardNote(L, reading.midi, { tuned: L.where === 'setup' });
   if (!next) return false;
-  L.raw.push(reading.midi);
-  if (L.where === 'setup' && state.setup) {
-    state.setup.tuningCents = off;
-    const renamed = [];
-    for (const x of L.raw) { const n = noteOnTuning(x, off); if (!renamed.includes(n)) renamed.push(n); }
-    L.notes = renamed;
-  } else L.notes = next;
+  L.raw = next.raw;
+  L.notes = next.notes;
+  if (L.where === 'setup' && state.setup) state.setup.tuningCents = next.offset;
   armListenIdle();
   render();
   setupOnHeard();
@@ -1110,6 +1106,7 @@ function listenPanelHtml(where) {
       </div>
       ${chips ? `<div class="chips listen-notes" aria-label="Notes heard">${chips}</div>` : ''}
       <p class="listen-hint">Most reliable: damp each note with your palm before playing the next one.</p>
+      ${!L.listening && L.notes.length ? listenReportLinkHtml('Heard a note wrong?') : ''}
     </section>`;
 }
 
@@ -1131,6 +1128,164 @@ function listenMatchesHtml(scales, action) {
   return shown.length
     ? `<h2 class="list-title">${escHtml(title)}</h2><div class="list listen-list">${rows}</div>`
     : uiEmpty({ icon: 'search', title: `No scale here has a ${name(L.notes[0])} ding`, body: 'Keep playing, or Clear and strike the ding first.' });
+}
+
+// ── Listening reports ────────────────────────────────────────────────────────
+// Hearing an instrument right is what setup by ear rests on, so every time
+// Oakhum shows what it heard it asks whether that was right. "Yes" is counted
+// (PostHog, listen_check); "not quite" offers to send what it heard and the
+// recording of it (js/tuner.js keeps the last takes in memory) to the website
+// (POST /api/listen-report), where it becomes a report in the Studio and a
+// Jira issue. We replay it (scripts/replay-listen.mjs), fix it, and write back
+// if they left their email. docs/design-system.md, "Listening to real instruments".
+const listenReportUrl = () => (/(^|\.)oakhum\.com$/.test(location.hostname) ? '/api/listen-report' : 'https://oakhum.com/api/listen-report');
+const LISTEN_REPORT_MAX_BYTES = 4_000_000; // the website takes up to 4.5 MB
+
+// What Oakhum heard and made of it, for the report and the PostHog event.
+function listenReportContext() {
+  const L = state.listen;
+  const st = state.view === 'setup' ? state.setup : null;
+  const g = st?.guide, w = st?.windGuide;
+  const family = st?.family ?? (state.view === 'wizard' || state.view === 'selector' ? 'handpan' : null);
+  let matched = null;
+  if (st && L?.notes?.length && !w) {
+    const best = rankScalesByNotes(L.notes, setupTunings(st)).filter(r => r.ding !== 'none')[0];
+    if (best) matched = { id: best.scale.id, name: best.scale.name };
+  }
+  const notes = g ? g.notes.map(m => (m == null ? null : midiToNoteName(m))) : (L?.notes ?? []).map(midiToNoteName);
+  return {
+    where: st ? 'setup' : (L?.where ?? state.view),
+    family,
+    mode: w ? 'wind-guided' : g ? 'guided' : 'free',
+    heard: notes,
+    raw: (g ? g.raw : L?.raw ?? []).filter(x => x != null).map(x => Math.round(x * 100) / 100),
+    places: g ? g.count : null,
+    windChart: w ? `${w.chartId}/${w.keyId}` : null,
+    tuningCents: st?.tuningCents ?? 0,
+    a4: st?.tuningCents ? a4ForOffset(st.tuningCents) : 440,
+    matched,
+  };
+}
+
+function listenCheckEvent(result, ctx = listenReportContext()) {
+  logEvent('listen_check', {
+    result, where: ctx.where, family: ctx.family, mode: ctx.mode,
+    notes: ctx.heard.filter(Boolean).length, a4: ctx.a4, matched: ctx.matched?.id ?? null,
+  });
+}
+
+// Opens the report sheet. `then` is the setup step to go on to afterwards.
+function openListenReport({ then = null } = {}) {
+  stopListen();
+  const ctx = listenReportContext();
+  listenCheckEvent('wrong', ctx);
+  state.listenReport = { ctx, then, takes: null, withAudio: true, comment: '', email: getUserEmail() ?? '', sending: false, sent: false, error: '' };
+  render();
+  micTakes().then(takes => {
+    const R = state.listenReport;
+    if (!R) return;
+    // The newest takes that fit in one upload.
+    let bytes = 0;
+    R.takes = takes.reverse().filter(t => (bytes += t.blob.size) <= LISTEN_REPORT_MAX_BYTES).reverse()
+      .map(t => ({ ...t, url: URL.createObjectURL(t.blob) }));
+    render();
+  });
+}
+
+function closeListenReport() {
+  const R = state.listenReport;
+  if (!R) return;
+  R.takes?.forEach(t => URL.revokeObjectURL(t.url));
+  state.listenReport = null;
+  if (R.then && state.view === 'setup' && state.setup) setupGo(R.then);
+  else render();
+}
+
+// Typed text survives a re-render (the switch, Send).
+function listenReportKeepFields() {
+  const R = state.listenReport;
+  const c = document.getElementById('lr-comment'), e = document.getElementById('lr-email');
+  if (R && c) R.comment = c.value;
+  if (R && e) R.email = e.value.trim();
+}
+
+function listenReportSheet() {
+  const R = state.listenReport;
+  const close = 'lr-close';
+  if (R.sent) {
+    return uiSheet({
+      key: 'listen-report', title: 'Thank you', close,
+      body: `<p class="sheet-text">We’ll listen to it and work out what Oakhum got wrong.${R.email ? ' We’ll write to you when it’s fixed, so you can try again.' : ''}</p>`,
+      footer: `<button type="button" class="btn btn-primary" data-action="${close}">${R.then ? 'Choose it myself' : 'Done'}</button>`,
+    });
+  }
+  const ctx = R.ctx;
+  const heard = ctx.heard.map(n => (n ? displayNote(n, state.useFlats, state.useSolfege) : '–')).join(' · ');
+  const secs = (R.takes ?? []).reduce((a, t) => a + t.seconds, 0);
+  const rec = !micRecordingSupported() ? ''
+    : R.takes == null ? '<p class="field-help">Getting the recording…</p>'
+    : !R.takes.length ? '<p class="field-help">There’s no recording this time: this browser didn’t record, or the microphone wasn’t on.</p>'
+    : `${uiSwitchRow({ label: `Send the recording (${secs} s)`, help: 'It helps most: we hear what Oakhum heard. It may also catch voices in the room.', on: R.withAudio, action: 'lr-audio' })}
+       ${R.withAudio ? `<div class="lr-takes">${R.takes.map(t => `<audio class="lr-audio" controls preload="metadata" src="${t.url}"></audio>`).join('')}</div>` : ''}`;
+  return uiSheet({
+    key: 'listen-report', title: 'Help us hear it right', close,
+    body: `
+      <p class="sheet-text">Tell us what Oakhum got wrong. We’ll listen, fix it and let you know.</p>
+      ${heard ? `<p class="lr-heard"><span class="lr-heard-label">Oakhum heard</span> ${escHtml(heard)}${ctx.a4 !== 440 ? ` <span class="lr-heard-label">· A = ${ctx.a4} Hz</span>` : ''}</p>` : ''}
+      ${uiField({ label: 'What was wrong?', id: 'lr-comment',
+        control: `<textarea class="input" id="lr-comment" rows="3" maxlength="2000" placeholder="For example: it didn’t hear my lowest note. Mine is a C major with 8 notes.">${escHtml(R.comment)}</textarea>` })}
+      ${rec}
+      ${uiField({ label: 'Your email (if you’d like to hear back)', id: 'lr-email',
+        control: `<input class="input" id="lr-email" type="email" inputmode="email" autocomplete="email" maxlength="200" value="${escHtml(R.email)}" placeholder="you@example.com">`,
+        help: 'We keep the report until it’s fixed, at most a year. <a href="/privacy" target="_blank" rel="noopener">Privacy</a>' })}
+      ${R.error ? `<p class="field-error" role="alert">${escHtml(R.error)}</p>` : ''}`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="${close}">${R.then ? 'Skip' : 'Not now'}</button>
+      <button type="button" class="btn btn-primary" data-action="lr-send"${R.sending ? ' disabled' : ''}>${R.sending ? 'Sending…' : 'Send'}</button>`,
+  });
+}
+
+async function sendListenReport() {
+  const R = state.listenReport;
+  if (!R || R.sending) return;
+  listenReportKeepFields();
+  if (R.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(R.email)) { R.error = 'That email doesn’t look right. Leave it empty if you’d rather not hear back.'; render(); return; }
+  Object.assign(R, { sending: true, error: '' });
+  render();
+  const takes = R.withAudio ? (R.takes ?? []) : [];
+  const meta = {
+    ...R.ctx, comment: R.comment.trim(), email: R.email || null,
+    takes: takes.map(t => ({ seconds: t.seconds, type: t.type })),
+    app: BUILD_HASH, host: location.host, ua: navigator.userAgent,
+    screen: `${window.innerWidth}x${window.innerHeight}`, lang: navigator.language,
+  };
+  const form = new FormData();
+  form.append('meta', JSON.stringify(meta));
+  takes.forEach((t, i) => form.append('audio', t.blob, `take-${i + 1}.${/mp4/.test(t.type) ? 'm4a' : /ogg/.test(t.type) ? 'ogg' : 'webm'}`));
+  try {
+    const res = await fetch(listenReportUrl(), { method: 'POST', body: form });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+    Object.assign(R, { sending: false, sent: true });
+    listenCheckEvent('reported', R.ctx);
+  } catch (e) {
+    Object.assign(R, { sending: false, error: navigator.onLine === false ? 'You’re offline. Try again when you’re back online.' : `We couldn’t send it just now (${e.message}). Please try again.` });
+  }
+  if (state.listenReport === R) render();
+}
+
+function listenReportAction(action) {
+  if (action === 'lr-open') { openListenReport(); return true; }
+  if (!state.listenReport) return false;
+  if (action === 'lr-close') { if (!state.listenReport.sent) listenCheckEvent('skipped', state.listenReport.ctx); closeListenReport(); return true; }
+  if (action === 'lr-audio') { listenReportKeepFields(); state.listenReport.withAudio = !state.listenReport.withAudio; render(); return true; }
+  if (action === 'lr-send') { sendListenReport(); return true; }
+  return false;
+}
+
+// The line under a result that opens the report sheet.
+function listenReportLinkHtml(text = 'Did Oakhum mishear something?') {
+  return `<p class="wizard-foot lr-link">${escHtml(text)} <button type="button" class="link-btn" data-action="lr-open">Send us the recording</button></p>`;
 }
 
 // ── My instruments ───────────────────────────────────────────────────────────
@@ -1630,7 +1785,7 @@ function viewBeginnerSetup() {
       return stepFrame({
         header, count: count(3), title: `We couldn’t tell which ${fi.pick} that is`,
         sub: `Try again in a quieter spot, ${fi.again}, or choose it yourself.`,
-        body: notes.length >= 3 ? `<div class="list">${setupOwnRowHtml(st, notes.length)}</div>` : '',
+        body: `${notes.length >= 3 ? `<div class="list">${setupOwnRowHtml(st, notes.length)}</div>` : ''}${listenReportLinkHtml('Is something not right?')}`,
         bar: {
           left: `<button type="button" class="btn btn-secondary" data-action="setup-know">Choose my ${fi.pick}</button>`,
           right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
@@ -1654,9 +1809,10 @@ function viewBeginnerSetup() {
         ${close ? `<p class="wizard-foot">Also close: ${close}</p>` : ''}
         <p class="wizard-foot">Not this one? ${fi.wind
           ? `<button type="button" class="link-btn" data-action="setup-own-wind">Set up my ${escHtml(word)} note by note</button>.`
-          : `<button type="button" class="link-btn" data-action="setup-use-heard">Use the ${notes.length} notes I played</button> as your own ${escHtml(word)}.`}</p>`,
+          : `<button type="button" class="link-btn" data-action="setup-use-heard">Use the ${notes.length} notes I played</button> as your own ${escHtml(word)}.`}</p>
+        ${listenReportLinkHtml()}`,
       bar: {
-        left: '<button type="button" class="btn btn-ghost" data-action="setup-know">Not quite, let me choose</button>',
+        left: '<button type="button" class="btn btn-ghost" data-action="setup-not-right">Not quite, let me choose</button>',
         right: `<button type="button" class="btn btn-primary" data-action="setup-scale" data-id="${escHtml(s.id)}">Yes, that’s it</button>`,
       },
     });
@@ -1711,7 +1867,8 @@ function viewBeginnerSetup() {
         <p class="setup-result-name">${escHtml(chordName)}</p>
         <p class="setup-result-notes">${chord.notes.map(x => escHtml(nn(x))).join(' · ')}</p>
         ${setupPanHtml({ scale: s, highlight: chord.notes, family: st.family })}
-      </div>` : ''}`,
+      </div>` : ''}
+      ${st.windGuide ? listenReportLinkHtml('Did Oakhum mishear a note?') : ''}`,
     bar: {
       left: `<button type="button" class="btn btn-secondary" data-action="setup-save">${accountOn() ? 'Save' : 'Save for next time'}</button>`,
       right: `<button type="button" class="btn btn-primary" data-action="setup-first-chord">${chord ? 'Play my first chord' : 'Start playing'}</button>`,
@@ -1734,6 +1891,7 @@ function setupAction(action, el) {
   const st = state.setup;
   if (action === 'setup-open') {
     Object.assign(state, { view: 'setup', setup: newSetup(), wizard: null });
+    clearMicTakes();
     navPush('#setup');
     render();
     return true;
@@ -1824,7 +1982,9 @@ function setupAction(action, el) {
   if (action === 'setup-heard-done') { stopListen(); setupGo('match'); return true; }
   if (action === 'setup-root') { setupGo('scales', { root: parseInt(el.dataset.pc, 10), showAll: false }); return true; }
   if (action === 'setup-all') { st.showAll = true; render(); return true; }
+  if (action === 'setup-not-right') { openListenReport({ then: 'know' }); return true; }
   if (action === 'setup-scale') {
+    if (st.step === 'match') listenCheckEvent('right');
     stopListen();
     logEvent('setup', { step: 'scale', how: st.step === 'match' ? 'listened' : 'chose' });
     setupGo('done', { scaleId: el.dataset.id });
@@ -5561,6 +5721,7 @@ function installHelpSheet() {
 // ── Sheets ───────────────────────────────────────────────────────────────────
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
+  if (state.listenReport) return listenReportSheet();
   if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
   if (state.accountConfirm) return accountConfirmSheet();
@@ -7742,6 +7903,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'add-instrument') { setupAction('setup-open', el); return; }
+  if (listenReportAction(action)) return;
   if (setupAction(action, el)) return;
 
 
@@ -8358,7 +8520,8 @@ document.addEventListener('click', e => {
   if (action === 'listen-stop') { stopListen(); return; }
   if (action === 'listen-clear') {
     if (!state.listen) return;
-    if (state.listen.listening) { state.listen.notes = []; state.listen.lastSince = null; } else state.listen = null;
+    if (state.listen.listening) Object.assign(state.listen, { notes: [], raw: [], lastSince: null }); else state.listen = null;
+    clearMicTakes();
     render();
     return;
   }

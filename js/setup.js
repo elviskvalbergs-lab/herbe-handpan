@@ -7,6 +7,7 @@
 // Pure helpers, unit tested in Node. The screens are in js/app.js (viewBeginnerSetup).
 
 import { notePC } from './data.js';
+import { addHeardNote } from './scalefinder.js';
 import { midiToNoteName } from './instruments.js';
 import { chartsForFamily, instrumentFromChart } from './charts.js';
 import { linkFor, linkTitle, parseLink } from './links.js';
@@ -160,4 +161,21 @@ export function a4ForOffset(offsetCents) {
   const hz = 440 * 2 ** (offsetCents / 1200);
   const common = [432, 435, 440, 442, 443, 444].find(c => Math.abs(c - hz) <= 2);
   return common ?? Math.round(hz);
+}
+
+// One steady note heard while listening freely ({ raw, notes } so far; raw
+// are the fractional MIDI numbers as heard). Returns the next { raw, notes,
+// offset }, or null when it isn't a new note. With `tuned`, notes are named
+// on the instrument's own tuning (tuningOffsetCents) and the ones heard before
+// are renamed with it. Shared by the app (onListenReading) and
+// scripts/replay-listen.mjs, so a recording replays exactly as the app hears it.
+export function collectHeardNote({ raw = [], notes = [] } = {}, midi, { tuned = true } = {}) {
+  const offset = tuned ? tuningOffsetCents([...raw, midi]) : 0;
+  const next = addHeardNote(notes, midi - offset / 100);
+  if (!next) return null;
+  const all = [...raw, midi];
+  if (!tuned) return { raw: all, notes: next, offset };
+  const renamed = [];
+  for (const x of all) { const n = noteOnTuning(x, offset); if (!renamed.includes(n)) renamed.push(n); }
+  return { raw: all, notes: renamed, offset };
 }
