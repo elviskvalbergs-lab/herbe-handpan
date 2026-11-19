@@ -1391,14 +1391,18 @@ function setupScaleFitHtml(st, notes) {
   const list = ms => ms.map(m => `<b>${escHtml(nn(m))}</b>`).join(ms.length > 2 ? ', ' : ' and ');
   const lines = [];
   const five = fit.five, seven = fit.seven;
-  if (five && !five.off.length) lines.push(`<p class="setup-fit-line">Your notes are <b>${escHtml(scale(five))}</b>.</p>`);
-  else if (seven && !seven.off.length) lines.push(`<p class="setup-fit-line">Your notes are <b>${escHtml(scale(seven))}</b>.</p>`);
+  const exact = five && !five.off.length ? five : seven && !seven.off.length ? seven : null;
+  // Close to a scale: one or two notes off, not a note heard in two octaves,
+  // and smaller than the scale they already are (a drum sold as pentatonic).
+  const near = [five, seven].find(f => f && f !== exact && f.off.length >= 1 && f.off.length <= 2 && !f.repeated
+    && (!exact || f.type.steps.length < exact.type.steps.length));
+  if (exact) lines.push(`<p class="setup-fit-line">Your notes are <b>${escHtml(scale(exact))}</b>.</p>`);
   let redo = '';
-  if (five && five.off.length && five.off.length <= 2) {
-    const maybe = five.off.filter(m => five.instead[m] != null).map(m => `${nn(m)} may be ${nn(five.instead[m])}`);
-    lines.push(`<p class="setup-fit-line">Close to <b>${escHtml(scale(five))}</b>, except ${list(five.off)}${maybe.length ? ` (${escHtml(maybe.join('; '))})` : ''}. If yours is ${escHtml(scale(five))}, ${five.off.length > 1 ? 'those were' : 'that one was'} misheard or ${five.off.length > 1 ? 'are' : 'is'} out of tune.</p>`);
-    const places = g ? five.off.map(m => g.notes.indexOf(m)).filter(i => i >= 0) : [];
-    if (places.length) redo = `<button type="button" class="btn btn-secondary" data-action="setup-guide-redo" data-places="${places.join(',')}">${icon('mic')} Play ${five.off.length > 1 ? 'those two' : 'it'} again</button>`;
+  if (near) {
+    const maybe = near.off.filter(m => near.instead[m] != null).map(m => `${nn(m)} may be ${nn(near.instead[m])}`);
+    lines.push(`<p class="setup-fit-line">Close to <b>${escHtml(scale(near))}</b>, except ${list(near.off)}${maybe.length ? ` (${escHtml(maybe.join('; '))})` : ''}. If yours is ${escHtml(scale(near))}, ${near.off.length > 1 ? 'those were' : 'that one was'} misheard or ${near.off.length > 1 ? 'are' : 'is'} out of tune.</p>`);
+    const places = g ? near.off.map(m => g.notes.indexOf(m)).filter(i => i >= 0) : [];
+    if (places.length) redo = `<button type="button" class="btn btn-secondary" data-action="setup-guide-redo" data-places="${places.join(',')}">${icon('mic')} Play ${near.off.length > 1 ? 'those two' : 'it'} again</button>`;
   }
   return lines.length ? `<div class="setup-fit">${lines.join('')}${redo}</div>` : '';
 }

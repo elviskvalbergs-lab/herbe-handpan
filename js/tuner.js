@@ -67,7 +67,8 @@ export function yinPitch(buf, sampleRate, { threshold = 0.15, minHz = 70, maxHz 
 // carries a good part of the sound. Otherwise null: not a note.
 const _hann = new Map();
 const REFINE_MULTIPLE_MIN_SHARE = 0.25; // of the window's sound, for a multiple to be the note
-const REFINE_FUNDAMENTAL_MIN = 0.1;     // of the strongest multiple's power, for YIN's own to stand
+const REFINE_FUNDAMENTAL_MIN = 0.1;   // of the strongest multiple's power, for YIN's own to stand
+const REFINE_OCTAVE_DOWN_MIN = 0.1; // of the note's power, for the note an octave down to be it
 export function refinePitch(buf, sampleRate, hz, { cents = 100, step = 5 } = {}) {
   const n = buf.length;
   let w = _hann.get(n);
@@ -102,10 +103,33 @@ export function refinePitch(buf, sampleRate, hz, { cents = 100, step = 5 } = {})
     const m = peakNear(k * hz, 50);
     if (m && (!multiple || m.p > multiple.p)) multiple = m;
   }
-  if (own && (!multiple || own.p >= REFINE_FUNDAMENTAL_MIN * multiple.p)) return own.hz;
+  let pick = null;
+  if (own && (!multiple || own.p >= REFINE_FUNDAMENTAL_MIN * multiple.p)) pick = own;
   // A pure tone's Goertzel power is about a third of energy × n (Hann window).
-  if (multiple && energy > 0 && (3 * multiple.p) / (energy * n) >= REFINE_MULTIPLE_MIN_SHARE) return multiple.hz;
-  return null;
+  else if (multiple && energy > 0 && (3 * multiple.p) / (energy * n) >= REFINE_MULTIPLE_MIN_SHARE) pick = multiple;
+  if (!pick) return null;
+  // A handpan note's octave partial can outlast the note and be taken for it:
+  // the note an octave down, when it sounds too.
+  const half = pick.hz / 2 >= 60 ? peakNear(pick.hz / 2, 50) : null;
+  return half && half.p >= REFINE_OCTAVE_DOWN_MIN * pick.p ? half.hz : pick.hz;
+}
+
+// One reading of the live tuner from the latest samples (at least
+// TUNER_LONG_WINDOW of them): YIN on the last TUNER_WINDOW, then the
+// spectral check. Low notes are checked on the longer window: 85 ms can't
+// tell two low notes a semitone or so apart (a handpan's Eb3 at 156 Hz next
+// to a 142 Hz tone ringing on). Returns { hz | null, level }. Shared by
+// startTuner and scripts/replay-listen.mjs.
+export const TUNER_WINDOW = 4096;
+export const TUNER_LONG_WINDOW = 8192;
+export const TUNER_LOW_HZ = 330;
+export function tunerFrame(buf, sampleRate, { minRms = TUNER_MIN_RMS } = {}) {
+  const short = buf.length > TUNER_WINDOW ? buf.subarray(buf.length - TUNER_WINDOW) : buf;
+  const level = rmsLevel(short);
+  const res = yinPitch(short, sampleRate, { minRms });
+  if (!res || res.clarity <= 0.8) return { hz: null, level };
+  const win = res.hz < TUNER_LOW_HZ && buf.length >= TUNER_LONG_WINDOW ? buf.subarray(buf.length - TUNER_LONG_WINDOW) : short;
+  return { hz: refinePitch(win, sampleRate, res.hz), level };
 }
 
 // Reports a note only after it has held for `holdMs` within `toleranceCents`.
@@ -339,16 +363,15 @@ export function rmsLevel(buf) {
 export async function startTuner(onReading, { a4 = 440, minRms = TUNER_MIN_RMS } = {}) {
   const { ctx, source, sink, close } = await openMicrophone();
   const analyser = ctx.createAnalyser();
-  analyser.fftSize = 4096;
+  analyser.fftSize = TUNER_LONG_WINDOW;
   source.connect(analyser);
   analyser.connect(sink);
   const buf = new Float32Array(analyser.fftSize);
   const tracker = createStabilityTracker({ a4 });
   const timer = setInterval(() => {
     analyser.getFloatTimeDomainData(buf);
-    const res = yinPitch(buf, ctx.sampleRate, { minRms });
-    const hz = res && res.clarity > 0.8 ? refinePitch(buf, ctx.sampleRate, res.hz) : null;
-    onReading({ ...tracker.push(hz, performance.now()), level: rmsLevel(buf) });
+    const { hz, level } = tunerFrame(buf, ctx.sampleRate, { minRms });
+    onReading({ ...tracker.push(hz, performance.now()), level });
   }, 50);
   return () => {
     clearInterval(timer);
