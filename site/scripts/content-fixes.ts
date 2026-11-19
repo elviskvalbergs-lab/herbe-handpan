@@ -198,6 +198,38 @@ const FIXES: Fix[] = [
       return "privacy notice updated";
     },
   },
+  {
+    // Listening reports (the app's "Send us the recording"): the microphone section and Jira.
+    name: "2026-11-19-privacy-listening",
+    async run() {
+      const OLD = [
+        "Oakhum is free to use without an account. This page explains what we keep and why, in plain words.",
+        "Who we are",
+        "Oakhum is made by Elvis Kvalbergs in Latvia. For anything about your data, write to oakhummusic@gmail.com.",
+        "Playing without an account",
+        "We don't ask who you are. What you set up stays in your browser until you close the tab. To see which parts of the app are used, we count visits and taps without cookies and without storing an id on your device (PostHog, with data stored in the EU). We don't record your screen.",
+        "With an account",
+        "We keep your email address and what you save: instruments, favourite chords and playlists. They are stored with Supabase in the EU, which also sends your sign-in code. You can delete your account and everything in it from the app's settings, any time.",
+        "Requests on this website",
+        "If you send a request and leave your email, we use it only to tell you when your request is ready, then delete it. Your email is never shown on the site. Requests are kept with Sanity, the service that holds this website's content.",
+        "Services that help us run Oakhum",
+        "Each of these handles data only to do its job for us.",
+        "Vercel hosts the website and the app. Like any web host, it sees the address your browser connects from.",
+        "Supabase stores accounts and what you save, in the EU, and sends sign-in codes.",
+        "PostHog counts visits and taps, without cookies, with data stored in the EU.",
+        "Sentry receives a report when something in the app or on the website goes wrong: what failed, on which page, and the browser and device type, without your name or email. The reports are stored in the EU.",
+        "Sanity holds the website's text and the requests sent through it, with the email you leave.",
+        "Your rights",
+        "You can ask us for a copy of your data, to correct it or to delete it, and you can complain to the Latvian Data State Inspectorate (dvi.gov.lv)."
+      ];
+      const doc = await client.fetch<{ _id: string; t?: string[] } | null>(`*[_id == "page-privacy"][0]{_id, "t": body[].children[].text}`);
+      if (!doc) return "no privacy page";
+      if (JSON.stringify(doc.t ?? []) !== JSON.stringify(OLD)) return "left as edited in the Studio";
+      const page = seed.pages.find((p) => p._id === "page-privacy")!;
+      await client.patch("page-privacy").set({ body: toBlocks(page.body), updated: page.updated }).commit();
+      return "privacy notice updated";
+    },
+  },
 ];
 
 type FeatureStart = (typeof seed.features)[number];

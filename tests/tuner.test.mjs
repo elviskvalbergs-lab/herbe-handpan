@@ -73,3 +73,20 @@ test('a drum played without damping: the spectrum keeps each note where it is', 
   const y = yinPitch(clean, sr);
   assert.ok(Math.abs(refinePitch(clean, sr, y.hz) - 261.6) < 1);
 });
+
+test('a note read a whole number of periods too long is moved up to the note', async () => {
+  const { refinePitch } = await import('../js/tuner.js');
+  const sr = 48000, n = 4096;
+  // A user's tongue drum (B4, 483 Hz) with other tongues ringing along
+  // quietly: YIN read 161 and 242 Hz, where there is nothing.
+  const parts = [[483.2, 1], [288.2, 0.16], [318, 0.23], [339.5, 0.17], [430.8, 0.12]];
+  const buf = new Float32Array(n);
+  for (let i = 0; i < n; i++) for (const [f, a] of parts) buf[i] += 0.3 * a * Math.sin(2 * Math.PI * f * i / sr);
+  for (const yin of [161, 242]) {
+    const hz = refinePitch(buf, sr, yin);
+    assert.ok(hz && Math.abs(cents(hz, 483.2)) < 10, `${yin} → ${hz}`);
+  }
+  // A low note whose octave is stronger than it stays where it is.
+  const low = tone(130.81, { harmonics: [0.6, 1, 0.3] });
+  assert.ok(Math.abs(cents(refinePitch(low, sr, 130.81), 130.81)) < 10);
+});

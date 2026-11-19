@@ -58,32 +58,54 @@ export function yinPitch(buf, sampleRate, { threshold = 0.15, minHz = 70, maxHz 
 // semitone of it (Goertzel over a Hann-windowed window, 5-cent steps, then a
 // parabola through the top three). On a drum played without damping the
 // last note still rings under the new one and YIN can settle between the
-// two; the spectrum still shows each note where it is. No peak near the
-// estimate (the strongest sound is further away): null, not a note.
+// two; the spectrum still shows each note where it is.
+// YIN can also land a whole number of periods too long: on a tongue drum
+// whose other tongues ring along, the common period of them all (a B4 at
+// 483 Hz read as 161 or 242 Hz, with nothing at all there). So when there is
+// no peak near the estimate, or a weak one under a much stronger peak at
+// twice, three or four times it, the note is that stronger peak, provided it
+// carries a good part of the sound. Otherwise null: not a note.
 const _hann = new Map();
+const REFINE_MULTIPLE_MIN_SHARE = 0.25; // of the window's sound, for a multiple to be the note
+const REFINE_FUNDAMENTAL_MIN = 0.1;     // of the strongest multiple's power, for YIN's own to stand
 export function refinePitch(buf, sampleRate, hz, { cents = 100, step = 5 } = {}) {
   const n = buf.length;
   let w = _hann.get(n);
   if (!w) { w = new Float32Array(n).map((_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1))); _hann.set(n, w); }
   const x = new Float32Array(n);
-  for (let i = 0; i < n; i++) x[i] = buf[i] * w[i];
+  let energy = 0;
+  for (let i = 0; i < n; i++) { x[i] = buf[i] * w[i]; energy += x[i] * x[i]; }
   const power = f => {
     const c = 2 * Math.cos(2 * Math.PI * f / sampleRate);
     let s1 = 0, s2 = 0;
     for (let i = 0; i < n; i++) { const s0 = x[i] + c * s1 - s2; s2 = s1; s1 = s0; }
     return s1 * s1 + s2 * s2 - c * s1 * s2;
   };
-  const vals = [];
-  let bi = 0;
-  for (let k = -cents, j = 0; k <= cents; k += step, j++) {
-    vals.push(power(hz * 2 ** (k / 1200)));
-    if (vals[j] > vals[bi]) bi = j;
+  // The peak within `span` cents of f: { hz, p }, or null when the strongest
+  // point is at the edge (something stronger lies further away).
+  const peakNear = (f, span) => {
+    const vals = [];
+    let bi = 0;
+    for (let k = -span, j = 0; k <= span; k += step, j++) {
+      vals.push(power(f * 2 ** (k / 1200)));
+      if (vals[j] > vals[bi]) bi = j;
+    }
+    if (bi === 0 || bi === vals.length - 1) return null;
+    const a = vals[bi - 1], b = vals[bi], c = vals[bi + 1];
+    const den = a - 2 * b + c;
+    const d = den ? (a - c) / (2 * den) : 0;
+    return { hz: f * 2 ** ((-span + (bi + d) * step) / 1200), p: b };
+  };
+  const own = peakNear(hz, cents);
+  let multiple = null;
+  for (let k = 2; k <= 4 && k * hz < Math.min(5000, sampleRate / 2.5); k++) {
+    const m = peakNear(k * hz, 50);
+    if (m && (!multiple || m.p > multiple.p)) multiple = m;
   }
-  if (bi === 0 || bi === vals.length - 1) return null;
-  const a = vals[bi - 1], b = vals[bi], c = vals[bi + 1];
-  const den = a - 2 * b + c;
-  const d = den ? (a - c) / (2 * den) : 0;
-  return hz * 2 ** ((-cents + (bi + d) * step) / 1200);
+  if (own && (!multiple || own.p >= REFINE_FUNDAMENTAL_MIN * multiple.p)) return own.hz;
+  // A pure tone's Goertzel power is about a third of energy × n (Hann window).
+  if (multiple && energy > 0 && (3 * multiple.p) / (energy * n) >= REFINE_MULTIPLE_MIN_SHARE) return multiple.hz;
+  return null;
 }
 
 // Reports a note only after it has held for `holdMs` within `toleranceCents`.
@@ -144,9 +166,11 @@ export async function openMicrophone() {
   scope.fftSize = 2048;
   source.connect(scope);
   scope.connect(sink);
-  const mic = { ctx, scope, buf: new Float32Array(scope.fftSize) };
+  const mic = { ctx, scope, buf: new Float32Array(scope.fftSize), stream };
   _mic = mic;
+  _micRecStart();
   const close = () => {
+    if (_rec?.mic === mic) _micRecStop();
     if (_mic === mic) _mic = null;
     stream.getTracks().forEach(t => t.stop());
     source.disconnect();
@@ -154,6 +178,68 @@ export async function openMicrophone() {
     ctx.close();
   };
   return { ctx, source, sink, close };
+}
+
+// What the microphone hears while Listen is on is recorded, so that someone
+// whose instrument Oakhum heard wrong can send it to us (the listening report
+// in js/app.js). It stays in memory on the device, is sent only when they say
+// so, and is gone when the page closes. One take per listening session; the
+// last three are kept, each at most three minutes (small enough to send).
+const MIC_TAKE_MS = 3 * 60 * 1000;
+const MIC_TAKES_KEPT = 3;
+let _recWanted = false;
+let _rec = null; // { r, mic, timer, take }
+const _takes = [];
+let _recDone = Promise.resolve();
+
+export function micRecordingSupported() { return typeof MediaRecorder !== 'undefined'; }
+
+/** Turns recording on (for the open microphone and any opened later) or off. */
+export function recordMic(on) {
+  _recWanted = !!on;
+  if (on) _micRecStart(); else _micRecStop();
+}
+
+function _micRecStart() {
+  if (!_recWanted || _rec || !_mic?.stream || !micRecordingSupported()) return;
+  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm']
+    .find(t => MediaRecorder.isTypeSupported?.(t)) ?? '';
+  let r;
+  try { r = new MediaRecorder(_mic.stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 48000 }); } catch { return; }
+  const take = { chunks: [], type: (r.mimeType || type || 'audio/webm').split(';')[0], start: Date.now(), ms: 0 };
+  r.ondataavailable = e => { if (e.data?.size) take.chunks.push(e.data); };
+  _recDone = new Promise(resolve => {
+    r.onstop = () => {
+      take.ms = Date.now() - take.start;
+      if (take.chunks.length && take.ms > 500) _takes.push(take);
+      while (_takes.length > MIC_TAKES_KEPT) _takes.shift();
+      resolve();
+    };
+  });
+  try { r.start(1000); } catch { return; }
+  _rec = { r, mic: _mic, take, timer: setTimeout(_micRecStop, MIC_TAKE_MS) };
+}
+
+function _micRecStop() {
+  if (!_rec) return;
+  clearTimeout(_rec.timer);
+  try { if (_rec.r.state !== 'inactive') _rec.r.stop(); } catch { /* already stopped */ }
+  _rec = null;
+}
+
+/** The takes recorded so far, oldest first: [{ blob, seconds, type }]. Waits
+ *  for a take that is still being finished. */
+export async function micTakes() {
+  await _recDone;
+  return _takes.map(t => ({ blob: new Blob(t.chunks, { type: t.type }), seconds: Math.max(1, Math.round(t.ms / 1000)), type: t.type }));
+}
+
+/** Forgets every take (a new setup, Clear). Keeps recording if it's on. */
+export function clearMicTakes() {
+  const on = !!_rec;
+  _micRecStop();
+  _takes.length = 0;
+  _recDone.then(() => { _takes.length = 0; if (on) _micRecStart(); });
 }
 
 // Draws the sound coming in on a canvas: a wave that follows the real signal,
