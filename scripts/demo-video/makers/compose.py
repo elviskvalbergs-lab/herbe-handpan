@@ -6,12 +6,13 @@
   node scenes.js             # the still scenes, the QR card
   python3 voiceover.py       # the voice-over, vo/*.wav (see its notes)
   python3 compose.py         # -> oakhum-makers.mp4
+  python3 compose.py vo-elevenlabs   # another take of the voice -> oakhum-makers-elevenlabs.mp4
 
 Each scene is at least as long as its voice-over line. The voice sits on top
 of the app's own handpan, which ducks under it. Without vo/ the video is built
 as before, captions only. Output stays in this folder, uncommitted.
 """
-import json, os, subprocess
+import json, os, subprocess, sys
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -22,7 +23,9 @@ FPS = 30
 
 # The voice-over (voiceover.py): each line starts VO_LEAD into its scene and
 # leaves VO_TAIL after it before the scene fades out.
-VO = json.load(open('vo/lines.json'))['lines'] if os.path.exists('vo/lines.json') else {}
+VO_DIR = sys.argv[1].rstrip('/') if len(sys.argv) > 1 else 'vo'
+OUT = 'oakhum-makers' + VO_DIR[2:] + '.mp4'  # vo -> oakhum-makers.mp4, vo-x -> oakhum-makers-x.mp4
+VO = json.load(open(f'{VO_DIR}/lines.json'))['lines'] if os.path.exists(f'{VO_DIR}/lines.json') else {}
 VO_LEAD, VO_TAIL = 0.6, 1.0
 vo_len = lambda scene: VO[scene]['seconds'] if scene in VO else 0.0
 fit = lambda scene, dur: round(max(dur, VO_LEAD + vo_len(scene) + VO_TAIL), 2) if scene in VO else dur
@@ -123,7 +126,7 @@ if VO:
     # (sidechain), then both are mixed and brought to a steady loudness.
     n = len(clips)
     for j, scene in enumerate(VO):
-        args += ['-i', f'vo/{scene}.wav']
+        args += ['-i', f'{VO_DIR}/{scene}.wav']
         ms = int(vo_at[scene] * 1000)
         graph.append(f"[{n + j}:a]aresample=48000,adelay={ms}|{ms}[v{j}]")
     graph.append(''.join(f'[v{j}]' for j in range(len(VO))) + f"amix=inputs={len(VO)}:normalize=0,apad,atrim=0:{total},asplit[vo][key]")
@@ -134,5 +137,5 @@ else:
 run([*args, '-filter_complex', ';'.join(graph), '-map', '[a]', '-c:a', 'aac', '-b:a', '160k', 'audio.m4a'])
 
 run(['-f', 'concat', '-safe', '0', '-i', 'segments.txt', '-i', 'audio.m4a', '-map', '0:v', '-map', '1:a',
-     '-c:v', 'libx264', '-crf', '20', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-movflags', '+faststart', '-shortest', 'oakhum-makers.mp4'])
-print('oakhum-makers.mp4', round(total, 1), 's')
+     '-c:v', 'libx264', '-crf', '20', '-preset', 'slow', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-movflags', '+faststart', '-shortest', OUT])
+print(OUT, round(total, 1), 's')
