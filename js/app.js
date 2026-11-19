@@ -5068,12 +5068,35 @@ function stopPickListen() {
   if (P?.listening && P.startedTuner && state.tuner.on && !state.tuner.error) toggleTuner();
 }
 
+// Notes set by playing them, one place at a time, are named on the
+// instrument's own tuning, as in the guided round: what each place measured
+// is kept per layout, and once three agree on an offset (a drum in 432 Hz)
+// every note set this way is named on it. A note changed by hand since is
+// left alone.
+const _pickHeard = new WeakMap(); // layout → [{ shell, index, midi, named }]
+function pickHeardNote(slot, midi) {
+  const list = (_pickHeard.get(state.layout) ?? []).filter(h => h.shell !== slot.shell || h.index !== slot.index);
+  const before = list.length ? tuningOffsetCents(list.map(h => h.midi)) : 0;
+  const off = tuningOffsetCents([...list.map(h => h.midi), midi]);
+  for (const h of list) {
+    const shell = h.shell === 'ding' ? null : (h.shell === 'top' ? state.layout.top : state.layout.bottom);
+    const cur = shell ? shell.slots[h.index]?.note : state.layout.top.ding;
+    if (cur !== h.named) continue;
+    h.named = midiToNoteName(noteOnTuning(h.midi, off));
+    if (shell) shell.slots[h.index].note = h.named; else state.layout.top.ding = h.named;
+  }
+  const named = midiToNoteName(noteOnTuning(midi, off));
+  _pickHeard.set(state.layout, [...list, { shell: slot.shell, index: slot.index, midi, named }]);
+  if (off && !before) showToast(`Tuned to A = ${a4ForOffset(off)} Hz: Oakhum names your notes on that tuning`);
+  return named;
+}
+
 // A tuner reading while "Play it" listens.
 function onPickListenReading(reading) {
   const P = state.pickListen;
   if (reading.level >= TUNER_MIN_RMS) P.heardAt = performance.now();
-  if (reading.stable && reading.hz > 0 && reading.since > P.startedAt) {
-    setPendingSlotNote(midiToNoteName(Math.round(reading.midi)));
+  if (reading.stable && reading.hz > 0 && reading.since > P.startedAt && state.pendingSlot) {
+    setPendingSlotNote(pickHeardNote(state.pendingSlot, reading.midi));
     return;
   }
   updateListenLive(reading, P);
