@@ -139,3 +139,23 @@ test('a guided round of 8 notes is only matched to an 8-note tuning with all of 
   // Without a count (just listening): the best as ranked.
   assert.ok(setupMatch(rankScalesByNotes(heard8, TONGUE_DRUMS)).best);
 });
+
+test('notes that are almost a known scale: which scale, and which notes are off', async () => {
+  const { scaleFits } = await import('../js/setup.js');
+  const m = n => noteToMidi(n);
+  // An 8-note drum, said to be pentatonic, as the app read it.
+  const heard = ['Ab3', 'B3', 'Db4', 'Eb4', 'E4', 'Gb4', 'Ab4', 'Bb4'].map(m);
+  const f = scaleFits(heard);
+  assert.equal(f.seven.off.length, 0, 'all seven names: G# minor');
+  assert.equal(f.seven.root, 8);
+  assert.equal(f.seven.type.id, 'minor');
+  assert.equal(f.five.root, 8, 'G# minor pentatonic: its root is the lowest note');
+  assert.equal(f.five.type.id, 'minor-pentatonic');
+  assert.deepEqual(f.five.off, [m('E4'), m('Bb4')]);
+  assert.equal(f.five.instead[m('Bb4')], m('B4'), 'Bb4 is probably B4');
+  assert.equal(f.five.instead[m('E4')], undefined, 'E4: both neighbours are already there');
+  // A real pentatonic fits with nothing off; two notes are too few to tell.
+  const dKurdPent = ['D3', 'A3', 'C4', 'D4', 'E4', 'G4', 'A4', 'C5'].map(m);
+  assert.deepEqual(scaleFits(dKurdPent).five.off, []);
+  assert.equal(scaleFits([m('C4'), m('C5'), m('G4')]), null);
+});

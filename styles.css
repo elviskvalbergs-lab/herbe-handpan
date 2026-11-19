@@ -1196,6 +1196,9 @@ button.set-row[role="switch"] { cursor: pointer; }
 .listen-hint { margin: var(--space-3) 0 0; font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
 .listen .lr-link { margin: var(--space-2) 0 0; }
 /* The listening report sheet (listenReportSheet in js/app.js). */
+.setup-fit { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-3); border-radius: var(--r-md); background: var(--surface-2); }
+.setup-fit-line { margin: 0; color: var(--text-2); text-align: center; }
+.setup-fit-line b { color: var(--text-1); }
 .lr-heard { margin: 0 0 var(--space-4); color: var(--text-1); font-weight: var(--fw-semibold); }
 .lr-heard-label { color: var(--text-3); font-weight: var(--fw-medium); font-size: var(--fs-13); }
 .lr-takes { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-2) 0 var(--space-4); }

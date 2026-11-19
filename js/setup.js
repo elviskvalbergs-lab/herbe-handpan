@@ -195,3 +195,51 @@ export function setupMatch(ranked, { count = null, heard = 0 } = {}) {
   const best = sameSize.find(r => r.ding === 'exact' && r.matched.length === heard) ?? null;
   return { best, close: sameSize.filter(r => r !== best && r.matched.length >= heard - 2).slice(0, 2) };
 }
+
+// The common scales a drum, kalimba or handpan is sold in, as steps from the
+// root (music theory, the same in every key). The pentatonic ones first.
+export const SETUP_SCALE_TYPES = [
+  { id: 'minor-pentatonic', name: 'minor pentatonic', steps: [0, 3, 5, 7, 10] },
+  { id: 'major-pentatonic', name: 'major pentatonic', steps: [0, 2, 4, 7, 9] },
+  { id: 'akebono', name: 'Akebono', steps: [0, 2, 3, 7, 8] },
+  { id: 'kumoi', name: 'Kumoi', steps: [0, 2, 3, 7, 9] },
+  { id: 'egyptian', name: 'Egyptian', steps: [0, 2, 5, 7, 10] },
+  { id: 'minor', name: 'minor', steps: [0, 2, 3, 5, 7, 8, 10] },
+  { id: 'major', name: 'major', steps: [0, 2, 4, 5, 7, 9, 11] },
+];
+
+// Which common scale the notes heard (MIDI numbers) are, or are closest to,
+// in any key: the best five-note and the best seven-note fit, each
+// { root (pitch class), type, off: [midi], instead: { midi: suggested midi } }.
+// Fewest notes off first, then a root that is the lowest note (a drum's ding
+// is usually its key), then the order above. A note off by a semitone from a
+// scale note the drum doesn't already have is probably that note, misheard
+// or out of tune: `instead`, leaning the way it sounded (devCents: { midi:
+// cents from the named note }). Null with fewer than three different notes.
+export function scaleFits(notes, { devCents = {}, types = SETUP_SCALE_TYPES } = {}) {
+  const pc = m => ((m % 12) + 12) % 12;
+  if (new Set(notes.map(pc)).size < 3) return null;
+  const low = pc(Math.min(...notes));
+  const best = {};
+  types.forEach((type, order) => {
+    for (let root = 0; root < 12; root++) {
+      const set = new Set(type.steps.map(s => (root + s) % 12));
+      const off = notes.filter(m => !set.has(pc(m)));
+      const rank = off.length * 100 + (root === low ? 0 : 10) + order;
+      const size = type.steps.length;
+      if (!best[size] || rank < best[size].rank) best[size] = { rank, root, type, off, set };
+    }
+  });
+  const finish = f => {
+    if (!f) return null;
+    const instead = {};
+    for (const m of f.off) {
+      const lean = devCents[m] ?? 0;
+      const tries = lean < 0 ? [m - 1, m + 1] : [m + 1, m - 1];
+      const s = tries.find(x => f.set.has(pc(x)) && !notes.includes(x));
+      if (s != null) instead[m] = s;
+    }
+    return { root: f.root, type: f.type, off: f.off, instead };
+  };
+  return { five: finish(best[5]), seven: finish(best[7]) };
+}

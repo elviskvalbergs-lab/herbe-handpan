@@ -35,7 +35,7 @@ import {
 } from './listen-detect.js';
 import { startListening } from './listen-audio.js';
 import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset, collectHeardNote, setupMatch } from './setup.js';
+import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset, collectHeardNote, setupMatch, scaleFits } from './setup.js';
 import {
   STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
   leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
@@ -1374,6 +1374,35 @@ function setupOwnRowHtml(st, n) {
     ? uiRow({ lead: 'pencil', title: `Set up my ${fi.word} note by note`, meta: 'For one that isn’t in the list, or made by hand: its holes, then each fingering with the tuner.', chevron: true, action: 'setup-own-wind' })
     : uiRow({ lead: 'pencil', title: `Use the ${n} notes I played`, meta: `Your own ${fi.word}, exactly as heard. You can change any note later.`, chevron: true, action: 'setup-use-heard' });
 }
+// When the notes played aren't a tuning Oakhum knows: which common scale
+// they are, or are closest to (setup.js scaleFits), the notes that don't fit
+// it, and a button to play just those places again. A drum sold as
+// pentatonic but heard with two notes off is most likely two notes misheard
+// or out of tune, not a new scale.
+function setupScaleFitHtml(st, notes) {
+  const g = st.guide;
+  const devCents = {};
+  if (g?.raw) g.raw.forEach((x, i) => { if (x != null && g.notes[i] != null) devCents[g.notes[i]] = Math.round((x - (st.tuningCents ?? 0) / 100 - g.notes[i]) * 100); });
+  const fit = scaleFits(notes, { devCents });
+  if (!fit) return '';
+  const uf = state.useFlats, us = state.useSolfege;
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const scale = f => `${displayNote(NOTE_NAMES[f.root], uf, us)} ${f.type.name}`;
+  const list = ms => ms.map(m => `<b>${escHtml(nn(m))}</b>`).join(ms.length > 2 ? ', ' : ' and ');
+  const lines = [];
+  const five = fit.five, seven = fit.seven;
+  if (five && !five.off.length) lines.push(`<p class="setup-fit-line">Your notes are <b>${escHtml(scale(five))}</b>.</p>`);
+  else if (seven && !seven.off.length) lines.push(`<p class="setup-fit-line">Your notes are <b>${escHtml(scale(seven))}</b>.</p>`);
+  let redo = '';
+  if (five && five.off.length && five.off.length <= 2) {
+    const maybe = five.off.filter(m => five.instead[m] != null).map(m => `${nn(m)} may be ${nn(five.instead[m])}`);
+    lines.push(`<p class="setup-fit-line">Close to <b>${escHtml(scale(five))}</b>, except ${list(five.off)}${maybe.length ? ` (${escHtml(maybe.join('; '))})` : ''}. If yours is ${escHtml(scale(five))}, ${five.off.length > 1 ? 'those were' : 'that one was'} misheard or ${five.off.length > 1 ? 'are' : 'is'} out of tune.</p>`);
+    const places = g ? five.off.map(m => g.notes.indexOf(m)).filter(i => i >= 0) : [];
+    if (places.length) redo = `<button type="button" class="btn btn-secondary" data-action="setup-guide-redo" data-places="${places.join(',')}">${icon('mic')} Play ${five.off.length > 1 ? 'those two' : 'it'} again</button>`;
+  }
+  return lines.length ? `<div class="setup-fit">${lines.join('')}${redo}</div>` : '';
+}
+
 // The match after listening (setup.js setupMatch): with the guided round's
 // count, only a tuning of that size with every note played.
 function setupMatchFor(st, notes) {
@@ -1799,6 +1828,7 @@ function viewBeginnerSetup() {
             <p class="setup-result-lead">Your ${word}</p>
             <p class="setup-result-name">${escHtml([...notes].sort((a, b) => a - b).map(m => nn(midiToNoteName(m))).join(' '))}</p>
             <p class="setup-result-desc">None of the ${st.guide.count}-note ${escHtml(word)}s Oakhum knows has exactly these notes, so it’ll use them as you played them. You can change any note later.</p>
+            ${setupScaleFitHtml(st, notes)}
             ${st.tuningCents ? `<p class="setup-result-desc">Tuned to A = ${a4ForOffset(st.tuningCents)} Hz, not the usual 440: Oakhum names its notes on that tuning.</p>` : ''}
             ${setupPanHtml({ guide: { ...st.guide, active: -1 }, family: st.family })}
           </div>
@@ -1990,6 +2020,20 @@ function setupAction(action, el) {
     if (g.idx >= g.seq.length) { st.scaleId = `chart:${g.chartId}/${g.keyId}`; setupGo('done'); stopListen(); return true; }
     Object.assign(g, { msg: '', tone: '' });
     render();
+    return true;
+  }
+  // Play some places of the guided round again (the notes that didn't fit).
+  if (action === 'setup-guide-redo' && st.guide) {
+    const g = st.guide;
+    const places = (el.dataset.places ?? '').split(',').map(Number).filter(i => i >= 0 && i < g.count);
+    if (!places.length) return true;
+    for (const i of places) { g.notes[i] = null; if (g.raw) g.raw[i] = null; }
+    st.tuningCents = tuningOffsetCents((g.raw ?? []).filter(x => x != null));
+    Object.assign(g, { active: places[0], msg: '', tone: '' });
+    stopListen();
+    state.listen = null;
+    st.history.push(st.step); st.step = 'listen';
+    startListen();
     return true;
   }
   if (action === 'setup-guide-start') {
