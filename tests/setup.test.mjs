@@ -159,3 +159,18 @@ test('notes that are almost a known scale: which scale, and which notes are off'
   assert.deepEqual(scaleFits(dKurdPent).five.off, []);
   assert.equal(scaleFits([m('C4'), m('C5'), m('G4')]), null);
 });
+
+test('a handpan with one note between its ding and the next: close to the minor of its ding', async () => {
+  const { scaleFits } = await import('../js/setup.js');
+  const m = n => noteToMidi(n);
+  // The owner's handpan as heard: a 142 Hz note (C#3, sounding +46 cents) after the C3 ding.
+  const heard = ['C3', 'C#3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3', 'C4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'].map(m);
+  const f = scaleFits(heard, { devCents: { [m('C#3')]: 46 } });
+  assert.equal(f.seven.root, 0, 'C, the ding, over F minor with nothing off');
+  assert.equal(f.seven.type.id, 'minor');
+  assert.deepEqual(f.seven.off, [m('C#3')]);
+  assert.equal(f.seven.instead[m('C#3')], m('D3'), 'it sounded high: probably D3');
+  assert.equal(f.seven.repeated, false);
+  // The pentatonic misses Ab in two octaves: that's the drum's, not a slip.
+  assert.equal(f.five.repeated, true);
+});

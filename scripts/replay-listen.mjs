@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Replays a recording through what the app does while it listens: the tuner
-// (YIN, then the spectral check) every 50 ms on 4096 samples, the stability
+// (tunerFrame: YIN, then the spectral check) every 50 ms, the stability
 // tracker, and the free "just listen" collection with the instrument's own
 // tuning (collectHeardNote). Prints each note as it is taken, what it would
 // be named, and the best matches. Used for listening reports from the app
@@ -10,7 +10,7 @@
 //
 // Needs ffmpeg to decode the recording (webm, m4a, ogg, wav, …).
 import { execFileSync } from 'node:child_process';
-import { yinPitch, refinePitch, createStabilityTracker, rmsLevel, TUNER_MIN_RMS } from '../js/tuner.js';
+import { yinPitch, tunerFrame, createStabilityTracker, rmsLevel, TUNER_WINDOW, TUNER_LONG_WINDOW } from '../js/tuner.js';
 import { collectHeardNote, a4ForOffset, chartSetupTunings } from '../js/setup.js';
 import { rankScalesByNotes } from '../js/scalefinder.js';
 import { LAYOUT_FAMILIES } from '../js/layoutfamilies.js';
@@ -24,7 +24,7 @@ const family = opt('family', 'handpan');
 const tuned = opt('tuned', '1') !== '0';
 const showFrames = args.includes('--frames');
 
-const SR = 48000, WINDOW = 4096, HOP = SR / 20; // 50 ms, as startTuner
+const SR = 48000, WINDOW = TUNER_WINDOW, HOP = SR / 20; // 50 ms, as startTuner
 const pcm = execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-ac', '1', '-ar', String(SR), '-f', 'f32le', '-'], { maxBuffer: 1 << 30 });
 const x = new Float32Array(pcm.buffer, pcm.byteOffset, pcm.length / 4);
 console.log(`${file}: ${(x.length / SR).toFixed(1)} s, ${family}, ${tuned ? 'named on its own tuning' : 'named on A = 440'}`);
@@ -32,13 +32,19 @@ console.log(`${file}: ${(x.length / SR).toFixed(1)} s, ${family}, ${tuned ? 'nam
 const tracker = createStabilityTracker();
 let L = { raw: [], notes: [] }, lastSince = null, offset = 0;
 const cents = m => Math.round((m - Math.round(m)) * 100);
+// As startTuner: the analyser holds the last TUNER_LONG_WINDOW samples.
+const padded = new Float32Array(TUNER_LONG_WINDOW + x.length);
+padded.set(x, TUNER_LONG_WINDOW);
 for (let s = 0; s + WINDOW <= x.length; s += HOP) {
-  const buf = x.subarray(s, s + WINDOW);
+  const end = TUNER_LONG_WINDOW + s + WINDOW;
+  const buf = padded.subarray(end - TUNER_LONG_WINDOW, end);
   const t = (s / SR) * 1000;
-  const res = yinPitch(buf, SR, { minRms: TUNER_MIN_RMS });
-  const hz = res && res.clarity > 0.8 ? refinePitch(buf, SR, res.hz) : null;
+  const { hz } = tunerFrame(buf, SR);
   const r = tracker.push(hz, t);
-  if (showFrames && (res || hz)) console.log(`  ${(t / 1000).toFixed(2)}s  rms ${rmsLevel(buf).toFixed(4)}  yin ${res ? res.hz.toFixed(1) : '-'} (${res ? res.clarity.toFixed(2) : '-'})  → ${hz ? hz.toFixed(1) : 'dropped'}`);
+  if (showFrames) {
+    const res = yinPitch(buf.subarray(buf.length - TUNER_WINDOW), SR);
+    if (res || hz) console.log(`  ${(t / 1000).toFixed(2)}s  rms ${rmsLevel(buf.subarray(buf.length - TUNER_WINDOW)).toFixed(4)}  yin ${res ? res.hz.toFixed(1) : '-'} (${res ? res.clarity.toFixed(2) : '-'})  → ${hz ? hz.toFixed(1) : 'dropped'}`);
+  }
   if (!r.stable || !(r.hz > 0) || r.since === lastSince) continue;
   lastSince = r.since;
   const next = collectHeardNote(L, r.midi, { tuned });
