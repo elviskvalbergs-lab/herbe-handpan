@@ -1159,7 +1159,7 @@ function listenReportContext() {
     mode: w ? 'wind-guided' : g ? 'guided' : 'free',
     heard: notes,
     raw: (g ? g.raw : L?.raw ?? []).filter(x => x != null).map(x => Math.round(x * 100) / 100),
-    places: g ? g.count : null,
+    places: g ? guideTotal(g) : null,
     windChart: w ? `${w.chartId}/${w.keyId}` : null,
     tuningCents: st?.tuningCents ?? 0,
     a4: st?.tuningCents ? a4ForOffset(st.tuningCents) : 440,
@@ -1414,7 +1414,7 @@ function setupMatchFor(st, notes) {
   const fi = setupFamilyInfo(st.family);
   const ranked = fi.wind ? preferCommonChart(rankScalesByNotes(notes, tunings), st.family) : rankScalesByNotes(notes, tunings);
   const g = st.guide;
-  return { ...setupMatch(ranked, g ? { count: g.count, heard: notes.length } : {}), ranked };
+  return { ...setupMatch(ranked, g ? { count: guideTotal(g), heard: notes.length } : {}), ranked };
 }
 function setupTunings(st) { return setupFamilyInfo(st?.family).tunings; }
 function setupWord(st) { return setupFamilyInfo(st?.family).word; }
@@ -1445,14 +1445,15 @@ function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'ha
   // filled in where they were played, the one to play next lit.
   if (guide && isLayoutFamily(family)) {
     const names = guide.notes.map(m => (m == null ? 'null' : midiToNoteName(m)));
-    const rest = names.slice(1);
+    const rest = names.slice(1, guide.count);
+    const under = names.slice(guide.count);
     const layout = layoutFromCustomParams(new URLSearchParams({
-      ding: names[0] === 'null' ? 'D3' : names[0], top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0',
+      ding: names[0] === 'null' ? 'D3' : names[0], top: rest.join(','), bottom: under.join(','), tc: String(rest.length), bc: String(under.length),
       ...(guide.centre ? { centre: '1' } : {}),
     }), family);
     if (guide.notes[0] == null) layout.top.ding = null;
     let svg = renderPan(layout, { highlightNotes: highlight, rotated: false, useFlats: state.useFlats });
-    const id = guide.active === 0 ? 'ding' : `ring-${guide.active - 1}`;
+    const id = guide.active === 0 ? 'ding' : guide.active >= guide.count ? `gu-${guide.active - guide.count}` : `ring-${guide.active - 1}`;
     svg = svg.replace(`data-note-id="${id}"`, `data-note-id="${id}" data-next="1"`);
     return `<div class="setup-pan pan-wrap setup-guide-pan">${svg}</div>`;
   }
@@ -1501,13 +1502,21 @@ function setupNotesText(s) {
 // the drum clockwise from the bottom, or a kalimba's keys left to right),
 // msg, tone }.
 const SETUP_GUIDE_DEFAULT = { handpan: 9, 'tongue-drum': 9, kalimba: 17 };
-function newSetupGuide(family, count = SETUP_GUIDE_DEFAULT[family] ?? 9, centre = false) {
-  return { count, centre, notes: Array(count).fill(null), active: 0, order: null, msg: '', tone: '' };
+// count: the notes on top (the ding or lowest note too); bottom: a handpan's
+// notes underneath, places count … count + bottom − 1.
+function newSetupGuide(family, count = SETUP_GUIDE_DEFAULT[family] ?? 9, centre = false, bottom = 0) {
+  return { count, centre, bottom, notes: Array(count + bottom).fill(null), active: 0, order: null, msg: '', tone: '' };
 }
+function guideTotal(g) { return g.count + (g.bottom ?? 0); }
 // A place by its number in the playing order (1 the lowest, then round).
 function setupSlotLabel(family, i) {
   if (i === 0) return family === 'handpan' ? 'the ding' : 'the lowest note';
-  const order = state.setup?.guide?.order;
+  const g = state.setup?.guide;
+  if (g && i >= g.count) {
+    const under = (g.order ?? []).filter(x => x >= g.count);
+    return `the note underneath ${(under.length ? under.indexOf(i) : i - g.count) + 1}`;
+  }
+  const order = g?.order;
   const n = order ? order.indexOf(i) + 1 : i + 1;
   return `${setupFamilyInfo(family).thing} ${n}`;
 }
@@ -1525,7 +1534,13 @@ function setupGuideOrder() {
     const a = Math.atan2(-x, y);
     return { i: parseInt(el.dataset.noteId.slice(5), 10) + 1, key: state.setup.family === 'kalimba' ? x : (a < 0 ? a + 2 * Math.PI : a) };
   });
-  g.order = [0, ...places.sort((p, q) => p.key - q.key).map(p => p.i)];
+  const under = [...svg.querySelectorAll('[data-note-id^="gu-"]')].map(el => {
+    const r = el.getBoundingClientRect();
+    const x = r.left + r.width / 2 - cx, y = r.top + r.height / 2 - cy;
+    const a = Math.atan2(-x, y);
+    return { i: g.count + parseInt(el.dataset.noteId.slice(3), 10), key: a < 0 ? a + 2 * Math.PI : a };
+  });
+  g.order = [0, ...places.sort((p, q) => p.key - q.key).map(p => p.i), ...under.sort((p, q) => p.key - q.key).map(p => p.i)];
 }
 function setupGuideNextEmpty(g) {
   const order = g.order ?? g.notes.map((_, i) => i);
@@ -1549,7 +1564,7 @@ function setupGuideOnNote(midi) {
   const g = st.guide;
   // Named on the instrument's own tuning (A = 432 Hz drums): the offset
   // from every place heard so far and this note.
-  g.raw ??= Array(g.count).fill(null);
+  g.raw ??= Array(guideTotal(g)).fill(null);
   const others = g.raw.filter((x, i) => x != null && i !== g.active);
   const off = tuningOffsetCents([...others, midi]);
   const m = noteOnTuning(midi, off);
@@ -1725,13 +1740,18 @@ function viewBeginnerSetup() {
   if (st.step === 'count') {
     const g = st.guide ?? (st.guide = newSetupGuide(st.family));
     const max = fi.maxNotes + 1;
-    const what = st.family === 'handpan' ? 'Count the notes on top, the ding in the middle too. Leave out any underneath.'
+    const what = st.family === 'handpan' ? 'Count the notes on top, the ding in the middle too. Then any underneath.'
       : st.family === 'kalimba' ? 'Count every key.' : 'Count every tongue, a round one in the middle too.';
     return stepFrame({
       header, count: count(3), title: `How many notes does your ${word} have?`, sub: what,
       body: `
         <div class="setup-count">
-          ${uiStepper({ value: g.count, label: 'Notes', action: 'setup-count', min: g.count <= 3, max: g.count >= max })}
+          ${st.family === 'handpan'
+            ? `<div class="list setup-count-rows">
+                ${uiSetRow({ label: 'On top', help: 'The ding and the notes round it', control: uiStepper({ value: g.count, label: 'Notes on top', action: 'setup-count', min: g.count <= 3, max: g.count >= max }) })}
+                ${uiSetRow({ label: 'Underneath', help: 'Notes on the bottom shell, if any', control: uiStepper({ value: g.bottom ?? 0, label: 'Notes underneath', action: 'setup-bottom', min: !g.bottom, max: (g.bottom ?? 0) >= 12 }) })}
+              </div>`
+            : uiStepper({ value: g.count, label: 'Notes', action: 'setup-count', min: g.count <= 3, max: g.count >= max })}
           ${st.family === 'tongue-drum' ? uiSwitchRow({ label: 'A round note in the middle', help: g.centre ? 'The lowest note is in the middle' : 'Every tongue is round the edge', on: g.centre, action: 'setup-centre' }) : ''}
         </div>
         ${setupPanHtml({ guide: g, family: st.family })}`,
@@ -1783,7 +1803,7 @@ function viewBeginnerSetup() {
     const filled = g.notes.filter(m => m != null).length;
     const label = setupSlotLabel(st.family, g.active);
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
-      : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `${filled} of ${g.count} · listening` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
+      : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `${filled} of ${guideTotal(g)} · listening` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
       header, count: count(3),
       title: g.notes[g.active] != null ? `Play ${label} again` : `Play ${label}`,
@@ -1794,7 +1814,7 @@ function viewBeginnerSetup() {
       bar: {
         left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my ${fi.pick} instead</button>`,
         right: L.listening || filled >= 3
-          ? `<button type="button" class="btn btn-primary" data-action="setup-heard-done"${filled >= 3 ? '' : ' disabled'}>${filled >= g.count ? 'Next' : 'That’s all my notes'}</button>`
+          ? `<button type="button" class="btn btn-primary" data-action="setup-heard-done"${filled >= 3 ? '' : ' disabled'}>${filled >= guideTotal(g) ? 'Next' : 'That’s all my notes'}</button>`
           : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
       },
     });
@@ -1831,12 +1851,12 @@ function viewBeginnerSetup() {
           <div class="setup-result card">
             <p class="setup-result-lead">Your ${word}</p>
             <p class="setup-result-name">${escHtml([...notes].sort((a, b) => a - b).map(m => nn(midiToNoteName(m))).join(' '))}</p>
-            <p class="setup-result-desc">None of the ${st.guide.count}-note ${escHtml(word)}s Oakhum knows has exactly these notes, so it’ll use them as you played them. You can change any note later.</p>
+            <p class="setup-result-desc">None of the ${guideTotal(st.guide)}-note ${escHtml(word)}s Oakhum knows has exactly these notes, so it’ll use them as you played them. You can change any note later.</p>
             ${setupScaleFitHtml(st, notes)}
             ${st.tuningCents ? `<p class="setup-result-desc">Tuned to A = ${a4ForOffset(st.tuningCents)} Hz, not the usual 440: Oakhum names its notes on that tuning.</p>` : ''}
             ${setupPanHtml({ guide: { ...st.guide, active: -1 }, family: st.family })}
           </div>
-          ${closeLinks ? `<p class="wizard-foot">Closest with ${st.guide.count} notes: ${closeLinks}</p>` : ''}
+          ${closeLinks ? `<p class="wizard-foot">Closest with ${guideTotal(st.guide)} notes: ${closeLinks}</p>` : ''}
           ${listenReportLinkHtml('Did Oakhum mishear a note?')}`,
         bar: {
           left: '<button type="button" class="btn btn-ghost" data-action="setup-not-right">Not quite, let me choose</button>',
@@ -1856,7 +1876,7 @@ function viewBeginnerSetup() {
       });
     }
     const s = best.scale;
-    const close = ranked.filter(r => r.ding !== 'none' && r.scale.family !== s.family && (!st.guide || r.total === st.guide.count)).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
+    const close = ranked.filter(r => r.ding !== 'none' && r.scale.family !== s.family && (!st.guide || r.total === guideTotal(st.guide))).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
     return stepFrame({
       header, count: count(3), title: `We heard ${notes.length} notes`,
       body: `
@@ -1990,11 +2010,19 @@ function setupAction(action, el) {
   if (action === 'setup-count') {
     const g = st.guide;
     const n = Math.max(3, Math.min(setupFamilyInfo(st.family).maxNotes + 1, g.count + parseInt(el.dataset.delta, 10)));
-    st.guide = newSetupGuide(st.family, n, g.centre);
+    st.guide = newSetupGuide(st.family, n, g.centre, g.bottom);
     render();
     return true;
   }
   if (action === 'setup-centre') { st.guide = newSetupGuide(st.family, st.guide.count, !st.guide.centre); render(); return true; }
+  // A handpan's notes underneath (0 to 12, as the editor).
+  if (action === 'setup-bottom') {
+    const g = st.guide;
+    const b = Math.max(0, Math.min(12, (g.bottom ?? 0) + parseInt(el.dataset.delta, 10)));
+    st.guide = newSetupGuide(st.family, g.count, g.centre, b);
+    render();
+    return true;
+  }
   if (action === 'setup-listen-free') { st.guide = null; st.windGuide = null; return setupAction('setup-listen', el); }
   // Play my notes on an ocarina or flute: which type (one type: straight on),
   // then each fingering shown and checked.
@@ -2029,7 +2057,7 @@ function setupAction(action, el) {
   // Play some places of the guided round again (the notes that didn't fit).
   if (action === 'setup-guide-redo' && st.guide) {
     const g = st.guide;
-    const places = (el.dataset.places ?? '').split(',').map(Number).filter(i => i >= 0 && i < g.count);
+    const places = (el.dataset.places ?? '').split(',').map(Number).filter(i => i >= 0 && i < guideTotal(g));
     if (!places.length) return true;
     for (const i of places) { g.notes[i] = null; if (g.raw) g.raw[i] = null; }
     st.tuningCents = tuningOffsetCents((g.raw ?? []).filter(x => x != null));
@@ -2042,13 +2070,13 @@ function setupAction(action, el) {
   }
   if (action === 'setup-guide-start') {
     st.tuningCents = 0;
-    st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
+    st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre, st.guide.bottom);
     return setupAction('setup-listen', el);
   }
   if (action === 'setup-listen') {
     stopListen();
     state.listen = null;
-    if (st.guide) st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre);
+    if (st.guide) st.guide = newSetupGuide(st.family, st.guide.count, st.guide.centre, st.guide.bottom);
     if (st.windGuide) st.windGuide = newWindGuide(st.windGuide.group);
     if (st.step !== 'listen') { st.history.push(st.step); st.step = 'listen'; }
     logEvent('setup', { step: 'listen' });
@@ -2077,13 +2105,18 @@ function setupAction(action, el) {
       const g = st.guide;
       const ding = g.notes[0] ?? setupGuideHeard(g)[0];
       if (ding == null) return true;
-      const rest = g.notes.slice(1).map(m => (m == null ? 'null' : midiToNoteName(m)));
-      params = new URLSearchParams({ ding: midiToNoteName(ding), top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0', name: `My ${layoutFamilyInfo(fam).word}`, ...(g.centre ? { centre: '1' } : {}) });
+      const name = m => (m == null ? 'null' : midiToNoteName(m));
+      const rest = g.notes.slice(1, g.count).map(name);
+      const under = g.notes.slice(g.count).map(name);
+      params = new URLSearchParams({ ding: midiToNoteName(ding), top: rest.join(','), bottom: under.join(','), tc: String(rest.length), bc: String(under.length), name: `My ${layoutFamilyInfo(fam).word}`, ...(g.centre ? { centre: '1' } : {}) });
     } else {
       const heard = [...new Set(state.listen?.notes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
       if (heard.length < 2) return true;
-      const rest = heard.slice(1, 1 + layoutFamilyInfo(fam).maxNotes);
-      params = new URLSearchParams({ ding: heard[0], top: rest.join(','), bottom: '', tc: String(rest.length), bc: '0', name: `My ${layoutFamilyInfo(fam).word}` });
+      // More than fit on top: the rest go underneath (a handpan's bottom notes).
+      const max = layoutFamilyInfo(fam).maxNotes;
+      const rest = heard.slice(1, 1 + max);
+      const under = fam === 'handpan' ? heard.slice(1 + max, 1 + max + 12) : [];
+      params = new URLSearchParams({ ding: heard[0], top: rest.join(','), bottom: under.join(','), tc: String(rest.length), bc: String(under.length), name: `My ${layoutFamilyInfo(fam).word}` });
     }
     stopListen();
     logEvent('setup', { step: 'scale', how: 'heard-notes' });
@@ -7829,8 +7862,8 @@ document.addEventListener('click', e => {
   if (noteEl && state.view === 'setup' && state.setup?.guide && noteEl.closest('.setup-guide-pan')) {
     const id = noteEl.dataset.noteId;
     const g = state.setup.guide;
-    const i = id === 'ding' ? 0 : id?.startsWith('ring-') ? parseInt(id.slice(5), 10) + 1 : -1;
-    if (i >= 0 && i < g.count) {
+    const i = id === 'ding' ? 0 : id?.startsWith('ring-') ? parseInt(id.slice(5), 10) + 1 : id?.startsWith('gu-') ? g.count + parseInt(id.slice(3), 10) : -1;
+    if (i >= 0 && i < guideTotal(g)) {
       g.active = i;
       Object.assign(g, { msg: g.notes[i] != null ? `Play ${setupSlotLabel(state.setup.family, i)} again to change it.` : '', tone: '' });
       render();

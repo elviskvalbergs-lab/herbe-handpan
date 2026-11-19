@@ -211,15 +211,15 @@ export const SETUP_SCALE_TYPES = [
 // Which common scale the notes heard (MIDI numbers) are, or are closest to,
 // in any key: the best five-note and the best seven-note fit, each
 // { root (pitch class), type, off: [midi], instead: { midi: suggested midi } }.
-// Fewest notes off first, but a root that is the lowest note (a drum's ding
-// is usually its key) over one note fewer off, then the order above. A note off by a semitone from a
+// Fewest notes off first, but a root that is the first note (the ding or
+// the lowest note: an instrument's key) over one note fewer off, then the order above. A note off by a semitone from a
 // scale note the drum doesn't already have is probably that note, misheard
 // or out of tune: `instead`, leaning the way it sounded (devCents: { midi:
 // cents from the named note }). Null with fewer than three different notes.
 export function scaleFits(notes, { devCents = {}, types = SETUP_SCALE_TYPES } = {}) {
   const pc = m => ((m % 12) + 12) % 12;
   if (new Set(notes.map(pc)).size < 3) return null;
-  const low = pc(Math.min(...notes));
+  const low = pc(notes[0]); // the ding, or the lowest note: listed first
   const best = {};
   types.forEach((type, order) => {
     for (let root = 0; root < 12; root++) {
