@@ -41,6 +41,7 @@ def mark(tl, prefix):
 ptl = json.load(open(os.path.join(PARENT, 'timeline.json')))
 p_first, p_audio = mark(ptl, 'firstFrame'), ptl['audioOffset']
 p_dm, p_scale, p_f = mark(ptl, 'D Minor'), mark(ptl, 'scale'), mark(ptl, 'F Major')
+p_bb = mark(ptl, 'A# Major')
 PHONE_LEN = 20.0
 p_ss = p_dm - 1.0  # start one second before D minor is tapped (recording clock)
 # The words change from scene 6 to 7 at SWITCH, once the scene-6 line is said.
@@ -110,9 +111,10 @@ clips = [
     clip(phone_audio, p_scale - p_audio, 7.0, 0.6, 0.55),          # the scale, under "you put weeks…"
     clip(phone_audio, p_dm - p_audio, 4.6, starts['seg_s3.mp4'] + 0.6, 0.5),  # D minor, "keep playing"
     clip(phone_audio, p_f - p_audio, 4.6, starts['seg_s5a.mp4'] + 0.8, 0.45),  # F major, the QR card
-    clip(phone_audio, p_scale - p_audio, 6.0, starts['seg_s5b.mp4'] + 0.3, 0.35),  # the scale, softly, under the NFC tag
+    clip(phone_audio, p_bb - p_audio, 4.6, starts['seg_s5b.mp4'] + 0.5, 0.45),  # B flat major, the NFC tag
     clip(phone_audio, p_ss - p_audio, PHONE_LEN, starts['seg_phone.mp4'], 1.0),
     clip('shop/audio.webm', 0.0, SHOP_LEN, starts['seg_shop.mp4'] + max(0.0, stl['audioOffset'] - SHOP_SS), 1.0),
+    clip(phone_audio, p_f - p_audio, 9.5, starts['seg_s9.mp4'] + 0.3, 0.55),  # F, then C: the ending resolves
 ]
 args, parts = [], []
 for i, (src, ss, dur, at, vol) in enumerate(clips):
@@ -130,7 +132,7 @@ if VO:
         ms = int(vo_at[scene] * 1000)
         graph.append(f"[{n + j}:a]aresample=48000,adelay={ms}|{ms}[v{j}]")
     graph.append(''.join(f'[v{j}]' for j in range(len(VO))) + f"amix=inputs={len(VO)}:normalize=0,apad,atrim=0:{total},asplit[vo][key]")
-    graph.append("[music][key]sidechaincompress=threshold=0.02:ratio=6:attack=40:release=500[duck]")
+    graph.append("[music][key]sidechaincompress=threshold=0.02:ratio=4:attack=60:release=1200[duck]")
     graph.append(f"[duck][vo]amix=inputs=2:weights='0.8 1':normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,afade=t=out:st={total-1.5}:d=1.5[a]")
 else:
     graph.append(f"[music]afade=t=out:st={total-1.5}:d=1.5[a]")
