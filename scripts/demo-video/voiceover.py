@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
-"""The voice-over of the makers video (docs/video-script-makers.md): one take
-per scene, written to <out>/<scene>.wav, with their lengths in <out>/lines.json.
-compose.py fits each scene to its line and lays the voice over the sound.
+"""The voice-over of a video, run from its folder (makers/, overview/): one
+take per line of its lines.py, written to <out>/<line>.wav, with their lengths
+in <out>/lines.json. Its compose.py fits each scene to its line and lays the
+voice over the sound.
 
   pip install kokoro-onnx soundfile
-  python3 voiceover.py                          # Kokoro "Liam" -> vo/
-  python3 voiceover.py --voice am_puck          # another Kokoro voice, see --list
-  python3 voiceover.py --samples                # one line in every male voice, vo/samples/
-  python3 voiceover.py --engine openai --out vo-openai   # OpenAI, needs OPENAI_API_KEY
-  python3 voiceover.py --from takes-elevenlabs --out vo-elevenlabs   # takes made elsewhere
+  python3 ../voiceover.py                          # Kokoro "Liam" -> vo/
+  python3 ../voiceover.py --voice am_puck          # another Kokoro voice, see --list
+  python3 ../voiceover.py --samples                # one line in every male voice, vo/samples/
+  python3 ../voiceover.py --engine openai --out vo-openai   # OpenAI, needs OPENAI_API_KEY
+  python3 ../voiceover.py --from takes-elevenlabs --out vo-elevenlabs   # takes made elsewhere
 
-The video on the website uses ElevenLabs' "Liam" (eleven_v4), one take per
-line, made through the ElevenLabs connector and kept in takes-elevenlabs/
-(<scene>.mp3), so the video can be rebuilt without spending credits:
-  python3 voiceover.py --from takes-elevenlabs --out vo-elevenlabs
-  python3 compose.py vo-elevenlabs
-The last line was sent as "... [excited] Let's get your instruments PLAYED!" so
-the weight falls on "played".
+The voices: Kokoro (free, local) for first versions, ElevenLabs "Liam"
+(eleven_v4) for the final ones, made through the ElevenLabs connector, one
+take per line, kept in the video's takes-elevenlabs/ (<line>.mp3) and brought
+in with --from, so a video can be rebuilt without spending credits.
 
 The captions already say what's on screen, so the voice doesn't read them: it
-tells the story around them and adds what the captions leave out (listening
-along with a guitar, offline, made in Latvia, free for maker and buyer).
+tells the story around them and adds what the captions leave out.
 No music-theory words (docs/video-script.md).
 
 Kokoro is an open model (Apache 2.0) run locally: no account, no API key. Its
@@ -31,7 +28,7 @@ of the whole script costs about a cent. Output stays in this folder, uncommitted
 import argparse, io, json, os, sys, urllib.request
 import numpy as np
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+HERE = os.getcwd()  # the video's folder: its lines.py, takes and vo/ live there
 CACHE = os.path.expanduser('~/.cache/oakhum-tts')
 MODEL_URL = 'https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/'
 FILES = ['kokoro-v1.0.onnx', 'voices-v1.0.bin']
@@ -45,38 +42,10 @@ PAUSE = 0.32  # seconds between the phrases of one line (Kokoro)
 # the halves keeps it "oak hum" (checked with speech recognition).
 PRONOUNCE = {'ˈoʊkhəm': 'ˈoʊk, hˈʌm'}
 
-# One line per scene. A line is a list of phrases, so a pause is a real pause.
-# Captions on screen in brackets, so the voice can add to them, not repeat them.
-LINES = {
-    # [You put weeks into every instrument you make.]
-    's1':   ["Shaping, tuning, listening…", "and tuning again, until every note sings."],
-    # [But the first week is the hardest for many buyers. They play the scale… and then, what next?]
-    's2':   ["Then it arrives at someone's door, and they're thrilled!",
-             "They play it every day…", "until, one day, it quietly moves to the shelf."],
-    # [Oakhum helps every buyer keep playing. Even with no musical background.]
-    's3':   ["We made Oakhum so that doesn't happen.",
-             "It shows people what their own instrument can do. No lessons, no theory.",
-             "And someone who's having fun? They tell everyone about it."],
-    # [Set it up once. Exactly as you built it: your scale, your layout, every bottom note.]
-    's4':   ["Here's how it works.", "You set up the instrument once, even a scale nobody else makes.",
-             "Save it with a free account, and it gets its very own link."],
-    # [Print its QR code. On a card in the case, on the certificate...]
-    's5a':  ["That link travels in the box.", "So your buyers never have to write and ask you what to play."],
-    # [Or write it to an NFC tag. A sticker costs cents...]
-    's5b':  ["Want a little magic?", "Hide it in an NFC sticker. Writing one takes a few seconds."],
-    # [One tap: their own instrument opens. No app store, no sign-up.]
-    's6':   ["And now the best part.", "They unbox it, tap their phone…", "and there it is: ready to play!"],
-    # [Every chord it can play. Songs step by step, and help to join any jam.]
-    's7':   ["Every chord lights up, right where it lives on their instrument.",
-             "And when a friend picks up a guitar, Oakhum listens, and shows them how to join in.",
-             "It even works offline, around the campfire."],
-    # [Link every scale you sell from your shop]
-    'shop': ["On your shop, people can hear your scales and play them, before they buy.",
-             "Even the unusual ones."],
-    # [Help your instruments get played. For makers of handpans, kalimbas, flutes and more · Free]
-    's9':   ["Oakhum is made in Latvia, on Oak Street.",
-             "It's free, for you and for every player.", "Let's get your instruments played!"],
-}
+# The lines come from the video's own lines.py (LINES: scene -> phrases), in
+# the folder this is run from: python3 ../voiceover.py inside makers/ or overview/.
+sys.path.insert(0, os.getcwd())
+from lines import LINES
 
 def kokoro():
     os.makedirs(CACHE, exist_ok=True)

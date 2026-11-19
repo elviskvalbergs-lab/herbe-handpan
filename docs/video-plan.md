@@ -16,6 +16,8 @@ The overview and the tutorials share the same opening look, voice and ending, th
 
 ## 1. What Oakhum is (overview)
 
+**First version made** (`scripts/demo-video/overview/`, 44 s, Kokoro voice, brand pictures): for the owner to check words and timing before the ElevenLabs take. The voice lines it uses are in `overview/lines.py`; they tell the story around the captions rather than reading them.
+
 This replaces the draft in `docs/video-script.md`, which tried to be the overview and the how-to at once. Shorter, mostly why.
 
 | # | Picture | Voice-over | Caption |
