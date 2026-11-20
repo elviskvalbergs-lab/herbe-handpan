@@ -804,6 +804,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-sm); color: inherit;
 }
 .fg-stage .fingering { max-height: 36dvh; }
+/* Close-up of a flute's holes (renderFingering closeUp): what's cropped stays out. */
+svg.fingering.is-closeup { overflow: hidden; }
 .fg-moves-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; min-height: 44px; }
 .fg-moves {
   min-height: 24px; text-align: center; color: var(--text-1);

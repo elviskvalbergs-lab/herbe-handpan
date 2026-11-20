@@ -113,3 +113,19 @@ test('voicing swap cycles a note through its octaves', () => {
   // Only one F on the instrument: unchanged.
   assert.deepEqual(nextVoicing(dKurd, d, m('F4')), d);
 });
+
+test('a flute close-up is the box round its holes, with the note name under them', async () => {
+  const { renderFingering, fgCloseUpBox } = await import('../js/ocarina-ui.js');
+  const { instrumentFromChart } = await import('../js/charts.js');
+  const inst = instrumentFromChart('tin-whistle-d', 'D');
+  const midi = inst.chambers[0].notes[0];
+  const full = renderFingering(inst, midi, { size: 'large' });
+  const close = renderFingering(inst, midi, { size: 'large', closeUp: true });
+  const vb = svg => /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+  assert.ok(vb(close)[2] < vb(full)[2] * 0.75, 'cropped to the holes');
+  assert.match(close, /is-closeup/);
+  const box = fgCloseUpBox(full, { size: 'large' });
+  assert.ok(box.labelY < box.y + box.h);
+  // Mini pictures and ocarinas are left as they are.
+  assert.doesNotMatch(renderFingering(inst, midi, { size: 'mini', closeUp: true }), /is-closeup/);
+});
