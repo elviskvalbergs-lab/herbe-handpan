@@ -208,8 +208,8 @@ export async function openMicrophone() {
 // whose instrument Oakhum heard wrong can send it to us (the listening report
 // in js/app.js). It stays in memory on the device, is sent only when they say
 // so, and is gone when the page closes. One take per listening session; the
-// last three are kept, each at most three minutes (small enough to send).
-const MIC_TAKE_MS = 3 * 60 * 1000;
+// last three are kept, each at most five minutes (the newest that fit in one upload are sent).
+const MIC_TAKE_MS = 5 * 60 * 1000;
 const MIC_TAKES_KEPT = 3;
 let _recWanted = false;
 let _rec = null; // { r, mic, timer, take }

@@ -231,6 +231,8 @@ export function layoutFromCustomParams(params, family = 'handpan') {
     ...(fam !== 'handpan' ? { instrument: fam, centre: drum && params.get('centre') === '1' } : {}),
     top: { ding: params.get('ding') || 'D3', ...shell('top', 'tc', 8) },
     bottom: shell('bottom', 'bc', fam === 'handpan' ? 3 : 0),
+    // A handpan's tone fields moved to where they are on the real one.
+    ...(fam === 'handpan' && panPosFromParam(params.get('pos')) ? { pos: panPosFromParam(params.get('pos')) } : {}),
   };
 }
 
@@ -328,4 +330,20 @@ export function withLinkPreview(html, preview, origin, url) {
   meta('property', 'og:image', origin + preview.image);
   meta('property', 'og:url', url);
   return html;
+}
+
+// A handpan's moved tone fields (layout.pos, the editor's Move notes) in a
+// link: pos=ding:250:250,ring-0:120:300,gu-1:40:460.
+export function panPosToParam(pos) {
+  return Object.entries(pos ?? {}).map(([id, p]) => `${id}:${Math.round(p.x)}:${Math.round(p.y)}`).join(',');
+}
+export function panPosFromParam(text) {
+  const pos = {};
+  for (const part of String(text ?? '').split(',')) {
+    const m = /^(ding|ring-\d{1,2}|gu-\d{1,2}):(\d{1,3}):(\d{1,3})$/.exec(part);
+    if (!m) continue;
+    const x = +m[2], y = +m[3];
+    if (x <= 500 && y <= 500) pos[m[1]] = { x, y };
+  }
+  return Object.keys(pos).length ? pos : null;
 }

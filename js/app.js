@@ -22,7 +22,7 @@ import {
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
-import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying } from './pan.js';
+import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
   renderFingering, renderHandLegend, fingeringMoves, playableMidis, fingeringFor,
@@ -43,7 +43,7 @@ import {
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
-import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomParams } from './links.js';
+import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomParams, panPosToParam } from './links.js';
 import { TONGUE_DRUMS, isTongueDrumId } from './tonguedrums.js';
 import { LAYOUT_FAMILIES, findTuning, layoutInstrument, isLayoutFamily, layoutFamilyInfo } from './layoutfamilies.js';
 import {
@@ -2123,6 +2123,8 @@ function setupAction(action, el) {
     state.setup = null;
     openLink(parseLink(`/${fam}/custom`, '?' + params));
     state.view = 'editor';
+    // A handpan: next, where each note is on the real one.
+    state.edArrange = fam === 'handpan';
     navPush(stateToHash());
     render();
     return true;
@@ -5023,6 +5025,62 @@ function openStartView() {
 // ── View 2: Layout Editor ────────────────────────────────────────────────────
 // Handpan Pan tab (§6.8): shells, the pan, capacities, name, Customize and Save.
 
+// Move notes: a custom handpan's tone fields dragged to where they are on
+// the real one (layout.pos, drawn by pan.js, kept in saves and links).
+function edArranging() {
+  return !!state.edArrange && state.view === 'editor' && !!state.layout?.isCustom && layoutInstrument(state.layout) === 'handpan';
+}
+function edArrangeHtml() {
+  if (!state.layout?.isCustom || layoutInstrument(state.layout) !== 'handpan') return '';
+  if (!edArranging()) {
+    return `<div class="ed-arrange"><button type="button" class="btn btn-secondary btn-sm" data-action="ed-arrange">${icon('move')} Move notes</button></div>`;
+  }
+  return `<div class="ed-arrange is-on">
+      <p class="ed-hint">Drag each note to where it is on your handpan. The ones underneath go round it.</p>
+      <div class="row-btns">
+        ${state.layout.pos ? '<button type="button" class="btn btn-ghost btn-sm" data-action="ed-arrange-reset">Put them back</button>' : ''}
+        <button type="button" class="btn btn-primary btn-sm" data-action="ed-arrange">Done</button>
+      </div>
+    </div>`;
+}
+
+// Dragging a tone field while moving notes: it follows the finger, and on
+// release settles where it fits (pan.js settlePanPlace) or goes back.
+let _edDrag = null;
+document.addEventListener('pointerdown', e => {
+  if (!edArranging()) return;
+  const g = e.target.closest?.('.ed-pan .pan-note');
+  const svg = g?.ownerSVGElement;
+  if (!g || !svg) return;
+  e.preventDefault();
+  g.setPointerCapture?.(e.pointerId);
+  const m = svg.getScreenCTM()?.inverse();
+  if (!m) return;
+  const pt = (cx, cy) => { const p = new DOMPoint(cx, cy).matrixTransform(m); return { x: p.x, y: p.y }; };
+  _edDrag = { id: g.dataset.noteId, g, svg, pt, start: pt(e.clientX, e.clientY), x: +g.dataset.x, y: +g.dataset.y, r: +g.dataset.r, pointer: e.pointerId };
+  g.classList.add('is-dragging');
+});
+document.addEventListener('pointermove', e => {
+  const d = _edDrag;
+  if (!d || e.pointerId !== d.pointer) return;
+  const p = d.pt(e.clientX, e.clientY);
+  d.dx = p.x - d.start.x; d.dy = p.y - d.start.y;
+  d.g.setAttribute('transform', `translate(${d.dx} ${d.dy})`);
+});
+function endEdDrag(e) {
+  const d = _edDrag;
+  if (!d || e.pointerId !== d.pointer) return;
+  _edDrag = null;
+  if (!d.dx && !d.dy) { render(); return; }
+  const others = [...d.svg.querySelectorAll('.pan-note')].filter(o => o !== d.g)
+    .map(o => ({ x: +o.dataset.x, y: +o.dataset.y, r: +o.dataset.r }));
+  const at = settlePanPlace(d.id, d.x + (d.dx ?? 0), d.y + (d.dy ?? 0), d.r, others);
+  if (at) state.layout.pos = { ...(state.layout.pos ?? {}), [d.id]: at };
+  render();
+}
+document.addEventListener('pointerup', endEdDrag);
+document.addEventListener('pointercancel', endEdDrag);
+
 // Is the layout on screen saved, unchanged, in My instruments?
 function hpLayoutSaved() {
   const layout = state.layout;
@@ -5069,10 +5127,11 @@ function viewEditor() {
       <div class="editor-main">
         ${drum ? '' : uiSeg([{ value: 'both', label: 'Both shells' }, { value: 'top', label: 'Top' }, { value: 'bottom', label: 'Bottom' }],
           state.shellMode, { action: 'shell-mode', key: 'mode', label: 'Shells shown' })}
-        <div class="pan-wrap ed-pan">
-          ${panRotateBtn()}${panSvg}
+        <div class="pan-wrap ed-pan${edArranging() ? ' is-arranging' : ''}">
+          ${edArranging() ? '' : panRotateBtn()}${panSvg}
         </div>
-        ${isCustom ? `<p class="ed-hint">Tap a note to remove it · tap + to add one</p>` : ''}
+        ${edArrangeHtml()}
+        ${isCustom && !edArranging() ? `<p class="ed-hint">Tap a note to remove it · tap + to add one</p>` : ''}
       </div>
 
       <div class="editor-sidebar">
@@ -6920,6 +6979,7 @@ function stateToHash() {
   });
   const family = layoutInstrument(state.layout);
   if (family === 'tongue-drum' && state.layout.centre) params.set('centre', '1');
+  if (family === 'handpan' && state.layout.pos) params.set('pos', panPosToParam(state.layout.pos));
   return linkFor({ custom: params, family }, { tab, chord });
 }
 
@@ -7870,6 +7930,7 @@ document.addEventListener('click', e => {
     }
     return;
   }
+  if (noteEl && edArranging() && noteEl.closest('.ed-pan')) return; // moving, not editing
   if (noteEl && state.layout) {
     const noteId = noteEl.dataset.noteId;
     const isEmpty = noteEl.classList.contains('empty');
@@ -9248,6 +9309,8 @@ document.addEventListener('click', e => {
   }
 
   // ── Pan rotation ──────────────────────────────────────────────────────────
+  if (action === 'ed-arrange') { state.edArrange = !edArranging(); render(); return; }
+  if (action === 'ed-arrange-reset') { delete state.layout.pos; render(); return; }
   if (action === 'toggle-rotation') {
     state.ringRotated = !state.ringRotated;
     savePrefs();
