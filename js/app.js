@@ -20,6 +20,7 @@ import {
   stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS,
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
+import { instrumentKey, goesWellWith } from './harmony.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -3133,6 +3134,7 @@ function ocChordStageParts(inst, a) {
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
     below: `
+        ${goesWithLineHtml()}
         <div class="oc-player-notes" role="group" aria-label="Notes of the chord, in playing order">
           ${parts.arp.map((m, i) => `
             <button type="button" class="oc-pnote${i === sel ? ' is-current' : ''}" data-action="oc-step" data-key="${key}" data-i="${i}" data-midi="${m}"
@@ -5622,6 +5624,110 @@ function chordsScreenHtml({ cls = '', stageCls = '', stageAttrs = '', picture, c
   `;
 }
 
+// ── Goes well with (js/harmony.js) ─────────────────────────────────────────
+// On every instrument's chord card: the chords that usually come next in the
+// instrument's key (tap one to see it), and a sheet of well-known
+// progressions with this chord, each to hear and to save as a progression.
+
+// The chord on show, the instrument's chords and its key, and how a chord
+// is picked on this screen.
+function goesWithContext() {
+  if (state.view === 'instrument') {
+    const inst = currentInstrument();
+    if (!inst || state.oc.tab !== 'chords') return null;
+    const model = ocChordModel(inst);
+    const chord = model.chords.find(c => c.id === state.oc.expanded);
+    const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
+    const layout = ocarinaToLayout(inst, pcs);
+    if (!chord || !layout.top.ding) return null;
+    return { chord, chords: model.chords, layout, pick: c => ({ action: 'oc-chord-select', data: { key: c.id } }) };
+  }
+  if (state.view !== 'chords' || !state.selectedChord || !state.layout?.top.ding) return null;
+  return { chord: state.selectedChord, chords: state.chords, layout: state.layout, pick: c => ({ action: 'select-chord', data: { id: c.id } }) };
+}
+function goesWithFor(ctx) {
+  const key = instrumentKey(layoutPitchClasses(ctx.layout), notePC(ctx.layout.top.ding));
+  return { key, g: goesWellWith(ctx.chord, ctx.chords, key, { progressions: 4 }) };
+}
+function gwChordName(c) {
+  const q = c.type.id === 'min' ? 'm' : c.type.id === 'dim' ? '°' : c.type.id === 'maj' ? '' : ` ${c.type.name}`;
+  return `${displayNote(c.rootName, state.useFlats, state.useSolfege)}${q}`;
+}
+
+// The line on the card: "Goes well with  [Gm] [B♭] [C]  Progressions".
+function goesWithLineHtml() {
+  const ctx = goesWithContext();
+  if (!ctx) return '';
+  const { g } = goesWithFor(ctx);
+  if (!g || (!g.next.length && !g.progressions.length)) return '';
+  const chips = g.next.slice(0, 4).map(c => {
+    const p = ctx.pick(c);
+    return `<button type="button" class="chip gw-chip" data-action="${p.action}"${uiData(p.data)}>${escHtml(gwChordName(c))}</button>`;
+  }).join('');
+  return `<div class="gw-line">
+      <div class="gw-head">
+        <span class="gw-label">Goes well with</span>
+        ${g.progressions.length ? `<button type="button" class="link-btn gw-more" data-action="gw-open">Progressions ${icon('chevron-right')}</button>` : ''}
+      </div>
+      <div class="gw-chips">${chips}</div>
+    </div>`;
+}
+
+// The sheet: the progressions with this chord, each with ▶ and Save.
+function goesWithSheet() {
+  const ctx = goesWithContext();
+  const res = ctx && goesWithFor(ctx);
+  if (!res?.g) { state.goesWith = null; return ''; }
+  const { key, g } = res;
+  const keyName = `${displayNote(NOTE_NAMES[key.tonic], state.useFlats, state.useSolfege)} ${key.mode}`;
+  const rows = g.progressions.map((p, i) => uiRow({
+    title: p.name, titleHtml: false,
+    meta: p.chords.map((c, j) => (j === p.at ? `<strong>${escHtml(gwChordName(c))}</strong>` : escHtml(gwChordName(c)))).join(' – '),
+    meta2: escHtml(p.degrees.join(' – ')),
+    trail: `${uiIconBtn('play', `Play ${p.name}`, { action: 'gw-play', data: { i } })}
+      <button type="button" class="btn btn-secondary btn-sm" data-action="gw-save" data-i="${i}">Save</button>`,
+  })).join('');
+  return uiSheet({
+    key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
+    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? (currentInstrument()?.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a progression.</p>
+      <div class="list gw-list">${rows}</div>`,
+  });
+}
+
+// Plays a progression: each chord's notes one after another, as one-note
+// instruments play chords.
+function playGoesWith(chords) {
+  initAudio();
+  const seq = [];
+  for (const c of chords) {
+    const root = c.notes.find(n => notePC(n) === notePC(c.rootNote)) ?? c.notes[0];
+    seq.push(...arpeggioOrder(c.notes, root).map(midiToNoteName));
+  }
+  playSequence(seq, () => {}, 0.28);
+}
+
+function goesWithAction(action, el) {
+  if (action === 'gw-open') { state.goesWith = true; render(); return true; }
+  if (!state.goesWith) return false;
+  if (action === 'gw-close') { state.goesWith = null; render(); return true; }
+  const ctx = goesWithContext();
+  const p = ctx && goesWithFor(ctx).g?.progressions[parseInt(el.dataset.i, 10)];
+  if (action === 'gw-play') { if (p) playGoesWith(p.chords); return true; }
+  if (action === 'gw-save') {
+    if (!p) return true;
+    const steps = p.chords.map(c => newProgressionStep(playlistEntryFor(c, `gw-${c.id}`)));
+    const name = `${p.name}: ${p.chords.map(gwChordName).join(' ')}`;
+    const id = addProgression(name, steps);
+    state.progressions = getProgressions();
+    state.goesWith = null;
+    logEvent('feature', { name: 'goes-with-save', family: measureFamily() });
+    showToast(`Saved "${name}"`, { action: { label: 'Open', run: () => openProgression(id) } });
+    render();
+    return true;
+  }
+  return false;
+}
+
 // The selected chord's card: title, meta lines ([html, extra class]), the
 // actions (♡, ▶ Chord, ⋯), then anything the instrument adds below.
 function chordCardHtml({ title, metas = [], actions, below = '' }) {
@@ -5751,7 +5857,7 @@ function viewChords() {
           <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
           ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}`,
-    below: `<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
+    below: `${goesWithLineHtml()}<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
       <span class="hp-card-hint">Tap a chord to see it on the ${layoutFamilyInfo(layoutInstrument(state.layout)).word}</span>
@@ -5938,6 +6044,7 @@ function installHelpSheet() {
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
   if (state.listenReport) return listenReportSheet();
+  if (state.goesWith) return goesWithSheet();
   if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
   if (state.accountConfirm) return accountConfirmSheet();
@@ -8124,6 +8231,7 @@ document.addEventListener('click', e => {
   }
   if (action === 'add-instrument') { setupAction('setup-open', el); return; }
   if (listenReportAction(action)) return;
+  if (goesWithAction(action, el)) return;
   if (setupAction(action, el)) return;
 
 

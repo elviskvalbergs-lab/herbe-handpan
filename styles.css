@@ -1329,6 +1329,17 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 }
 .hp-card-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
 .hp-play { padding: 0 var(--space-3); }
+/* Goes well with (goesWithLineHtml / goesWithSheet in js/app.js). */
+.gw-line { margin-top: var(--space-2); }
+.gw-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-1); }
+.gw-label { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.gw-more { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-13); white-space: nowrap; }
+.gw-more svg { width: 14px; height: 14px; }
+.gw-chips { display: flex; gap: var(--space-1); overflow-x: auto; scrollbar-width: none; }
+.gw-chips::-webkit-scrollbar { display: none; }
+.gw-chip { flex: none; min-height: 32px; height: 32px; padding: 0 var(--space-3); }
+.gw-list .row-trail { gap: var(--space-2); }
+.gw-list .row-meta strong { color: var(--text-1); }
 .hp-related .overline { margin: var(--space-3) 0 var(--space-2); }
 .hp-card .hp-related { margin-top: var(--space-2); }
 .hp-related .overline:first-child { margin-top: 0; }
