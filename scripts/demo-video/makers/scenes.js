@@ -4,59 +4,21 @@
 // Also renders the QR card a maker could print (a real code for the D Kurd page).
 const { chromium } = require('playwright');
 const fs = require('fs');
-const path = require('path');
-const R = path.resolve(__dirname, '../../..') + '/';
+const { css, pic, brand, copy, phone, logo, leaf, shooter, qrSvg, appShot } = require('../scene-kit');
 const OUT = __dirname + '/scenes/';
 const LINK = 'https://oakhum.com/handpan/d-kurd';
-
-// Where compose.py puts the phone recording (780 x 1688 scaled to 420 x 909).
-const PHONE = { x: 1180, y: 60, w: 460, h: 952, screen: { x: 1200, y: 82, w: 420, h: 909 } };
-
-const font = w => `@font-face{font-family:Oakhum;font-weight:${w};src:url(file://${R}fonts/oakhum-text-${w}.woff2) format('woff2')}`;
-const pic = n => `file://${R}brand/instruments/${n}.webp`;
-const css = `${font(400)}${font(600)}${font(700)}
-  *{box-sizing:border-box} html,body{margin:0;width:1920px;height:1080px;overflow:hidden}
-  body{font-family:Oakhum,sans-serif;color:#2A2820;background:#F2E6D3;position:relative}
-  .copy{position:absolute;left:140px;top:0;bottom:0;width:900px;display:flex;flex-direction:column;justify-content:center;gap:28px}
-  .big{font-size:84px;font-weight:700;letter-spacing:-.025em;line-height:1.04}
-  .sub{font-size:42px;color:#6B5E48;line-height:1.3}
-  .n{width:84px;height:84px;border-radius:50%;background:#B3633F;color:#fff;font-size:46px;font-weight:600;display:flex;align-items:center;justify-content:center}
-  .phone{position:absolute;left:${PHONE.x}px;top:${PHONE.y}px;width:${PHONE.w}px;height:${PHONE.h}px;border-radius:64px;background:#1C1B16;box-shadow:0 30px 80px rgba(42,40,32,.28)}
-  .screen{position:absolute;left:${PHONE.screen.x}px;top:${PHONE.screen.y}px;width:${PHONE.screen.w}px;height:${PHONE.screen.h}px;border-radius:44px;overflow:hidden;background:#F2E6D3}
-  .screen img{width:100%;height:100%;object-fit:cover}
-  .svg svg{width:100%;height:auto;display:block}`;
-
-const copy = (big, sub, n) => `<div class="copy">${n ? `<div class="n">${n}</div>` : ''}<div class="big">${big}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
-const phone = inner => `<div class="phone"></div><div class="screen">${inner ?? ''}</div>`;
 
 (async () => {
   fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(OUT, { recursive: true });
   const b = await chromium.launch();
 
   // The app as the buyer's phone shows it: the instrument's layout tab.
-  const ph = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-  await ph.goto(LINK, { waitUntil: 'load' });
-  await ph.waitForTimeout(2500);
-  await ph.screenshot({ path: OUT + 'app-pan.png' });
-
-  const p = await b.newPage({ viewport: { width: 1920, height: 1080 } });
-  const shot = async (name, html) => {
-    // From a file, so the page may load the local fonts and pictures.
-    fs.writeFileSync(OUT + name + '.html', `<!doctype html><meta charset="utf-8"><style>${css}</style>${html}`);
-    await p.goto('file://' + OUT + name + '.html', { waitUntil: 'load' });
-    await p.evaluate(() => document.fonts.ready);
-    await p.screenshot({ path: OUT + name + '.png' });
-  };
-
-  // QR code for the card, with the same library the app uses for Share.
-  await p.goto('about:blank');
-  await p.addScriptTag({ url: 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js' });
-  const qr = await p.evaluate(link => { const q = qrcode(0, 'M'); q.addData(link); q.make(); return q.createSvgTag({ cellSize: 10, margin: 0, scalable: true }); }, LINK);
-  const logo = fs.readFileSync(R + 'brand/horizontal_ink.svg', 'utf8');
-  const leaf = fs.readFileSync(R + 'brand/leaf_only_clay.svg', 'utf8');
+  await appShot(b, LINK, OUT + 'app-pan.png');
+  const { page: p, shot } = await shooter(b, OUT);
+  const qr = await qrSvg(p, LINK);
 
   // 1–3: why
-  await shot('s1', `<img src="file://${R}brand/hero-sky-wide.webp" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:75% 100%">
+  await shot('s1', `<img src="${brand('hero-sky-wide.webp')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:75% 100%">
     <div class="copy" style="width:820px">${'<div class="big">You put weeks into every instrument you make.</div>'}</div>`);
   await shot('s2', `${copy('But the first week is the hardest for many buyers.', 'They play the scale… and then, what next?')}
     <img src="${pic('handpan')}" style="position:absolute;left:1180px;top:300px;width:520px;filter:grayscale(.7);opacity:.55">
@@ -68,13 +30,12 @@ const phone = inner => `<div class="phone"></div><div class="screen">${inner ?? 
 
   // 4–5: how
   await shot('s4', `${copy('Set it up once', 'Exactly as you built it: your scale, your layout, every bottom note.', 1)}${phone(`<img src="file://${OUT}app-pan.png">`)}`);
-  // 5a–5c: the QR code and the NFC tag, one idea each.
+  // 5a–5b: the QR code and the NFC tag, one idea each.
   const qrCard = (left, top, w, rot, label) => `<div style="position:absolute;left:${left}px;top:${top}px;width:${w}px;padding:${w * .09}px;border-radius:${w * .05}px;background:#FBF6EC;box-shadow:0 24px 60px rgba(42,40,32,.22);display:flex;flex-direction:column;align-items:center;gap:${w * .06}px;transform:rotate(${rot}deg)">
       <div class="svg" style="width:${w * .55}px">${logo}</div><div class="svg" style="width:${w * .62}px">${qr}</div>
       <div style="font-size:${w * .062}px;font-weight:600;text-align:center;line-height:1.25">${label}</div></div>`;
   const tag = (left, top, size) => `<div style="position:absolute;left:${left}px;top:${top}px;width:${size}px;height:${size}px;border-radius:50%;background:#2A2820;color:#F2E6D3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${size * .03}px;box-shadow:0 18px 44px rgba(42,40,32,.3)">
       <div class="svg" style="width:${size * .28}px">${leaf}</div><div style="font-size:${size * .15}px;font-weight:700;letter-spacing:.08em">NFC</div></div>`;
-  const badge = (left, top, ok) => `<div style="position:absolute;left:${left}px;top:${top}px;width:96px;height:96px;border-radius:50%;background:${ok ? '#4F5B2E' : '#A63A2B'};color:#fff;font-size:60px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(42,40,32,.3)">${ok ? '✓' : '✕'}</div>`;
   const label = (left, top, text) => `<div style="position:absolute;left:${left}px;top:${top}px;font-size:30px;font-weight:600;color:#6B5E48">${text}</div>`;
 
   await shot('s5a', `${copy('Print its QR code', 'On a card in the case, on the certificate, or on a sticker inside the lid. It opens this exact instrument.', 2)}
@@ -96,13 +57,6 @@ const phone = inner => `<div class="phone"></div><div class="screen">${inner ?? 
     ${tag(1560, 520, 230)}
     ${label(1560, 780, 'NFC sticker, 25 mm')}`);
 
-  await shot('s5c', `${copy('On steel, keep the tag off the shell', 'Steel blocks a normal tag: put it on the case or the card, or use an on-metal tag. Android phones and iPhone XS or newer read it without an app.', 2)}
-    <img src="${pic('handpan')}" style="position:absolute;left:1070px;top:250px;width:400px">
-    ${tag(1225, 330, 110)}${badge(1360, 230, false)}
-    ${label(1150, 690, 'On the steel')}
-    ${qrCard(1540, 230, 300, 4, 'Scan to play<br>your D Kurd')}
-    ${tag(1735, 560, 120)}${badge(1760, 170, true)}
-    ${label(1560, 760, 'On the card or the case')}`);
 
   // 6–7: the buyer's phone (recording laid on top)
   await shot('s6', `${copy('One tap: their own instrument opens', 'No app store, no sign-up.', 3)}${phone()}`);

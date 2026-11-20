@@ -13,8 +13,9 @@ scripts/demo-video/*.webm
 scripts/demo-video/*.png
 scripts/demo-video/*.ffconcat
 scripts/demo-video/timeline.json
-scripts/demo-video/makers/shop/
-scripts/demo-video/makers/scenes/
-scripts/demo-video/makers/*.mp4
-scripts/demo-video/makers/*.m4a
-scripts/demo-video/makers/segments.txt
+scripts/demo-video/*/shop/
+scripts/demo-video/*/scenes/
+scripts/demo-video/*/*.mp4
+scripts/demo-video/*/*.m4a
+scripts/demo-video/*/segments.txt
+scripts/demo-video/*/vo*/

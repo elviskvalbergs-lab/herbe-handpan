@@ -15,6 +15,8 @@ import { getMakers, getSettings } from "@/sanity/lib/data";
 // playing, how a QR code or NFC tag in the box opens the instrument, and what
 // the buyer sees (the same playable demo as the home page).
 const DEMO_SCALE = "d-kurd";
+// The makers video (scripts/demo-video/makers), with burned-in captions.
+const VIDEO = { src: "/video/oakhum-makers.mp4", poster: "/video/oakhum-makers.jpg" };
 const PICTURES = ["handpan", "kalimba", "ocarina"];
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -47,6 +49,17 @@ export default async function MakersPage() {
                 className={`h-auto min-w-0 ${i === 0 ? "z-10 w-[52%]" : "-mx-[6%] w-[34%]"} ${i === 1 ? "order-first" : ""}`} />
             ) : null;
           })}
+        </div>
+      </section>
+
+      <section id="video" className={`${container} scroll-mt-4 pb-16 lg:pb-24`}>
+        <div className="mx-auto max-w-[960px]">
+          <h2 className={`${h2} m-0 mb-3`}>{m.videoTitle ?? seed.makers.videoTitle}</h2>
+          <p className="m-0 mb-6 text-body">{m.videoText ?? seed.makers.videoText}</p>
+          <video controls playsInline preload="none" poster={VIDEO.poster} aria-label={m.videoTitle ?? seed.makers.videoTitle}
+            className="block aspect-video h-auto w-full rounded-card bg-dark shadow-[inset_0_0_0_1px_var(--border)]">
+            <source src={VIDEO.src} type="video/mp4" />
+          </video>
         </div>
       </section>
 

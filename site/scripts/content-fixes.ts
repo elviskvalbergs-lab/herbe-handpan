@@ -161,6 +161,21 @@ const FIXES: Fix[] = [
     },
   },
   {
+    // The makers video on /makers (owner, 2026-11-19): its title and text,
+    // filled only while the fields are empty.
+    name: "2026-11-19-makers-video",
+    async run() {
+      const doc = await client.fetch<{ videoTitle?: string; videoText?: string } | null>(`*[_id == "makersPage"][0]{videoTitle, videoText}`);
+      if (!doc) return "no makers page";
+      const set: Record<string, unknown> = {};
+      if (!doc.videoTitle) set.videoTitle = seed.makers.videoTitle;
+      if (!doc.videoText) set.videoText = seed.makers.videoText;
+      if (!Object.keys(set).length) return "left as edited in the Studio";
+      await client.patch("makersPage").set(set).commit();
+      return `set ${Object.keys(set).join(", ")}`;
+    },
+  },
+  {
     // The daina's English, retold as a verse rather than word for word
     // (owner, 2026-11-17). Changed only while it is still the first version.
     name: "2026-11-17-daina-translation",

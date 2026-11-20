@@ -83,6 +83,8 @@ export const makers: MakersPage = {
     "You make handpans, kalimbas, flutes and more to be played, not to sit on a shelf. Oakhum gives every buyer their own instrument on their phone: every chord it can play, songs step by step, and help to join a jam. Free, for you and for them.",
   heroCta: "Tell us about your instruments",
   heroSecondary: "See what buyers see",
+  videoTitle: "From your workshop to their first chord",
+  videoText: "A minute and a half: how one link in the box keeps your buyers playing.",
   whyTitle: "Buyers who keep playing are your best advertising",
   why: [
     { title: "Past the first week", text: "Most new owners play the scale and then wonder what's next. With Oakhum they see what their notes can do, and keep going, even with no musical background." },

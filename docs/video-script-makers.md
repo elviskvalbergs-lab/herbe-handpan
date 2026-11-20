@@ -2,7 +2,7 @@
 
 Version 1, 18 Nov 2026. **Status:** for review. This document works out the message first; voice and footage come after it's agreed.
 
-**Cut 1 exists** (`scripts/demo-video/makers/`, 16:9, about 65 s). The captions carry the script for now, and the sound is the app's own handpan. Still to do: the voice-over, real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
+**Cut 1 is done and on the website** (`/makers`, `site/public/video/`; built by `scripts/demo-video/makers/`, 16:9, about 94 s). The voice is ElevenLabs' "Liam" (eleven_v4), the owner's pick over the free Kokoro voices: one take per line, kept in `scripts/demo-video/makers/takes-elevenlabs/` so the video can be rebuilt without spending credits (`voiceover.py --from takes-elevenlabs --out vo-elevenlabs`, then `compose.py vo-elevenlabs`). The app's own handpan plays under the voice and gets quieter while he speaks, with chords under every scene including the end card. Still to do: real workshop and unboxing footage for scenes 1–3 and 6 (cut 1 uses the brand landscape and instrument pictures), and scene 4 showing a saved instrument rather than "Not saved". The QR card it renders (`scenes/qr-card.png`) is a real, printable code for the D Kurd page.
 
 The rules from `docs/video-script.md` apply: why, then how, then what; "handpans, kalimbas, flutes and more"; one thing per scene; captions burned in.
 
@@ -38,36 +38,38 @@ People and small workshops who make or sell handpans, steel tongue drums, kalimb
 
 Not promised yet: embedding the playable picture on the maker's own site, or showing the maker's name and logo when the instrument opens. Both are possible later if makers ask for them.
 
-## The video (about 60 s)
+## The video (about 60 s; cut 1 runs about 94 s with the voice-over)
+
+**The voice tells the story; the captions say the point.** People can read the captions themselves, so the voice doesn't repeat them. It tells what happens around them, in a friendly, excited way, and adds what the captions leave out: listening along with a friend's guitar, working offline, made in Latvia on Oak Street, free for the maker and every player. The voice-over below is what cut 1 says (`LINES` in `voiceover.py`).
 
 ### 1. Why
 
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
-| 1 | The workshop: hammering a shell, tuning a note, sanding a kalimba bridge. | "You put weeks into every instrument you make." | You make instruments to be played |
-| 2 | A finished instrument in its case, shipped. Cut to it sitting on a shelf, dusty. | "But for many buyers, the first week is the hardest. They play the scale… and then, what next?" | …not to sit on a shelf |
-| 3 | The same buyer playing with friends, smiling. | "Oakhum helps every buyer keep playing, even with no musical background. And people who keep playing are the ones who tell their friends." | Players who keep playing tell their friends |
+| 1 | The workshop: hammering a shell, tuning a note, sanding a kalimba bridge. | "Shaping, tuning, listening… and tuning again, until every note sings." | You make instruments to be played |
+| 2 | A finished instrument in its case, shipped. Cut to it sitting on a shelf, dusty. | "Then it arrives at someone's door, and they're thrilled! They play it every day… until, one day, it quietly moves to the shelf." | …not to sit on a shelf |
+| 3 | The same buyer playing with friends, smiling. | "We made Oakhum so that doesn't happen. It shows people what their own instrument can do. No lessons, no theory. And someone who's having fun? They tell everyone about it." | Players who keep playing tell their friends |
 
 ### 2. How
 
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
-| 4 | The maker sets up a custom instrument in Oakhum (the layout, bottom notes) and gets its link and QR code. | "Set up each instrument once, exactly as you built it: your scale, your layout, every bottom note." | Set it up once, exactly as you built it |
-| 5 | A QR card goes into the case. An NFC sticker goes inside the lid. | "Put its QR code or an NFC tag in the case." | A QR code or NFC tag in the box |
-| 6 | The buyer unboxes it, holds the phone to the tag, and their instrument opens in Oakhum. | "Your buyer taps their phone, and their own instrument opens. No app store, no sign-up." | One tap: their own instrument |
+| 4 | The maker sets up a custom instrument in Oakhum (the layout, bottom notes) and gets its link and QR code. | "Here's how it works. You set up the instrument once, even a scale nobody else makes. Save it with a free account, and it gets its very own link." | Set it up once, exactly as you built it |
+| 5 | A QR card goes into the case. An NFC sticker goes inside the lid. (Cut 1 shows this as two scenes: the QR code, then the NFC tag. It leaves out where to put a tag on steel until on-metal tags have been tried on a real handpan.) | QR code: "That link travels in the box. So your buyers never have to write and ask you what to play." NFC tag: "Want a little magic? Hide it in an NFC sticker. Writing one takes a few seconds." | A QR code or NFC tag in the box |
+| 6 | The buyer unboxes it, holds the phone to the tag, and their instrument opens in Oakhum. | "And now the best part. They unbox it, tap their phone… and there it is: ready to play!" | One tap: their own instrument |
 
 ### 3. What
 
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
-| 7 | Chords lighting up on the pan; a song's chords pasted in and played level by level. | "Every chord it can play, songs step by step, and help to join any jam." | Chords, songs, jams |
-| 8 | A shop's product page with a "Hear what this scale can do" link opening the playable page. | "And on your shop, every scale you sell can be heard and played before anyone buys." | Let buyers hear your scales first |
+| 7 | Chords lighting up on the pan; a song's chords pasted in and played level by level. | "Every chord lights up, right where it lives on their instrument. And when a friend picks up a guitar, Oakhum listens, and shows them how to join in. It even works offline, around the campfire." | Chords, songs, jams |
+| 8 | A shop's product page with a "Hear what this scale can do" link opening the playable page. | "On your shop, people can hear your scales and play them, before they buy. Even the unusual ones." | Let buyers hear your scales first |
 
 ### 4. Ending
 
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
-| 9 | The maker's workshop, an instrument being played. End card: logo, "For makers of handpans, kalimbas, flutes and more", "Free", **oakhum.com/makers** | "Oakhum. Help your instruments get played." | Help your instruments get played |
+| 9 | The maker's workshop, an instrument being played. End card: logo, "For makers of handpans, kalimbas, flutes and more", "Free", **oakhum.com/makers** | "Oakhum is made in Latvia, on Oak Street. It's free, for you and for every player. Let's get your instruments played!" | Help your instruments get played |
 
 ## Where this goes
 

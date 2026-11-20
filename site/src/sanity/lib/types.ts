@@ -45,6 +45,8 @@ export type MakersPage = {
   heroText: string;
   heroCta?: string;
   heroSecondary?: string;
+  videoTitle?: string;
+  videoText?: string;
   whyTitle?: string;
   why?: Point[];
   howTitle?: string;
