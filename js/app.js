@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
 import { icon } from './icons.js';
-import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
+import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
@@ -123,7 +123,7 @@ const state = {
   autoplayOn: false,
   autoplayPlaylistId: null,
   autoplaySeconds: 4,
-  playbackSpeed: 'normal',   // arpeggios, scales and sequences: 'slow' | 'normal' | 'fast'
+  tempo: 100,                // speed of arpeggios, scales and sequences, % of normal (50–150)
   discoverMode: false,
   hpListen: false,         // handpan Chords: the Listen segment (Browse / Identify / Listen)
   listenUi: null,          // the Listen session, see newListenUi()
@@ -427,9 +427,7 @@ function viewSettings() {
 
       <h2 class="list-title">Sound</h2>
       <div class="list">
-        ${uiSetRow({ label: 'Playback speed', help: 'How fast arpeggios, scales and note sequences play', control: uiSeg([
-          { value: 'slow', label: 'Slow' }, { value: 'normal', label: 'Normal' }, { value: 'fast', label: 'Fast' },
-        ], state.playbackSpeed, { action: 'set-speed', label: 'Playback speed' }) })}
+        ${uiSetRow({ label: 'Speed', help: 'How fast chords, scales and fingerings play, everywhere', wide: true, control: tempoControlHtml() })}
       </div>
 
       <h2 class="list-title">Handpan</h2>
@@ -3125,6 +3123,7 @@ function ocChordStageParts(inst, a) {
     actions: `
           ${hpHeartBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}
           <button type="button" class="btn btn-primary hp-play" data-action="oc-play-arp" data-key="${key}">${icon('play')} Chord</button>
+          ${speedBtnHtml()}
           ${uiIconBtn('ellipsis', 'More: octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
@@ -5615,6 +5614,48 @@ function chordsScreenHtml({ cls = '', stageCls = '', stageAttrs = '', picture, c
   `;
 }
 
+// ── Speed ─────────────────────────────────────────────────────────────────
+// One speed for everything that plays (arpeggios, scales, fingerings shown
+// note by note, previews), 50–150% of normal: a slider with presets, in
+// Settings and behind the "1×" button on every chord card. Remembered and
+// synced (the tempo preference).
+const TEMPO_PRESETS = [50, 75, 100, 125];
+function clampTempo(v) { return Math.min(150, Math.max(50, Math.round((Number(v) || 100) / 5) * 5)); }
+function tempoLabel(t = state.tempo) { return `${(t / 100).toFixed(2).replace(/\.?0+$/, '')}×`; }
+let _tempoSave = null;
+function setTempo(v, { preview = false } = {}) {
+  state.tempo = clampTempo(v);
+  setPlaybackTempo(state.tempo);
+  clearTimeout(_tempoSave);
+  _tempoSave = setTimeout(savePrefs, 400);
+  document.querySelectorAll('.tempo-value').forEach(e => { e.textContent = `${state.tempo}%`; });
+  document.querySelectorAll('.speed-btn-label').forEach(e => { e.textContent = tempoLabel(); });
+  document.querySelectorAll('.tempo-presets [data-value]').forEach(e => e.setAttribute('aria-pressed', String(+e.dataset.value === state.tempo)));
+  if (preview) { initAudio(); playScale(['C4', 'E4', 'G4']); }
+}
+function tempoControlHtml() {
+  return `<div class="tempo">
+      <div class="tempo-row">
+        <input type="range" class="tempo-slider" min="50" max="150" step="5" value="${state.tempo}" aria-label="Speed, percent of normal">
+        <span class="tempo-value">${state.tempo}%</span>
+      </div>
+      <div class="chips tempo-presets" role="group" aria-label="Speed presets">
+        ${TEMPO_PRESETS.map(v => `<button type="button" class="chip" data-action="tempo-set" data-value="${v}" aria-pressed="${v === state.tempo}">${v === 100 ? 'Normal' : `${v}%`}</button>`).join('')}
+      </div>
+    </div>`;
+}
+// The card's speed button: "1×", "0.75×".
+function speedBtnHtml() {
+  return `<button type="button" class="btn btn-secondary speed-btn" data-action="speed-open" aria-haspopup="dialog" aria-label="Speed ${state.tempo}%" title="Speed"><span class="speed-btn-label">${tempoLabel()}</span></button>`;
+}
+function speedSheet() {
+  return uiSheet({
+    key: 'speed', title: 'Speed', close: 'speed-close',
+    body: `<p class="sheet-text">How fast chords, scales and fingerings play, on every instrument. Slower is easier to follow.</p>${tempoControlHtml()}`,
+    footer: '<button type="button" class="btn btn-primary" data-action="speed-close">Done</button>',
+  });
+}
+
 // The selected chord's card: title, meta lines ([html, extra class]), the
 // actions (♡, ▶ Chord, ⋯), then anything the instrument adds below.
 function chordCardHtml({ title, metas = [], actions, below = '' }) {
@@ -5725,6 +5766,7 @@ function viewChords() {
           ${hpHeartBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
           ${canUpdateEntry ? saveVoicingBtn('hp-wide') : ''}
           <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
+          ${speedBtnHtml()}
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
           ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}`,
     below: `<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
@@ -5913,6 +5955,7 @@ function installHelpSheet() {
 // ── Sheets ───────────────────────────────────────────────────────────────────
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
+  if (state.speedSheet) return speedSheet();
   if (state.listenReport) return listenReportSheet();
   if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
@@ -7250,7 +7293,10 @@ function loadPrefs() {
     if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
     if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
     if (typeof p.autoplaySeconds === 'number') state.autoplaySeconds = p.autoplaySeconds;
-    if (['slow', 'normal', 'fast'].includes(p.playbackSpeed)) state.playbackSpeed = p.playbackSpeed;
+    // The speed, or the Slow / Normal / Fast it replaced.
+    if (Number.isFinite(p.tempo)) state.tempo = clampTempo(p.tempo);
+    else if (p.playbackSpeed === 'slow') state.tempo = 70;
+    else if (p.playbackSpeed === 'fast') state.tempo = 140;
     if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
@@ -7258,7 +7304,7 @@ function loadPrefs() {
     if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
   } catch {}
   applyTheme();
-  setPlaybackSpeed(state.playbackSpeed);
+  setPlaybackTempo(state.tempo);
 }
 
 // The theme pref on <html data-theme> (the CSS does the rest) and the
@@ -7284,7 +7330,7 @@ function savePrefs() {
     useFlats: state.useFlats,
     useSolfege: state.useSolfege,
     autoplaySeconds: state.autoplaySeconds,
-    playbackSpeed: state.playbackSpeed,
+    tempo: state.tempo,
     showFingers: state.showFingers,
     showSizes: state.showSizes,
     ocLegendSeen: state.ocLegendSeen,
@@ -7535,7 +7581,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'playbackSpeed', 'showFingers', 'showSizes', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -9244,15 +9290,10 @@ document.addEventListener('click', e => {
   if (action === 'set-theme') { state.theme = el.dataset.value; applyTheme(); savePrefs(); render(); return; }
   if (action === 'set-flats') { state.useFlats = el.dataset.value === 'flats'; savePrefs(); render(); return; }
   if (action === 'set-solfege') { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; }
-  if (action === 'set-speed') {
-    state.playbackSpeed = el.dataset.value;
-    setPlaybackSpeed(state.playbackSpeed);
-    savePrefs();
-    initAudio();
-    playScale(['C4', 'E4', 'G4']); // a short preview at the new speed
-    render();
-    return;
-  }
+  if (action === 'tempo-set') { setTempo(parseInt(el.dataset.value, 10), { preview: true }); render(); return; }
+  if (action === 'speed-open') { state.speedSheet = true; render(); return; }
+  if (action === 'speed-close') { state.speedSheet = false; render(); return; }
+
   if (action === 'set-rotation') { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; }
   if (action === 'set-autoplay-step') {
     const i = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
@@ -9831,6 +9872,7 @@ document.addEventListener('change', e => {
 
 // ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {
+  if (e.target.classList?.contains('tempo-slider')) { setTempo(e.target.value); return; }
   if (e.target.classList?.contains('ld-slider')) {
     const L = listenUi();
     const key = e.target.dataset.key;

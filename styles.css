@@ -524,6 +524,12 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 }
 .editor-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ed-pan svg { width: min(100%, 55dvh); max-width: none; height: auto; }
+/* Speed (tempoControlHtml, speedBtnHtml in js/app.js). */
+.tempo { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+.tempo-row { display: flex; align-items: center; gap: var(--space-3); }
+.tempo-slider { flex: 1; min-width: 0; accent-color: var(--accent); height: 32px; }
+.tempo-value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; font-weight: var(--fw-semibold); color: var(--text-1); }
+.speed-btn { min-width: 44px; padding-inline: 6px; font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
 /* Move notes: the handpan's tone fields dragged to where they are. */
 .ed-arrange { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
