@@ -19,7 +19,8 @@ import {
   parseChordSheet, matchSheetChord, rankTranspositions, sheetCoverage, coverageBand, transposeChordSymbol,
   stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS,
 } from './chordsheet.js';
-import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
+import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
+import { instrumentKey, goesWellWith } from './harmony.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -83,6 +84,7 @@ const state = {
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
+  chordsAll: false,        // Chords lists: every chord (true) or the main ones first (false)
   ocLegendSeen: false,     // the hole-state legend line has been dismissed
   handLegendSeen: false,   // the finger legend has been shown once
   layout: null,            // current Layout object
@@ -2973,11 +2975,14 @@ function ocChordModel(inst) {
   const layout = ocarinaToLayout(inst, pcs);
   const chords = layout.top.ding ? findAllChords(layout) : [];
   const counts = new Set(oc.counts ?? []);
-  const items = chords
+  const listed = chords
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
     .filter(c => !counts.size || counts.has(chordCountKey(c.noteCount)))
     .filter(c => !oc.root || oc.root === 'All' || notePC(c.rootNote) === NOTE_NAMES.indexOf(oc.root))
-    .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount)
+    .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount);
+  const main = chordsMainOn(listed, oc.category !== 'All' || counts.size > 0 || (oc.root && oc.root !== 'All'));
+  const all = listed.length;
+  const items = (main ? mainChordsInKey(listed, notePC(layout.top.ding), layoutPitchClasses(layout)) : listed)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
   const sourceId = oc.scaleFilter !== 'All' ? oc.scaleFilter : inst.scaleId;
   const source = findTuning(sourceId);
@@ -2987,7 +2992,7 @@ function ocChordModel(inst) {
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
     .map(c => ({ chord: c, fit: fitChordToInstrument(inst, c.notes) }))
     .filter(x => x.fit.missing.length > 0);
-  return { chords, items, missing, source };
+  return { chords, items, missing, source, main, all };
 }
 
 // The moves line (§5.14): "Lift R3 and R2", with "lift …" and "cover …" in
@@ -3092,7 +3097,7 @@ function viewOcarinaChords(inst) {
   const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0);
   const listHead = `
     ${chordFilterRowHtml({ open: 'oc-filters-open', count: nFilters, roots: chordRootsOf(model.chords), root: oc.root ?? 'All', rootAction: 'oc-filter-root' })}
-    <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>`;
+    ${chordCountLineHtml({ shown: model.items.length, all: model.all, main: model.main })}`;
   const stage = oc.listen ? listenOcStageParts(inst)
     : oc.identify ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
@@ -3170,6 +3175,7 @@ function ocChordStageParts(inst, a) {
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
     below: `
+        ${goesWithLineHtml()}
         <div class="oc-player-notes" role="group" aria-label="Notes of the chord, in playing order">
           ${parts.arp.map((m, i) => `
             <button type="button" class="oc-pnote${i === sel ? ' is-current' : ''}" data-action="oc-step" data-key="${key}" data-i="${i}" data-midi="${m}"
@@ -5376,7 +5382,10 @@ function hpFilteredChords() {
       return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
     });
   }
-  return { filtered, roots, layoutId };
+  const narrowed = playlistChordKeys !== null || chordFilter.category !== 'All' || chordFilter.root !== 'All' || state.chordCountSet.size > 0;
+  const main = chordsMainOn(filtered, narrowed) && !!layout.top.ding;
+  const all = filtered.length;
+  return { filtered: main ? mainChordsInKey(filtered, notePC(layout.top.ding), layoutPitchClasses(layout)) : filtered, roots, layoutId, main, all };
 }
 
 // The playlist entry the selected chord was opened from, and whether its
@@ -5656,6 +5665,110 @@ function chordsScreenHtml({ cls = '', stageCls = '', stageAttrs = '', picture, c
   `;
 }
 
+// ── Goes well with (js/harmony.js) ─────────────────────────────────────────
+// On every instrument's chord card: the chords that usually come next in the
+// instrument's key (tap one to see it), and a sheet of well-known
+// progressions with this chord, each to hear and to save as a progression.
+
+// The chord on show, the instrument's chords and its key, and how a chord
+// is picked on this screen.
+function goesWithContext() {
+  if (state.view === 'instrument') {
+    const inst = currentInstrument();
+    if (!inst || state.oc.tab !== 'chords') return null;
+    const model = ocChordModel(inst);
+    const chord = model.chords.find(c => c.id === state.oc.expanded);
+    const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
+    const layout = ocarinaToLayout(inst, pcs);
+    if (!chord || !layout.top.ding) return null;
+    return { chord, chords: model.chords, layout, pick: c => ({ action: 'oc-chord-select', data: { key: c.id } }) };
+  }
+  if (state.view !== 'chords' || !state.selectedChord || !state.layout?.top.ding) return null;
+  return { chord: state.selectedChord, chords: state.chords, layout: state.layout, pick: c => ({ action: 'select-chord', data: { id: c.id } }) };
+}
+function goesWithFor(ctx) {
+  const key = instrumentKey(layoutPitchClasses(ctx.layout), notePC(ctx.layout.top.ding));
+  return { key, g: goesWellWith(ctx.chord, ctx.chords, key, { progressions: 4 }) };
+}
+function gwChordName(c) {
+  const q = c.type.id === 'min' ? 'm' : c.type.id === 'dim' ? '°' : c.type.id === 'maj' ? '' : ` ${c.type.name}`;
+  return `${displayNote(c.rootName, state.useFlats, state.useSolfege)}${q}`;
+}
+
+// The line on the card: "Goes well with  [Gm] [B♭] [C]  Progressions".
+function goesWithLineHtml() {
+  const ctx = goesWithContext();
+  if (!ctx) return '';
+  const { g } = goesWithFor(ctx);
+  if (!g || (!g.next.length && !g.progressions.length)) return '';
+  const chips = g.next.slice(0, 4).map(c => {
+    const p = ctx.pick(c);
+    return `<button type="button" class="chip gw-chip" data-action="${p.action}"${uiData(p.data)}>${escHtml(gwChordName(c))}</button>`;
+  }).join('');
+  return `<div class="gw-line">
+      <div class="gw-head">
+        <span class="gw-label">Goes well with</span>
+        ${g.progressions.length ? `<button type="button" class="link-btn gw-more" data-action="gw-open">Progressions ${icon('chevron-right')}</button>` : ''}
+      </div>
+      <div class="gw-chips">${chips}</div>
+    </div>`;
+}
+
+// The sheet: the progressions with this chord, each with ▶ and Save.
+function goesWithSheet() {
+  const ctx = goesWithContext();
+  const res = ctx && goesWithFor(ctx);
+  if (!res?.g) { state.goesWith = null; return ''; }
+  const { key, g } = res;
+  const keyName = `${displayNote(NOTE_NAMES[key.tonic], state.useFlats, state.useSolfege)} ${key.mode}`;
+  const rows = g.progressions.map((p, i) => uiRow({
+    title: p.name, titleHtml: false,
+    meta: p.chords.map((c, j) => (j === p.at ? `<strong>${escHtml(gwChordName(c))}</strong>` : escHtml(gwChordName(c)))).join(' – '),
+    meta2: escHtml(p.degrees.join(' – ')),
+    trail: `${uiIconBtn('play', `Play ${p.name}`, { action: 'gw-play', data: { i } })}
+      <button type="button" class="btn btn-secondary btn-sm" data-action="gw-save" data-i="${i}">Save</button>`,
+  })).join('');
+  return uiSheet({
+    key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
+    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? (currentInstrument()?.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a progression.</p>
+      <div class="list gw-list">${rows}</div>`,
+  });
+}
+
+// Plays a progression: each chord's notes one after another, as one-note
+// instruments play chords.
+function playGoesWith(chords) {
+  initAudio();
+  const seq = [];
+  for (const c of chords) {
+    const root = c.notes.find(n => notePC(n) === notePC(c.rootNote)) ?? c.notes[0];
+    seq.push(...arpeggioOrder(c.notes, root).map(midiToNoteName));
+  }
+  playSequence(seq, () => {}, 0.28);
+}
+
+function goesWithAction(action, el) {
+  if (action === 'gw-open') { state.goesWith = true; render(); return true; }
+  if (!state.goesWith) return false;
+  if (action === 'gw-close') { state.goesWith = null; render(); return true; }
+  const ctx = goesWithContext();
+  const p = ctx && goesWithFor(ctx).g?.progressions[parseInt(el.dataset.i, 10)];
+  if (action === 'gw-play') { if (p) playGoesWith(p.chords); return true; }
+  if (action === 'gw-save') {
+    if (!p) return true;
+    const steps = p.chords.map(c => newProgressionStep(playlistEntryFor(c, `gw-${c.id}`)));
+    const name = `${p.name}: ${p.chords.map(gwChordName).join(' ')}`;
+    const id = addProgression(name, steps);
+    state.progressions = getProgressions();
+    state.goesWith = null;
+    logEvent('feature', { name: 'goes-with-save', family: measureFamily() });
+    showToast(`Saved "${name}"`, { action: { label: 'Open', run: () => openProgression(id) } });
+    render();
+    return true;
+  }
+  return false;
+}
+
 // The selected chord's card: title, meta lines ([html, extra class]), the
 // actions (♡, ▶ Chord, ⋯), then anything the instrument adds below.
 function chordCardHtml({ title, metas = [], actions, below = '' }) {
@@ -5698,6 +5811,23 @@ function chordFilterRowHtml({ open, count, roots, root, rootAction }) {
     </div>`;
 }
 
+// Main chords (chords.js mainChordsInKey): every Chords list shows the plain
+// major and minor chords first, from the instrument's home note up, and the
+// rest behind "Show all". Not while another filter, a root or a playlist
+// narrows the list, and not when the instrument has no main chords at all.
+function chordsMainOn(chords, narrowed) {
+  return !state.chordsAll && !narrowed && chords.some(c => c.type.id === 'maj' || c.type.id === 'min');
+}
+function layoutPitchClasses(layout) { return new Set(getAllNotes(layout).map(notePC)); }
+// The count under the filters, with the switch between main chords and all.
+function chordCountLineHtml({ shown, all, main }) {
+  const n = (k, w) => `${k} ${w}${k !== 1 ? 's' : ''}`;
+  const sw = main
+    ? `<button type="button" class="link-btn" data-action="chords-scope">Show all ${all}</button>`
+    : all > shown || !state.chordsAll ? '' : `<button type="button" class="link-btn" data-action="chords-scope">Main chords only</button>`;
+  return `<div class="hp-count">${main ? n(shown, 'main chord') : n(shown, 'chord')}${sw ? ` · ${sw}` : ''}</div>`;
+}
+
 // Root chips: All, then the roots the chords have, in pitch order.
 function chordRootsOf(chords) {
   const used = new Set(chords.map(c => notePC(c.rootNote)));
@@ -5728,7 +5858,7 @@ function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
   const uf = state.useFlats;
   const us = state.useSolfege;
-  const { filtered, roots, layoutId } = hpFilteredChords();
+  const { filtered, roots, layoutId, main, all } = hpFilteredChords();
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
@@ -5768,7 +5898,7 @@ function viewChords() {
           <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
           ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}`,
-    below: `<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
+    below: `${goesWithLineHtml()}<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
       <span class="hp-card-hint">Tap a chord to see it on the ${layoutFamilyInfo(layoutInstrument(state.layout)).word}</span>
@@ -5798,7 +5928,7 @@ function viewChords() {
   const browseHead = `
     ${nowPlaying}
     ${chordFilterRowHtml({ open: 'hp-filters-open', count: nFilters, roots, root: chordFilter.root, rootAction: 'filter-root' })}
-    <div class="hp-count">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</div>`;
+    ${chordCountLineHtml({ shown: filtered.length, all, main })}`;
 
   const rows = filtered.length === 0
     ? uiEmpty({
@@ -5955,6 +6085,7 @@ function installHelpSheet() {
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
   if (state.listenReport) return listenReportSheet();
+  if (state.goesWith) return goesWithSheet();
   if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
   if (state.accountConfirm) return accountConfirmSheet();
@@ -7294,6 +7425,7 @@ function loadPrefs() {
     if (['slow', 'normal', 'fast'].includes(p.playbackSpeed)) state.playbackSpeed = p.playbackSpeed;
     if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
+    if (typeof p.chordsAll === 'boolean') state.chordsAll = p.chordsAll;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
     if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
@@ -7328,6 +7460,7 @@ function savePrefs() {
     playbackSpeed: state.playbackSpeed,
     showFingers: state.showFingers,
     showSizes: state.showSizes,
+    chordsAll: state.chordsAll,
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
     theme: state.theme,
@@ -7576,7 +7709,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'playbackSpeed', 'showFingers', 'showSizes', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'playbackSpeed', 'showFingers', 'showSizes', 'chordsAll', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -8139,6 +8272,7 @@ document.addEventListener('click', e => {
   }
   if (action === 'add-instrument') { setupAction('setup-open', el); return; }
   if (listenReportAction(action)) return;
+  if (goesWithAction(action, el)) return;
   if (setupAction(action, el)) return;
 
 
@@ -9350,6 +9484,7 @@ document.addEventListener('click', e => {
   }
 
   // ── Pan rotation ──────────────────────────────────────────────────────────
+  if (action === 'chords-scope') { state.chordsAll = !state.chordsAll; savePrefs(); render(); return; }
   if (action === 'ed-arrange') { state.edArrange = !edArranging(); render(); return; }
   if (action === 'ed-arrange-reset') { delete state.layout.pos; render(); return; }
   if (action === 'toggle-rotation') {
