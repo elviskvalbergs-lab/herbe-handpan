@@ -3,7 +3,7 @@
 // for the chords recording (../record.js), which compose.py lays on top.
 const { chromium } = require('playwright');
 const fs = require('fs');
-const { pic, brand, copy, phone, logo, shooter, appShot } = require('../scene-kit');
+const { pic, copy, phone, logo, shooter, appShot } = require('../scene-kit');
 const OUT = __dirname + '/scenes/';
 
 (async () => {
@@ -25,22 +25,28 @@ const OUT = __dirname + '/scenes/';
   const { shot } = await shooter(b, OUT);
   const notes = (spots) => spots.map(([x, y, s, o]) => `<div style="position:absolute;left:${x}px;top:${y}px;font-size:${s}px;color:#B3633F;opacity:${o}">♪</div>`).join('');
 
-  // 1–3: why
-  await shot('o1', `<img src="${brand('hero-wide.webp')}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 100%">
-    <div class="copy" style="width:1300px;justify-content:flex-start;padding-top:440px"><div class="big" style="font-size:76px">You fell in love with the sound</div></div>`);
-  await shot('o2', `${copy('Nobody taught you music', 'So when friends start to jam, you listen.')}
-    <img src="${pic('handpan')}" style="position:absolute;left:1240px;top:430px;width:420px;filter:grayscale(.6);opacity:.6">
-    ${notes([[1180, 170, 90, .5], [1420, 120, 70, .35], [1640, 210, 110, .45], [1330, 280, 60, .25]])}`);
-  await shot('o3', `${copy('Join in. Have fun.', 'No lessons, no theory: just you and your instrument.')}
+  // 1–3: why. Music is for everyone; the basics are easier than you think;
+  // Oakhum adds the musician's know-how on your own instrument (2 and 3 lay
+  // the chords recording into the phone).
+  await shot('o1', `${copy('Music is for everyone', 'Play the way you feel. That’s music too.')}
     <img src="${pic('tongue-drum')}" style="position:absolute;left:1060px;top:520px;width:260px">
     <img src="${pic('kalimba')}" style="position:absolute;left:1180px;top:300px;width:260px">
     <img src="${pic('handpan')}" style="position:absolute;left:1330px;top:420px;width:420px">
     <img src="${pic('ocarina')}" style="position:absolute;left:1600px;top:300px;width:240px">
-    <img src="${pic('native-american-flute')}" style="position:absolute;left:1540px;top:700px;width:320px">`);
+    <img src="${pic('native-american-flute')}" style="position:absolute;left:1540px;top:700px;width:320px">
+    ${notes([[1130, 190, 80, .45], [1450, 150, 64, .3], [1700, 230, 96, .4]])}`);
+  await shot('o2', `${copy('The basics are easier than you think', 'A few chords and a pattern you remember.')}${phone()}`);
+  await shot('o3', `${copy('A musician’s know-how, on <em style="font-style:italic">your</em> instrument', 'Which notes go together, and where they are.')}${phone()}`);
 
-  // 4: how; 5: what (the chords recording is laid into the phone)
+  // 4: how; 5: what
   await shot('o4', `${copy('It starts from <em style="font-style:italic">your</em> instrument', 'Play its notes, and Oakhum works out what you have. Or pick it from the list.')}${phone(`<img src="file://${OUT}app-setup.png">`)}`);
-  await shot('o5', `${copy('Every chord, right on your instrument', 'Tap one, and it lights up and plays. A friend plays a chord? Oakhum listens.')}${phone()}`);
+  const card = (title, text) => `<div style="flex:1;background:#FBF6EC;border-radius:28px;padding:44px 40px;box-shadow:0 24px 60px rgba(42,40,32,.14);display:flex;flex-direction:column;gap:16px">
+      <div style="font-size:52px;font-weight:700;letter-spacing:-.02em">${title}</div><div style="font-size:32px;color:#6B5E48;line-height:1.3">${text}</div></div>`;
+  await shot('o5', `<div style="position:absolute;left:140px;right:140px;top:170px"><div class="big">Jam. Songs. Your own music.</div></div>
+    <div style="position:absolute;left:140px;right:140px;top:430px;display:flex;gap:40px">
+      ${card('Join a jam', 'A friend plays a chord, and Oakhum shows you where to join in.')}
+      ${card('Learn a song', 'Paste its chords and play it step by step.')}
+      ${card('Make your own', 'Put chords in an order you like and keep it.')}</div>`);
 
   // 6: ending
   await shot('o6', `<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;text-align:center">

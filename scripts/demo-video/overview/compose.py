@@ -18,21 +18,24 @@ from videokit import Video, Phone, VO_LEAD, VO_TAIL
 v = Video('oakhum-overview', sys.argv[1] if len(sys.argv) > 1 else 'vo')
 ph = Phone()
 
-v.still('o1', 4.5); v.still('o2', 4.5); v.still('o3', 5.0); v.still('o4', 5.5)
+v.still('o1', 5.0)
 
-# 5: the chords recording in the phone, from a second before D minor is tapped.
+# 2–3: the chords recording in the phone, from a second before D minor is
+# tapped; the words change from scene 2 to 3 once the scene-2 line is said.
 p_ss = ph.t['D Minor'] - 1.0
-phone_len = round(max(12.0, VO_LEAD + v.vo_len('o5') + VO_TAIL + 1.0), 2)
-v.phone('seg_phone.mp4', [('scenes/o5.png', 0)], ph.video, p_ss - ph.first, phone_len, {'o5': VO_LEAD})
+switch = round(max(5.0, VO_LEAD + v.vo_len('o2') + 0.6), 2)
+phone_len = round(max(11.0, switch + 0.4 + v.vo_len('o3') + VO_TAIL), 2)
+v.phone('seg_phone.mp4', [('scenes/o2.png', 0), ('scenes/o3.png', switch)], ph.video, p_ss - ph.first, phone_len,
+        {'o2': VO_LEAD, 'o3': switch + 0.4})
 
-v.still('o6', 5.5, zoom=False)
+v.still('o4', 5.5); v.still('o5', 6.0); v.still('o6', 5.5, zoom=False)
 
-# Sound: the app's own handpan. The scale under the opening, then chords, the
-# recording's own sound under the phone, and F then C under the end card.
+# Sound: the app's own handpan. The scale under the opening, the recording's
+# own chords under the phone, chords under the stills, F then C at the end.
 at, _ = v.starts()
-v.clip(ph.audio, ph.sound('scale'), 7.0, 0.4, 0.55)                            # the scale: the sound you fell for
-v.clip(ph.audio, ph.sound('A# Major'), 4.6, at['seg_o3.mp4'] + 0.4, 0.5)       # B flat: join in
-v.clip(ph.audio, ph.sound('F Major'), 4.6, at['seg_o4.mp4'] + 0.6, 0.45)       # F: your instrument
+v.clip(ph.audio, ph.sound('scale'), 6.0, 0.4, 0.55)                            # the scale: music is everywhere
 v.clip(ph.audio, p_ss - ph.audio_offset, phone_len, at['seg_phone.mp4'], 1.0)
+v.clip(ph.audio, ph.sound('A# Major'), 4.6, at['seg_o4.mp4'] + 0.6, 0.45)      # B flat: your instrument
+v.clip(ph.audio, ph.sound('D Minor'), 4.6, at['seg_o5.mp4'] + 0.5, 0.45)       # D minor: your way
 v.clip(ph.audio, ph.sound('F Major'), 9.5, at['seg_o6.mp4'] + 0.3, 0.55)       # F, then C: the ending resolves
 v.finish()

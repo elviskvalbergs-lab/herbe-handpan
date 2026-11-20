@@ -16,20 +16,20 @@ The overview and the tutorials share the same opening look, voice and ending, th
 
 ## 1. What Oakhum is (overview)
 
-**First version made** (`scripts/demo-video/overview/`, 44 s, Kokoro voice, brand pictures): for the owner to check words and timing before the ElevenLabs take. The voice lines it uses are in `overview/lines.py`; they tell the story around the captions rather than reading them.
+**The angle (owner, 2026-11-20):** you don't need to be a musician to make music. Music is everywhere, and playing the way you feel is fine. When you want more, the basics aren't hard; you only need a little of the musician's know-how to get it right every time. Oakhum adds that know-how on your own instrument, so you learn from there and use it your way: a jam, a song, a little piece of your own. It fits every instrument, unlike "you fell in love with the sound", which is a handpan story.
 
-This replaces the draft in `docs/video-script.md`, which tried to be the overview and the how-to at once. Shorter, mostly why.
+**Version 2 made** (`scripts/demo-video/overview/`, 44 s, Kokoro voice, brand pictures and the app): for the owner to check words and timing before the ElevenLabs take. The lines are in `overview/lines.py`.
 
 | # | Picture | Voice-over | Caption |
 |---|---|---|---|
-| 1 | Hands on an instrument in soft light; the first notes ring | "You fell in love with the sound." | You fell in love with the sound |
-| 2 | Friends around a fire with a guitar; our player sits a little apart | "But when your friends start to jam… you just listen." | Nobody taught you music |
-| 3 | The same player joins in, smiling | "Oakhum is here so you can join in. No lessons, no theory." | Join in |
-| 4 | Phone: "Play my notes", notes filling in one by one | "Play your instrument's notes, and it works out exactly what you have. Even one you made yourself." | It starts from *your* instrument |
-| 5 | Chords lighting up on the instrument, then a song's chords pasted in | "Then it shows every chord your notes can make, right where they live. A friend plays a chord? It listens, and shows you where to join." | Every chord. Any jam. |
-| 6 | Everyone playing together. End card: logo, "Handpans, kalimbas, flutes and more", "Free, in your browser", **oakhum.com** | "It's free, and it's made in Latvia, on Oak Street. Oakhum: find the music hiding in your instrument." | Find the music hiding in your instrument |
+| 1 | The five instruments, notes in the air | "You don't need to be a musician to make music. Music is everywhere, and playing the way you feel is just fine." | Music is for everyone |
+| 2 | Phone: a chord lit and played | "And when you want a little more, the basics aren't that hard. A few chords, a pattern you remember… and suddenly, it sounds like music." | The basics are easier than you think |
+| 3 | Phone: the next chords, lit where they are | "Oakhum adds the musician's know-how, right on your own instrument: which notes go together, and where they are. You learn from there." | A musician's know-how, on your instrument |
+| 4 | Phone: "What do you play?" | "Play your notes, and it works out exactly what you have." | It starts from your instrument |
+| 5 | Three cards: join a jam, learn a song, make your own (later: short recordings of Listen, a pasted song, a saved progression) | "Then use it your way. Join a jam, learn a song step by step, or put together a little piece of your own." | Jam. Songs. Your own music. |
+| 6 | End card: logo, "Handpans, kalimbas, flutes and more · Free, in your browser", **oakhum.com** | "It's free, and it's made in Latvia, on Oak Street. Find the music hiding in your instrument!" | Find the music hiding in your instrument |
 
-About 45 s. A 9:16 cut from the same scenes for Reels, Shorts and TikTok.
+A 9:16 cut from the same scenes for Reels, Shorts and TikTok, once the words are final.
 
 ## 2. How to set up your instrument (tutorials)
 
