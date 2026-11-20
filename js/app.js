@@ -2866,6 +2866,7 @@ function songMeta(song, shift) {
   return `${SONG_ORIGINS[song.origin]} · ${songKeyOn(song, shift)} · ${song.time}`;
 }
 
+const SONGS_SHOWN = 8;
 function songsSectionHtml(inst) {
   const ok = songsFor(inst);
   const more = SONGS.length - ok.length;
@@ -2874,13 +2875,13 @@ function songsSectionHtml(inst) {
     <section class="pl-section" aria-labelledby="pl-sec-songs">
       <h2 class="list-title" id="pl-sec-songs">Songs to learn</h2>
       ${ok.length
-        ? `<div class="list">${ok.map(({ song, shift }) => uiRow({
+        ? `<div class="list">${(state.songsAll ? ok : ok.slice(0, SONGS_SHOWN)).map(({ song, shift }) => uiRow({
             lead: 'music', title: song.title, meta: escHtml(songMeta(song, shift)), chevron: true,
             action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
-          })).join('')}</div>`
-        : `<p class="pl-section-hint">None of these folk songs fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
+          })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} songs`, action: 'songs-all' }) : ''}</div>`
+        : `<p class="pl-section-hint">None of these songs fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
       ${ok.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
-      <p class="pl-section-hint song-licence">Traditional songs from Germany, Ireland and Scotland. ${escHtml(SONG_LICENCE)}.</p>
+      <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, the best known first. ${escHtml(SONG_LICENCE)}.</p>
     </section>`;
 }
 
@@ -2982,6 +2983,7 @@ function songTick() {
 }
 function songAction(action, el) {
   if (action === 'song-open') { openSong(el.dataset.id, el.dataset.inst); return true; }
+  if (action === 'songs-all') { state.songsAll = true; render(); return true; }
   if (state.view !== 'song' || !state.songCtx) return false;
   const S = songOnInstrument();
   if (!S) return false;

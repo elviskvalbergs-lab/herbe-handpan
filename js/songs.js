@@ -1,6 +1,9 @@
-// Songs to learn: traditional folk songs, melody only.
+// Songs to learn: well-known traditional and public-domain songs from many
+// countries (folk, children's, Christmas), melody only, the most familiar first.
 //
-// The tunes are traditional and in the public domain. Each melody was read
+// The tunes are traditional or long out of copyright (the owner: assume
+// public domain unless said otherwise; one known not to be, from the 1930s,
+// was left out). Each melody was read
 // from the score in its Wikipedia article (the source of each song), which
 // is published under CC BY-SA 4.0; this file is shared under the same
 // licence, with that attribution. The notation was converted by a LilyPond
@@ -14,9 +17,127 @@
 import { noteToMidi } from './data.js';
 
 export const SONG_LICENCE = 'Melodies from Wikipedia, CC BY-SA 4.0';
-export const SONG_ORIGINS = { de: 'Germany', ie: 'Ireland', 'gb-sct': 'Scotland' };
+export const SONG_ORIGINS = {
+  de: 'Germany', at: 'Austria', fr: 'France', it: 'Italy', 'gb-eng': 'England', 'gb-sct': 'Scotland', ie: 'Ireland',
+  us: 'USA', mx: 'Mexico', au: 'Australia', il: 'Israel', kr: 'Korea',
+};
 
 export const SONGS = [
+  {
+    id: "ode-to-joy", title: "Ode to Joy (Freude, schöner Götterfunken)", origin: "de", key: "G major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Ode_to_Joy",
+    notes: "B4:1 B4:1 C5:1 D5:1 D5:1 C5:1 B4:1 A4:1 G4:1 G4:1 A4:1 B4:1 B4:1.5 A4:0.5 A4:2 B4:1 B4:1 C5:1 D5:1 D5:1 C5:1 B4:1 A4:1 G4:1 G4:1 A4:1 B4:1 A4:1.5 G4:0.5 G4:2 A4:1 A4:1 B4:1 G4:1 A4:1 B4:0.5 C5:0.5 B4:1 G4:1 A4:1 B4:0.5 C5:0.5 B4:1 A4:1 G4:1 A4:1 D4:1 B4:2 B4:1 C5:1 D5:1 D5:1 C5:1 B4:1 A4:1 G4:1 G4:1 A4:1 B4:1 A4:1.5 G4:0.5 G4:2",
+  },
+  {
+    id: "twinkle-twinkle", title: "Twinkle, Twinkle, Little Star", origin: "fr", key: "C major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Twinkle,_Twinkle,_Little_Star",
+    notes: "C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2",
+  },
+  {
+    id: "happy-birthday", title: "Happy Birthday to You", origin: "us", key: "G major", time: "3/4",
+    source: "https://en.wikipedia.org/wiki/Happy_Birthday_to_You",
+    notes: "D4:0.75 D4:0.25 E4:1 D4:1 G4:1 F#4:2 D4:0.75 D4:0.25 E4:1 D4:1 A4:1 G4:2 D4:0.75 D4:0.25 D5:1 B4:1 G4:1 F#4:1 E4:1 C5:0.75 C5:0.25 B4:1 G4:1 A4:1 G4:2",
+  },
+  {
+    id: "frere-jacques", title: "Frère Jacques (Bruder Jakob)", origin: "fr", key: "D major", time: "4/4",
+    source: "https://de.wikipedia.org/wiki/Bruder_Jakob",
+    notes: "D4:1 E4:1 F#4:1 D4:1 D4:1 E4:1 F#4:1 D4:1 F#4:1 G4:1 A4:2 F#4:1 G4:1 A4:2 A4:0.75 B4:0.25 A4:0.5 G4:0.5 F#4:1 D4:1 A4:0.75 B4:0.25 A4:0.5 G4:0.5 F#4:1 D4:1 D4:1 A3:1 D4:2 D4:1 A3:1 D4:2",
+  },
+  {
+    id: "amazing-grace", title: "Amazing Grace", origin: "gb-eng", key: "G major", time: "3/4",
+    source: "https://en.wikipedia.org/wiki/Amazing_Grace",
+    notes: "D4:1 G4:2 B4:0.5 G4:0.5 B4:2 A4:1 G4:2 E4:1 D4:2 D4:1 G4:2 B4:0.5 G4:0.5 B4:2 A4:1 D5:2 B4:1 D5:1.5 B4:0.5 D5:0.5 B4:0.5 G4:2 D4:1 E4:1.5 G4:0.5 G4:0.5 E4:0.5 D4:2 D4:1 G4:2 B4:0.5 G4:0.5 B4:2 A4:1 G4:3",
+  },
+  {
+    id: "silent-night", title: "Silent Night (Stille Nacht)", origin: "at", key: "D major", time: "6/8",
+    source: "https://en.wikipedia.org/wiki/Silent_Night",
+    notes: "A4:0.75 B4:0.25 A4:0.5 F#4:1 B4:0.5 A4:0.75 B4:0.25 A4:0.5 F#4:1 B4:0.5 E5:0.75 Eb5:0.25 E5:0.5 C#5:1 B4:0.5 D5:0.75 C#5:0.25 D5:0.5 A4:1 B4:0.5 B4:1 B4:0.5 D5:0.75 C#5:0.25 B4:0.5 A4:0.75 B4:0.25 A4:0.5 F#4:1 B4:0.5 B4:1 B4:0.5 D5:0.75 C#5:0.25 B4:0.5 A4:0.75 B4:0.25 A4:0.5 F#4:1 B4:0.5 C#5:0.75 C#5:0.25 C#5:0.5 E5:0.75 D5:0.25 C#5:0.5 D5:1.5 F#5:1 B4:0.5 D5:0.75 A4:0.25 F#4:0.5 A4:0.75 G4:0.25 E4:0.5 D4:2.5 B4:0.5",
+  },
+  {
+    id: "auld-lang-syne", title: "Auld Lang Syne", origin: "gb-sct", key: "F major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Auld_Lang_Syne",
+    notes: "C4:1 F4:1.5 F4:0.5 F4:1 A4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 F4:0.5 A4:1 C5:1 D5:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 D4:0.5 D4:1 C4:1 F4:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 D5:1 C5:1.5 A4:0.5 A4:1 C5:1 D5:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 D4:0.5 D4:1 C4:1 F4:3",
+  },
+  {
+    id: "londonderry-air", title: "Londonderry Air (Danny Boy)", origin: "ie", key: "E♭ major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Londonderry_Air",
+    notes: "D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:1 r:0.5 Eb4:0.5 G4:0.5 Ab4:0.5 Bb4:1.5 C5:0.5 Bb4:0.5 G4:0.5 Eb4:0.5 G4:0.5 F4:2 r:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:0.5 B3:0.5 C4:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 Ab4:0.5 G4:0.5 F4:0.5 Eb4:0.5 F4:0.5 Eb4:2 r:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:1.5 D5:0.5 D5:0.5 C5:0.5 Bb4:0.5 G4:0.5 Bb4:0.5 G4:0.5 Eb4:1 r:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:1.5 D5:0.5 D5:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:2 r:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 G5:1.5 F5:0.5 F5:0.5 Eb5:0.5 C5:0.5 Eb5:0.5 Bb4:0.5 G4:0.5 Eb4:1 r:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:0.5 D4:0.5 Eb4:2.5",
+  },
+  {
+    id: "bella-ciao", title: "Bella ciao", origin: "it", key: "D minor", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Bella_ciao",
+    notes: "A3:0.5 D4:0.5 E4:0.5 F4:0.5 D4:2 A3:0.5 D4:0.5 E4:0.5 F4:0.5 D4:2 A3:0.5 D4:0.5 E4:0.5 F4:1 E4:0.5 D4:0.5 F4:1 E4:0.5 D4:0.5 A4:1 A4:1 A4:0.5 A4:0.5 G4:0.5 A4:0.5 Bb4:0.5 Bb4:2 Bb4:0.5 A4:0.5 G4:0.5 Bb4:0.5 A4:2 A4:0.5 G4:0.5 F4:0.5 E4:1 A4:1 F4:1 E4:1 D4:2",
+  },
+  {
+    id: "hava-nagila", title: "Hava Nagila", origin: "il", key: "G minor", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Hava_Nagila",
+    notes: "D4:1 D4:1.5 F#4:0.5 Eb4:0.5 D4:0.5 F#4:1 F#4:1.5 A4:0.5 G4:0.5 F#4:0.5 G4:1 G4:1.5 Bb4:0.5 A4:0.5 G4:0.5 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 D4:1 D4:1.5 F#4:0.5 Eb4:0.5 D4:0.5 F#4:1 F#4:1.5 A4:0.5 G4:0.5 F#4:0.5 G4:1 G4:1.5 Bb4:0.5 A4:0.5 G4:0.5 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 F#4:0.5 F#4:1 Eb4:0.5 D4:0.5 D4:0.5 D4:1 Eb4:0.5 Eb4:1 D4:0.5 C4:0.5 C4:0.5 C4:1 C4:1 Eb4:0.75 D4:0.25 C4:0.5 C4:0.5 G4:1 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 F#4:0.5 F#4:1 Eb4:0.5 D4:0.5 D4:0.5 D4:1 Eb4:0.5 Eb4:1 D4:0.5 C4:0.5 C4:0.5 C4:1 C4:1 Eb4:0.75 D4:0.25 C4:0.5 C4:0.5 G4:1 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 G4:2 G4:2 G4:1 G4:1 G4:1 G4:1 G4:0.5 G4:0.5 Bb4:0.75 A4:0.25 G4:0.5 Bb4:0.5 A4:0.5 G4:0.5 G4:0.5 G4:0.5 Bb4:0.75 A4:0.25 G4:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:0.5 A4:0.5 C5:0.75 Bb4:0.25 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 A4:0.5 A4:0.5 C5:0.75 Bb4:0.25 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 A4:0.5 A4:0.5 D5:1 D4:0.5 D4:0.5 D5:1 r:0.5 D4:0.5 D4:0.5 D4:0.5 Bb4:0.5 A4:0.5 G4:0.5 F#4:0.5 G4:3",
+  },
+  {
+    id: "la-cucaracha", title: "La Cucaracha", origin: "mx", key: "F major", time: "3/4",
+    source: "https://en.wikipedia.org/wiki/La_Cucaracha",
+    notes: "C4:0.5 C4:0.5 F4:0.5 F4:0.5 A4:0.5 A4:0.5 C5:1 A4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 C5:0.5 Bb4:1 G4:2 C4:0.5 C4:0.5 E4:0.5 E4:0.5 G4:0.5 G4:0.5 Bb4:1 G4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:1 F4:2 C4:0.5 C4:0.5 F4:0.5 F4:0.5 A4:0.5 A4:0.5 C5:1 A4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 C5:0.5 Bb4:1 G4:2 C4:0.5 C4:0.5 E4:0.5 E4:0.5 G4:0.5 G4:0.5 Bb4:1 G4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:1 F4:2",
+  },
+  {
+    id: "drunken-sailor", title: "Drunken Sailor", origin: "gb-eng", key: "D minor", time: "2/4",
+    source: "https://de.wikipedia.org/wiki/What_Shall_We_Do_with_the_Drunken_Sailor%3F",
+    notes: "A4:0.5 A4:0.25 A4:0.25 A4:0.5 A4:0.25 A4:0.25 A4:0.5 D4:0.5 F4:0.5 A4:0.5 G4:0.5 G4:0.25 G4:0.25 G4:0.5 G4:0.25 G4:0.25 G4:0.5 C4:0.5 E4:0.5 G4:0.5 A4:0.5 A4:0.25 A4:0.25 A4:0.5 A4:0.25 A4:0.25 A4:0.5 B4:0.5 C5:0.5 D5:0.5 C5:0.5 A4:0.5 G4:0.5 E4:0.5 D4:1 D4:1 A4:1 A4:0.75 A4:0.25 A4:0.5 D4:0.5 F4:0.5 A4:0.5 G4:1 G4:0.75 G4:0.25 G4:0.5 C4:0.5 E4:0.5 G4:0.5 A4:1 A4:0.75 A4:0.25 A4:0.5 B4:0.5 C5:0.5 D5:0.5 C5:0.5 A4:0.5 G4:0.5 E4:0.5 D4:1 D4:1",
+  },
+  {
+    id: "my-bonnie", title: "My Bonnie Lies over the Ocean", origin: "gb-sct", key: "G major", time: "3/4",
+    source: "https://en.wikipedia.org/wiki/My_Bonnie_Lies_over_the_Ocean",
+    notes: "D4:1 B4:1 A4:1 G4:1 A4:1 G4:1 E4:1 D4:1 B3:4 D4:1 B4:1 A4:1 G4:1 G4:1 F#4:1 G4:1 A4:5 D4:1 B4:1 A4:1 G4:1 A4:1 G4:1 E4:1 D4:1 B3:4 D4:1 E4:1 A4:1 G4:1 F#4:1 E4:1 F#4:1 G4:5 r:1 D4:3 G4:3 E4:3 A4:3 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 G4:2 A4:1 B4:3 D4:3 G4:3 E4:3 A4:3 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 G4:6",
+  },
+  {
+    id: "red-river-valley", title: "Red River Valley", origin: "us", key: "G major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Red_River_Valley_(song)",
+    notes: "D4:0.5 G4:0.5 B4:1 B4:0.5 B4:0.5 B4:1 A4:0.5 B4:0.5 A4:1 G4:2 B4:0.5 B4:0.5 B4:1 G4:0.5 B4:0.5 D5:1 C5:0.5 B4:0.5 A4:3 D5:0.5 C5:0.5 B4:1 B4:0.5 A4:0.5 G4:1 A4:0.5 B4:0.5 D5:1 C5:2 E4:0.5 E4:0.5 D4:1 F#4:0.5 G4:0.5 A4:1 B4:0.5 A4:0.5 G4:4",
+  },
+  {
+    id: "brahms-lullaby", title: "Brahms’ Lullaby (Guten Abend, gut’ Nacht)", origin: "de", key: "E♭ major", time: "3/4",
+    source: "https://en.wikipedia.org/wiki/Brahms'_Lullaby",
+    notes: "G4:0.5 G4:0.5 Bb4:1.5 G4:0.5 G4:1 Bb4:1 r:1 G4:0.5 Bb4:0.5 Eb5:1 D5:1.5 C5:0.5 C5:1 Bb4:1 F4:0.5 G4:0.5 Ab4:1 F4:1 F4:0.5 G4:0.5 Ab4:1 r:1 F4:0.5 Ab4:0.5 D5:0.5 C5:0.5 Bb4:1 D5:1 Eb5:1 r:1 Eb4:0.5 Eb4:0.5 Eb5:2 C5:0.5 Ab4:0.5 Bb4:2 G4:0.5 Eb4:0.5 Ab4:1 Bb4:1 C5:1 Bb4:2 Eb4:0.5 Eb4:0.5 Eb5:2 C5:0.5 Ab4:0.5 Bb4:2 G4:0.5 Eb4:0.5 Bb3:0.25 Ab3:0.25 G3:1 F3:1 Eb3:2",
+  },
+  {
+    id: "joy-to-the-world", title: "Joy to the World", origin: "gb-eng", key: "D major", time: "2/4",
+    source: "https://en.wikipedia.org/wiki/Joy_to_the_World",
+    notes: "D5:1 C#5:0.75 B4:0.25 A4:1.5 G4:0.5 F#4:1 E4:1 D4:1.5 A4:0.5 B4:1.5 B4:0.5 C#5:1.5 C#5:0.5 D5:3.5 D5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 A4:0.75 G4:0.25 F#4:0.5 D5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 A4:0.75 G4:0.25 F#4:0.5 F#4:0.5 F#4:0.5 F#4:0.5 F#4:0.5 F#4:0.25 G4:0.25 A4:1.5 G4:0.25 F#4:0.25 E4:0.5 E4:0.5 E4:0.5 E4:0.25 F#4:0.25 G4:1.5 F#4:0.25 E4:0.25 F#4:0.5 D5:1 B4:0.5 A4:0.75 G4:0.25 F#4:0.5 G4:0.5 F#4:1 E4:1 D4:2",
+  },
+  {
+    id: "au-clair-de-la-lune", title: "Au clair de la lune", origin: "fr", key: "C major", time: "2/2",
+    source: "https://fr.wikipedia.org/wiki/Au_clair_de_la_lune",
+    notes: "C5:1 C5:1 C5:1 D5:1 E5:2 D5:2 C5:1 E5:1 D5:1 D5:1 C5:4 C5:1 C5:1 C5:1 D5:1 E5:2 D5:2 C5:1 E5:1 D5:1 D5:1 C5:4 D5:1 D5:1 D5:1 D5:1 A4:2 A4:2 D5:1 C5:1 B4:1 A4:1 G4:4 C5:1 C5:1 C5:1 D5:1 E5:2 D5:2 C5:1 E5:1 D5:1 D5:1 C5:4",
+  },
+  {
+    id: "arirang", title: "Arirang", origin: "kr", key: "F major", time: "9/8",
+    source: "https://en.wikipedia.org/wiki/Arirang",
+    notes: "C4:2.5 D4:0.5 C4:1 D4:0.5 F4:2.5 G4:0.5 F4:1 G4:0.5 A4:1.5 G4:0.5 A4:0.5 G4:0.5 F4:1 D4:0.5 C4:2.5 D4:0.5 C4:0.5 D4:0.5 r:0.5 F4:2.5 G4:0.5 F4:1 G4:0.5 A4:1 G4:0.5 F4:1 D4:0.5 C4:1 D4:0.5 F4:2.5 G4:0.5 F4:1.5 F4:3 r:1.5 C5:3 C5:1.5 C5:1.5 A4:1.5 G4:1.5 A4:1.5 G4:1 A4:0.5 F4:1 D4:0.5 C4:2.5 D4:0.5 C4:0.5 D4:0.5 r:0.5 F4:2.5 G4:0.5 F4:1 G4:0.5 A4:1 G4:0.5 F4:1 D4:0.5 C4:1 D4:0.5 F4:2.5 G4:0.5 F4:1.5 F4:3",
+  },
+  {
+    id: "waltzing-matilda", title: "Waltzing Matilda", origin: "au", key: "F major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Waltzing_Matilda",
+    notes: "A4:0.75 A4:0.25 A4:0.5 A4:0.5 G4:1 G4:1 F4:1 A4:0.5 F4:0.5 D4:0.5 E4:0.5 F4:1 C4:1 F4:0.75 A4:0.25 C5:1 C5:0.5 C5:0.5 C5:0.5 C5:0.5 C5:1 C5:0.5 r:0.5 F4:0.5 G4:0.5 A4:1 A4:0.5 A4:0.5 G4:1 G4:1 F4:0.5 G4:0.5 A4:0.5 F4:0.5 D4:0.5 E4:0.5 F4:1 C4:1 F4:0.75 A4:0.25 C5:1 Bb4:0.5 A4:0.5 G4:1 G4:0.5 G4:0.5 F4:1 r:1 C5:1 C5:0.75 C5:0.25 C5:1 A4:1 F5:1 F5:0.75 E5:0.25 D5:1 C5:1 C5:1 C5:0.75 C5:0.25 D5:1 C5:0.75 C5:0.25 C5:1 Bb4:0.5 A4:0.5 G4:0.5 r:0.5 F4:0.5 G4:0.5 A4:1 A4:0.5 A4:0.5 G4:1 G4:1 F4:0.5 G4:0.5 A4:0.5 F4:0.5 D4:0.5 E4:0.5 F4:1 C4:1 F4:0.75 A4:0.25 C5:1 Bb4:0.5 A4:0.5 G4:1 G4:0.5 G4:0.5 F4:1",
+  },
+  {
+    id: "skye-boat-song", title: "Skye Boat Song", origin: "gb-sct", key: "G major", time: "6/8",
+    source: "https://en.wikipedia.org/wiki/Skye_Boat_Song",
+    notes: "D4:0.75 E4:0.25 D4:0.5 G4:1 G4:0.25 G4:0.25 A4:0.75 B4:0.25 A4:0.5 D5:1.5 B4:0.75 A4:0.25 B4:0.5 E4:1 E4:0.5 D4:1.5 r:1.5 D4:0.75 E4:0.25 D4:0.5 G4:1 G4:0.5 A4:0.75 B4:0.25 A4:0.5 D5:1.5 B4:0.75 A4:0.25 B4:0.5 E4:1 E4:0.5 G4:3 B4:0.5 G4:0.5 B4:0.5 B4:1.5 A4:0.5 E4:0.5 A4:0.5 A4:1.5 G4:0.5 E4:0.5 G4:0.5 G4:1 G4:0.5 E4:3 B4:0.5 G4:0.5 B4:0.5 B4:1.5 A4:0.5 E4:0.5 A4:0.5 A4:1.5 G4:0.5 E4:0.5 G4:0.5 G4:1 G4:0.5 E4:1.5 D4:1.5",
+  },
+  {
+    id: "malbrough", title: "For He’s a Jolly Good Fellow (Malbrough s’en va-t-en guerre)", origin: "fr", key: "G major", time: "6/8",
+    source: "https://fr.wikipedia.org/wiki/Malbrough_s'en_va-t-en_guerre",
+    notes: "D4:0.5 B4:1 B4:0.5 B4:1 A4:0.5 C5:1.5 B4:0.5 C5:0.5 B4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:1.5 G4:1 D4:0.5 B4:1 B4:0.5 B4:1 A4:0.5 C5:1.5 B4:1 D5:0.5 B4:1 G4:0.5 A4:1 A4:0.5 G4:2.5 D5:0.5 D5:1 B4:0.5 E5:1 E5:0.5 D5:1.5 D5:1.5 D5:1 B4:0.5 E5:1 E5:0.5 D5:2.5",
+  },
+  {
+    id: "row-your-boat", title: "Row, Row, Row Your Boat", origin: "us", key: "C major", time: "6/8",
+    source: "https://en.wikipedia.org/wiki/Row,_Row,_Row_Your_Boat",
+    notes: "C4:1.5 C4:1.5 C4:1 D4:0.5 E4:1.5 E4:1 D4:0.5 E4:1 F4:0.5 G4:3 C5:0.5 C5:0.5 C5:0.5 G4:0.5 G4:0.5 G4:0.5 E4:0.5 E4:0.5 E4:0.5 C4:0.5 C4:0.5 C4:0.5 G4:1 F4:0.5 E4:1 D4:0.5 C4:3",
+  },
+  {
+    id: "london-bridge", title: "London Bridge Is Falling Down", origin: "gb-eng", key: "F major", time: "2/4",
+    source: "https://en.wikipedia.org/wiki/London_Bridge_Is_Falling_Down",
+    notes: "C5:0.75 D5:0.25 C5:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 C5:1 G4:0.5 A4:0.5 Bb4:1 A4:0.5 Bb4:0.5 C5:1 C5:0.75 D5:0.25 C5:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 C5:1 G4:1 C5:1 A4:0.5 F4:1.5",
+  },
   {
     id: "alle-meine-entchen", title: "Alle meine Entchen", origin: "de", key: "C major", time: "4/4",
     source: "https://de.wikipedia.org/wiki/Alle_meine_Entchen",
@@ -93,14 +214,104 @@ export const SONGS = [
     notes: "D4:1 E4:1 F#4:1 G4:1 A4:1 A4:1 A4:1 A4:1 B4:1 G4:1 D5:1 B4:1 A4:4 B4:1 G4:1 D5:1 B4:1 A4:4 A4:1 G4:1 G4:1 G4:1 G4:1 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 E4:1 D4:1 F#4:1 A4:2 A4:1 G4:1 G4:1 G4:1 G4:1 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 E4:1 D4:4",
   },
   {
-    id: "londonderry-air", title: "Londonderry Air (Danny Boy)", origin: "ie", key: "E♭ major", time: "4/4",
-    source: "https://en.wikipedia.org/wiki/Londonderry_Air",
-    notes: "D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:1 r:0.5 Eb4:0.5 G4:0.5 Ab4:0.5 Bb4:1.5 C5:0.5 Bb4:0.5 G4:0.5 Eb4:0.5 G4:0.5 F4:2 r:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:0.5 B3:0.5 C4:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 Ab4:0.5 G4:0.5 F4:0.5 Eb4:0.5 F4:0.5 Eb4:2 r:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:1.5 D5:0.5 D5:0.5 C5:0.5 Bb4:0.5 G4:0.5 Bb4:0.5 G4:0.5 Eb4:1 r:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:1.5 D5:0.5 D5:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:2 r:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 G5:1.5 F5:0.5 F5:0.5 Eb5:0.5 C5:0.5 Eb5:0.5 Bb4:0.5 G4:0.5 Eb4:1 r:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:0.5 D4:0.5 Eb4:2.5",
+    id: "hark-the-herald", title: "Hark! The Herald Angels Sing", origin: "gb-eng", key: "F major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Hark!_The_Herald_Angels_Sing",
+    notes: "C4:1 F4:1 F4:1.5 E4:0.5 F4:1 A4:1 A4:1 G4:1 C5:1 C5:1 C5:1.5 Bb4:0.5 A4:1 G4:1 A4:2 C4:1 F4:1 F4:1.5 E4:0.5 F4:1 A4:1 A4:1 G4:1 C5:1 G4:1 G4:1.5 E4:0.5 E4:1 D4:1 C4:2 C5:1 C5:1 C5:1 F4:1 Bb4:1 A4:1 A4:1 G4:1 C5:1 C5:1 C5:1 F4:1 Bb4:1 A4:1 A4:1 G4:1 D5:1 D5:1 D5:1 C5:1 Bb4:1 A4:1 Bb4:2 G4:1 A4:0.5 Bb4:0.5 C5:1.5 F4:0.5 F4:1 G4:1 A4:2 D5:1.5 D5:0.5 D5:1 C5:1 Bb4:1 A4:1 Bb4:2 G4:1 A4:0.5 Bb4:0.5 C5:1.5 F4:0.5 F4:1 G4:1 F4:2",
   },
   {
-    id: "auld-lang-syne", title: "Auld Lang Syne", origin: "gb-sct", key: "F major", time: "4/4",
-    source: "https://en.wikipedia.org/wiki/Auld_Lang_Syne",
-    notes: "C4:1 F4:1.5 F4:0.5 F4:1 A4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 F4:0.5 A4:1 C5:1 D5:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 D4:0.5 D4:1 C4:1 F4:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 D5:1 C5:1.5 A4:0.5 A4:1 C5:1 D5:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 D4:0.5 D4:1 C4:1 F4:3",
+    id: "away-in-a-manger", title: "Away in a Manger", origin: "us", key: "F major", time: "3/4",
+    source: "https://en.wikipedia.org/wiki/Away_in_a_Manger",
+    notes: "C5:1 C5:1.5 Bb4:0.5 A4:1 A4:1.5 G4:0.5 F4:1 F4:1 E4:1 D4:1 C4:2 C4:1 C4:1.5 D4:0.5 C4:1 C4:1 G4:1 E4:1 D4:1 C4:1 F4:1 A4:2 C5:1 C5:1.5 Bb4:0.5 A4:1 A4:1.5 G4:0.5 F4:1 F4:1 E4:1 D4:1 C4:2 C4:1 Bb4:1.5 A4:0.5 G4:1 A4:1 G4:1 F4:1 G4:1 D4:1 E4:1 F4:2",
+  },
+  {
+    id: "sur-le-pont-davignon", title: "Sur le pont d’Avignon", origin: "fr", key: "F major", time: "2/4",
+    source: "https://fr.wikipedia.org/wiki/Sur_le_pont_d'Avignon",
+    notes: "F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 E4:0.5 F4:0.5 G4:0.5 C4:0.5 F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 G4:0.5 E4:0.5 F4:1 F4:0.5 F4:0.5 F4:0.5 F4:0.5 G4:1 F4:1 F4:0.5 F4:0.5 F4:0.5 F4:0.5 G4:1 F4:1 F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 E4:0.5 F4:0.5 G4:0.5 C4:0.5 F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 G4:0.5 E4:0.5 F4:1",
+  },
+  {
+    id: "god-rest-ye", title: "God Rest Ye Merry, Gentlemen", origin: "gb-eng", key: "E minor", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/God_Rest_Ye_Merry,_Gentlemen",
+    notes: "E4:1 E4:1 B4:1 B4:1 A4:1 G4:1 F#4:1 E4:1 D4:1 E4:1 F#4:1 G4:1 A4:1 B4:3 E4:1 E4:1 B4:1 B4:1 A4:1 G4:1 F#4:1 E4:1 D4:1 E4:1 F#4:1 G4:1 A4:1 B4:3 B4:1 C5:1 A4:1 B4:1 C5:1 D5:1 E5:1 B4:1 A4:1 G4:1 E4:1 F#4:1 G4:1 A4:2 G4:1 A4:1 B4:2 C5:1 B4:1 B4:1 A4:1 G4:1 F#4:1 E4:2 G4:0.5 F#4:0.5 E4:1 A4:2 G4:1 A4:1 B4:1 C5:1 D5:1 E5:1 B4:1 A4:1 G4:1 F#4:1 E4:3",
+  },
+  {
+    id: "itsy-bitsy-spider", title: "Itsy Bitsy Spider", origin: "us", key: "G major", time: "6/8",
+    source: "https://en.wikipedia.org/wiki/Itsy_Bitsy_Spider",
+    notes: "D4:0.5 G4:1 G4:0.5 G4:1 A4:0.5 B4:1.5 B4:1 B4:0.5 A4:1 G4:0.5 A4:1 B4:0.5 G4:3 B4:1.5 B4:1 C5:0.5 D5:1.5 D5:1.5 C5:1 B4:0.5 C5:1 D5:0.5 B4:3 G4:1.5 G4:1 A4:0.5 B4:1.5 B4:1.5 A4:1 G4:0.5 A4:1 B4:0.5 G4:1.5 F#4:1 F#4:0.5 G4:1 G4:0.5 G4:1 A4:0.5 B4:1.5 B4:1 B4:0.5 A4:1 G4:0.5 A4:1 B4:0.5 G4:2.5",
+  },
+  {
+    id: "lavenders-blue", title: "Lavender’s Blue", origin: "gb-eng", key: "G major", time: "3/8",
+    source: "https://en.wikipedia.org/wiki/Lavender's_Blue",
+    notes: "G4:0.5 D5:0.5 D5:0.5 D5:0.5 C5:0.25 B4:0.25 A4:0.25 G4:0.25 G4:0.5 E5:0.5 E5:0.5 E5:1.5 G4:0.5 D5:0.5 D5:0.5 D5:0.5 C5:0.25 B4:0.25 A4:0.25 G4:0.25 C5:0.5 B4:0.5 A4:0.5 G4:1.5",
+  },
+  {
+    id: "pop-goes-the-weasel", title: "Pop Goes the Weasel", origin: "gb-eng", key: "C major", time: "6/8",
+    source: "https://en.wikipedia.org/wiki/Pop_Goes_the_Weasel",
+    notes: "C4:1 C4:0.5 D4:1 D4:0.5 E4:0.5 G4:0.5 E4:0.5 C4:1.5 C4:1 C4:0.5 D4:1 D4:0.5 E4:1.5 C4:0.5 r:0.5 r:0.5 C4:1 C4:0.5 D4:1 D4:0.5 E4:0.5 G4:0.5 E4:0.5 C4:1.5 A4:0.5 r:0.5 r:0.5 D4:1 F4:0.5 E4:1.5 C4:0.5",
+  },
+  {
+    id: "leise-rieselt-der-schnee", title: "Leise rieselt der Schnee", origin: "de", key: "G major", time: "6/8",
+    source: "https://de.wikipedia.org/wiki/Leise_rieselt_der_Schnee",
+    notes: "B4:1 B4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:2.5 r:0.5 G4:1 E4:0.5 G4:0.5 F#4:0.5 E4:0.5 D4:2.5 r:0.5 A4:0.5 Ab4:0.5 A4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:2.5 r:0.5 A4:0.75 E4:0.25 E4:0.5 F#4:0.5 E4:0.5 F#4:0.5 G4:2.5",
+  },
+  {
+    id: "ihr-kinderlein-kommet", title: "Ihr Kinderlein, kommet", origin: "de", key: "D major", time: "2/4",
+    source: "https://de.wikipedia.org/wiki/Ihr_Kinderlein,_kommet",
+    notes: "A4:0.5 A4:1 F#4:0.5 A4:0.5 A4:1 F#4:0.5 A4:0.5 G4:1 E4:0.5 G4:0.5 F#4:1 r:0.5 A4:0.5 A4:1 F#4:0.5 A4:0.5 A4:1 F#4:0.5 A4:0.5 G4:1 E4:0.5 G4:0.5 F#4:1 r:0.5 F#4:0.5 E4:1 E4:0.5 E4:0.5 G4:1 G4:0.5 G4:0.5 F#4:1 F#4:0.5 F#4:0.5 B4:1 r:0.5 B4:0.5 A4:1 A4:0.5 A4:0.5 D5:1 A4:0.5 F#4:0.5 G4:1 E4:0.5 C#4:0.5 D4:1.5",
+  },
+  {
+    id: "lustig-ist-das-zigeunerleben", title: "Lustig ist das Zigeunerleben", origin: "de", key: "C major", time: "6/8",
+    source: "https://de.wikipedia.org/wiki/Lustig_ist_das_Zigeunerleben",
+    notes: "G4:1 G4:0.5 G4:0.5 A4:0.5 G4:0.5 E4:1 E4:0.5 E4:0.5 D4:0.5 E4:0.5 F4:0.75 F4:0.25 F4:0.5 G4:0.75 G4:0.25 G4:0.5 E4:2 r:0.5 r:0.5 G4:1 G4:0.5 G4:0.5 A4:0.5 G4:0.5 E4:1 E4:0.5 E4:0.5 D4:0.5 E4:0.5 F4:0.75 F4:0.25 F4:0.5 G4:0.75 G4:0.25 G4:0.5 E4:2 r:0.5 r:0.5 C5:1 C5:0.5 C5:0.5 B4:0.5 A4:0.5 A4:1 G4:0.5 G4:1 r:0.5 A4:1 A4:0.25 A4:0.25 A4:0.5 G4:0.5 F4:0.5 F4:1 E4:0.5 E4:1 r:0.5 G4:0.75 G4:0.25 G4:0.5 G4:0.5 A4:0.5 B4:0.5 C5:0.75 C5:0.25 C5:0.5 C5:0.5 B4:0.5 C5:0.5 D5:0.75 D5:0.25 D5:0.5 B4:0.5 A4:0.5 B4:0.5 C5:2",
+  },
+  {
+    id: "ich-geh-mit-meiner-laterne", title: "Ich geh mit meiner Laterne", origin: "de", key: "G major", time: "6/8",
+    source: "https://de.wikipedia.org/wiki/Ich_geh_mit_meiner_Laterne",
+    notes: "D4:0.5 G4:1 G4:0.5 B4:0.5 G4:0.5 B4:0.5 D5:1.5 B4:1 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5 r:1 D4:0.5 G4:1 G4:0.5 B4:0.5 G4:0.5 B4:0.5 D5:1.5 B4:1 G4:0.5 A4:1 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5 r:1 B4:0.5 D5:1 B4:0.5 G4:1 B4:0.5 D5:1 B4:0.5 G4:1 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5 r:1 B4:0.5 D5:1 B4:0.5 G4:1 B4:0.5 D5:1 B4:0.5 G4:1 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5",
+  },
+  {
+    id: "die-vogelhochzeit", title: "Die Vogelhochzeit", origin: "de", key: "G major", time: "2/4",
+    source: "https://de.wikipedia.org/wiki/Die_Vogelhochzeit",
+    notes: "B4:0.5 D5:0.5 B4:0.5 D5:0.5 B4:0.5 C5:0.5 A4:0.5 C5:0.5 A4:0.5 B4:0.5 G4:0.5 D5:0.5 B4:0.5 A4:0.5 D5:0.5 D5:0.5 D5:0.25 B4:0.25 G4:0.5 G4:0.5 G4:0.5 D5:0.25 B4:0.25 A4:0.5 A4:0.5 A4:0.5 D5:0.25 C5:0.25 B4:0.5 G4:0.5 A4:0.5 F#4:0.5 G4:1",
+  },
+  {
+    id: "der-mond-ist-aufgegangen", title: "Der Mond ist aufgegangen", origin: "de", key: "F major", time: "4/4",
+    source: "https://de.wikipedia.org/wiki/Abendlied_(Matthias_Claudius)",
+    notes: "F4:1 G4:1 F4:1 Bb4:1 A4:1 G4:2 F4:1 A4:1 A4:1 A4:1 D5:1 C5:1 Bb4:2 A4:1 A4:1 A4:1 A4:1 Bb4:1 A4:1 G4:3 F4:1 G4:1 F4:1 Bb4:1 A4:1 G4:2 F4:1 A4:1 A4:1 A4:1 D5:1 C5:1 Bb4:2 A4:1 A4:1 A4:1 A4:1 Bb4:1 A4:1 G4:1 G4:1 F4:1",
+  },
+  {
+    id: "auf-einem-baum-ein-kuckuck", title: "Auf einem Baum ein Kuckuck", origin: "de", key: "G major", time: "5/4",
+    source: "https://de.wikipedia.org/wiki/Auf_einem_Baum_ein_Kuckuck",
+    notes: "D5:1 B4:0.5 G4:0.5 A4:0.5 D5:0.5 D5:0.5 C5:0.5 A4:1 G4:0.5 G4:0.25 G4:0.25 G4:0.5 G4:0.5 G4:0.5 G4:0.25 G4:0.25 A4:0.5 F#4:0.25 F#4:0.25 D4:1 D5:1 B4:0.5 G4:0.5 A4:0.5 D5:0.5 D5:0.5 C5:0.5 A4:0.75 r:0.25 G4:1",
+  },
+  {
+    id: "backe-backe-kuchen", title: "Backe, backe Kuchen", origin: "de", key: "D major", time: "2/2",
+    source: "https://de.wikipedia.org/wiki/Backe,_backe_Kuchen",
+    notes: "A4:1 A4:1 B4:1 B4:1 A4:2 F#4:1 D4:1 A4:1 A4:1 B4:1 B4:1 A4:2 F#4:2 A4:1 A4:1 B4:1 B4:1 A4:1 A4:1 F#4:1 D4:1 A4:1 A4:1 B4:1 B4:1 A4:1 A4:1 F#4:1 F#4:1 A4:0.5 A4:0.5 A4:1 F#4:2 A4:0.5 A4:0.5 A4:1 F#4:2 A4:1 A4:1 F#4:2 A4:1 A4:1 B4:1 B4:1 A4:1 A4:1 F#4:2 D5:2 A4:1 G4:1 F#4:1 E4:1 D4:2",
+  },
+  {
+    id: "alle-jahre-wieder", title: "Alle Jahre wieder", origin: "de", key: "D major", time: "4/4",
+    source: "https://de.wikipedia.org/wiki/Alle_Jahre_wieder",
+    notes: "A4:1.5 B4:0.5 A4:1 G4:1 F#4:2 E4:2 D4:1 E4:0.5 F#4:0.5 G4:1 F#4:1 E4:3 r:1 F#4:1 A4:1 B4:1 A4:1 D5:2 C#5:1 B4:1 A4:1 G4:0.5 F#4:0.5 G4:1 A4:1 F#4:3",
+  },
+  {
+    id: "es-ist-ein-ros-entsprungen", title: "Es ist ein Ros entsprungen", origin: "de", key: "F major", time: "4/4",
+    source: "https://de.wikipedia.org/wiki/Es_ist_ein_Ros_entsprungen",
+    notes: "C5:2 C5:1 C5:1 D5:1 C5:1 C5:2 A4:2 Bb4:2 A4:1 G4:2 F4:2 E4:1 F4:2 C5:2 C5:1 C5:1 D5:1 C5:1 C5:2 A4:2 Bb4:2 A4:1 G4:2 F4:2 E4:1 F4:2 r:1 A4:1 G4:1 E4:1 F4:1 D4:1 C4:2 r:1 C5:1 C5:1 C5:1 D5:1 C5:1 C5:2 A4:2 Bb4:2 A4:1 G4:2 F4:2 E4:1 F4:2",
+  },
+  {
+    id: "tochter-zion", title: "Tochter Zion, freue dich", origin: "de", key: "G major", time: "4/4",
+    source: "https://de.wikipedia.org/wiki/Tochter_Zion,_freue_dich",
+    notes: "B4:0.5 A4:0.5 B4:0.5 C5:0.5 B4:1 B4:1 A4:2 G4:2 C5:1 B4:1 A4:1 G4:1 F#4:4 G4:0.5 F#4:0.5 G4:0.5 A4:0.5 G4:1 G4:1 E5:2 C#5:2 D5:1 E5:0.5 D5:0.5 C#5:1.5 D5:0.5 D5:4 B4:0.5 A4:0.5 B4:0.5 C5:0.5 B4:1 B4:1 A4:2 G4:2 C5:1 B4:1 A4:1 G4:1 F#4:4 G4:0.5 F#4:0.5 G4:0.5 A4:0.5 G4:1 G4:1 E5:2 C#5:2 D5:1 E5:0.5 D5:0.5 C#5:1.5 D5:0.5 D5:4",
+  },
+  {
+    id: "le-bon-roi-dagobert", title: "Le bon roi Dagobert", origin: "fr", key: "G major", time: "6/8",
+    source: "https://fr.wikipedia.org/wiki/Le_bon_roi_Dagobert",
+    notes: "B4:0.5 B4:1 A4:0.5 A4:1 G4:0.5 G4:1.5 A4:1.5 B4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:1.5 r:0.5 G4:0.5 A4:0.5 B4:1 B4:0.5 B4:0.5 C5:0.5 D5:0.5 A4:1 A4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:1 B4:0.5 B4:0.5 C5:0.5 D5:0.5 A4:1 A4:0.5 A4:1 B4:0.5 B4:1 A4:0.5 A4:1 G4:0.5 G4:1.5 A4:1.5 B4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:2.5",
+  },
+  {
+    id: "le-temps-des-cerises", title: "Le Temps des cerises", origin: "fr", key: "D minor", time: "6/8",
+    source: "https://fr.wikipedia.org/wiki/Le_Temps_des_cerises",
+    notes: "C4:0.5 F4:0.5 F4:0.5 F4:0.5 F4:1 F4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:1 A4:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 r:0.5 A4:0.5 A4:0.5 A4:0.5 Bb4:0.5 A4:1.5 G4:1.5 F4:0.5 r:0.5 F4:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 Bb4:1 Bb4:0.5 Bb4:0.5 D5:0.5 Bb4:0.5 Bb4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 C5:1 A4:0.5 A4:0.5 G4:0.5 F4:0.5 G4:3.5 r:0.5 C4:0.5 F4:0.5 F4:0.5 F4:0.5 F4:1 F4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 A4:0.5 A4:0.5 A4:0.5 C5:1 A4:0.5 A4:0.5 G4:0.5 F4:0.5 F4:3.5",
   },
 ];
 

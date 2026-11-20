@@ -6,11 +6,11 @@ import { instrumentFromChart } from '../js/charts.js';
 import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether } from '../js/songs.js';
 
 test('every song has a source, an origin, a key and notes that read', () => {
-  assert.ok(SONGS.length >= 15);
+  assert.ok(SONGS.length >= 50);
   const ids = new Set();
   for (const s of SONGS) {
     assert.ok(!ids.has(s.id), s.id); ids.add(s.id);
-    assert.match(s.source, /^https:\/\/(de|en)\.wikipedia\.org\/wiki\//);
+    assert.match(s.source, /^https:\/\/(de|en|fr)\.wikipedia\.org\/wiki\//);
     assert.ok(SONG_ORIGINS[s.origin], s.id);
     assert.match(s.key, /^[A-G][♭♯]? (major|minor)$/);
     const notes = songNotes(s);
@@ -61,4 +61,13 @@ test('on a whistle, songs go to keys without half-covered holes where they can',
   const hard = songNotes(air.song).filter(n => n.midi != null && !easy.has(n.midi + air.shift)).length;
   const plain = songNotes(air.song).filter(n => n.midi != null && !easy.has(n.midi + songShift(air.song, have))).length;
   assert.ok(hard <= plain, `${hard} half-holed notes, against ${plain} without the preference`);
+});
+
+test('the best-known songs come first, and a few openings are as the scores give them', () => {
+  assert.deepEqual(SONGS.slice(0, 3).map(s => s.id), ['ode-to-joy', 'twinkle-twinkle', 'happy-birthday']);
+  const start = (id, n) => SONGS.find(s => s.id === id).notes.split(' ').slice(0, n).map(t => t.split(':')[0]).join(' ');
+  assert.equal(start('ode-to-joy', 8), 'B4 B4 C5 D5 D5 C5 B4 A4');
+  assert.equal(start('twinkle-twinkle', 7), 'C4 C4 G4 G4 A4 A4 G4');
+  assert.equal(start('frere-jacques', 4), 'D4 E4 F#4 D4');
+  assert.equal(start('amazing-grace', 3), 'D4 G4 B4', 'the pickup rests are dropped');
 });
