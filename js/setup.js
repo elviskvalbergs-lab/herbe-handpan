@@ -211,21 +211,22 @@ export const SETUP_SCALE_TYPES = [
 // Which common scale the notes heard (MIDI numbers) are, or are closest to,
 // in any key: the best five-note and the best seven-note fit, each
 // { root (pitch class), type, off: [midi], instead: { midi: suggested midi } }.
-// Fewest notes off first, then a root that is the lowest note (a drum's ding
-// is usually its key), then the order above. A note off by a semitone from a
+// Fewest notes off first, but a root that is the first note (the ding or
+// the lowest note: an instrument's key) over one note fewer off, then the order above. A note off by a semitone from a
 // scale note the drum doesn't already have is probably that note, misheard
 // or out of tune: `instead`, leaning the way it sounded (devCents: { midi:
 // cents from the named note }). Null with fewer than three different notes.
 export function scaleFits(notes, { devCents = {}, types = SETUP_SCALE_TYPES } = {}) {
   const pc = m => ((m % 12) + 12) % 12;
   if (new Set(notes.map(pc)).size < 3) return null;
-  const low = pc(Math.min(...notes));
+  const low = pc(notes[0]); // the ding, or the lowest note: listed first
   const best = {};
   types.forEach((type, order) => {
     for (let root = 0; root < 12; root++) {
       const set = new Set(type.steps.map(s => (root + s) % 12));
       const off = notes.filter(m => !set.has(pc(m)));
-      const rank = off.length * 100 + (root === low ? 0 : 10) + order;
+      // A root that isn't the lowest note counts for more than one note off.
+      const rank = off.length * 100 + (root === low ? 0 : 150) + order;
       const size = type.steps.length;
       if (!best[size] || rank < best[size].rank) best[size] = { rank, root, type, off, set };
     }
@@ -239,7 +240,9 @@ export function scaleFits(notes, { devCents = {}, types = SETUP_SCALE_TYPES } = 
       const s = tries.find(x => f.set.has(pc(x)) && !notes.includes(x));
       if (s != null) instead[m] = s;
     }
-    return { root: f.root, type: f.type, off: f.off, instead };
+    // A note off the scale heard in two octaves is the drum's, not a slip.
+    const repeated = f.off.some(m => notes.some(x => x !== m && pc(x) === pc(m)));
+    return { root: f.root, type: f.type, off: f.off, instead, repeated };
   };
   return { five: finish(best[5]), seven: finish(best[7]) };
 }

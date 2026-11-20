@@ -90,3 +90,24 @@ test('a note read a whole number of periods too long is moved up to the note', a
   const low = tone(130.81, { harmonics: [0.6, 1, 0.3] });
   assert.ok(Math.abs(cents(refinePitch(low, sr, 130.81), 130.81)) < 10);
 });
+
+test('a handpan Eb3 next to a ringing 142 Hz tone: read on the long window, not as its octave', async () => {
+  const { refinePitch, tunerFrame, TUNER_LONG_WINDOW } = await import('../js/tuner.js');
+  const sr = 48000;
+  const mix = (n, parts) => {
+    const buf = new Float32Array(n);
+    for (let i = 0; i < n; i++) for (const [f, a] of parts) buf[i] += 0.2 * a * Math.sin(2 * Math.PI * f * i / sr);
+    return buf;
+  };
+  // The owner's handpan: Eb3 (156.6 Hz) weaker than its octave partial, and
+  // a 142 Hz tone ringing on from the note before. YIN reads about 153 Hz.
+  const parts = [[156.6, 0.45], [313.2, 1], [141.8, 1]];
+  const hz = refinePitch(mix(TUNER_LONG_WINDOW, parts), sr, 153.5);
+  assert.ok(hz && Math.abs(cents(hz, 156.6)) < 15, `got ${hz}`);
+  // An Eb4 played while the Eb3 rings on quietly stays Eb4.
+  const eb4 = refinePitch(mix(TUNER_LONG_WINDOW, [[313.2, 1], [626.4, 0.3], [156.6, 0.15]]), sr, 313);
+  assert.ok(Math.abs(cents(eb4, 313.2)) < 10, `got ${eb4}`);
+  // The live frame takes a long buffer and still reads a clean note.
+  const f = tunerFrame(mix(TUNER_LONG_WINDOW, [[261.63, 1], [523.25, 0.3]]), sr);
+  assert.ok(Math.abs(cents(f.hz, 261.63)) < 10 && f.level > 0);
+});
