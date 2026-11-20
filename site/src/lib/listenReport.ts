@@ -21,6 +21,7 @@ export type ListenReport = {
   a4: number;
   matched?: { id: string; name: string };
   takes: { seconds: number; type: string }[];
+  photo: boolean;
   app: string;
   host: string;
   ua: string;
@@ -65,16 +66,23 @@ export function validateListenReport(meta: unknown): Result {
       tuningCents: num(m.tuningCents, -100, 100), a4: num(m.a4, 400, 480, 440),
       matched: matched?.id ? matched : undefined,
       takes,
+      photo: m.photo === true,
       app: str(m.app, 40), host: str(m.host, 80), ua: str(m.ua, 300), screen: str(m.screen, 20), lang: str(m.lang, 20),
     },
   };
 }
 
-/** Checks the recordings: how many, how big, and that they are sound. */
-export function checkListenFiles(files: { size: number; type: string }[]): string | null {
+const PHOTO = /^image\/(jpeg|png|webp)$/;
+const PHOTO_MAX = 2_500_000;
+
+/** Checks the recordings and the photo (at most one): how many, how big,
+ *  and that they are sound and a picture. */
+export function checkListenFiles(files: { size: number; type: string }[], photos: { size: number; type: string }[] = []): string | null {
   if (files.length > LISTEN_REPORT_LIMITS.files) return "Too many recordings.";
-  if (files.reduce((a, f) => a + f.size, 0) > LISTEN_REPORT_LIMITS.bytes) return "The recording is too long to send. Try again with a shorter one.";
+  if (photos.length > 1) return "One photo is enough.";
+  if ([...files, ...photos].reduce((a, f) => a + f.size, 0) > LISTEN_REPORT_LIMITS.bytes) return "The recording is too long to send. Try again with a shorter one.";
   if (files.some((f) => !AUDIO.test(f.type.split(";")[0]))) return "That isn't a recording we can take.";
+  if (photos.some((f) => !PHOTO.test(f.type) || f.size > PHOTO_MAX)) return "That photo can't be sent. Try another one.";
   return null;
 }
 
@@ -96,7 +104,7 @@ const a = (text: string, href: string): AdfNode => ({ type: "text", text, marks:
 const row = (label: string, value: string) => p(b(`${label}: `), t(value || "–"));
 
 /** The `fields` of the Jira issue for a report. `links` are the recordings' and the Studio's URLs. */
-export function listenReportIssueFields(r: ListenReport, s: JiraSettings, links: { studio?: string; recordings: string[] }, receivedAt: string) {
+export function listenReportIssueFields(r: ListenReport, s: JiraSettings, links: { studio?: string; recordings: string[]; photo?: string }, receivedAt: string) {
   const content: AdfNode[] = [
     ...(r.comment ? r.comment.split("\n").map((l) => l.trimEnd()).filter(Boolean).map((l) => p(t(l))) : [p(t("(Nothing written.)"))]),
     row("Instrument", `${FAMILY_WORDS[r.family] ?? r.family} · ${r.where} · ${r.mode}${r.places ? ` · ${r.places} places` : ""}${r.windChart ? ` · ${r.windChart}` : ""}`),
@@ -106,6 +114,7 @@ export function listenReportIssueFields(r: ListenReport, s: JiraSettings, links:
     row("Oakhum's match", r.matched ? `${r.matched.name} (${r.matched.id})` : "none"),
     row("Recordings", r.takes.length ? r.takes.map((k) => `${k.seconds} s ${k.type}`).join(", ") : "none sent"),
     ...links.recordings.map((u, i) => p(a(`Recording ${i + 1}`, u))),
+    ...(links.photo ? [p(a("Photo of the instrument", links.photo))] : []),
     ...(links.studio ? [p(a("Open in the Studio", links.studio))] : []),
     row("Email", r.email ?? "not given (can't be told when it's fixed)"),
     row("Device", `${r.ua} · ${r.screen} · ${r.lang}`),

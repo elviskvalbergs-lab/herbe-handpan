@@ -1208,6 +1208,9 @@ button.set-row[role="switch"] { cursor: pointer; }
 .lr-heard-label { color: var(--text-3); font-weight: var(--fw-medium); font-size: var(--fs-13); }
 .lr-takes { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-2) 0 var(--space-4); }
 .lr-audio { width: 100%; height: 40px; }
+.lr-photo { display: flex; align-items: center; gap: var(--space-3); }
+.lr-photo img { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-sm); border: 1px solid var(--border); }
+.lr-photo-add { align-self: flex-start; cursor: pointer; }
 [data-sheet="listen-report"] .set-row { padding-inline: 0; }
 [data-sheet="listen-report"] .field-help a { color: inherit; text-decoration: underline; }
 .sheet-body .field + .field, .sheet-body .set-row + .field, .sheet-body .lr-takes + .field { margin-top: var(--space-4); }
