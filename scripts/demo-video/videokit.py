@@ -20,6 +20,17 @@ def run(args):
     subprocess.run(['ffmpeg', '-v', 'error', '-y', *args], check=True)
 
 
+_SECONDS = {}
+def _seconds(path):
+    """How long a recording is, by decoding it (the browser's recordings say
+    nothing about their length in their header)."""
+    if path not in _SECONDS:
+        raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', path, '-ac', '1', '-ar', '8000', '-f', 's16le', '-'],
+                             capture_output=True, check=True).stdout
+        _SECONDS[path] = len(raw) / 2 / 8000
+    return _SECONDS[path]
+
+
 def mark(tl, prefix):
     return next(m['t'] for m in tl['marks'] if m['name'].startswith(prefix) or prefix in m['name'])
 
@@ -50,7 +61,7 @@ class Video:
         self.vo = json.load(open(path))['lines'] if os.path.exists(path) else {}
         self.segs = []      # (file, seconds)
         self.vo_place = {}  # line -> (segment file, seconds into it)
-        self.clips = []     # (source, start, seconds, at, volume)
+        self.clips = []     # (source, start, seconds, at, volume, fade-out seconds)
 
     def vo_len(self, line):
         return self.vo[line]['seconds'] if line in self.vo else 0.0
@@ -110,9 +121,23 @@ class Video:
             t += d
         return s, t
 
-    def clip(self, src, start, dur, at, vol):
+    def clip(self, src, start, dur, at, vol, fade=0.6):
         """A stretch of sound (the instrument) at a time in the video."""
-        self.clips.append((src, start, dur, at, vol))
+        self.clips.append((src, start, dur, at, vol, fade))
+
+    def bed(self, parts, overlap=1.5, fade=1.5):
+        """The instrument under the whole video with no gaps or cut-offs:
+        parts = [(source, start, at, volume)]. Each part plays until the next
+        one has started, then rings on for `overlap` seconds and fades out over
+        `fade` while the next comes in; the last plays to the end. A part never
+        runs past the end of its recording."""
+        _, total = self.starts()
+        parts = sorted(parts, key=lambda p: p[2])
+        for i, (src, start, at, vol) in enumerate(parts):
+            end = parts[i + 1][2] + overlap if i + 1 < len(parts) else total
+            room = _seconds(src) - max(0.0, start)
+            dur = round(min(end - at, room), 2)
+            self.clip(src, start, dur, at, vol, fade=min(fade, dur / 2))
 
     def finish(self):
         starts, total = self.starts()
@@ -120,10 +145,10 @@ class Video:
             for s, _ in self.segs:
                 f.write(f"file '{s}'\n")
         args, graph = [], []
-        for i, (src, ss, dur, at, vol) in enumerate(self.clips):
+        for i, (src, ss, dur, at, vol, fade) in enumerate(self.clips):
             args += ['-ss', f'{max(0, ss):.3f}', '-t', f'{dur:.3f}', '-i', src]
             ms = int(at * 1000)
-            graph.append(f"[{i}:a]volume={vol},afade=t=in:d=0.05,afade=t=out:st={dur-0.6:.2f}:d=0.6,adelay={ms}|{ms}[a{i}]")
+            graph.append(f"[{i}:a]volume={vol},afade=t=in:d=0.05,afade=t=out:st={dur-fade:.2f}:d={fade},adelay={ms}|{ms}[a{i}]")
         mix = ''.join(f'[a{i}]' for i in range(len(self.clips)))
         graph.append(f"{mix}amix=inputs={len(self.clips)}:normalize=0,apad,atrim=0:{total}[music]")
         lines = [l for l in self.vo if l in self.vo_place]

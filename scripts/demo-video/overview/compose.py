@@ -30,12 +30,18 @@ v.phone('seg_phone.mp4', [('scenes/o2.png', 0), ('scenes/o3.png', switch)], ph.v
 
 v.still('o4', 5.5); v.still('o5', 6.0); v.still('o6', 5.5, zoom=False)
 
-# Sound: the app's own handpan. The scale under the opening, the recording's
-# own chords under the phone, chords under the stills, F then C at the end.
+# Sound: the app's own handpan under the whole video, with no gaps: each part
+# rings on past the change of scene and fades while the next comes in
+# (videokit.bed). The scale under the opening, the recording's own chords under
+# the phone, the recording's B flat, F and C under the stills, F then C at the end. Each still's chord
+# strikes LEAD_IN before its scene, so the sound carries across the change
+# instead of dying away just before it.
+LEAD_IN = 0.8
 at, _ = v.starts()
-v.clip(ph.audio, ph.sound('scale'), 6.0, 0.4, 0.55)                            # the scale: music is everywhere
-v.clip(ph.audio, p_ss - ph.audio_offset, phone_len, at['seg_phone.mp4'], 1.0)
-v.clip(ph.audio, ph.sound('A# Major'), 4.6, at['seg_o4.mp4'] + 0.6, 0.45)      # B flat: your instrument
-v.clip(ph.audio, ph.sound('D Minor'), 4.6, at['seg_o5.mp4'] + 0.5, 0.45)       # D minor: your way
-v.clip(ph.audio, ph.sound('F Major'), 9.5, at['seg_o6.mp4'] + 0.3, 0.55)       # F, then C: the ending resolves
+v.bed([
+    (ph.audio, ph.sound('scale'), 0.4, 0.55),                           # the scale: music is everywhere
+    (ph.audio, p_ss - ph.audio_offset, at['seg_phone.mp4'], 1.0),       # the chords in the phone
+    (ph.audio, ph.sound('A# Major'), at['seg_o4.mp4'] - LEAD_IN, 0.45), # B flat, F, C: a chord every 5 s under 4 and 5
+    (ph.audio, ph.sound('F Major'), at['seg_o6.mp4'] - LEAD_IN, 0.55),  # F, then C: the ending resolves
+])
 v.finish()
