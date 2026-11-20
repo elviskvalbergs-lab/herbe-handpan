@@ -20,6 +20,7 @@ export const listenReport = defineType({
     defineField({ name: "comment", title: "What was wrong (their words)", type: "text", rows: 4, readOnly: true }),
     defineField({ name: "email", type: "string", readOnly: true, description: "Only to tell them when it's fixed." }),
     defineField({ name: "recordings", type: "array", of: [{ type: "file" }], readOnly: true }),
+    defineField({ name: "photo", title: "Photo of the instrument", type: "image", readOnly: true }),
     defineField({ name: "family", type: "string", readOnly: true }),
     defineField({ name: "heard", title: "Heard", type: "string", readOnly: true }),
     defineField({ name: "matched", title: "Oakhum's match", type: "string", readOnly: true }),

@@ -1140,6 +1140,7 @@ function listenMatchesHtml(scales, action) {
 // if they left their email. docs/design-system.md, "Listening to real instruments".
 const listenReportUrl = () => (/(^|\.)oakhum\.com$/.test(location.hostname) ? '/api/listen-report' : 'https://oakhum.com/api/listen-report');
 const LISTEN_REPORT_MAX_BYTES = 4_000_000; // the website takes up to 4.5 MB
+const LISTEN_REPORT_PHOTO_PX = 1600;       // a photo's long side, about 300 KB as JPEG
 
 // What Oakhum heard and made of it, for the report and the PostHog event.
 function listenReportContext() {
@@ -1196,6 +1197,7 @@ function closeListenReport() {
   const R = state.listenReport;
   if (!R) return;
   R.takes?.forEach(t => URL.revokeObjectURL(t.url));
+  if (R.photo) URL.revokeObjectURL(R.photo.url);
   state.listenReport = null;
   if (R.then && state.view === 'setup' && state.setup) setupGo(R.then);
   else render();
@@ -1235,6 +1237,11 @@ function listenReportSheet() {
       ${uiField({ label: 'What was wrong?', id: 'lr-comment',
         control: `<textarea class="input" id="lr-comment" rows="3" maxlength="2000" placeholder="For example: it didn’t hear my lowest note. Mine is a C major with 8 notes.">${escHtml(R.comment)}</textarea>` })}
       ${rec}
+      ${uiField({ label: 'A photo of your instrument (if you like)', id: 'lr-photo',
+        control: R.photo
+          ? `<div class="lr-photo"><img src="${R.photo.url}" alt="Your photo"><button type="button" class="btn btn-ghost btn-sm" data-action="lr-photo-remove">${icon('x')} Remove</button></div>`
+          : `<label class="btn btn-secondary lr-photo-add">${icon('camera')} Add a photo<input type="file" accept="image/*" class="sr-only" id="lr-photo" data-action="lr-photo"></label>`,
+        help: 'It helps us see how yours is laid out: the holes, the notes, any markings.' })}
       ${uiField({ label: 'Your email (if you’d like to hear back)', id: 'lr-email',
         control: `<input class="input" id="lr-email" type="email" inputmode="email" autocomplete="email" maxlength="200" value="${escHtml(R.email)}" placeholder="you@example.com">`,
         help: 'We keep the report until it’s fixed, at most a year. <a href="/privacy" target="_blank" rel="noopener">Privacy</a>' })}
@@ -1252,16 +1259,20 @@ async function sendListenReport() {
   if (R.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(R.email)) { R.error = 'That email doesn’t look right. Leave it empty if you’d rather not hear back.'; render(); return; }
   Object.assign(R, { sending: true, error: '' });
   render();
-  const takes = R.withAudio ? (R.takes ?? []) : [];
+  // The recording that fits next to the photo, newest first.
+  let room = LISTEN_REPORT_MAX_BYTES - (R.photo?.blob.size ?? 0);
+  const takes = (R.withAudio ? (R.takes ?? []) : []).slice().reverse().filter(t => (room -= t.blob.size) >= 0).reverse();
   const meta = {
     ...R.ctx, comment: R.comment.trim(), email: R.email || null,
     takes: takes.map(t => ({ seconds: t.seconds, type: t.type })),
+    photo: !!R.photo,
     app: BUILD_HASH, host: location.host, ua: navigator.userAgent,
     screen: `${window.innerWidth}x${window.innerHeight}`, lang: navigator.language,
   };
   const form = new FormData();
   form.append('meta', JSON.stringify(meta));
   takes.forEach((t, i) => form.append('audio', t.blob, `take-${i + 1}.${/mp4/.test(t.type) ? 'm4a' : /ogg/.test(t.type) ? 'ogg' : 'webm'}`));
+  if (R.photo) form.append('photo', R.photo.blob, 'instrument.jpg');
   try {
     const res = await fetch(listenReportUrl(), { method: 'POST', body: form });
     const out = await res.json().catch(() => ({}));
@@ -1280,7 +1291,32 @@ function listenReportAction(action) {
   if (action === 'lr-close') { if (!state.listenReport.sent) listenCheckEvent('skipped', state.listenReport.ctx); closeListenReport(); return true; }
   if (action === 'lr-audio') { listenReportKeepFields(); state.listenReport.withAudio = !state.listenReport.withAudio; render(); return true; }
   if (action === 'lr-send') { sendListenReport(); return true; }
+  if (action === 'lr-photo-remove') {
+    listenReportKeepFields();
+    const R = state.listenReport;
+    if (R.photo) URL.revokeObjectURL(R.photo.url);
+    R.photo = null;
+    render();
+    return true;
+  }
   return false;
+}
+
+// A photo picked for the report: shrunk to LISTEN_REPORT_PHOTO_PX as a JPEG.
+async function listenReportPhoto(file) {
+  const R = state.listenReport;
+  if (!R || !file) return;
+  listenReportKeepFields();
+  try {
+    const img = await readImageFile(file, LISTEN_REPORT_PHOTO_PX);
+    const blob = await (await fetch(img.src)).blob();
+    if (state.listenReport !== R) return;
+    if (R.photo) URL.revokeObjectURL(R.photo.url);
+    R.photo = { blob, url: URL.createObjectURL(blob) };
+  } catch {
+    showToast('That photo couldn’t be read');
+  }
+  render();
 }
 
 // The line under a result that opens the report sheet.
@@ -1638,10 +1674,15 @@ function windGuideInst(g) {
 }
 function windNoteName(m) { return displayNote(midiToNoteName(m), state.useFlats, state.useSolfege); }
 // A steady note during the guided round.
+// A wind instrument blown softly, or tuned to A = 432, sounds a little flat
+// (a Native American flute easily a quarter tone): every note after the
+// lowest is taken relative to how the lowest one sounded (g.cents), and
+// counts when it is within two thirds of a semitone of the note expected.
+const SETUP_WIND_TOLERANCE = 0.67;
 function setupWindOnNote(midi) {
   const st = state.setup;
   const g = st.windGuide;
-  const m = Math.round(midi);
+  const m = g.idx === 0 ? Math.round(midi) : Math.round(midi - (g.cents ?? 0));
   if (g.idx === 0) {
     // The lowest note: which chart of the type, and its key.
     for (const id of g.group) {
@@ -1656,7 +1697,7 @@ function setupWindOnNote(midi) {
       const steps = id.startsWith('naf') ? [0, 3, 5, 7, 10] : [0, 2, 4, 5, 7, 9, 11];
       const inScale = notes.filter(n => steps.includes((((n - root) % 12) + 12) % 12));
       const seq = (inScale[0] === notes[0] ? inScale : [notes[0], ...inScale]).slice(0, SETUP_WIND_STEPS);
-      Object.assign(g, { chartId: id, keyId: found.key.id, offset: found.offset, seq, idx: 1,
+      Object.assign(g, { chartId: id, keyId: found.key.id, offset: found.offset, seq, idx: 1, cents: midi - m,
         msg: (t => `Lowest note ${windNoteName(m)} ✓: ${/^[AEIOU]/i.test(t) ? 'an' : 'a'} ${t}`)(linkTitle(parseLink(linkFor({ chartId: id, keyId: found.key.id })))), tone: 'ok' });
       state.listen.notes = [m];
       render();
@@ -1667,7 +1708,7 @@ function setupWindOnNote(midi) {
     return;
   }
   const want = g.seq[g.idx] + g.offset;
-  if (m === want) {
+  if (Math.abs(midi - (g.cents ?? 0) - want) <= SETUP_WIND_TOLERANCE) {
     g.idx++;
     state.listen.notes = g.seq.slice(0, g.idx).map(x => x + g.offset);
     if (g.idx >= g.seq.length) {
@@ -9723,6 +9764,7 @@ document.addEventListener('change', e => {
     }).catch(() => showToast('That photo couldn\'t be read'));
     return;
   }
+  if (action === 'lr-photo') { listenReportPhoto(el.files?.[0]); return; }
   if (action === 'cs-target' && state.chordSheet) { state.chordSheet.target = el.value; return; }
   if (action === 'oc-scale-filter') { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); }
   if (action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')
