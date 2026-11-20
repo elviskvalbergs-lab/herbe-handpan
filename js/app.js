@@ -19,7 +19,7 @@ import {
   parseChordSheet, matchSheetChord, rankTranspositions, sheetCoverage, coverageBand, transposeChordSymbol,
   stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS,
 } from './chordsheet.js';
-import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
+import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackSpeed, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -83,6 +83,7 @@ const state = {
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
+  chordsAll: false,        // Chords lists: every chord (true) or the main ones first (false)
   ocLegendSeen: false,     // the hole-state legend line has been dismissed
   handLegendSeen: false,   // the finger legend has been shown once
   layout: null,            // current Layout object
@@ -2932,11 +2933,14 @@ function ocChordModel(inst) {
   const layout = ocarinaToLayout(inst, pcs);
   const chords = layout.top.ding ? findAllChords(layout) : [];
   const counts = new Set(oc.counts ?? []);
-  const items = chords
+  const listed = chords
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
     .filter(c => !counts.size || counts.has(chordCountKey(c.noteCount)))
     .filter(c => !oc.root || oc.root === 'All' || notePC(c.rootNote) === NOTE_NAMES.indexOf(oc.root))
-    .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount)
+    .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount);
+  const main = chordsMainOn(listed, oc.category !== 'All' || counts.size > 0 || (oc.root && oc.root !== 'All'));
+  const all = listed.length;
+  const items = (main ? mainChordsInKey(listed, notePC(layout.top.ding), layoutPitchClasses(layout)) : listed)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
   const sourceId = oc.scaleFilter !== 'All' ? oc.scaleFilter : inst.scaleId;
   const source = findTuning(sourceId);
@@ -2946,7 +2950,7 @@ function ocChordModel(inst) {
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
     .map(c => ({ chord: c, fit: fitChordToInstrument(inst, c.notes) }))
     .filter(x => x.fit.missing.length > 0);
-  return { chords, items, missing, source };
+  return { chords, items, missing, source, main, all };
 }
 
 // The moves line (§5.14): "Lift R3 and R2", with "lift …" and "cover …" in
@@ -3051,7 +3055,7 @@ function viewOcarinaChords(inst) {
   const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0);
   const listHead = `
     ${chordFilterRowHtml({ open: 'oc-filters-open', count: nFilters, roots: chordRootsOf(model.chords), root: oc.root ?? 'All', rootAction: 'oc-filter-root' })}
-    <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>`;
+    ${chordCountLineHtml({ shown: model.items.length, all: model.all, main: model.main })}`;
   const stage = oc.listen ? listenOcStageParts(inst)
     : oc.identify ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
@@ -5335,7 +5339,10 @@ function hpFilteredChords() {
       return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
     });
   }
-  return { filtered, roots, layoutId };
+  const narrowed = playlistChordKeys !== null || chordFilter.category !== 'All' || chordFilter.root !== 'All' || state.chordCountSet.size > 0;
+  const main = chordsMainOn(filtered, narrowed) && !!layout.top.ding;
+  const all = filtered.length;
+  return { filtered: main ? mainChordsInKey(filtered, notePC(layout.top.ding), layoutPitchClasses(layout)) : filtered, roots, layoutId, main, all };
 }
 
 // The playlist entry the selected chord was opened from, and whether its
@@ -5657,6 +5664,23 @@ function chordFilterRowHtml({ open, count, roots, root, rootAction }) {
     </div>`;
 }
 
+// Main chords (chords.js mainChordsInKey): every Chords list shows the plain
+// major and minor chords first, from the instrument's home note up, and the
+// rest behind "Show all". Not while another filter, a root or a playlist
+// narrows the list, and not when the instrument has no main chords at all.
+function chordsMainOn(chords, narrowed) {
+  return !state.chordsAll && !narrowed && chords.some(c => c.type.id === 'maj' || c.type.id === 'min');
+}
+function layoutPitchClasses(layout) { return new Set(getAllNotes(layout).map(notePC)); }
+// The count under the filters, with the switch between main chords and all.
+function chordCountLineHtml({ shown, all, main }) {
+  const n = (k, w) => `${k} ${w}${k !== 1 ? 's' : ''}`;
+  const sw = main
+    ? `<button type="button" class="link-btn" data-action="chords-scope">Show all ${all}</button>`
+    : all > shown || !state.chordsAll ? '' : `<button type="button" class="link-btn" data-action="chords-scope">Main chords only</button>`;
+  return `<div class="hp-count">${main ? n(shown, 'main chord') : n(shown, 'chord')}${sw ? ` · ${sw}` : ''}</div>`;
+}
+
 // Root chips: All, then the roots the chords have, in pitch order.
 function chordRootsOf(chords) {
   const used = new Set(chords.map(c => notePC(c.rootNote)));
@@ -5687,7 +5711,7 @@ function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
   const uf = state.useFlats;
   const us = state.useSolfege;
-  const { filtered, roots, layoutId } = hpFilteredChords();
+  const { filtered, roots, layoutId, main, all } = hpFilteredChords();
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
@@ -5757,7 +5781,7 @@ function viewChords() {
   const browseHead = `
     ${nowPlaying}
     ${chordFilterRowHtml({ open: 'hp-filters-open', count: nFilters, roots, root: chordFilter.root, rootAction: 'filter-root' })}
-    <div class="hp-count">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</div>`;
+    ${chordCountLineHtml({ shown: filtered.length, all, main })}`;
 
   const rows = filtered.length === 0
     ? uiEmpty({
@@ -7253,6 +7277,7 @@ function loadPrefs() {
     if (['slow', 'normal', 'fast'].includes(p.playbackSpeed)) state.playbackSpeed = p.playbackSpeed;
     if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
+    if (typeof p.chordsAll === 'boolean') state.chordsAll = p.chordsAll;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
     if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
@@ -7287,6 +7312,7 @@ function savePrefs() {
     playbackSpeed: state.playbackSpeed,
     showFingers: state.showFingers,
     showSizes: state.showSizes,
+    chordsAll: state.chordsAll,
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
     theme: state.theme,
@@ -7535,7 +7561,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'playbackSpeed', 'showFingers', 'showSizes', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'playbackSpeed', 'showFingers', 'showSizes', 'chordsAll', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -9309,6 +9335,7 @@ document.addEventListener('click', e => {
   }
 
   // ── Pan rotation ──────────────────────────────────────────────────────────
+  if (action === 'chords-scope') { state.chordsAll = !state.chordsAll; savePrefs(); render(); return; }
   if (action === 'ed-arrange') { state.edArrange = !edArranging(); render(); return; }
   if (action === 'ed-arrange-reset') { delete state.layout.pos; render(); return; }
   if (action === 'toggle-rotation') {
