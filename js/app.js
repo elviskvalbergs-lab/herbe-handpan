@@ -20,6 +20,7 @@ import {
   stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS,
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
+import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -190,6 +191,7 @@ function render() {
   else if (state.view === 'hp-playlists') html = viewHandpanPlaylists();
   else if (state.view === 'playlist') html = viewPlaylist();
   else if (state.view === 'progression') html = viewProgression();
+  else if (state.view === 'song') html = viewSong();
   else if (state.view === 'settings') html = viewSettings();
   else if (state.view === 'clay') html = viewClayBodies();
   else if (state.view === 'listen-debug') html = viewListenDebug();
@@ -2829,7 +2831,175 @@ function playlistsTabHtml(inst) {
         <button type="button" class="btn btn-ghost pl-new" data-action="prog-new-open">${icon('plus')} New progression</button>
         <button type="button" class="btn btn-ghost pl-new" data-action="cs-open">${icon('clipboard-paste')} Paste a chord sheet</button>
       </div>
+    </section>
+    ${songsSectionHtml(inst)}`;
+}
+
+// ── Songs to learn (js/songs.js) ──────────────────────────────────────────
+// Folk songs, melody only, in every instrument's Playlists tab: the ones
+// whose notes the instrument has, each moved to where it has them. A song
+// opens its player (viewSong): the instrument's picture with the note to
+// play lit (a fingering on an ocarina or flute), the notes in order, play
+// at the chosen speed or step note by note, and songs that go well after it.
+
+// The instrument a song plays on: an ocarina or flute, or null for the
+// handpan, tongue drum or kalimba on screen (state.layout).
+function songInstrument() {
+  const id = state.songCtx?.instId;
+  if (!id) return null;
+  const cur = currentInstrument();
+  return cur?.id === id ? cur : getInstrument(id);
+}
+function songHave(inst) {
+  return new Set(inst ? playableMidis(inst) : getAllNotes(state.layout).map(noteToMidi));
+}
+// An ocarina's or flute's notes played without half-covering a hole: songs
+// are moved to keys that keep to these where they can.
+function songEasy(inst) {
+  return inst ? new Set(playableMidis(inst).filter(m => !fingeringFor(inst, m)?.states?.includes('h'))) : null;
+}
+function songsFor(inst, songs) { return playableSongs(songHave(inst), songs, { easy: songEasy(inst) }); }
+function songInstWord(inst) {
+  return inst ? (inst.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word;
+}
+function songMeta(song, shift) {
+  return `${SONG_ORIGINS[song.origin]} · ${songKeyOn(song, shift)} · ${song.time}`;
+}
+
+function songsSectionHtml(inst) {
+  const ok = songsFor(inst);
+  const more = SONGS.length - ok.length;
+  const word = songInstWord(inst);
+  return `
+    <section class="pl-section" aria-labelledby="pl-sec-songs">
+      <h2 class="list-title" id="pl-sec-songs">Songs to learn</h2>
+      ${ok.length
+        ? `<div class="list">${ok.map(({ song, shift }) => uiRow({
+            lead: 'music', title: song.title, meta: escHtml(songMeta(song, shift)), chevron: true,
+            action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
+          })).join('')}</div>`
+        : `<p class="pl-section-hint">None of these folk songs fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
+      ${ok.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
+      <p class="pl-section-hint song-licence">Traditional songs from Germany, Ireland and Scotland. ${escHtml(SONG_LICENCE)}.</p>
     </section>`;
+}
+
+function openSong(id, instId, { push = true } = {}) {
+  songStop();
+  state.songCtx = { id, instId: instId || null, idx: 0, from: state.view };
+  state.view = 'song';
+  if (push) navPush(`#song/${encodeURIComponent(id)}`);
+  render();
+  window.scrollTo(0, 0);
+}
+
+// Where the song is on the instrument: { song, shift, notes (moved), name(midi) }.
+function songOnInstrument() {
+  const ctx = state.songCtx;
+  const song = ctx && SONGS.find(x => x.id === ctx.id);
+  if (!song) return null;
+  const inst = songInstrument();
+  if (ctx.instId && !inst) return null;
+  const here = songsFor(inst, [song])[0];
+  if (!here) return null;
+  const notes = songNotes(song).map(n => ({ ...n, midi: n.midi == null ? null : n.midi + here.shift }));
+  // A handpan's notes by its own spelling, so the drawing lights them.
+  const spell = inst ? null : new Map(getAllNotes(state.layout).map(n => [noteToMidi(n), n]));
+  const name = m => (spell?.get(m) ?? midiToNoteName(m));
+  return { song, shift: here.shift, notes, inst, name };
+}
+
+function viewSong() {
+  const S = songOnInstrument();
+  if (!S) return viewHome();
+  const { song, shift, notes, inst, name } = S;
+  const uf = state.useFlats, us = state.useSolfege;
+  const idx = Math.min(state.songCtx.idx, notes.length - 1);
+  const cur = notes[idx];
+  const nextNote = notes.slice(idx + 1).find(n => n.midi != null);
+  const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const picture = inst
+    ? (cur.midi != null
+      ? renderFingering(inst, cur.midi, { size: 'large', useFlats: uf, useSolfege: us, showFingers: state.showFingers, closeUp: state.closeUp, nextMidi: nextNote?.midi ?? null })
+      : '<p class="song-rest">Rest</p>')
+    : renderPan(state.layout, {
+      shellMode: 'both', highlightNotes: cur.midi != null ? [name(cur.midi)] : [],
+      faintNotes: nextNote && nextNote.midi !== cur.midi ? [name(nextNote.midi)] : [],
+      rotated: state.ringRotated, useFlats: uf, useSolfege: us,
+    });
+  const playing = !!state.songPlay;
+  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}</button>`).join('');
+  const after = songsThatGoTogether(song, songsFor(inst));
+  return `${backAppBar(song.title, { fallback: 'home' })}
+    <div class="song">
+      <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}</p>
+      <div class="song-stage${inst ? ' fg-stage' : ' pan-wrap'}">${picture}</div>
+      <div class="song-now" aria-live="polite">
+        <span class="song-now-note">${cur.midi == null ? 'Rest' : escHtml(nn(cur.midi))}</span>
+        ${nextNote ? `<span class="song-now-next">Next ${escHtml(nn(nextNote.midi))}</span>` : '<span class="song-now-next">Last note</span>'}
+        <span class="song-now-pos">${idx + 1} / ${notes.length}</span>
+      </div>
+      <div class="song-controls">
+        ${uiIconBtn('skip-back', 'Back one note', { action: 'song-prev' })}
+        <button type="button" class="btn btn-primary song-play" data-action="song-play">${icon(playing ? 'square' : 'play')} ${playing ? 'Stop' : idx ? 'Play on' : 'Play'}</button>
+        ${uiIconBtn('skip-forward', 'Next note', { action: 'song-next' })}
+        ${speedBtnHtml()}
+      </div>
+      <div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>
+      ${after.length ? `<h2 class="list-title">Goes well after it</h2>
+        <div class="list">${after.map(({ song: s, shift: sh }) => uiRow({ lead: 'music', title: s.title, meta: escHtml(songMeta(s, sh)), chevron: true, action: 'song-open', data: { id: s.id, inst: inst?.id ?? '' } })).join('')}</div>` : ''}
+      <p class="pl-section-hint song-licence">The tune is traditional. Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.</p>
+    </div>`;
+}
+
+// Playing the song: each note for its length at the chosen speed (100 bpm
+// at 100%), the picture following.
+let _songTimer = null;
+function songStop() {
+  clearTimeout(_songTimer);
+  _songTimer = null;
+  state.songPlay = null;
+}
+function songSound(m) {
+  if (m == null) return;
+  const S = songOnInstrument();
+  setVoice(voiceForState());
+  playNote(S ? S.name(m) : midiToNoteName(m));
+}
+function songTick() {
+  const S = songOnInstrument();
+  if (!S || state.view !== 'song' || !state.songPlay) { songStop(); return; }
+  const n = S.notes[state.songCtx.idx];
+  songSound(n.midi);
+  render();
+  const ms = n.beats * 600 * (100 / state.tempo);
+  _songTimer = setTimeout(() => {
+    if (!state.songPlay) return;
+    if (state.songCtx.idx >= S.notes.length - 1) { songStop(); render(); return; }
+    state.songCtx.idx++;
+    songTick();
+  }, ms);
+}
+function songAction(action, el) {
+  if (action === 'song-open') { openSong(el.dataset.id, el.dataset.inst); return true; }
+  if (state.view !== 'song' || !state.songCtx) return false;
+  const S = songOnInstrument();
+  if (!S) return false;
+  const last = S.notes.length - 1;
+  if (action === 'song-play') {
+    if (state.songPlay) { songStop(); render(); return true; }
+    initAudio();
+    if (state.songCtx.idx >= last) state.songCtx.idx = 0;
+    state.songPlay = { at: Date.now() };
+    logEvent('feature', { name: 'song-play', family: measureFamily() });
+    songTick();
+    return true;
+  }
+  const go = i => { songStop(); state.songCtx.idx = Math.max(0, Math.min(last, i)); initAudio(); songSound(S.notes[state.songCtx.idx].midi); render(); };
+  if (action === 'song-step') { go(parseInt(el.dataset.i, 10)); return true; }
+  if (action === 'song-prev') { go(state.songCtx.idx - 1); return true; }
+  if (action === 'song-next') { go(state.songCtx.idx + 1); return true; }
+  return false;
 }
 
 function playlistsListHtml(inst) {
@@ -3414,6 +3584,12 @@ function voiceForState() {
   // A handpan, tongue drum or kalimba on screen sounds like itself.
   if (state.layout && ['editor', 'chords', 'hp-playlists', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
   if (state.view === 'setup') return setupFamilyInfo(state.setup?.family).voice;
+  if (state.view === 'song') {
+    const inst = songInstrument();
+    if (!inst) return state.layout ? layoutInstrument(state.layout) : 'handpan';
+    if (inst.family === 'ocarina') return 'ocarina';
+    return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'flute';
+  }
   if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
   const inst = currentInstrument();
   if (!inst) return 'handpan';
@@ -7164,6 +7340,11 @@ function loadFromHash() {
     if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; }
     return;
   }
+  if (hash.startsWith('#song/')) {
+    const id = decodeURIComponent(hash.slice(6));
+    if (state.songCtx?.id === id) state.view = 'song';
+    return;
+  }
   if (hash.startsWith('#prog/')) {
     const id = decodeURIComponent(hash.slice(6));
     if (state.progressions.some(p => p.id === id)) { state.activeProgressionId = id; state.view = 'progression'; state.progMode = 'steps'; }
@@ -8143,6 +8324,7 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'add-instrument') { setupAction('setup-open', el); return; }
+  if (songAction(action, el)) return;
   if (listenReportAction(action)) return;
   if (setupAction(action, el)) return;
 

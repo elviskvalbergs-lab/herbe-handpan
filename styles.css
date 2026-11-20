@@ -530,6 +530,24 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .tempo-slider { flex: 1; min-width: 0; accent-color: var(--accent); height: 32px; }
 .tempo-value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; font-weight: var(--fw-semibold); color: var(--text-1); }
 .speed-btn { min-width: 44px; padding-inline: 6px; font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+/* Songs to learn (viewSong in js/app.js). */
+.song { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--gutter) var(--space-6); max-width: 720px; margin: 0 auto; width: 100%; }
+.song-meta { margin: 0; color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
+.song-stage { display: flex; justify-content: center; align-items: center; min-height: 120px; }
+.song-stage.pan-wrap svg { max-height: 42dvh; width: auto; max-width: 100%; }
+.song-stage .fingering { width: 100%; height: auto; max-height: 36dvh; }
+.song-rest { color: var(--text-3); font-size: var(--fs-17); }
+.song-now { display: flex; align-items: baseline; gap: var(--space-3); }
+.song-now-note { font: var(--fw-semibold) 28px/1.1 var(--font); color: var(--text-1); }
+.song-now-next { color: var(--text-2); }
+.song-now-pos { margin-left: auto; color: var(--text-3); font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+.song-controls { display: flex; align-items: center; gap: var(--space-2); }
+.song-play { flex: 1; }
+.song-notes { flex-wrap: wrap; gap: var(--space-1); }
+.song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
+.song-note.is-current { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.song-licence { font-size: var(--fs-13); color: var(--text-3); }
+.song-licence a { color: inherit; text-decoration: underline; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
 /* Move notes: the handpan's tone fields dragged to where they are. */
 .ed-arrange { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
