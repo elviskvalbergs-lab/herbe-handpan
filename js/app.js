@@ -1617,6 +1617,33 @@ const SETUP_WIND_TYPES = {
   ],
 };
 const SETUP_WIND_STEPS = 7;
+// The keys a type comes in, for "Do you know its key?": one entry per key
+// note, the common ones first ({ root, variants: [{ chartId, keyId, name }] }),
+// each with its sizes (a low, a usual and a high flute), the usual size
+// first. A chart for that very key (a Native American flute in A) before the
+// any-key one.
+const SETUP_WIND_COMMON = { flute: ['A', 'G', 'F#', 'E', 'D', 'C'], ocarina: ['C', 'G', 'F'] };
+function setupWindKeys(group) {
+  const byRoot = new Map();
+  const family = getChart(group[0])?.family;
+  group.forEach((id, order) => {
+    const chart = getChart(id);
+    if (!chart) return;
+    const usual = noteToMidi(chart.keys.find(k => k.id === chartDefaultKey(chart)).lowest);
+    for (const k of chart.keys) {
+      const root = NOTE_NAMES[notePC(`${k.root ?? k.lowest.replace(/-?\d+$/, '')}4`)];
+      const list = byRoot.get(root) ?? [];
+      if (list.some(v => v.lowest === k.lowest)) continue;
+      list.push({ chartId: id, keyId: k.id, name: k.name, lowest: k.lowest, dist: Math.abs(noteToMidi(k.lowest) - usual), order });
+      byRoot.set(root, list);
+    }
+  });
+  const common = SETUP_WIND_COMMON[family] ?? [];
+  const rank = r => { const i = common.indexOf(r); return i < 0 ? 100 + NOTE_NAMES.indexOf(r) : i; };
+  return [...byRoot.entries()]
+    .map(([root, variants]) => ({ root, common: common.includes(root), variants: variants.sort((a, b) => a.dist - b.dist || a.order - b.order) }))
+    .sort((a, b) => rank(a.root) - rank(b.root));
+}
 function newWindGuide(group) {
   return { group, chartId: group[0], keyId: null, offset: 0, seq: [], idx: 0, msg: '', tone: '' };
 }
@@ -1764,9 +1791,33 @@ function viewBeginnerSetup() {
 
   if (st.step === 'windtype') {
     return stepFrame({
-      header, count: count(3), title: `Which ${word} do you have?`, sub: 'Then Oakhum shows each fingering to play and listens.',
+      header, count: count(2), title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or let it listen.',
       body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : t.hint ? `${t.hint} · set up note by note with the tuner` : 'Set up note by note with the tuner'), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
       bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>' },
+    });
+  }
+
+  if (st.step === 'windkey') {
+    const t = SETUP_WIND_TYPES[st.family]?.[st.windType];
+    const keys = t?.group ? setupWindKeys(t.group) : [];
+    const picked = st.windRoot ? keys.find(k => k.root === st.windRoot) : null;
+    const rn = r => escHtml(displayNote(r, uf, us));
+    return stepFrame({
+      header, count: count(3), title: 'Do you know its key?',
+      sub: `It’s usually written on the ${escHtml(word)} or its box. ${st.family === 'flute' ? 'A, G and F♯ are the most common.' : 'C is the most common.'}`,
+      body: `
+        <div class="setup-roots setup-wind-roots">
+          ${keys.map(k => `<button type="button" class="setup-root${picked === k ? ' is-first' : ''}" data-action="setup-wind-root" data-root="${escHtml(k.root)}" aria-pressed="${picked === k ? 'true' : 'false'}">${rn(k.root)}</button>`).join('')}
+        </div>
+        ${picked ? `<h2 class="list-title">Which ${rn(picked.root)} ${escHtml(word)}?</h2>
+          <div class="list">${picked.variants.map((v, i) => uiRow({
+            title: v.name, meta: i === 0 ? 'The usual size' : '', chevron: true,
+            action: 'setup-wind-key', data: { chart: v.chartId, key: v.keyId },
+          })).join('')}</div>` : ''}
+        <p class="wizard-foot">Or <button type="button" class="link-btn" data-action="setup-listen-free">play it my own way</button>: any notes, any order, and Oakhum works it out.</p>`,
+      bar: {
+        right: `<button type="button" class="btn btn-primary" data-action="setup-wind-listen">${icon('mic')} I don’t know: listen</button>`,
+      },
     });
   }
 
@@ -1783,7 +1834,8 @@ function viewBeginnerSetup() {
     return stepFrame({
       header, count: count(3),
       title: g.idx === 0 ? 'Cover every hole and blow gently' : `Now play ${windNoteName(want + g.offset)}`,
-      sub: g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.',
+      sub: (g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.')
+        + (g.chartId.startsWith('naf6') ? ' On a 6-hole Native American flute the third hole from the top stays closed for this whole scale.' : ''),
       body: `${steps}
         <div class="setup-wind setup-wind-finger">${renderFingering(inst, want, { size: 'large', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: prev })}</div>
         ${g.msg ? `<p class="setup-guide-msg is-${g.tone}" aria-live="polite">${escHtml(g.msg)}</p>` : ''}
@@ -1939,7 +1991,7 @@ function viewBeginnerSetup() {
   // done
   const s = setupFindTuning(st, st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
-  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId ? 'maj' : 'min' });
+  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
     header, count: count(4), title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
@@ -1951,7 +2003,8 @@ function viewBeginnerSetup() {
         <p class="setup-result-notes">${chord.notes.map(x => escHtml(nn(x))).join(' · ')}</p>
         ${setupPanHtml({ scale: s, highlight: chord.notes, family: st.family })}
       </div>` : ''}
-      ${st.windGuide ? listenReportLinkHtml('Did Oakhum mishear a note?') : ''}`,
+      ${st.windGuide ? listenReportLinkHtml('Did Oakhum mishear a note?') : ''}
+      ${fi.wind && !st.windGuide && st.windType != null && SETUP_WIND_TYPES[st.family]?.[st.windType]?.group ? `<p class="wizard-foot">Want to be sure? <button type="button" class="link-btn" data-action="setup-wind-check">Check it by playing</button>: Oakhum shows each fingering and listens.</p>` : ''}`,
     bar: {
       left: `<button type="button" class="btn btn-secondary" data-action="setup-save">${accountOn() ? 'Save' : 'Save for next time'}</button>`,
       right: `<button type="button" class="btn btn-primary" data-action="setup-first-chord">${chord ? 'Play my first chord' : 'Start playing'}</button>`,
@@ -1983,6 +2036,8 @@ function setupAction(action, el) {
   if (action === 'setup-family') {
     const fam = el.dataset.family;
     logEvent('setup', { step: 'family', family: fam });
+    // An ocarina or flute: which type first, then its key (setupWindKeys).
+    if (SETUP_WIND_TYPES[fam]) { setupGo('windtype', { family: fam, windType: null, windRoot: null }); return true; }
     if (isLayoutFamily(fam) || SETUP_WIND_WORDS[fam]) { setupGo('how', { family: fam }); return true; }
     return true;
   }
@@ -2034,7 +2089,38 @@ function setupAction(action, el) {
     const t = SETUP_WIND_TYPES[st.family]?.[parseInt(el.dataset.i, 10)];
     if (!t) return true;
     if (!t.group) { el.dataset.holes = String(t.holes); return setupAction('setup-own-wind', el); }
-    st.windGuide = newWindGuide(t.group);
+    // Do you know its key? One key only (a tin whistle in D): it's that.
+    const keys = setupWindKeys(t.group);
+    if (keys.length === 1 && keys[0].variants.length === 1) {
+      const v = keys[0].variants[0];
+      setupGo('done', { windType: parseInt(el.dataset.i, 10), scaleId: `chart:${v.chartId}/${v.keyId}`, windGuide: null });
+      return true;
+    }
+    setupGo('windkey', { windType: parseInt(el.dataset.i, 10), windRoot: null });
+    return true;
+  }
+  // Its key, known: a root, then (when it comes in more sizes) which one.
+  if (action === 'setup-wind-root') {
+    const t = SETUP_WIND_TYPES[st.family]?.[st.windType];
+    const k = t && setupWindKeys(t.group).find(x => x.root === el.dataset.root);
+    if (!k) return true;
+    if (k.variants.length === 1) return setupAction('setup-wind-key', { dataset: { chart: k.variants[0].chartId, key: k.variants[0].keyId } });
+    st.windRoot = k.root;
+    render();
+    return true;
+  }
+  if (action === 'setup-wind-key') {
+    logEvent('setup', { step: 'scale', how: 'knew-key' });
+    setupGo('done', { scaleId: `chart:${el.dataset.chart}/${el.dataset.key}`, windGuide: null });
+    return true;
+  }
+  // Not known: Oakhum listens to the lowest note (and then checks the scale).
+  if (action === 'setup-wind-listen' || action === 'setup-wind-check') {
+    const t = SETUP_WIND_TYPES[st.family]?.[st.windType];
+    if (!t?.group) return true;
+    // Checking a key already chosen: only its chart.
+    const chartId = action === 'setup-wind-check' ? /^chart:([^/]+)\//.exec(st.scaleId ?? '')?.[1] : null;
+    st.windGuide = newWindGuide(chartId ? [chartId] : t.group);
     st.history.push(st.step); st.step = 'listen';
     stopListen(); state.listen = null; startListen();
     return true;
@@ -2145,7 +2231,7 @@ function setupAction(action, el) {
   if (action === 'setup-first-chord' || action === 'setup-save') {
     const s = setupFindTuning(st, st.scaleId);
     if (!s) return true;
-    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId ? 'maj' : 'min' });
+    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
     if (s.chartId) {
       // An ocarina or flute: it opens on its Chords tab, the first chord
       // open with its fingerings, and plays it one note at a time.
