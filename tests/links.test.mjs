@@ -146,3 +146,14 @@ test('custom handpan link: each shell has one slot per capacity, empty ones null
   assert.equal(over.top.capacity, 3);
   assert.equal(over.bottom.slots.length, 3);
 });
+
+test('a handpan with its tone fields moved keeps them in its link', async () => {
+  const { panPosToParam, panPosFromParam, layoutFromCustomParams } = await import('../js/links.js');
+  const pos = { ding: { x: 250, y: 250 }, 'ring-0': { x: 120, y: 300 }, 'gu-1': { x: 40, y: 460 } };
+  const params = new URLSearchParams({ ding: 'C3', top: 'Eb3,F3', tc: '2', bottom: 'G2,Ab2', bc: '2', pos: panPosToParam(pos) });
+  assert.deepEqual(layoutFromCustomParams(params).pos, pos);
+  // Nonsense is dropped; a tongue drum has no moved places.
+  assert.deepEqual(panPosFromParam('ring-1:10:20,evil:1:1,ring-2:900:1,gu-x:1:1'), { 'ring-1': { x: 10, y: 20 } });
+  assert.equal(panPosFromParam(''), null);
+  assert.equal(layoutFromCustomParams(params, 'tongue-drum').pos, undefined);
+});

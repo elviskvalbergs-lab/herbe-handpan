@@ -268,9 +268,15 @@ export function renderPan(layout, opts = {}) {
   const altSet = new Set(altHighlightNotes);
   const faintSet = new Set(faintNotes);
   const placed = []; // { x, y, r, note } of every note drawn, for strike badges
+  // A handpan whose tone fields were moved to where they are on the real one
+  // (the editor's Move notes): layout.pos = { [place id]: { x, y } }.
+  const moved = layout.instrument ? null : layout.pos;
   const place = (x, y, note, classes, id, r) => {
+    const p = moved?.[id];
+    if (p) ({ x, y } = p);
     if (note) placed.push({ x, y, r, note });
-    return noteSlotSvg(x, y, note, classes, id, r, useFlats, useSolfege);
+    return noteSlotSvg(x, y, note, classes, id, r, useFlats, useSolfege)
+      .replace('<g ', `<g data-x="${x}" data-y="${y}" data-r="${r}" `);
   };
 
   // Assign each unique pitch class in the chord its own color (0-3, root first),
@@ -440,4 +446,49 @@ export function updatePanPlaying(noteNames, svg = document.getElementById(PAN_SV
     svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
     _playTimer = null;
   }, 2200);
+}
+
+// ── Moving tone fields (the editor's Move notes) ────────────────────────────
+// Handpans are laid out in many ways, so the tone fields of a handpan can be
+// moved on the drawing to where they are on the real one. Places on top stay
+// on the pan, the ones underneath round it, and two never overlap.
+export const PAN_BODY_R = 193;
+const PAN_GAP = 3;
+
+/** Where a place dropped at (x, y) settles, given the other places
+ *  [{ x, y, r }]: inside its area and clear of the others, or null when it
+ *  can't fit there. id: 'ding' / 'ring-N' (on top) or 'gu-N' (underneath). */
+export function settlePanPlace(id, x, y, r, others, { cx = 250, cy = 250, size = 500 } = {}) {
+  const under = id.startsWith('gu-');
+  const into = (px, py) => {
+    let dx = px - cx, dy = py - cy, d = Math.hypot(dx, dy);
+    if (d < 1) { dx = 0; dy = 1; d = 1; } // dropped dead centre: straight down
+    if (!under) {
+      const max = PAN_BODY_R - r - PAN_GAP;
+      return d > max ? [cx + dx / d * max, cy + dy / d * max] : [px, py];
+    }
+    const min = PAN_BODY_R + r + PAN_GAP;
+    let [qx, qy] = d < min ? [cx + dx / d * min, cy + dy / d * min] : [px, py];
+    qx = Math.min(size - r - PAN_GAP, Math.max(r + PAN_GAP, qx));
+    qy = Math.min(size - r - PAN_GAP, Math.max(r + PAN_GAP, qy));
+    return [qx, qy];
+  };
+  const clear = (px, py) => others.every(o => Math.hypot(px - o.x, py - o.y) >= r + o.r + PAN_GAP);
+  // Where it was dropped (kept in its area), else the nearest free spot
+  // round that: rings of candidates further and further out.
+  const [px, py] = into(x, y);
+  if (clear(px, py)) return { x: Math.round(px), y: Math.round(py) };
+  for (let R = 4; R <= size; R += 4) {
+    const steps = Math.max(12, Math.round(R / 3));
+    let best = null;
+    for (let k = 0; k < steps; k++) {
+      const a = (2 * Math.PI * k) / steps;
+      const [qx, qy] = into(px + R * Math.cos(a), py + R * Math.sin(a));
+      if (!clear(qx, qy)) continue;
+      const d = Math.hypot(qx - px, qy - py);
+      if (!best || d < best.d) best = { x: qx, y: qy, d };
+    }
+    if (best) return { x: Math.round(best.x), y: Math.round(best.y) };
+  }
+  return null;
 }

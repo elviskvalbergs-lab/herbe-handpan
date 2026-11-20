@@ -525,6 +525,11 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .editor-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ed-pan svg { width: min(100%, 55dvh); max-width: none; height: auto; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
+/* Move notes: the handpan's tone fields dragged to where they are. */
+.ed-arrange { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.ed-pan.is-arranging svg { touch-action: none; }
+.ed-pan.is-arranging .pan-note { cursor: grab; }
+.ed-pan.is-arranging .pan-note.is-dragging { cursor: grabbing; opacity: 0.85; }
 .editor-sidebar { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ed-card { display: flex; flex-direction: column; gap: var(--space-4); }
 .ed-shell .overline { margin-bottom: var(--space-2); }
