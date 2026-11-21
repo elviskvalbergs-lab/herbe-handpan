@@ -46,7 +46,7 @@ import {
 } from './builder.js';
 import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
-import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomParams, panPosToParam } from './links.js';
+import { parseLink, linkFor, linkSlug, linkTitle, linkPreview, APP_NAME, layoutFromCustomParams, panPosToParam } from './links.js';
 import { TONGUE_DRUMS, isTongueDrumId } from './tonguedrums.js';
 import { LAYOUT_FAMILIES, findTuning, layoutInstrument, isLayoutFamily, layoutFamilyInfo, safeLayout } from './layoutfamilies.js';
 import {
@@ -207,6 +207,7 @@ trackAppHeight();
 
 function render() {
   guestPickerToSave();
+  songOpenPending();
   const app = document.getElementById('app');
   const screen = [state.view, state.wizard?.step, state.wizard?.oc?.path, state.view === 'instrument' ? state.oc.tab : '', state.currentInstrumentId].join('|');
   if (screen !== _lastScreen && !_toastFresh) hideToast();
@@ -360,7 +361,7 @@ function goHome({ push = true } = {}) {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
     sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
     wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
-    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false,
+    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false, pendingSong: null,
   });
   refreshInstruments();
   if (!push) return;
@@ -2367,7 +2368,12 @@ function playRowHtml(target) {
 function viewPlay() {
   const fam = state.playFamily ?? 'handpan';
   const n = state.playNotice;
-  const notice = n ? `
+  const waiting = state.pendingSong && SONGS.find(x => x.id === state.pendingSong);
+  const notice = waiting ? `
+    <div class="card play-notice" role="status">
+      <div class="tip-title">Pick your instrument to play ${escHtml(waiting.title)}</div>
+      <div class="tip-body">The song opens on it, moved to the notes it has.</div>
+    </div>` : n ? `
     <div class="card play-notice" role="status">
       <div class="tip-title">We couldn't find “${escHtml(n.slug)}”</div>
       <div class="tip-body">Is it one of these?</div>
@@ -3134,9 +3140,127 @@ function openSong(id, instId, { push = true } = {}) {
   songStop();
   state.songCtx = { id, instId: instId || null, idx: 0, from: state.view };
   state.view = 'song';
-  if (push) navPush(`#song/${encodeURIComponent(id)}`);
+  if (push) navPush(songAddress());
   render();
   window.scrollTo(0, 0);
+}
+
+// The link of the song on screen that anyone can open (links.js):
+// /handpan/d-kurd/songs/<song>, a custom instrument with its notes, a shared
+// one by its code. An ocarina or flute of my own that isn't shared or from a
+// chart has none: then the song alone (/song/<id>), the instrument for the
+// other person to choose.
+function songPublicPath() {
+  const id = state.songCtx?.id;
+  if (!id) return null;
+  const inst = songInstrument();
+  if (!inst) {
+    if (!state.layout) return linkFor({ song: id });
+    const base = stateToHash();
+    if (!base.startsWith('/')) return linkFor({ song: id });
+    const [path, query] = base.split('?');
+    const link = parseLink(path, query ? `?${query}` : '');
+    const target = !link ? null : link.kind === 'scale' ? { scaleId: link.scaleId } : link.kind === 'custom' ? { custom: query ?? '', family: link.family } : null;
+    const out = target && linkFor(target, { song: id });
+    return out ? (link.kind === 'scale' && query ? `${out}?${query}` : out) : linkFor({ song: id });
+  }
+  if (inst.id === SHARED_ID && state.shared?.link) return linkFor(state.shared.link, { song: id });
+  if (inst.publicId) return linkFor({ code: inst.publicId }, { song: id });
+  if (inst.kind === 'traditional' && getChart(inst.type)) return linkFor({ chartId: inst.type, keyId: inst.key }, { song: id }) ?? linkFor({ song: id });
+  return linkFor({ song: id });
+}
+// The address bar while a song is open: its public link, except on an
+// ocarina or flute of my own, which keeps its own id so a reload opens mine.
+function songAddress() {
+  const inst = songInstrument();
+  if (inst && inst.id !== SHARED_ID) return `#i/${inst.id}/song/${encodeURIComponent(state.songCtx.id)}`;
+  return songPublicPath() ?? `#song/${encodeURIComponent(state.songCtx.id)}`;
+}
+
+// A song waiting for its instrument (a /…/songs/<id> link still loading, or
+// /song/<id> with the instrument still to be chosen): opened as soon as an
+// instrument is on screen (render). When it doesn't fit there, says so.
+function songOpenPending() {
+  const id = state.pendingSong;
+  if (!id || !['editor', 'chords', 'hp-playlists', 'hp-songs', 'instrument'].includes(state.view)) return;
+  const inst = state.view === 'instrument' ? currentInstrument() : null;
+  if (state.view === 'instrument' ? !inst || usesLayout(inst) : !state.layout) return;
+  state.pendingSong = null;
+  const song = SONGS.find(x => x.id === id);
+  if (!song) return;
+  if (!songsFor(inst, [song]).length) {
+    if (inst) state.oc.tab = 'songs'; else state.view = 'hp-songs';
+    navReplace(inst ? instUrl(inst.id, 'songs') : stateToHash());
+    showToast(`${song.title} needs notes this ${songInstWord(inst)} doesn’t have. These songs fit.`);
+    return;
+  }
+  songStop();
+  state.songCtx = { id, instId: inst?.id ?? null, idx: 0, from: state.view };
+  state.view = 'song';
+  const to = songAddress();
+  if (navUrl(to) !== location.pathname + location.search + location.hash) navPush(to);
+}
+
+// /song/<id>: on the instrument of mine it fits (the one used last first);
+// with none, the instrument picker with the song waiting.
+function openSongAnywhere(id) {
+  const song = SONGS.find(x => x.id === id);
+  if (!song) return;
+  const mine = sortInstruments(getInstruments()).find(inst => {
+    const have = songHaveOf(inst);
+    return have && playableSongs(have, [song]).length;
+  });
+  state.pendingSong = id;
+  if (mine && openInstrument(mine.id, { push: false })) return;
+  Object.assign(state, { view: 'play', layout: null, currentInstrumentId: null });
+}
+// The notes one of my instruments has: a Set of MIDI numbers, or null.
+function songHaveOf(inst) {
+  if (!usesLayout(inst)) return new Set(playableMidis(inst));
+  const saved = getSavedLayouts().find(l => l.id === inst.layoutId);
+  return saved ? new Set(getAllNotes(saved.layout).map(noteToMidi)) : null;
+}
+
+// Share: the phone's own share sheet where there is one, else the link is
+// copied; when neither works, a sheet with the link to copy by hand.
+async function shareLink({ title, text, path }) {
+  const url = `${location.origin}${path}`;
+  if (navigator.share) {
+    try { await navigator.share({ title, text, url }); return; }
+    catch (e) { if (e?.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(url); showToast('Link copied'); }
+  catch (_) { state.linkSheet = { title, url }; render(); }
+}
+function linkSheetHtml() {
+  const m = state.linkSheet;
+  return uiSheet({
+    key: 'link', title: 'Share', close: 'link-sheet-close',
+    body: `<p class="sheet-text">${escHtml(m.title)}</p>
+      <input class="input share-url" readonly value="${escHtml(m.url)}" aria-label="Link">`,
+    footer: `<button class="btn btn-ghost" data-action="link-sheet-close">Close</button>
+      <button class="btn btn-primary" data-action="share-copy">${icon('link')} Copy link</button>`,
+  });
+}
+function songShare() {
+  const S = songOnInstrument();
+  const path = songPublicPath();
+  if (!S || !path) return;
+  const preview = linkPreview(path.split('?')[0], path.includes('?') ? `?${path.split('?')[1]}` : '');
+  logEvent('feature', { name: 'song-share', family: measureFamily() });
+  shareLink({ title: preview.title, text: `${S.song.title}: play it note by note on Oakhum.`, path });
+}
+
+// Back from a song opened by its link (no history to step back through):
+// the instrument's song list.
+function songBackToList() {
+  songStop();
+  const inst = songInstrument();
+  state.songCtx = null;
+  if (inst) { state.view = 'instrument'; state.oc.tab = 'playlists'; navReplace(instUrl(inst.id, 'playlists')); }
+  else if (state.layout) { state.view = 'hp-playlists'; navReplace(stateToHash()); }
+  else { goHome(); return; }
+  render();
 }
 
 // Where the song is on the instrument: { song, shift, notes (moved), name(midi) }.
@@ -3180,7 +3304,7 @@ function viewSong() {
   const playing = !!state.songPlay;
   const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}${LY ? ' has-lyric' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}${LY ? `<span class="song-note-lyric">${escHtml(LY[i]?.text ?? '')}</span>` : ''}</button>`).join('');
   const after = songsThatGoTogether(song, songsFor(inst));
-  return `${backAppBar(song.title, { fallback: 'home' })}
+  return `${backAppBar(song.title, { fallback: 'songs', actions: [uiIconBtn('share-2', 'Share this song', { action: 'song-share' })] })}
     <div class="song">
       <h1 class="song-print-title">${escHtml(song.title)}</h1>
       <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}</p>
@@ -3485,6 +3609,7 @@ function songAction(action, el) {
   if (action === 'song-view') { state.songView = el.dataset.value; render(); return true; }
   if (action === 'song-lyrics') { state.showLyrics = !state.showLyrics; savePrefs(); render(); return true; }
   if (action === 'song-print') { songPrint(); return true; }
+  if (action === 'song-share') { songShare(); return true; }
   if (action === 'song-prev') { go(state.songCtx.idx - 1); return true; }
   // Back to the first note, stopped, so the next Play starts the song over.
   if (action === 'song-restart') { songStop(); state.songCtx.idx = 0; render(); return true; }
@@ -6815,6 +6940,7 @@ function sheetHtml() {
   if (state.photoCrop) return photoCropSheet();
   if (state.instEdit) return instEditSheet();
   if (state.shareModal) return shareModalHtml();
+  if (state.linkSheet) return linkSheetHtml();
   if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
   if (state.plName) return plNameSheet();
   if (state.songsCountries && ['hp-playlists', 'hp-songs', 'instrument'].includes(state.view)) return songsCountriesSheet();
@@ -8007,7 +8133,10 @@ function openScaleLayout(scale) {
 // play: nothing is added to My instruments until Save.
 function openLink(link) {
   stopAutoplay();
-  Object.assign(state, { selectedChord: null, pendingSlot: null, sourcePlaylistId: null, sourceEntryId: null, wizard: null, playNotice: null });
+  Object.assign(state, { selectedChord: null, pendingSlot: null, sourcePlaylistId: null, sourceEntryId: null, wizard: null, playNotice: null, songCtx: null });
+  if (link.kind === 'song') { openSongAnywhere(link.song); return; }
+  // A song on this instrument opens once the instrument is up (songOpenPending).
+  if (link.song) state.pendingSong = link.song;
   if (link.kind === 'unknown') {
     state.view = 'play';
     state.layout = null;
@@ -8074,10 +8203,12 @@ function loadFromHash() {
   }
   if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
   if (hash.startsWith('#i/')) {
-    const [id, tab] = hash.slice(3).split('/');
+    const [id, tab, songId] = hash.slice(3).split('/');
     if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'songs', 'playlists', 'builder', 'setup'].includes(tab)) {
       state.oc.tab = tab;
     }
+    // A song on one of my ocarinas or flutes (songAddress).
+    if (tab === 'song' && songId && currentInstrument()?.id === decodeURIComponent(id)) state.pendingSong = decodeURIComponent(songId);
     return;
   }
 
@@ -9098,6 +9229,7 @@ document.addEventListener('click', e => {
     if (history.state?.hp) history.back();
     else if (el.dataset.fallback === 'selector') goSelector();
     else if (el.dataset.fallback === 'settings') openSettings({ push: false });
+    else if (el.dataset.fallback === 'songs' && state.songCtx) songBackToList();
     else goHome();
     return;
   }
@@ -9217,8 +9349,9 @@ document.addEventListener('click', e => {
   }
   if (action === 'share-instrument') { shareInstrument(el.dataset.id); return; }
   if (action === 'share-close') { state.shareModal = null; render(); return; }
+  if (action === 'link-sheet-close') { state.linkSheet = null; render(); return; }
   if (action === 'share-copy') {
-    navigator.clipboard?.writeText(state.shareModal?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
+    navigator.clipboard?.writeText(state.shareModal?.url ?? state.linkSheet?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
     return;
   }
   if (action === 'shared-add') {

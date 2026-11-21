@@ -11,6 +11,7 @@ const APP_PATHS = [
   "/ocarina/:path*",
   "/flute/:path*",
   "/s/:path*",
+  "/song/:path*",
   "/sw.js",
   "/manifest.json",
   "/icon.svg",

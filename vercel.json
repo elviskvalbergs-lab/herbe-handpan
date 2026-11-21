@@ -30,6 +30,10 @@
     {
       "source": "/s/:path*",
       "destination": "/"
+    },
+    {
+      "source": "/song/:path*",
+      "destination": "/"
     }
   ],
   "redirects": [
