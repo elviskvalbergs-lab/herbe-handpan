@@ -35,6 +35,17 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - **Tests**: data round-trips (every tuning has a link, `parseLink(linkFor(x))`), chords found on at least one real tuning, the site's engine tests for the new family.
 - **Docs**: `docs/design-system.md` (anything new in the shared patterns) and this checklist if something was missing.
 
+## Help and docs
+The help centre (oakhum.com/help, the app's Help sheet, and the exports an AI assistant reads) is built from `help/en/*.md` and the feature registry `js/features.js`. Design: `docs/help-centre.md`.
+- Every pull request that adds, renames, moves or removes something a user sees updates, in the same pull request: its entry in `js/features.js`, its help article (new feature: new article or a new `##` section; removed feature: remove both), and the article's `verified` date once you have re-read it against the running app.
+- Names live in one place. Articles never spell a tab, button or feature name: they write `{{id}}` and `js/features.js` holds the text exactly as the app shows it.
+- Never describe a screen you have not opened. Walk the built app (`python3 build.py`, served with the deep-link fallback) before writing or re-verifying an article.
+- Pictures are made by `node scripts/help-screenshots.mjs` from `help/screenshots.json`, never by hand. Re-run it when a pictured screen changes.
+- Anchors (`{#like-this}`) and article ids are permanent: they are links on other sites and citation ids for an assistant. Reword a heading freely; keep its anchor.
+- Help never states a tuning's notes, a fingering or a chord's notes: it links into the app, where that data comes from published sources.
+- No public help for the clay ocarina builder (internal).
+- `node --test` (`tests/help.test.mjs`) and `site`'s `pnpm test` fail when any of this is out of step.
+
 ## Data and database
 - Database changes are additive only: new tables, columns, functions or policies, never altering or dropping existing ones. Write them as new SQL files under `supabase/migrations/` (`YYYYMMDD_short_name.sql`); the build applies them automatically (`supabase/migrate.py`, see `supabase/README.md`). Never edit a migration file after it has been merged: add a new one. Never ask for, print or commit the database connection string or any Supabase secret key; it lives only in Vercel's environment variables.
 - Fingering charts and instrument ranges must come from a published source (maker or manufacturer chart), with the source URL noted in the data file. Never fill them in from memory. If no reliable source is found, leave a clearly marked TODO with the data structure in place.

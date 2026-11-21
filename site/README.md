@@ -56,6 +56,7 @@ Without a Sanity project the site shows the starting content in
 | `feature` | "In the app now" / "On the way" | `/` |
 | `request` | requests from the form; shown only when "Show on the site" is ticked; emails never shown | `/request` |
 | `page` | text pages (closed block list) | `/[slug]` |
+| not Sanity: `../help/en/*.md` | help articles, with the app's feature registry (`../docs/help-centre.md`) | `/help`, `/help/[slug]`, `/help/index.json`, `/llms.txt`, `/llms-full.txt` |
 
 Tunings, notes and chords are not content: they come from the app's catalogue.
 

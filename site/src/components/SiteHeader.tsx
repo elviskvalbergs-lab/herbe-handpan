@@ -23,6 +23,7 @@ export function SiteHeader() {
         <div className="flex w-full items-center justify-between gap-x-6 text-[15px] font-semibold sm:justify-start md:ml-auto md:w-auto md:text-[16px]">
           <Link href="/#instruments" className={link}>Instruments</Link>
           <Link href="/#how" className={link}>How it works</Link>
+          <Link href="/help" className={link}>Help</Link>
           <Link href="/request" className={link}>Request</Link>
         </div>
       </nav>

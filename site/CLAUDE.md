@@ -12,6 +12,14 @@ rules about commits, branches and pull requests apply here too.
    The brand is the app's: `docs/design-system.md` §0 in the repository root.
 3. **Structure** → schema in `src/sanity/schemaTypes/` + renderer + test, in one commit.
 
+## Help comes from the app's repository
+
+The one exception to "text → Sanity": the help centre (`/help`, `/help/[slug]`,
+`/help/index.json`, `/llms.txt`, `/llms-full.txt`) is built from `../help/en/*.md`
+and `../js/features.js` through `src/lib/help.ts`, so help is reviewed and tested
+with the feature it describes. Don't copy help text into Sanity or JSX; rules in
+the root CLAUDE.md, "Help and docs", and `../docs/help-centre.md`.
+
 ## Music comes from the app
 
 Scales, notes, chords, fingering charts, deep links and the pan drawing are the
