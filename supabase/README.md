@@ -28,6 +28,7 @@ never changes to existing ones. Name new files `YYYYMMDD_short_name.sql`.
 | `20261111_progressions.sql` | nullable `progressions` jsonb column on `user_data` (sync of chord progressions, read and written in requests of their own) |
 | `20261116_accounts.sql` | `profiles` (signup source and intent, last seen date), `saved_items` (sync by item, owner reads; writes only through `save_item`, which bumps a version and returns the current row on a conflict), `touch_last_seen()`, `delete_my_account()` (deletes the user and every row they own) |
 | `20261117_legacy_import.sql` | `profiles.legacy_imported_at` and `import_legacy_data()`: once per account, copies what the first app versions kept (`user_data` layouts, playlists, progressions and prefs; ocarinas and flutes in `instruments`) into `saved_items`, adding only what isn't there yet |
+| `20261121_saved_item_size.sql` | `saved_items_check_size()` and the `saved_items_size` trigger: an item's data may be at most 1 MB and its id 200 characters; a larger write is refused with `item_too_large`, which the app reports and keeps on the device |
 
 Until a migration has been applied, the features that need it fail quietly:
 the app keeps working, instruments and progressions stay on the device and

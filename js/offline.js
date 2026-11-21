@@ -12,14 +12,30 @@ export const offline = {
   get status() { return typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'online'; },
 
   // Registers sw.js (its ?v= is the build's hash, so a new build installs a
-  // new worker with a new precache). Resolves true when it is ready.
-  async enable(version = '') {
+  // new worker with a new precache). Resolves true only when a worker is
+  // active AND the app's page is in its cache, which is what "Ready: the app
+  // opens without a connection" promises. A worker whose install failed (the
+  // page could not be fetched) resolves false; the next start tries again.
+  async enable(version = '', { timeoutMs = 20000 } = {}) {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return false;
     try {
-      await navigator.serviceWorker.register(`/sw.js${version ? `?v=${version}` : ''}`);
-      await navigator.serviceWorker.ready;
-      return true;
+      const reg = await navigator.serviceWorker.register(`/sw.js${version ? `?v=${version}` : ''}`);
+      const active = await new Promise(resolve => {
+        const timer = setTimeout(() => resolve(false), timeoutMs);
+        const done = ok => { clearTimeout(timer); resolve(ok); };
+        const worker = reg.installing || reg.waiting;
+        // A failed install ends as 'redundant', and serviceWorker.ready
+        // would then wait for ever.
+        if (worker) worker.addEventListener('statechange', () => { if (worker.state === 'redundant' && !reg.active) done(false); });
+        navigator.serviceWorker.ready.then(() => done(true), () => done(false));
+      });
+      return active && await this.cached();
     } catch { return false; }
+  },
+
+  // Is the app's page in a cache of this site?
+  async cached(path = '/play') {
+    try { return !!(await caches.match(path)); } catch { return false; }
   },
 
   // Unregisters every service worker of this site and deletes their caches.
@@ -39,6 +55,6 @@ export const offline = {
 
   // Is a worker controlling or installed for this page (offline "Ready")?
   async ready() {
-    try { return !!(await navigator.serviceWorker?.getRegistration?.()); } catch { return false; }
+    try { return !!(await navigator.serviceWorker?.getRegistration?.())?.active && await this.cached(); } catch { return false; }
   },
 };
