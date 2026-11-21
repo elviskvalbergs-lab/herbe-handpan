@@ -8,7 +8,7 @@ import { SCALES } from '../js/data.js';
 import { TRADITIONAL_CHARTS } from '../js/charts.js';
 import {
   parseLink, linkFor, linkSlug, linkTitle, linkPreview, withLinkPreview, catalogueLinks, closestLinks,
-  layoutFromCustomParams,
+  layoutFromCustomParams, LINK_FAMILIES, LINK_TABS,
 } from '../js/links.js';
 
 test('slugs: lower case, # as s, dashes', () => {
@@ -59,6 +59,22 @@ test('tabs and chords in the path', () => {
   assert.deepEqual([l.scaleId, l.tab, l.chord], ['D-Kurd', 'chords', 'a-min']);
   assert.equal(parseLink('/handpan/d-kurd/nonsense').tab, null, 'unknown tabs are ignored');
   assert.equal(parseLink('/ocarina/alto-c-12/listen').tab, 'listen');
+});
+
+test('every family has the same tabs in its links: playlists and listen too', () => {
+  for (const fam of LINK_FAMILIES) {
+    assert.ok(LINK_TABS[fam].includes('chords') && LINK_TABS[fam].includes('playlists') && LINK_TABS[fam].includes('listen'), fam);
+  }
+  assert.equal(linkFor({ chartId: 'ocarina-12-stl-c', keyId: 'C-A4' }, { tab: 'playlists' }), '/ocarina/alto-c-12/playlists');
+  assert.equal(parseLink('/flute/tin-whistle-d/playlists').tab, 'playlists');
+});
+
+test('the Listen preview card promises what Listen does: one chord heard nearby, not a song', () => {
+  for (const path of ['/handpan/d-kurd/listen', '/ocarina/alto-c-12/listen']) {
+    const d = linkPreview(path).description;
+    assert.match(d, /^Hear a chord someone plays nearby and find it on the /);
+    assert.doesNotMatch(d, /song|play along/i);
+  }
 });
 
 test('aliases open the canonical instrument', () => {

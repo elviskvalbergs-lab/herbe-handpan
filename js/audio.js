@@ -253,9 +253,10 @@ function playFreq(freq, startTime, dur = 0.9) {
   });
 }
 
-export function playNote(noteName) {
+// dur (seconds): how long a blown note is held; struck voices ring as they do.
+export function playNote(noteName, dur) {
   initAudio();
-  whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
+  whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET, dur));
 }
 
 export function playChord(noteNames, onArp, onTogether) {

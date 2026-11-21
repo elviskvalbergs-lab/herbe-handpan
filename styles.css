@@ -720,6 +720,9 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .prog-player { display: flex; flex-direction: column; gap: var(--space-3); }
 .prog-pan { padding: var(--space-2); }
 .prog-pan svg { width: min(100%, 34dvh); max-width: none; height: auto; }
+/* One note at a time (ocarina, flute): the fingering of the note being blown, where the pan is. */
+.prog-wind { padding: 6px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1); }
+.prog-wind .fingering { display: block; width: 100%; height: auto; max-height: 38dvh; margin: 0 auto; }
 .prog-timing .set-row:not([role="switch"]) { grid-template-columns: minmax(0, 1fr) auto; padding-bottom: var(--space-2); }
 .prog-timing .set-row:not([role="switch"]) .set-control { width: auto; justify-content: flex-end; }
 .prog-timing .stepper-num-row { gap: var(--space-1); }

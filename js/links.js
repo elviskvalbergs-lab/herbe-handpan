@@ -25,8 +25,8 @@ export const LINK_FAMILIES = [...LAYOUT_FAMILY_IDS, 'ocarina', 'flute'];
 export const LINK_TABS = {
   handpan: ['pan', 'chords', 'playlists', 'listen'],
   ...Object.fromEntries(LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan').map(f => [f, ['pan', 'chords', 'playlists', 'listen']])),
-  ocarina: ['notes', 'chords', 'listen'],
-  flute: ['notes', 'chords', 'listen'],
+  ocarina: ['notes', 'chords', 'playlists', 'listen'],
+  flute: ['notes', 'chords', 'playlists', 'listen'],
 };
 const LINK_DEFAULT_TAB = { ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, 'pan'])), ocarina: 'notes', flute: 'notes' };
 
@@ -297,7 +297,8 @@ export function linkPreview(pathname, search = '') {
   if (!title || link.kind === 'unknown') {
     return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
   }
-  const what = link.tab === 'listen' ? 'Listen to a song and play along'
+  // Listen is at step 1 of docs/listen-mode.md: it names one chord played nearby.
+  const what = link.tab === 'listen' ? 'Hear a chord someone plays nearby and find it'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
     : 'Notes, chords, arpeggios and play-along';
   const family = link.family ?? 'app';
