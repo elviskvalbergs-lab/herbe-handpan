@@ -36,7 +36,9 @@ await step('a guest plays a deep link with nothing in the way', async () => {
   assert.equal(await p.locator('.sheet-root').count(), 0);
 });
 
-await step('a guest ☆ opens the save sheet; Not now changes nothing', async () => {
+await step('a guest’s bookmark opens the save sheet; Not now changes nothing', async () => {
+  // The bookmark is on the chord card, so a chord is picked first.
+  await p.locator('[data-action="select-chord"]').first().click();
   await p.locator('[data-action="show-playlist-picker"]').first().click();
   await p.locator('.sheet-root[data-sheet="save"]').waitFor();
   assert.match(await p.locator('.sheet-title').innerText(), /Keep this chord/);
@@ -130,7 +132,7 @@ await step('a guest saves a visiting ocarina: after sign-in it is in My instrume
   await p.click('.sheet-foot [data-action="save-not-now"]');
   await p.goto(`${BASE}/ocarina/alto-c-12`);
   await p.locator('.banner [data-action="shared-add"]').click();
-  assert.match(await p.locator('.sheet-title').innerText(), /Save your instrument/);
+  assert.match(await p.locator('.sheet-title').innerText(), /Keep your instrument/);
   await p.screenshot({ path: process.env.SHOT ?? '/dev/null' }).catch(() => {});
   await signInWithCode(p, 'b@example.com');
   await toast(p).filter({ hasText: /added to My instruments/ }).waitFor();
