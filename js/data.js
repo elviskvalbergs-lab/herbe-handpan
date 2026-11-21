@@ -23,6 +23,21 @@ export function displayNote(note, useFlats, useSolfege = false) {
   return (useFlats ? FLAT_NAMES : SHARP_NAMES)[pc] + m[2];
 }
 
+// Should these notes be written with flats? A scale is written so that each
+// letter is used once: D Kurd is D E F G A B♭ C, never A and A#. So: the
+// spelling in which fewer letters repeat. When that is a tie (every semitone,
+// or none of the black keys), the home note decides: flats in the keys
+// written with flats (F, B♭, E♭, A♭, D♭).
+const FLAT_KEY_PCS = new Set([5, 10, 3, 8, 1]);
+export function preferFlats(notes, home = null) {
+  const pcs = [...new Set(notes.map(n => NOTE_TO_SEMI[String(n).match(/^[A-G][#b]?/)?.[0]]).filter(pc => pc !== undefined))];
+  const repeats = names => pcs.length - new Set(pcs.map(pc => names[pc][0])).size;
+  const sharp = repeats(SHARP_NAMES), flat = repeats(FLAT_NAMES);
+  if (sharp !== flat) return flat < sharp;
+  const h = home != null ? NOTE_TO_SEMI[String(home).match(/^[A-G][#b]?/)?.[0]] : undefined;
+  return h !== undefined && FLAT_KEY_PCS.has(h) && pcs.some(pc => SHARP_NAMES[pc].length > 1);
+}
+
 export function normalizeNote(note) {
   const m = note.match(/^([A-G][#b]?)(\d)$/);
   if (!m) return note;

@@ -147,9 +147,21 @@ Every instrument has the same tabs in the same order (`instrumentTabs` in `js/ap
 - From anywhere inside an instrument, tapping its name in the app bar opens Home, and tapping another instrument opens it.
 - Try a scale is a row on Home ("Try another scale"). It opens the catalogue, and picking a scale opens an unsaved handpan with the same tabs. A "Not saved" banner under the app bar has a **Save to My instruments** button (`save-layout`).
 
+### The microphone: three words
+
+Three things use the microphone, and the word says who is making the sound (docs/navigation-redesign.md §4). Use these words and no others:
+
+| Word | Who makes the sound | What Oakhum does | Where |
+| --- | --- | --- | --- |
+| **Tuner** | you, one note | says how sharp or flat it is | the app bar (tuning fork), the builder, set-up readings |
+| **Play my notes** (also "Play again", "Play the note", "Play its lowest note") | you, your instrument's notes | works out the instrument, scale, key or note | setup, the scale catalogue, the note picker, a flute's or ocarina's key |
+| **Listen** | music around you | names the chord it hears and shows it on your instrument | Chords › Listen, and only there |
+
+"Listen" is not used for the first two, and "tuner" is not used for the second.
+
 ### Where the tuner lives
 
-- There's a **tuner icon button (mic) in the app bar** of every instrument screen, Home, playlist detail and Practice. In the Builder and Set up it's the same app-bar button, so it's "on every instrument and builder step" without repeating it in the content. When the tuner is on, the button shows its pressed state (`aria-pressed="true"`, `--accent-soft` background, `--accent-text` icon).
+- There's a **tuner icon button (a tuning fork, `tuning-fork`; the microphone icon is kept for buttons that start listening) in the app bar** of every instrument screen, Home, playlist detail and Practice. In the Builder and Set up it's the same app-bar button, so it's "on every instrument and builder step" without repeating it in the content. When the tuner is on, the button shows its pressed state (`aria-pressed="true"`, `--accent-soft` background, `--accent-text` icon).
 - While the tuner is on, a **docked tuner strip** (spec in §5.13) sits directly above the tab bar. Without a tab bar it sits at the bottom edge, and on desktop it floats at the bottom of the content column. The page gets matching bottom padding, so the strip never covers content.
 - Every Hz field has a record button that turns the tuner on by itself if needed (§5.3). Users never have to "turn on the tuner, then tap again".
 
@@ -922,30 +934,32 @@ Spec in §5.13. On this screen, the docked strip sits above the tab bar, the rea
 
 ```
 App bar: ← | Settings
-DISPLAY
-┌ .list ──────────────────────────────┐
+NOTES AND DISPLAY
 │ Theme        ( Dark | Light | Auto )│ rows: label 15/600 left, control right; at <400px
-│ Note names   ( C# | D♭ )            │ the control drops below the label (row grid wraps)
+│ Note names   ( Auto | C# | D♭ )     │ the control drops below the label (row grid wraps)
 │ Note style   ( C D E | Do Re Mi )   │
-└─────────────────────────────────────┘
-HANDPAN
+PLAYING
+│ Speed                [slider, presets]│
+│ Seconds per chord in auto-play [−] 4 s [+]│
+HANDPANS AND DRUMS                        only for someone who has or is trying one
 │ Ring orientation  ( Standard | Rotated ) │
-│ Seconds per chord in autoplay  [−] 4 s [+]│
-FINGERING DIAGRAMS
-│ Finger labels in holes            [sw] │ helper: "R4, L1, LT inside each hole"
-│ Hole sizes in mm                  [sw] │ helper: "The builder always shows sizes"
+OCARINAS AND FLUTES                       only for someone who has or is trying one
+│ Finger labels in holes            [sw] │
+│ Hole sizes in mm                  [sw] │ builders, or anyone who has it on
+│ Close-up of flute holes           [sw] │
 │ Which finger is which               › │
-│ Show the diagram legend again          │ row button; toast "The legend will show again"
-TUNING
-│ Clay bodies                          › │ → page: list of rows "Generic clay · 11.0%
-                                           (learned from 2 builds)", tap = sheet with
-                                           Name and Shrinkage % fields
-SYNC
-│ Email  [ you@example.com ] [Send code] │ signed-out state; then the code state; then
-│                                        │ "Signed in as …  [Sync now] [Sign out]"
-ABOUT
-│ Version 2026.11 · Check for updates    │
+│ Show the diagram legend again          │
+BUILDING                                  builders only (canBuild)
+│ Clay bodies                          › │
+│ Microphone readings                  › │ what Listen hears (was "Listen debug")
+ACCOUNT AND ABOUT
+│ Sign in / account · Privacy notice · Send feedback · Check for updates · logo │
 ```
+
+**Four sections for most people** (docs/navigation-redesign.md §6). A family's rows show only to someone who plays that family (`settingsFamilies`: the instruments in My instruments and the one open now), so a handpan player does not scroll past fingering-diagram switches.
+
+**Note names: Auto** (the default). Each instrument is written the way its scale is written, so that no letter repeats (`preferFlats` in `js/data.js`): a D Kurd shows B♭, a D major whistle F#. When that is a tie (every semitone, or no black keys) the home note decides. `state.useFlats` is read everywhere as before; it is now computed from the `noteNames` preference ('auto', 'sharps', 'flats') and the instrument on screen. A stored D♭ choice stays; a stored C# was also the old default, so it becomes Auto.
+
 
 Turning on finger labels for the first time opens the "Which finger is which" sheet once (existing `handLegendSeen` behaviour).
 
@@ -1037,7 +1051,7 @@ A change to a screen's pattern goes into the shared part, so every instrument ge
 
 ### Add to home screen
 
-A slim banner (`installBannerHtml`, the `.banner` style) on the start screens (My instruments, Play, "What do you play?"), never on an instrument: "Add Oakhum to your home screen: it opens like an app, full screen, and works offline." [Add] opens the browser's own install dialog where there is one (`beforeinstallprompt`, Android); elsewhere (iPhone) a sheet with the steps for that browser. Hidden in the installed app (`display-mode: standalone`) and for 30 days after ×.
+A slim banner (`installBannerHtml`, the `.banner` style) on My instruments and Play something else, never on an instrument, never on the first-run screen, and only once the visitor has got something out of the app (a sound was played in this visit, or an instrument is saved): "Add Oakhum to your home screen: it opens like an app, full screen, and works offline." [Add] opens the browser's own install dialog where there is one (`beforeinstallprompt`, Android); elsewhere (iPhone) a sheet with the steps for that browser. Hidden in the installed app (`display-mode: standalone`) and for 30 days after ×.
 
 ### Page height
 

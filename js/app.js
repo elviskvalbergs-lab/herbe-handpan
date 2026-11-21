@@ -1,7 +1,7 @@
 import { brandLogo } from './brand.js';
 import {
   SCALES, CHORD_TYPES, CHORD_CATEGORIES, createLayoutFromScale,
-  getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote,
+  getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote, preferFlats,
 } from './data.js';
 import {
   getSavedLayouts, saveLayout, deleteLayout,
@@ -102,7 +102,7 @@ const state = {
   selectedChord: null,        // ChordResult or null
   chords: [],                 // computed from layout
   chordFilter: { category: 'All', root: 'All', playlist: 'All' },
-  useFlats: false,           // false = sharp (C#, F#, G#…); true = flat (Db, Gb, Ab…)
+  noteNames: 'auto',         // 'auto' (as the instrument's scale is written), 'sharps' (C#) or 'flats' (Db); state.useFlats reads it
   useSolfege: false,         // false = letters (C, D, E…); true = solfège (Do, Re, Mi…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
@@ -158,6 +158,32 @@ const state = {
   chordSheet: null,        // the "Paste a chord sheet" sheet: { step: 'paste' | 'fit', text, target, semis, name, progId, error }
   listen: null,            // Listen (find a scale by ear): { where: 'selector' | 'wizard', listening, notes: [midi], lastSince, startedTuner, error, stopped }
 };
+
+// state.useFlats, read wherever a note is named: the Note names setting, and
+// on Auto the spelling the instrument on screen is written in (D Kurd has a
+// B♭, not an A#; data.js preferFlats).
+let _spellKey = null, _spellFlats = false;
+function noteSpellingNotes() {
+  if (state.view === 'setup' && state.setup?.scaleId) {
+    const t = setupTunings(state.setup).find(x => x.id === state.setup.scaleId);
+    if (t) return { key: `setup:${t.id}`, notes: () => setupScaleNotes(t) };
+  }
+  const inst = state.view === 'song' ? songInstrument() : state.view === 'instrument' ? currentInstrument() : null;
+  if (inst) return { key: `inst:${inst.id}:${inst.link?.keyId ?? ''}:${inst.updatedAt ?? ''}`, notes: () => playableMidis(inst).map(midiToNoteName) };
+  if (state.layout) { const notes = getAllNotes(state.layout); return { key: `layout:${notes.join(',')}`, notes: () => notes }; }
+  return null;
+}
+Object.defineProperty(state, 'useFlats', {
+  enumerable: true,
+  get() {
+    if (state.noteNames !== 'auto') return state.noteNames === 'flats';
+    const ctx = noteSpellingNotes();
+    if (!ctx) return false;
+    if (ctx.key !== _spellKey) { const notes = ctx.notes(); _spellKey = ctx.key; _spellFlats = preferFlats(notes, notes[0]); }
+    return _spellFlats;
+  },
+  set(v) { state.noteNames = v ? 'flats' : 'sharps'; },
+});
 
 // ── Render ───────────────────────────────────────────────────────────────────
 let _lastScreen = null;
@@ -390,7 +416,7 @@ function removePlaylist(id) {
 
 // App-bar buttons shared by many screens.
 function tunerAppBtn() {
-  return uiIconBtn('mic', state.tuner.on ? 'Stop the tuner' : 'Tuner', { action: 'tuner-toggle', pressed: state.tuner.on });
+  return uiIconBtn('tuning-fork', state.tuner.on ? 'Stop the tuner' : 'Tuner', { action: 'tuner-toggle', pressed: state.tuner.on });
 }
 function settingsAppBtn() { return uiIconBtn('settings', 'Settings', { action: 'open-settings' }); }
 
@@ -418,67 +444,71 @@ function handpanAppBar(tabs = '') {
 // persists and syncs as before.
 const AUTOPLAY_SECONDS = [3, 4, 5, 6, 8, 10];
 
+// Which instrument families the person plays: the ones in My instruments and
+// the one open now. Settings shows a family's rows only to those who play it.
+function settingsFamilies() {
+  const fams = new Set(state.instruments.map(i => (usesLayout(i) ? 'layout' : 'wind')));
+  if (state.layout) fams.add('layout');
+  if (state.currentInstrumentId && !state.layout && currentInstrument()) fams.add('wind');
+  return fams;
+}
+
 function viewSettings() {
   const secIdx = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
   const clays = getClayBodies();
+  const fams = settingsFamilies();
   return `${backAppBar('Settings')}
     <div class="settings">
-      <h2 class="list-title">Display</h2>
+      <h2 class="list-title">Notes and display</h2>
       <div class="list">
         ${uiSetRow({ label: 'Theme', control: uiSeg([
           { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'auto', label: 'Auto' },
         ], state.theme, { action: 'set-theme', label: 'Theme' }) })}
-        ${uiSetRow({ label: 'Note names', control: uiSeg([
-          { value: 'sharps', label: 'C#' }, { value: 'flats', label: 'D♭' },
-        ], state.useFlats ? 'flats' : 'sharps', { action: 'set-flats', label: 'Note names' }) })}
+        ${uiSetRow({ label: 'Note names', help: 'Auto writes each instrument the way its scale is written: B♭ on a D Kurd, F# on a D major whistle', control: uiSeg([
+          { value: 'auto', label: 'Auto' }, { value: 'sharps', label: 'C#' }, { value: 'flats', label: 'D♭' },
+        ], state.noteNames, { action: 'set-flats', label: 'Note names' }) })}
         ${uiSetRow({ label: 'Note style', control: uiSeg([
           { value: 'letters', label: 'C D E' }, { value: 'solfege', label: 'Do Re Mi' },
         ], state.useSolfege ? 'solfege' : 'letters', { action: 'set-solfege', label: 'Note style' }) })}
       </div>
 
-      <h2 class="list-title">Sound</h2>
+      <h2 class="list-title">Playing</h2>
       <div class="list">
         ${uiSetRow({ label: 'Speed', help: 'How fast chords, scales and fingerings play, everywhere', wide: true, control: tempoControlHtml() })}
-      </div>
-
-      <h2 class="list-title">Handpan</h2>
-      <div class="list">
-        ${uiSetRow({ label: 'Ring orientation', help: 'Rotated puts the two lowest notes towards you', control: uiSeg([
-          { value: 'standard', label: 'Standard' }, { value: 'rotated', label: 'Rotated' },
-        ], state.ringRotated ? 'rotated' : 'standard', { action: 'set-rotation', label: 'Ring orientation' }) })}
-        ${uiSetRow({ label: 'Seconds per chord in autoplay', control: uiStepper({
+        ${uiSetRow({ label: 'Seconds per chord in auto-play', control: uiStepper({
           value: `${state.autoplaySeconds} s`, label: 'Seconds per chord', action: 'set-autoplay-step',
           min: secIdx === 0, max: secIdx === AUTOPLAY_SECONDS.length - 1,
         }) })}
       </div>
 
-      <h2 class="list-title">Fingering diagrams</h2>
+      ${fams.has('layout') ? `<h2 class="list-title">Handpans and drums</h2>
+      <div class="list">
+        ${uiSetRow({ label: 'Ring orientation', help: 'Rotated puts the two lowest notes towards you', control: uiSeg([
+          { value: 'standard', label: 'Standard' }, { value: 'rotated', label: 'Rotated' },
+        ], state.ringRotated ? 'rotated' : 'standard', { action: 'set-rotation', label: 'Ring orientation' }) })}
+      </div>` : ''}
+
+      ${fams.has('wind') ? `<h2 class="list-title">Ocarinas and flutes</h2>
       <div class="list">
         ${uiSwitchRow({ label: 'Finger labels in holes', help: 'R4, L1, LT inside each hole', on: state.showFingers, action: 'oc-toggle-fingers' })}
-        ${uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' })}
+        ${canBuild() || state.showSizes ? uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' }) : ''}
         ${uiSwitchRow({ label: 'Close-up of flute holes', help: 'Zoom in on the holes when a flute’s fingering is shown', on: state.closeUp, action: 'toggle-closeup' })}
         ${uiRow({ title: 'Which finger is which', action: 'oc-hand-open', chevron: true })}
         ${uiRow({ title: 'Show the diagram legend again', meta: 'The hole and finger legends show once more', action: 'reset-legends' })}
-      </div>
-
-      ${canBuild() ? `<h2 class="list-title">Listen</h2>
-      <div class="list">
-        ${uiRow({ title: 'Listen debug', meta: 'What the microphone hears: note strengths, chord guesses, confidence, thresholds', action: 'open-listen-debug', chevron: true })}
       </div>` : ''}
 
-      ${canBuild() ? `<h2 class="list-title">Tuning</h2>
+      ${canBuild() ? `<h2 class="list-title">Building</h2>
       <div class="list">
         ${uiRow({ title: 'Clay bodies', meta: `${clays.length} clay bod${clays.length === 1 ? 'y' : 'ies'} · shrinkage used by the builder`, action: 'open-clay-bodies', chevron: true })}
-      </div>
-` : ''}
-      <h2 class="list-title">Account</h2>
-      <div class="list">${accountSettingsHtml()}</div>
+        ${uiRow({ title: 'Microphone readings', meta: 'What Listen hears: note strengths, chord guesses, confidence, thresholds', action: 'open-listen-debug', chevron: true })}
+      </div>` : ''}
 
-      <h2 class="list-title">About</h2>
+      <h2 class="list-title">Account and about</h2>
       <div class="list">
-        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</span></div>
+        ${accountSettingsHtml()}
         ${uiRow({ title: 'Send feedback', meta: 'Something confusing, wrong or missing? Tell us, it really helps', action: 'open-feedback', lead: 'message-square', chevron: true })}
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
+        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</span></div>
       </div>
     </div>`;
 }
@@ -1091,7 +1121,7 @@ function listenPanelHtml(where) {
   if (!L) {
     return `
       <div class="listen is-idle">
-        <button type="button" class="btn btn-secondary" data-action="listen-start">${icon('mic')} Listen</button>
+        <button type="button" class="btn btn-secondary" data-action="listen-start">${icon('mic')} Play my notes</button>
         <p class="listen-hint">Play your handpan to find its scale: strike the ding first.</p>
       </div>`;
   }
@@ -1104,14 +1134,14 @@ function listenPanelHtml(where) {
     <button type="button" class="chip listen-chip" data-action="listen-remove" data-midi="${m}" aria-label="Remove ${escHtml(nn(m))}" title="Remove ${escHtml(nn(m))}">
       ${escHtml(nn(m))}${i === 0 ? '<span class="listen-ding">ding</span>' : ''}${icon('x')}</button>`).join('');
   return `
-    <section class="listen card${L.listening ? ' is-listening' : ''}" aria-label="Listen">
+    <section class="listen card${L.listening ? ' is-listening' : ''}" aria-label="Play my notes">
       <div class="listen-head">
         <p class="listen-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${status}</p>
         <div class="listen-actions">
           ${L.notes.length ? '<button type="button" class="btn btn-ghost" data-action="listen-clear">Clear</button>' : ''}
           ${L.listening
             ? `<button type="button" class="btn btn-secondary" data-action="listen-stop">${icon('square')} Stop</button>`
-            : `<button type="button" class="btn btn-secondary" data-action="listen-start">${icon('mic')} ${L.notes.length ? 'Listen again' : 'Listen'}</button>`}
+            : `<button type="button" class="btn btn-secondary" data-action="listen-start">${icon('mic')} ${L.notes.length ? 'Play again' : 'Play my notes'}</button>`}
         </div>
       </div>
       ${chips ? `<div class="chips listen-notes" aria-label="Notes heard">${chips}</div>` : ''}
@@ -1777,14 +1807,13 @@ function viewBeginnerSetup() {
   const word = setupWord(st);
   const fi = setupFamilyInfo(st.family);
   const tunings = setupTunings(st);
-  const count = n => `Step ${n} of 4`;
   const uf = state.useFlats, us = state.useSolfege;
   const nn = n => displayNote(n, uf, us);
 
   if (st.step === 'what') {
     return stepFrame({
       header, hero: first, title: 'What do you play?', sub: 'Tap your instrument. You can add more later.',
-      body: `${installBannerHtml()}
+      body: `
         <div class="setup-tiles">
           ${SETUP_TILES.map(t => `
             <button type="button" class="setup-tile" data-action="setup-family" data-family="${t.family}">
@@ -1799,7 +1828,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'how') {
     return stepFrame({
-      header, count: count(2), title: `Let’s find out which ${word} you have`,
+      header, stage: 2, title: `Let’s find out which ${word} you have`,
       sub: `No need to know its ${fi.pick}. Play it to your phone and Oakhum works it out.`,
       body: `
         <ol class="setup-how">
@@ -1821,7 +1850,7 @@ function viewBeginnerSetup() {
     const what = st.family === 'handpan' ? 'Count the notes on top, the ding in the middle too. Then any underneath.'
       : st.family === 'kalimba' ? 'Count every key.' : 'Count every tongue, a round one in the middle too.';
     return stepFrame({
-      header, count: count(3), title: `How many notes does your ${word} have?`, sub: what,
+      header, stage: 3, title: `How many notes does your ${word} have?`, sub: what,
       body: `
         <div class="setup-count">
           ${st.family === 'handpan'
@@ -1834,7 +1863,7 @@ function viewBeginnerSetup() {
         </div>
         ${setupPanHtml({ guide: g, family: st.family })}`,
       bar: {
-        left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>',
+        left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · play my notes</button>',
         right: `<button type="button" class="btn btn-primary" data-action="setup-guide-start">${icon('mic')} Start</button>`,
       },
     });
@@ -1842,9 +1871,9 @@ function viewBeginnerSetup() {
 
   if (st.step === 'windtype') {
     return stepFrame({
-      header, count: count(2), title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or let it listen.',
+      header, stage: 2, title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or play it a note.',
       body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : t.hint ? `${t.hint} · set up note by note with the tuner` : 'Set up note by note with the tuner'), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
-      bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>' },
+      bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · play my notes</button>' },
     });
   }
 
@@ -1854,7 +1883,7 @@ function viewBeginnerSetup() {
     const picked = st.windRoot ? keys.find(k => k.root === st.windRoot) : null;
     const rn = r => escHtml(displayNote(r, uf, us));
     return stepFrame({
-      header, count: count(3), title: 'Do you know its key?',
+      header, stage: 3, title: 'Do you know its key?',
       sub: `It’s usually written on the ${escHtml(word)} or its box. ${st.family === 'flute' ? 'A, G and F♯ are the most common.' : 'C is the most common.'}`,
       body: `
         <div class="setup-roots setup-wind-roots">
@@ -1867,7 +1896,7 @@ function viewBeginnerSetup() {
           })).join('')}</div>` : ''}
         <p class="wizard-foot">Or <button type="button" class="link-btn" data-action="setup-listen-free">play it my own way</button>: any notes, any order, and Oakhum works it out.</p>`,
       bar: {
-        right: `<button type="button" class="btn btn-primary" data-action="setup-wind-listen">${icon('mic')} I don’t know: listen</button>`,
+        right: `<button type="button" class="btn btn-primary" data-action="setup-wind-listen">${icon('mic')} I don’t know: play it</button>`,
       },
     });
   }
@@ -1883,7 +1912,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? (g.idx === 0 ? 'Listening' : `${g.idx} of ${g.seq.length} · listening`) : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, count: count(3),
+      header, stage: 3,
       title: g.idx === 0 ? 'Cover every hole and blow gently' : `Now play ${windNoteName(want + g.offset)}`,
       sub: (g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.')
         + (g.chartId.startsWith('naf6') ? ' On a 6-hole Native American flute the third hole from the top stays closed for this whole scale.' : ''),
@@ -1895,7 +1924,7 @@ function viewBeginnerSetup() {
         left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my key instead</button>`,
         right: L.listening
           ? (g.idx > 0 ? '<button type="button" class="btn btn-secondary" data-action="setup-wind-skip">Skip this note</button>' : '')
-          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
+          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play again</button>`,
       },
     });
   }
@@ -1908,7 +1937,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `${filled} of ${guideTotal(g)} · listening` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, count: count(3),
+      header, stage: 3,
       title: g.notes[g.active] != null ? `Play ${label} again` : `Play ${label}`,
       sub: `${fi.sound} The one to play is lit; tap another if you’re playing that one instead.`,
       body: `${setupPanHtml({ guide: g, family: st.family })}
@@ -1918,7 +1947,7 @@ function viewBeginnerSetup() {
         left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my ${fi.pick} instead</button>`,
         right: L.listening || filled >= 3
           ? `<button type="button" class="btn btn-primary" data-action="setup-heard-done"${filled >= 3 ? '' : ' disabled'}>${filled >= guideTotal(g) ? 'Next' : 'That’s all my notes'}</button>`
-          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
+          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play again</button>`,
       },
     });
   }
@@ -1929,7 +1958,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `Listening · ${n} note${n !== 1 ? 's' : ''} heard` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, count: count(3),
+      header, stage: 3,
       title: n === 0 ? `Play ${fi.firstShort}` : 'Now the next note',
       sub: n === 0 ? fi.sound : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going, any order. ${fi.next}`,
       body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
@@ -1937,7 +1966,7 @@ function viewBeginnerSetup() {
         left: `<button type="button" class="btn btn-ghost" data-action="setup-know">Choose my ${fi.pick} instead</button>`,
         right: L.listening || n >= 3
           ? `<button type="button" class="btn btn-primary" data-action="setup-heard-done"${n >= 3 ? '' : ' disabled'}>That’s all my notes</button>`
-          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
+          : `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play again</button>`,
       },
     });
   }
@@ -1949,7 +1978,7 @@ function viewBeginnerSetup() {
     if (!best && st.guide && notes.length >= 3) {
       const closeLinks = sameSize.map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
       return stepFrame({
-        header, count: count(3), title: `We heard ${notes.length} notes`,
+        header, stage: 3, title: `We heard ${notes.length} notes`,
         body: `
           <div class="setup-result card">
             <p class="setup-result-lead">Your ${word}</p>
@@ -1969,19 +1998,19 @@ function viewBeginnerSetup() {
     }
     if (!best) {
       return stepFrame({
-        header, count: count(3), title: `We couldn’t tell which ${fi.pick} that is`,
+        header, stage: 3, title: `We couldn’t tell which ${fi.pick} that is`,
         sub: `Try again in a quieter spot, ${fi.again}, or choose it yourself.`,
         body: `${notes.length >= 3 ? `<div class="list">${setupOwnRowHtml(st, notes.length)}</div>` : ''}${listenReportLinkHtml('Is something not right?')}`,
         bar: {
           left: `<button type="button" class="btn btn-secondary" data-action="setup-know">Choose my ${fi.pick}</button>`,
-          right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Listen again</button>`,
+          right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play again</button>`,
         },
       });
     }
     const s = best.scale;
     const close = ranked.filter(r => r.ding !== 'none' && r.scale.family !== s.family && (!st.guide || r.total === guideTotal(st.guide))).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
     return stepFrame({
-      header, count: count(3), title: `We heard ${notes.length} notes`,
+      header, stage: 3, title: `We heard ${notes.length} notes`,
       body: `
         <div class="setup-result card">
           <p class="setup-result-lead">Your ${word} is ${/^[AEIOU]/i.test(s.name) ? 'an' : 'a'}</p>
@@ -2007,13 +2036,13 @@ function viewBeginnerSetup() {
   if (st.step === 'know') {
     const roots = setupRoots(tunings, { first: fi.firstRoot });
     return stepFrame({
-      header, count: count(3), title: fi.knowTitle,
+      header, stage: 3, title: fi.knowTitle,
       sub: fi.knowSub,
       body: `
         <div class="setup-roots">
           ${roots.map((r, i) => `<button type="button" class="setup-root${i === 0 ? ' is-first' : ''}" data-action="setup-root" data-pc="${r.pc}">${escHtml(setupRootName(r.pc))}</button>`).join('')}
         </div>
-        <p class="wizard-foot">Most ${word}s are in ${escHtml(setupRootName(roots[0]?.pc ?? 2))}, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Let Oakhum listen</button>.</p>`,
+        <p class="wizard-foot">Most ${word}s are in ${escHtml(setupRootName(roots[0]?.pc ?? 2))}, so it’s first. Not sure? <button type="button" class="link-btn" data-action="setup-listen">Play it to Oakhum</button>.</p>`,
     });
   }
 
@@ -2027,7 +2056,7 @@ function viewBeginnerSetup() {
     const shown = st.showAll || fi.wind ? all : setupTopScales(all);
     const root = setupRootName(st.root);
     return stepFrame({
-      header, count: count(3), title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
+      header, stage: 3, title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
       body: `
         <div class="list">
           ${shown.map(s => uiRow({
@@ -2045,7 +2074,7 @@ function viewBeginnerSetup() {
   const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
-    header, count: count(4), title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
+    header, stage: 4, title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
     sub: chord ? (fi.wind ? `Start with this chord. Your ${word} plays one note at a time, so Oakhum shows the fingering of each note and plays them in turn.`
       : `Start with this chord. Oakhum lights its notes on your ${word}, and plays them for you.`) : '',
     body: `
@@ -2057,7 +2086,7 @@ function viewBeginnerSetup() {
       ${st.windGuide ? listenReportLinkHtml('Did Oakhum mishear a note?') : ''}
       ${fi.wind && !st.windGuide && st.windType != null && SETUP_WIND_TYPES[st.family]?.[st.windType]?.group ? `<p class="wizard-foot">Want to be sure? <button type="button" class="link-btn" data-action="setup-wind-check">Check it by playing</button>: Oakhum shows each fingering and listens.</p>` : ''}`,
     bar: {
-      left: `<button type="button" class="btn btn-secondary" data-action="setup-save">${accountOn() ? 'Save' : 'Save for next time'}</button>`,
+      left: `<button type="button" class="btn btn-secondary" data-action="setup-save">${accountOn() ? 'Save' : `Keep this ${escHtml(word)}`}</button>`,
       right: `<button type="button" class="btn btn-primary" data-action="setup-first-chord">${chord ? 'Play my first chord' : 'Start playing'}</button>`,
     },
   });
@@ -2520,21 +2549,31 @@ function wizardFrame(w, { title, sub = '', body, bar }) {
 // A step of a guided flow (the add-instrument wizard, the beginner setup):
 // app bar, optional brand hero and notice, "Step n of m", title, text, the
 // step's content and the action bar. bar = { left, right, help }.
-function stepFrame({ header, hero = false, notice = '', count = '', title, sub = '', body, bar = {} }) {
+// The beginner setup's four stages. A stage can be several screens (the
+// notes are played, heard, then matched), so the frame shows where you are
+// as dots and the stage's name, not a number that repeats.
+const SETUP_STAGES = ['Instrument', 'How', 'Your notes', 'Ready'];
+function stageDotsHtml(stage) {
+  return `<div class="wizard-count wizard-stage" role="img" aria-label="Step ${stage} of ${SETUP_STAGES.length}: ${SETUP_STAGES[stage - 1]}">
+        <span class="wizard-dots" aria-hidden="true">${SETUP_STAGES.map((_, i) => `<i${i < stage ? ' class="is-on"' : ''}></i>`).join('')}</span>
+        <span aria-hidden="true">${SETUP_STAGES[stage - 1]}</span>
+      </div>`;
+}
+function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, title, sub = '', body, bar = {} }) {
   // The quiet hero (artwork, then the logo), docs/design-system.md "Brand".
   const heroHtml = hero ? `
       <div class="brand-hero">
         <img class="brand-hero-art" src="/brand/hero-wide-800.webp" srcset="/brand/hero-wide-800.webp 800w, /brand/hero-wide.webp 1600w"
           sizes="(min-width: 640px) 640px, 100vw" width="800" height="450" alt="">
         ${brandLogo()}
-        <p class="brand-hero-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</p>
+        <p class="brand-hero-line">Chords and songs for the instrument you own.</p>
       </div>` : '';
   const hasBar = bar.left || bar.right || bar.help;
   return `${header}
     <div class="wizard">
       ${heroHtml}
       ${notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(notice)}</p>` : ''}
-      ${count ? `<div class="wizard-count">${escHtml(count)}</div>` : ''}
+      ${stage ? stageDotsHtml(stage) : count ? `<div class="wizard-count">${escHtml(count)}</div>` : ''}
       <h2 class="wizard-title">${escHtml(title)}</h2>
       ${sub ? `<p class="wizard-sub">${sub}</p>` : ''}
       ${body}
@@ -2850,7 +2889,7 @@ function chartDetectHtml(fam, d, listeningText) {
   return `
     <div class="fl-detect">
       <button type="button" class="btn btn-secondary btn-sm" data-action="wizard-${fam}-detect" aria-pressed="${d?.listening ? 'true' : 'false'}">
-        ${icon('mic')} ${d?.listening ? 'Listening…' : 'Detect with tuner'}</button>
+        ${icon('mic')} ${d?.listening ? 'Listening…' : 'Play its lowest note'}</button>
       <div class="fl-detect-status field-help" aria-live="polite">${status}</div>
     </div>`;
 }
@@ -5898,7 +5937,7 @@ function renderNotePicker() {
         <canvas class="mic-wave pick-wave" aria-hidden="true"></canvas>
         <div class="listen-live" id="listen-live">${listenLiveHtml(state.tuner.reading, P)}</div>
         <button type="button" class="btn btn-ghost btn-sm" data-action="pick-listen-stop">Stop listening</button></div>`
-    : `<button type="button" class="btn btn-primary btn-block pick-listen-btn" data-action="pick-listen">${icon('mic')} Play it · Oakhum listens</button>
+    : `<button type="button" class="btn btn-primary btn-block pick-listen-btn" data-action="pick-listen">${icon('mic')} Play the note</button>
        ${P?.error ? `<p class="field-help is-danger">${escHtml(P.error)}</p>` : ''}`;
 
   return uiSheet({
@@ -6175,7 +6214,7 @@ function viewListenDebug() {
   const slider = (key, label, min, max, step) => `
     <label class="ld-slider-row"><span>${label} <b id="ld-v-${key}">${t[key]}</b></span>
       <input type="range" class="ld-slider" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${t[key]}"></label>`;
-  return `${backAppBar('Listen debug', { fallback: 'settings' })}
+  return `${backAppBar('Microphone readings', { fallback: 'settings' })}
     <div class="settings listen-debug">
       <p class="settings-intro">For tuning detection with real instruments. The sound stays on this device unless you send a report.</p>
       <div class="row-btns">${L.on
@@ -6700,8 +6739,12 @@ const INSTALL_QUIET_MS = 30 * 24 * 3600 * 1000;
 function runningInstalled() {
   return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
+// Not before the visitor got something out of the app: it shows once a sound
+// was played in this visit, or an instrument is saved.
+let _heardSound = false;
 function installBannerHtml() {
   if (runningInstalled()) return '';
+  if (!_heardSound && !state.instruments.length) return '';
   try { if (Date.now() - Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0) < INSTALL_QUIET_MS) return ''; } catch {}
   return `
       <div class="banner install-banner">
@@ -8060,7 +8103,7 @@ function measureOpen() {
   if (referrer) props.referrer = referrer;
   for (const k of ['utm_source', 'utm_medium', 'utm_campaign']) if (q.get(k)) props[k] = q.get(k);
   logEvent('open', props);
-  onFirstSound(() => logEvent('first_play', { family: measureFamily(), seconds: Math.round((Date.now() - MEASURE_START) / 1000) }));
+  onFirstSound(() => { _heardSound = true; logEvent('first_play', { family: measureFamily(), seconds: Math.round((Date.now() - MEASURE_START) / 1000) }); });
 }
 
 const MEASURE_FEATURES = {
@@ -8121,7 +8164,10 @@ function loadPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem('hp-prefs') || '{}');
     if (typeof p.ringRotated === 'boolean') state.ringRotated = p.ringRotated;
-    if (typeof p.useFlats === 'boolean') state.useFlats = p.useFlats;
+    // Note names: the three-way setting, or the C# / D♭ switch it replaced
+    // (D♭ was a choice and stays; C# was also the default, so it becomes Auto).
+    if (['auto', 'sharps', 'flats'].includes(p.noteNames)) state.noteNames = p.noteNames;
+    else if (p.useFlats === true) state.noteNames = 'flats';
     if (typeof p.useSolfege === 'boolean') state.useSolfege = p.useSolfege;
     if (typeof p.autoplaySeconds === 'number') state.autoplaySeconds = p.autoplaySeconds;
     // The speed, or the Slow / Normal / Fast it replaced.
@@ -8161,7 +8207,8 @@ function savePrefs() {
     ...kept,
     updatedAt: new Date().toISOString(),
     ringRotated: state.ringRotated,
-    useFlats: state.useFlats,
+    noteNames: state.noteNames,
+    useFlats: state.noteNames === 'flats', // for app versions from before Auto
     useSolfege: state.useSolfege,
     autoplaySeconds: state.autoplaySeconds,
     tempo: state.tempo,
@@ -8421,7 +8468,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'showLyrics', 'closeUp', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'noteNames', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'showLyrics', 'closeUp', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -10157,7 +10204,7 @@ document.addEventListener('click', e => {
 
   // ── Settings ──────────────────────────────────────────────────────────────
   if (action === 'set-theme') { state.theme = el.dataset.value; applyTheme(); savePrefs(); render(); return; }
-  if (action === 'set-flats') { state.useFlats = el.dataset.value === 'flats'; savePrefs(); render(); return; }
+  if (action === 'set-flats') { state.noteNames = ['auto', 'sharps', 'flats'].includes(el.dataset.value) ? el.dataset.value : 'auto'; savePrefs(); render(); return; }
   if (action === 'set-solfege') { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; }
   if (action === 'tempo-set') { setTempo(parseInt(el.dataset.value, 10), { preview: true }); render(); return; }
   if (action === 'speed-open') { state.speedSheet = true; state.hpMore = false; state.oc.chordMore = false; render(); return; }
