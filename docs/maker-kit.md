@@ -8,7 +8,7 @@
 
 | Works today (checked 21 Nov 2026, makers phase 1 merged) | Not built yet *(needs: makers phases 2–5)* |
 |---|---|
-| A maker saves an instrument with a free account, exactly as built (scale, layout, bottom notes). | The maker asks for the maker role in Settings › Makers; once approved, they have a public profile and their shared instruments say "Made by <maker>". |
+| A maker saves an instrument with a free account, exactly as built (scale, layout, bottom notes). | The maker asks for the maker role in Settings › For makers and shops; once approved, they have a public profile and their shared instruments say "Made by <maker>". |
 | Share gives it a 6-character code, a link (`oakhum.com/s/<code>`) and a QR code. | The maker's own list of instruments, serial numbers, a printable QR card and sticker sheet, NFC instructions (phase 2). |
 | Anyone who opens the code sees that instrument and can play it: no app store, no sign-up. | Scan statistics per code (phase 3). |
 | Every catalogue tuning has a public page with a playable demo (`oakhum.com/instruments/<instrument>/…`) and an app link (`oakhum.com/handpan/d-kurd`). | A makers directory and maker pages on the website (phase 4); an embed for the maker's site (phase 5). |
