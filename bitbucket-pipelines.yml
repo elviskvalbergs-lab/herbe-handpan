@@ -1,6 +1,6 @@
 # The same checks as .github/workflows/ci.yml (both run scripts/ci.sh), ready
 # for when the repository moves to Bitbucket. Checked against Bitbucket's
-# documentation on 2026-11-21: see docs/moving-to-bitbucket.md, section 10.
+# documentation on 2026-11-21: see docs/moving-to-bitbucket.md, section 13.
 image: node:22
 
 definitions:
