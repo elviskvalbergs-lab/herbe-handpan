@@ -12,7 +12,7 @@
 // previous account's last sync), and nothing of the previous account is
 // written into theirs; a full device (storage quota) says so.
 import assert from 'node:assert/strict';
-import { chromium, serveApp, fakeServer, newDevice, toast, runner } from './harness.mjs';
+import { chromium, serveApp, fakeServer, newDevice, toast, runner, signInWithCode } from './harness.mjs';
 
 const app = await serveApp();
 const server = fakeServer();
@@ -25,11 +25,7 @@ const step = (name, fn) => run.step(name, fn, p);
 const local = key => p.evaluate(k => JSON.parse(localStorage.getItem(k) || '[]'), key);
 const serverRows = email => { const uid = server.users.get(email); return [...server.rows.values()].filter(r => r.owner_id === uid); };
 
-async function signIn(email) {
-  await p.fill('#save-email-input', email);
-  await p.click('[data-action="save-send-code"]');
-  await p.fill('#save-code-input', '12345678');
-}
+const signIn = email => signInWithCode(p, email);
 async function openSettings() {
   await p.goto(`${app.base}/play#settings`);
   await p.locator('[data-action="set-theme"]').first().waitFor();

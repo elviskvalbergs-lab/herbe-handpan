@@ -142,6 +142,19 @@ export async function newDevice(browser, server, name, { serviceWorkers = 'allow
   return { ctx, page, problems, name };
 }
 
+// Signs in through the save sheet (which must be open) with an emailed code.
+// The sheet re-renders when the sign-in methods arrive, and a click that
+// lands on a button being replaced is lost: so "Send code" is pressed until
+// the code field shows.
+export async function signInWithCode(page, email) {
+  for (let i = 0; ; i++) {
+    await page.fill('#save-email-input', email);
+    await page.click('[data-action="save-send-code"]');
+    try { await page.locator('#save-code-input').waitFor({ timeout: 1500 }); break; } catch (err) { if (i >= 3) throw err; }
+  }
+  await page.fill('#save-code-input', '12345678');
+}
+
 export const toast = page => page.locator('.toast.show .toast-msg');
 
 // A tiny runner: steps run in order, the first failure stops the run with

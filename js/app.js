@@ -8188,15 +8188,7 @@ function guestSave(intent) {
 function openSaveSheet(what) {
   state.saveSheet = { what, step: 'start', email: state.authEmail || '', error: '', busy: false, providers: null };
   logEvent('signup_shown', { what });
-  getAuthProviders().then(p => {
-    if (!state.saveSheet) return;
-    // The sign-in methods arrive a moment after the sheet opens: what was
-    // typed meanwhile stays (the re-render would empty the field).
-    const typed = document.getElementById('save-email-input')?.value;
-    if (typed) state.saveSheet.email = typed;
-    state.saveSheet.providers = p;
-    render();
-  });
+  getAuthProviders().then(p => { if (state.saveSheet) { state.saveSheet.providers = p; render(); } });
   render();
 }
 
@@ -8338,7 +8330,11 @@ async function handleLogin(event, session) {
     // was revoked): everything stays on the device, and Settings offers
     // "Sign in again". While a session is still stored it may come back by
     // itself (offline, a token refresh), so that is not "lost".
-    if (accountOn() && !_signingOut && !hasStoredSession()) state.sessionLost = true;
+    const lost = accountOn() && !_signingOut && !hasStoredSession();
+    // "No session" as the page loads changes nothing for a guest: no render
+    // (it would empty a field someone has started typing in).
+    if (event === 'INITIAL_SESSION' && lost === state.sessionLost) return;
+    if (lost) state.sessionLost = true;
     render();
     return;
   }

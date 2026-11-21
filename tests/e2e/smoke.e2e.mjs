@@ -65,10 +65,10 @@ try {
     await p.locator('[data-action="select-chord"]').nth(2).click();
     await pictureShown(p);
   });
-  await step('the Playlists tab opens, with Favorites and songs', first, async p => {
+  await step('the Playlists tab opens, with New playlist and songs', first, async p => {
     await p.click('[data-action="hp-playlists"]');
     await p.waitForURL(/\/playlists$/);
-    await p.locator('[data-action="open-playlist"]').first().waitFor();
+    await p.locator('[data-action="prog-new-open"]').waitFor();
     await p.locator('[data-action="song-open"]').first().waitFor();
   });
   await step('a song opens and plays', first, async p => {
@@ -78,7 +78,7 @@ try {
     await p.click('[data-action="song-play"]');
     await p.waitForTimeout(300);
     await p.click('[data-action="nav-back"]');
-    await p.locator('[data-action="open-playlist"]').first().waitFor();
+    await p.locator('[data-action="prog-new-open"]').waitFor();
   });
   await step('Settings opens from the menu and a setting changes', first, async p => {
     await p.click('[data-action="menu-open"]');
@@ -88,7 +88,7 @@ try {
     assert.equal(await p.evaluate(() => document.documentElement.dataset.theme), 'light');
     await p.locator('[data-action="open-sign-in"]').waitFor();
     await p.click('[data-action="nav-back"]');
-    await p.locator('[data-action="open-playlist"]').first().waitFor();
+    await p.locator('[data-action="prog-new-open"]').waitFor();
   });
   await first.ctx.close();
 
@@ -116,7 +116,7 @@ try {
     });
     await step(`${family}: the Playlists tab opens`, d, async p => {
       await p.locator('[data-action="hp-playlists"], [data-action="oc-tab"][data-tab="playlists"]').first().click();
-      await p.locator('[data-action="open-playlist"]').first().waitFor();
+      await p.locator('[data-action="prog-new-open"]').waitFor();
     });
     await d.ctx.close();
   }

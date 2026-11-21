@@ -10,7 +10,7 @@
 // offline (reload with no network, the Offline pill, edits syncing when
 // back), the guest offline card, and sign-out clearing the device.
 import assert from 'node:assert/strict';
-import { chromium, serveApp, fakeServer, newDevice, toast, runner } from './harness.mjs';
+import { chromium, serveApp, fakeServer, newDevice, toast, runner, signInWithCode } from './harness.mjs';
 
 const app = await serveApp();
 const BASE = app.base;
@@ -51,9 +51,7 @@ await step('the guest builds something this visit (kept in the tab only)', async
 
 await step('sign-in completes the save, carries the visit over, and turns offline on', async () => {
   await p.locator('[data-action="show-playlist-picker"]').first().click();
-  await p.fill('#save-email-input', 'a@example.com');
-  await p.click('[data-action="save-send-code"]');
-  await p.fill('#save-code-input', '12345678');
+  await signInWithCode(p, 'a@example.com');
   await toast(p).filter({ hasText: 'Saved to Favourites' }).waitFor();
   await toast(p).filter({ hasText: 'Also saved: Clay G' }).waitFor({ timeout: 6000 });
   const fav = await p.evaluate(() => JSON.parse(localStorage.getItem('hp-playlists')).find(x => x.id === 'favorites').chords.length);
@@ -72,9 +70,7 @@ await step('a second device gets everything after signing in', async () => {
   await t.goto(`${BASE}/`);
   await t.click('[data-action="open-settings"]');
   await t.click('[data-action="open-sign-in"]');
-  await t.fill('#save-email-input', 'a@example.com');
-  await t.click('[data-action="save-send-code"]');
-  await t.fill('#save-code-input', '12345678');
+  await signInWithCode(t, 'a@example.com');
   await t.waitForFunction(() => (JSON.parse(localStorage.getItem('hp-instruments') || '[]')).some(i => i.name === 'Clay G'), null, { timeout: 8000 });
   await t.waitForFunction(() => (JSON.parse(localStorage.getItem('hp-playlists') || '[]')).find(x => x.id === 'favorites')?.chords.length === 1);
 });
@@ -136,9 +132,7 @@ await step('a guest saves a visiting ocarina: after sign-in it is in My instrume
   await p.locator('.banner [data-action="shared-add"]').click();
   assert.match(await p.locator('.sheet-title').innerText(), /Save your instrument/);
   await p.screenshot({ path: process.env.SHOT ?? '/dev/null' }).catch(() => {});
-  await p.fill('#save-email-input', 'b@example.com');
-  await p.click('[data-action="save-send-code"]');
-  await p.fill('#save-code-input', '12345678');
+  await signInWithCode(p, 'b@example.com');
   await toast(p).filter({ hasText: /added to My instruments/ }).waitFor();
   const names = await p.evaluate(() => JSON.parse(localStorage.getItem('hp-instruments')).map(i => i.family));
   assert.deepEqual(names, ['ocarina']);
