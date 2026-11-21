@@ -162,3 +162,11 @@ test('lyrics: one syllable per note, read from the score with its slurs', () => 
   assert.deepEqual(sn.slice(0, 4).map(x => x?.text ?? null), ['Stil-', null, 'le', 'Nacht!']);
   assert.equal(songLyrics(SONGS.find(s => s.id === 'ode-to-joy')), null);
 });
+
+test('Latvian lyrics from the Vītols scan, in today\'s spelling, line up with the notes', () => {
+  const lv = SONGS.filter(s => s.origin === 'lv');
+  assert.ok(lv.every(s => s.lyrics), 'every Latvian song has its first verse');
+  const pv = songLyrics(SONGS.find(s => s.id === 'put-vejini'));
+  // F4 Pūt, C5 vē-, A4 ji- (slurred to G4), F4 ņi,
+  assert.deepEqual(pv.slice(0, 5).map(x => x?.text ?? null), ['Pūt,', 'vē-', 'ji-', null, 'ņi,']);
+});

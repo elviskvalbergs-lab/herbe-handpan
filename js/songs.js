@@ -18,7 +18,10 @@
 // lyrics: the first verse as the score gives it, one syllable per note
 // (rests don't count): "Twin- kle, twin- kle, …", a trailing - when the word
 // goes on, _ for a note that only carries on the syllable before (a slur).
-// Read from the same score as the melody, with its slurs; songs whose score
+// Read from the same score as the melody, with its slurs (the Latvian songs
+// from the Vītols scan, the first verse under the notes, in today's spelling:
+// ee → ie, w → v, a vowel and h → a long vowel, s → z, z → c, sch → š or ž);
+// songs whose score
 // has no lyrics, or lyrics that don't line up note for note, have none.
 // meters: when the time changes, each bar's time in order (the last one
 // holds for the rest of the song); time is then the first bar's.
@@ -97,12 +100,14 @@ export const SONGS = [
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 1",
     notes: "G4:2 G4:1 G4:1 B4:1.5 A4:0.5 G4:2 A4:2 A4:1 A4:1 C5:1.5 B4:0.5 A4:2 B4:2 B4:1 B4:1 D5:1.5 C5:0.5 B4:1 B4:1 A4:2 B4:1 C#5:1 D5:4 G4:2 G4:1 G4:1 B4:1.5 A4:0.5 G4:2 A4:2 A4:1 A4:1 C5:1.5 B4:0.5 A4:2 B4:2 B4:1 B4:1 D5:1.5 C5:0.5 B4:1 B4:1 A4:2 B4:1 C#5:1 D5:4 A4:2 A4:1 C5:1 B4:1.5 A4:0.5 G4:2 B4:2 B4:1 D5:1 C5:1.5 B4:0.5 A4:2 C5:2 C5:1 E5:1 D5:1.5 C5:0.5 B4:1 B4:1 B4:2 A4:1 C5:1 G4:4 A4:2 A4:1 C5:1 B4:1.5 A4:0.5 G4:2 B4:2 B4:1 D5:1 C5:1.5 B4:0.5 A4:2 C5:2 C5:1 E5:1 D5:1.5 C5:0.5 B4:1 B4:1 B4:2 A4:2 G4:4",
+    lyrics: "Dievs, svē- tī Lat- vi- ju, mūs' dār- go tē- vi- ju, svē- tī jel Lat- vi- ju, ak, svē- tī jel to! Dievs, svē- tī Lat- vi- ju, mūs' dār- go tē- vi- ju, svē- tī jel Lat- vi- ju, ak, svē- tī jel to! Kur lat- vju mei- tas zied, kur lat- vju dē- li dzied, laid mums tur lai- mē diet, mūs' Lat- vi- _ jā. Kur lat- vju mei- tas zied, kur lat- vju dē- li dzied, laid mums tur lai- mē diet, mūs' Lat- vi- jā.",
   },
   {
     id: "put-vejini", title: "Pūt, vējiņi", origin: "lv", key: "F major", time: "3/4",
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 51",
     notes: "F4:1 C5:2 A4:0.5 G4:0.5 F4:2 Bb4:1 D5:2 D5:1 C5:2 G4:0.5 A4:0.5 Bb4:2 C5:1 F4:2 Bb4:0.5 A4:0.5 G4:2 F4:3",
+    lyrics: "Pūt, vē- ji- _ ņi, dzen lai- vi- ņu, aiz- _ dzen ma- ni Kur- _ ze- mē.",
   },
   {
     id: "kur-tu-skriesi-vanadzini", title: "Kur tu skriesi, vanadziņi", origin: "lv", key: "F major", time: "3/4",
@@ -110,66 +115,77 @@ export const SONGS = [
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 65",
     notes: "F4:0.5 A4:0.5 C5:1.5 A4:0.5 Bb4:0.5 C5:0.5 D5:1.5 Bb4:0.5 Bb4:0.5 D5:0.5 D5:1 D5:1 D5:0.5 F5:0.5 E5:0.5 D5:0.5 C5:1.5 Bb4:0.5 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:1 G4:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:1.5 G4:0.5 F5:0.5 E5:0.5 F5:0.5 D5:0.5 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:1.5 G4:0.5 F4:2",
+    lyrics: "Kur tu skrie- si, va- na- dzi- ņi, ar tiem vas- ka spār- _ _ ni- ņie- mi? Kur tu skrie- _ si, va- _ _ na- dzi- ņi, ar _ _ tiem vas- _ _ ka spār- ni- ņiem?",
   },
   {
     id: "riga-dimd", title: "Rīga dimd", origin: "lv", key: "A major", time: "2/4",
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 63",
     notes: "A4:0.75 A4:0.25 C#5:1 A4:0.75 A4:0.25 C#5:1 A4:0.5 E5:0.5 D5:0.5 B4:0.5 A4:0.5 F#4:0.5 E4:1 C#4:0.5 E4:0.5 E4:1 D4:0.5 F#4:0.5 F#4:1 E4:0.5 E4:0.5 D5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:1 C#4:0.5 E4:0.5 E4:1 D4:0.5 F#4:0.5 F#4:1 E4:0.5 E4:0.5 D5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:1",
+    lyrics: "Rī- ga dimd! Rī- ga dimd! kas to Rī- gu dim- di- nāj'? Tra- la- la, tra- la- la, kas to Rī- gu dim- di- nāj'? Tra- la- la, tra- la- la, kas to Rī- gu dim- di- nāj'?",
   },
   {
     id: "jurin-prasa-smalku-tiklu", title: "Jūriņ’ prasa smalku tīklu", origin: "lv", key: "E major", time: "6/8",
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 57",
     notes: "E4:1 G#4:0.5 B4:1 C#5:0.5 B4:1 G#4:0.5 E4:1 E4:0.5 E4:1 E5:0.5 D#5:0.5 C#5:0.5 D#5:0.5 E5:1 C#5:0.5 B4:1.5 C#5:1 C#5:0.5 C#5:1 C#5:0.5 C#5:1 F#4:0.5 F#4:1 F#4:0.5 B4:1 B4:0.5 B4:1 A4:0.5 G#4:1 F#4:0.5 E4:1.5",
+    lyrics: "Jū- riņ' pra- sa smal- ku tī- klu, lai- viņ' bal- _ tu zē- ge- lit', jū- riņ' pra- sa smal- ku tī- klu, lai- viņ' bal- tu zē- ge- lit'!",
   },
   {
     id: "krauklitis-sez-ozola", title: "Krauklītis sēž ozolā", origin: "lv", key: "F major", time: "3/4",
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 55",
     notes: "F4:1 A4:0.5 Bb4:0.5 C5:1 D5:1 F5:0.3333 E5:0.3333 D5:0.3333 C5:1 F5:1 C5:1 C5:0.5 D5:0.5 E5:1 D5:0.3333 E5:0.3333 F5:0.3333 E5:1 F5:1 A4:1 A4:0.5 Bb4:0.5 D5:1 C5:1 G4:0.5 A4:0.5 C5:1 Bb4:1 A4:0.5 G4:0.5 A4:1 G4:1 F4:1 F5:1 A4:1 A4:0.5 Bb4:0.5 D5:1 C5:1 G4:0.5 A4:0.5 C5:1 Bb4:1 A4:0.5 G4:0.5 A4:1 G4:1 F4:1",
+    lyrics: "Krauk- lits _ sēž o- so- _ _ lā, zel- ta kok- les ro- ci- _ _ ņā. Ak tai ri- di, ak tai ri- di, zel- ta kok- les ro- ci- ņā. Ak tai ri- di, ak tai ri- di, zel- ta kok- les ro- ci- ņā.",
   },
   {
     id: "nu-ar-dievu-vidzemite", title: "Nu ar Dievu, Vidzemīte", origin: "lv", key: "A major", time: "4/4",
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 29",
     notes: "A4:1.5 A4:0.5 A4:1 A4:1 E4:1.5 E4:0.5 E4:1 G#4:1 A4:1 A4:1 A4:1 C#5:1 D5:1.5 D5:0.5 D5:2 C#5:1 C#5:1 C#5:1 C#5:1 B4:1.5 B4:0.5 B4:1 B4:1 E5:1 D5:1 C#5:1.5 B4:0.5 A4:1 G#4:1 A4:2",
+    lyrics: "Nu ar Die- vu, Vid- ze- mī- te, ne- bū- šu vairs Vid- ze- mē. Ne- ie- šu vairs sa- vā va- ļā cie- ma dur- vis vi- ri- nāt.",
   },
   {
     id: "aija-zuzu", title: "Aijā, žūžū, lāča bērns", origin: "lv", key: "G major", time: "2/4", tags: ["children"],
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 20",
     notes: "G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:0.5 B4:0.5 G4:0.5 B4:0.5 D5:1 E5:1 D5:0.5 B4:0.5 G4:1 D5:0.5 D5:0.5 C5:0.5 A4:0.5 B4:0.5 B4:0.5 G4:0.5 A4:0.5 B4:1 A4:1 G4:2 D5:0.5 D5:0.5 C5:0.5 A4:0.5 B4:0.5 B4:0.5 G4:0.5 A4:0.5 B4:1 A4:1 G4:2",
+    lyrics: "Ai- jā, žū- žū, lā- ča bēr- nis, ai- jā, žū- _ žū, pla- ka- na- mi kā- ji- ņa- mi, žū- _ žū. pla- ka- na- mi kā- ji- ņa- mi, žū- _ žū.",
   },
   {
     id: "cuci-mana-ligavina", title: "Čuči, mana līgaviņa", origin: "lv", key: "F major", time: "3/4", tags: ["children"],
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 22",
     notes: "F4:1 F4:0.5 G4:0.5 A4:0.5 F4:0.5 G4:1 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 C5:1 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:1 F4:1 C5:0.5 A4:0.5 G4:1 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 F4:1 F4:0.5 G4:0.5 A4:0.5 F4:0.5 G4:1 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 F4:1 E4:1 F4:1",
+    lyrics: "Ču- či, _ ma- na lī- ga- _ vi- ņa, uz ma- _ na- mi ro- ci- ņa- mi, ču- či, _ ma- na lī- ga- _ vi- ņa, uz ma- _ na- mi ro- ci- ņam.",
   },
   {
     id: "ej-saulite-driz-pie-dieva", title: "Ej, saulīte, drīz pie Dieva", origin: "lv", key: "A minor", time: "3/4",
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 4",
     notes: "C5:1 C5:1 A4:0.5 B4:0.5 C5:1 A4:1 B4:0.5 A4:0.5 C5:1 B4:1 A4:0.5 A4:0.5 B4:1 G4:1 A4:4 C5:1 C5:1 A4:0.5 B4:0.5 C5:1 A4:1 B4:0.5 A4:0.5 C5:1 B4:1 A4:0.5 A4:0.5 B4:1 G4:1 A4:4 C5:0.3333 B4:0.3333 A4:0.3333 E5:1 D5:1 C5:0.3333 B4:0.3333 A4:0.3333 A4:2",
+    lyrics: "Ej, sau- lī- te, drīz pie Die- va, dod man svē- tu va- ka- ru. Bār- gi kun- gi dar- bu de- va, ne- dev' svē- ta va- ka- ra. Ū! _ _ _ _ _ _ _ _",
   },
   {
     id: "kas-godiga-janu-mate", title: "Kas godīga Jāņu māte", origin: "lv", key: "E major", time: "2/4", tags: ["jani"],
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 93",
     notes: "B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G#4:0.5 A4:0.5 B4:1 G#4:2 A4:1 B4:1 G#4:2 A4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G#4:0.5 A4:0.5 B4:1 G#4:2 A4:1 B4:1 G#4:2 A4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G#4:0.5 A4:0.5 B4:1 G#4:2 A4:1 B4:1 G#4:1 G#4:2",
+    lyrics: "Kas go- dī- ga Jā- ņa mā- te, lī- go, _ lī- go, _ at- ver lo- gu gai- di- da- ma, lī- go, _ lī- go, _ at- ver lo- gu gai- di- da- ma, lī- go, _ lī- go. _",
   },
   {
     id: "se-naksim-citu-gadu", title: "Še nāksim citu gadu", origin: "lv", key: "E minor", time: "2/4", tags: ["jani"],
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 99",
     notes: "E4:0.5 F#4:0.5 G4:0.5 A4:0.5 B4:0.5 G4:0.5 F#4:0.5 G4:0.5 E4:1 B4:1 B4:0.5 C5:0.5 D5:1 A4:0.5 C5:0.5 B4:0.5 B4:0.5 A4:0.5 G4:0.5 F#4:0.5 G4:0.5 F#4:1 E4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G4:0.5 F#4:0.5 G4:0.5 F#4:1 E4:1",
+    lyrics: "Še nāk- si- mi ci- tu ga- du, lī- go, lī- _ go! še līgs- mi- ga Jā- ņa mā- te, lī- go! še līgs- mi- ga Jā- ņa mā- te, lī- go!",
   },
   {
     id: "pavadam-janu-dienu", title: "Pavadām Jāņu dienu", origin: "lv", key: "G minor", time: "2/4", tags: ["jani"],
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 100",
     notes: "G4:0.5 A4:0.5 Bb4:0.5 Bb4:0.5 C5:0.5 C5:0.5 G4:0.5 A4:0.5 Bb4:1 D5:1 C5:1 Eb5:1 D5:0.5 D5:0.5 D5:0.5 D5:0.5 C5:0.5 C5:0.5 A4:0.5 G4:0.5 Bb4:1 C5:1 Bb4:0.5 A4:0.5 G4:1",
+    lyrics: "Pa- va- da- mi Jā- ņa die- nu, lī- go, lī- go! līdz vi- ņa- mi kal- ni- ņa- mi, lī- go, lī- _ go!",
   },
   {
     id: "la-cucaracha", title: "La Cucaracha", origin: "mx", key: "F major", time: "3/4", pickup: 1,

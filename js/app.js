@@ -3099,8 +3099,8 @@ function viewSong() {
       ${after.length ? `<h2 class="list-title">Goes well after it</h2>
         <div class="list">${after.map(({ song: s, shift: sh }) => uiRow({ lead: 'music', title: s.title, meta: escHtml(songMeta(s, sh)), chevron: true, action: 'song-open', data: { id: s.id, inst: inst?.id ?? '' } })).join('')}</div>` : ''}
       <p class="pl-section-hint song-licence">${song.sourceName
-        ? `Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">${escHtml(song.sourceName)}</a>, public domain.`
-        : `The tune is traditional. Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.`}</p>
+        ? `${song.lyrics ? 'Melody and words' : 'Melody'} from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">${escHtml(song.sourceName)}</a>, public domain${song.lyrics ? '; the words in today’s spelling' : ''}.`
+        : `The tune is traditional. ${song.lyrics ? 'Melody and words' : 'Melody'} from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.`}</p>
     </div>`;
 }
 
@@ -3194,7 +3194,8 @@ function songLyricLineHtml(LY, idx) {
   let html = '';
   for (let j = from; j < to; j++) {
     const x = LY[at[j]];
-    const t = escHtml(x.text);
+    // Whole words: a syllable's hyphen only where the line stops mid-word.
+    const t = escHtml(j < to - 1 ? x.text.replace(/-$/, '') : x.text);
     if (j > from && x.word) html += ' ';
     html += j === k && at[j] <= idx ? `<mark>${t}</mark>` : t;
   }
