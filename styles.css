@@ -545,6 +545,13 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .song-play { flex: 1; }
 .song-notes { flex-wrap: wrap; gap: var(--space-1); }
 .song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
+.song-note.is-gone, .tab-name.is-gone { color: var(--warning); text-decoration: line-through; }
+.song-note.is-gone { border-color: var(--warning); background: var(--warning-soft); }
+.song-gone-text { color: var(--warning); }
+.song-gone-note { margin: 0; color: var(--warning); font-size: var(--fs-13); line-height: var(--lh-13); text-align: center; }
+.song-almost-title { margin-top: var(--space-4); }
+.tab-note.tab-note-gone { background: var(--warning-soft); color: var(--warning); border-color: var(--warning); }
+.tab-gone { color: var(--warning); font-weight: var(--fw-semibold); }
 .song-note.is-current { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .song-licence { font-size: var(--fs-13); color: var(--text-3); }
 .songs-filter { margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2); }
