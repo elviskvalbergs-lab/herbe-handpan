@@ -360,7 +360,7 @@ export function renderFingering(inst, midi, opts = {}) {
   const {
     size = 'medium', previousMidi = null, showFingers = false, showSizes = false,
     useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null, editable = false,
-    noteLabel = true,
+    noteLabel = true, closeUp = false,
   } = opts;
   const tube = inst.family === 'flute';
   const pendant = !tube && fgIsPendant(inst);
@@ -383,8 +383,32 @@ export function renderFingering(inst, midi, opts = {}) {
   const overblow = main && main.chamber.overblow?.includes(midi);
   if (noteLabel) parts.push(`<text class="fg-note" x="${FG_W / 2}" y="${noteY}">${main ? label : label + ' ✕'}${overblow ? '<tspan class="fg-overblow" dx="6">↑ blow harder</tspan>' : ''}</text>`);
 
-  return `<svg class="fingering fingering-${size}${tube ? ' is-flute' : ''}" viewBox="0 0 ${FG_W} ${Math.round(H)}" role="img"
-    aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${parts.join('')}</svg>`;
+  // Close-up (a flute, not the mini pictures): the picture cropped to its
+  // holes, so on a phone they come out about 1.7 times as big; the note's
+  // name moves to the middle of what's shown.
+  const box = closeUp && tube && size !== 'mini' ? fgCloseUpBox(parts.join(''), { label: noteLabel, size }) : null;
+  let body = parts.join('');
+  if (box) body = body.replace(/(<text class="fg-note" x=")[\d.]+(" y=")[\d.]+/, `$1${(box.x + box.w / 2).toFixed(1)}$2${box.labelY.toFixed(1)}`);
+  return `<svg class="fingering fingering-${size}${tube ? ' is-flute' : ''}${box ? ' is-closeup' : ''}" viewBox="${box ? `${box.x.toFixed(1)} ${box.y.toFixed(1)} ${box.w.toFixed(1)} ${box.h.toFixed(1)}` : `0 0 ${FG_W} ${Math.round(H)}`}" role="img"
+    aria-label="${aria.replace(/"/g, '&quot;')}" data-midi="${midi}">${body}</svg>`;
+}
+
+// The holes' box in a flute's drawing, with room for the change arrows above
+// and the finger labels below, and the note name under them (labelY).
+// Null without holes.
+export function fgCloseUpBox(svg, { label = true, size = 'medium' } = {}) {
+  const holes = [...svg.matchAll(/<circle class="fg-(?:hole|o)[^"]*" cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/g)]
+    .map(m => ({ x: +m[1], y: +m[2], r: +m[3] }));
+  if (!holes.length) return null;
+  const r = Math.max(...holes.map(h => h.r));
+  const x0 = Math.min(...holes.map(h => h.x)) - r - 16;
+  const x1 = Math.max(...holes.map(h => h.x)) + r + 16;
+  const top = Math.min(...holes.map(h => h.y));
+  const bottom = Math.max(...holes.map(h => h.y));
+  const y0 = Math.max(0, top - r - 22);
+  const labelsEnd = bottom + r + 16;
+  const labelY = labelsEnd + (size === 'large' ? 14 : 12);
+  return { x: x0, y: y0, w: x1 - x0, h: (label ? labelY + 6 : labelsEnd) - y0, labelY };
 }
 
 // One hole with its state, change mark, arrow, finger label and size.

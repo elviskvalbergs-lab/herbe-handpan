@@ -19,7 +19,8 @@ import {
   parseChordSheet, matchSheetChord, rankTranspositions, sheetCoverage, coverageBand, transposeChordSymbol,
   stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS,
 } from './chordsheet.js';
-import { findAllChords, getRelatedChords, identifyChord } from './chords.js';
+import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
+import { instrumentKey, goesWellWith } from './harmony.js';
 import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
@@ -84,6 +85,8 @@ const state = {
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
+  closeUp: true,           // flute fingerings zoomed in on the holes
+  chordsAll: false,        // Chords lists: every chord (true) or the main ones first (false)
   ocLegendSeen: false,     // the hole-state legend line has been dismissed
   handLegendSeen: false,   // the finger legend has been shown once
   layout: null,            // current Layout object
@@ -447,6 +450,7 @@ function viewSettings() {
       <div class="list">
         ${uiSwitchRow({ label: 'Finger labels in holes', help: 'R4, L1, LT inside each hole', on: state.showFingers, action: 'oc-toggle-fingers' })}
         ${uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' })}
+        ${uiSwitchRow({ label: 'Close-up of flute holes', help: 'Zoom in on the holes when a flute’s fingering is shown', on: state.closeUp, action: 'toggle-closeup' })}
         ${uiRow({ title: 'Which finger is which', action: 'oc-hand-open', chevron: true })}
         ${uiRow({ title: 'Show the diagram legend again', meta: 'The hole and finger legends show once more', action: 'reset-legends' })}
       </div>
@@ -1140,6 +1144,7 @@ function listenMatchesHtml(scales, action) {
 // if they left their email. docs/design-system.md, "Listening to real instruments".
 const listenReportUrl = () => (/(^|\.)oakhum\.com$/.test(location.hostname) ? '/api/listen-report' : 'https://oakhum.com/api/listen-report');
 const LISTEN_REPORT_MAX_BYTES = 4_000_000; // the website takes up to 4.5 MB
+const LISTEN_REPORT_PHOTO_PX = 1600;       // a photo's long side, about 300 KB as JPEG
 
 // What Oakhum heard and made of it, for the report and the PostHog event.
 function listenReportContext() {
@@ -1196,6 +1201,7 @@ function closeListenReport() {
   const R = state.listenReport;
   if (!R) return;
   R.takes?.forEach(t => URL.revokeObjectURL(t.url));
+  if (R.photo) URL.revokeObjectURL(R.photo.url);
   state.listenReport = null;
   if (R.then && state.view === 'setup' && state.setup) setupGo(R.then);
   else render();
@@ -1235,6 +1241,11 @@ function listenReportSheet() {
       ${uiField({ label: 'What was wrong?', id: 'lr-comment',
         control: `<textarea class="input" id="lr-comment" rows="3" maxlength="2000" placeholder="For example: it didn’t hear my lowest note. Mine is a C major with 8 notes.">${escHtml(R.comment)}</textarea>` })}
       ${rec}
+      ${uiField({ label: 'A photo of your instrument (if you like)', id: 'lr-photo',
+        control: R.photo
+          ? `<div class="lr-photo"><img src="${R.photo.url}" alt="Your photo"><button type="button" class="btn btn-ghost btn-sm" data-action="lr-photo-remove">${icon('x')} Remove</button></div>`
+          : `<label class="btn btn-secondary lr-photo-add">${icon('camera')} Add a photo<input type="file" accept="image/*" class="sr-only" id="lr-photo" data-action="lr-photo"></label>`,
+        help: 'It helps us see how yours is laid out: the holes, the notes, any markings.' })}
       ${uiField({ label: 'Your email (if you’d like to hear back)', id: 'lr-email',
         control: `<input class="input" id="lr-email" type="email" inputmode="email" autocomplete="email" maxlength="200" value="${escHtml(R.email)}" placeholder="you@example.com">`,
         help: 'We keep the report until it’s fixed, at most a year. <a href="/privacy" target="_blank" rel="noopener">Privacy</a>' })}
@@ -1252,16 +1263,20 @@ async function sendListenReport() {
   if (R.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(R.email)) { R.error = 'That email doesn’t look right. Leave it empty if you’d rather not hear back.'; render(); return; }
   Object.assign(R, { sending: true, error: '' });
   render();
-  const takes = R.withAudio ? (R.takes ?? []) : [];
+  // The recording that fits next to the photo, newest first.
+  let room = LISTEN_REPORT_MAX_BYTES - (R.photo?.blob.size ?? 0);
+  const takes = (R.withAudio ? (R.takes ?? []) : []).slice().reverse().filter(t => (room -= t.blob.size) >= 0).reverse();
   const meta = {
     ...R.ctx, comment: R.comment.trim(), email: R.email || null,
     takes: takes.map(t => ({ seconds: t.seconds, type: t.type })),
+    photo: !!R.photo,
     app: BUILD_HASH, host: location.host, ua: navigator.userAgent,
     screen: `${window.innerWidth}x${window.innerHeight}`, lang: navigator.language,
   };
   const form = new FormData();
   form.append('meta', JSON.stringify(meta));
   takes.forEach((t, i) => form.append('audio', t.blob, `take-${i + 1}.${/mp4/.test(t.type) ? 'm4a' : /ogg/.test(t.type) ? 'ogg' : 'webm'}`));
+  if (R.photo) form.append('photo', R.photo.blob, 'instrument.jpg');
   try {
     const res = await fetch(listenReportUrl(), { method: 'POST', body: form });
     const out = await res.json().catch(() => ({}));
@@ -1280,7 +1295,32 @@ function listenReportAction(action) {
   if (action === 'lr-close') { if (!state.listenReport.sent) listenCheckEvent('skipped', state.listenReport.ctx); closeListenReport(); return true; }
   if (action === 'lr-audio') { listenReportKeepFields(); state.listenReport.withAudio = !state.listenReport.withAudio; render(); return true; }
   if (action === 'lr-send') { sendListenReport(); return true; }
+  if (action === 'lr-photo-remove') {
+    listenReportKeepFields();
+    const R = state.listenReport;
+    if (R.photo) URL.revokeObjectURL(R.photo.url);
+    R.photo = null;
+    render();
+    return true;
+  }
   return false;
+}
+
+// A photo picked for the report: shrunk to LISTEN_REPORT_PHOTO_PX as a JPEG.
+async function listenReportPhoto(file) {
+  const R = state.listenReport;
+  if (!R || !file) return;
+  listenReportKeepFields();
+  try {
+    const img = await readImageFile(file, LISTEN_REPORT_PHOTO_PX);
+    const blob = await (await fetch(img.src)).blob();
+    if (state.listenReport !== R) return;
+    if (R.photo) URL.revokeObjectURL(R.photo.url);
+    R.photo = { blob, url: URL.createObjectURL(blob) };
+  } catch {
+    showToast('That photo couldn’t be read');
+  }
+  render();
 }
 
 // The line under a result that opens the report sheet.
@@ -1464,7 +1504,7 @@ function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'ha
     if (scale?.chartId && highlight.length) {
       const inst = instrumentFromChart(scale.chartId, scale.keyId);
       const midis = highlight.map(noteToMidi);
-      return `<div class="setup-wind setup-wind-chord">${midis.map((m, i) => `<div class="setup-wind-step"><span class="setup-wind-step-n">${i + 1}</span>${renderFingering(inst, m, { size: 'medium', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: midis[i - 1] ?? null })}</div>`).join('')}</div>`;
+      return `<div class="setup-wind setup-wind-chord">${midis.map((m, i) => `<div class="setup-wind-step"><span class="setup-wind-step-n">${i + 1}</span>${renderFingering(inst, m, { size: 'medium', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: midis[i - 1] ?? null, closeUp: state.closeUp })}</div>`).join('')}</div>`;
     }
     const tile = SETUP_TILES.find(t => t.family === family);
     // Heard notes, or the notes to play (a chord); a whole chart is its range.
@@ -1617,6 +1657,33 @@ const SETUP_WIND_TYPES = {
   ],
 };
 const SETUP_WIND_STEPS = 7;
+// The keys a type comes in, for "Do you know its key?": one entry per key
+// note, the common ones first ({ root, variants: [{ chartId, keyId, name }] }),
+// each with its sizes (a low, a usual and a high flute), the usual size
+// first. A chart for that very key (a Native American flute in A) before the
+// any-key one.
+const SETUP_WIND_COMMON = { flute: ['A', 'G', 'F#', 'E', 'D', 'C'], ocarina: ['C', 'G', 'F'] };
+function setupWindKeys(group) {
+  const byRoot = new Map();
+  const family = getChart(group[0])?.family;
+  group.forEach((id, order) => {
+    const chart = getChart(id);
+    if (!chart) return;
+    const usual = noteToMidi(chart.keys.find(k => k.id === chartDefaultKey(chart)).lowest);
+    for (const k of chart.keys) {
+      const root = NOTE_NAMES[notePC(`${k.root ?? k.lowest.replace(/-?\d+$/, '')}4`)];
+      const list = byRoot.get(root) ?? [];
+      if (list.some(v => v.lowest === k.lowest)) continue;
+      list.push({ chartId: id, keyId: k.id, name: k.name, lowest: k.lowest, dist: Math.abs(noteToMidi(k.lowest) - usual), order });
+      byRoot.set(root, list);
+    }
+  });
+  const common = SETUP_WIND_COMMON[family] ?? [];
+  const rank = r => { const i = common.indexOf(r); return i < 0 ? 100 + NOTE_NAMES.indexOf(r) : i; };
+  return [...byRoot.entries()]
+    .map(([root, variants]) => ({ root, common: common.includes(root), variants: variants.sort((a, b) => a.dist - b.dist || a.order - b.order) }))
+    .sort((a, b) => rank(a.root) - rank(b.root));
+}
 function newWindGuide(group) {
   return { group, chartId: group[0], keyId: null, offset: 0, seq: [], idx: 0, msg: '', tone: '' };
 }
@@ -1638,10 +1705,15 @@ function windGuideInst(g) {
 }
 function windNoteName(m) { return displayNote(midiToNoteName(m), state.useFlats, state.useSolfege); }
 // A steady note during the guided round.
+// A wind instrument blown softly, or tuned to A = 432, sounds a little flat
+// (a Native American flute easily a quarter tone): every note after the
+// lowest is taken relative to how the lowest one sounded (g.cents), and
+// counts when it is within two thirds of a semitone of the note expected.
+const SETUP_WIND_TOLERANCE = 0.67;
 function setupWindOnNote(midi) {
   const st = state.setup;
   const g = st.windGuide;
-  const m = Math.round(midi);
+  const m = g.idx === 0 ? Math.round(midi) : Math.round(midi - (g.cents ?? 0));
   if (g.idx === 0) {
     // The lowest note: which chart of the type, and its key.
     for (const id of g.group) {
@@ -1656,7 +1728,7 @@ function setupWindOnNote(midi) {
       const steps = id.startsWith('naf') ? [0, 3, 5, 7, 10] : [0, 2, 4, 5, 7, 9, 11];
       const inScale = notes.filter(n => steps.includes((((n - root) % 12) + 12) % 12));
       const seq = (inScale[0] === notes[0] ? inScale : [notes[0], ...inScale]).slice(0, SETUP_WIND_STEPS);
-      Object.assign(g, { chartId: id, keyId: found.key.id, offset: found.offset, seq, idx: 1,
+      Object.assign(g, { chartId: id, keyId: found.key.id, offset: found.offset, seq, idx: 1, cents: midi - m,
         msg: (t => `Lowest note ${windNoteName(m)} ✓: ${/^[AEIOU]/i.test(t) ? 'an' : 'a'} ${t}`)(linkTitle(parseLink(linkFor({ chartId: id, keyId: found.key.id })))), tone: 'ok' });
       state.listen.notes = [m];
       render();
@@ -1667,7 +1739,7 @@ function setupWindOnNote(midi) {
     return;
   }
   const want = g.seq[g.idx] + g.offset;
-  if (m === want) {
+  if (Math.abs(midi - (g.cents ?? 0) - want) <= SETUP_WIND_TOLERANCE) {
     g.idx++;
     state.listen.notes = g.seq.slice(0, g.idx).map(x => x + g.offset);
     if (g.idx >= g.seq.length) {
@@ -1764,9 +1836,33 @@ function viewBeginnerSetup() {
 
   if (st.step === 'windtype') {
     return stepFrame({
-      header, count: count(3), title: `Which ${word} do you have?`, sub: 'Then Oakhum shows each fingering to play and listens.',
+      header, count: count(2), title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or let it listen.',
       body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : t.hint ? `${t.hint} · set up note by note with the tuner` : 'Set up note by note with the tuner'), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
       bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · just listen</button>' },
+    });
+  }
+
+  if (st.step === 'windkey') {
+    const t = SETUP_WIND_TYPES[st.family]?.[st.windType];
+    const keys = t?.group ? setupWindKeys(t.group) : [];
+    const picked = st.windRoot ? keys.find(k => k.root === st.windRoot) : null;
+    const rn = r => escHtml(displayNote(r, uf, us));
+    return stepFrame({
+      header, count: count(3), title: 'Do you know its key?',
+      sub: `It’s usually written on the ${escHtml(word)} or its box. ${st.family === 'flute' ? 'A, G and F♯ are the most common.' : 'C is the most common.'}`,
+      body: `
+        <div class="setup-roots setup-wind-roots">
+          ${keys.map(k => `<button type="button" class="setup-root${picked === k ? ' is-first' : ''}" data-action="setup-wind-root" data-root="${escHtml(k.root)}" aria-pressed="${picked === k ? 'true' : 'false'}">${rn(k.root)}</button>`).join('')}
+        </div>
+        ${picked ? `<h2 class="list-title">Which ${rn(picked.root)} ${escHtml(word)}?</h2>
+          <div class="list">${picked.variants.map((v, i) => uiRow({
+            title: v.name, meta: i === 0 ? 'The usual size' : '', chevron: true,
+            action: 'setup-wind-key', data: { chart: v.chartId, key: v.keyId },
+          })).join('')}</div>` : ''}
+        <p class="wizard-foot">Or <button type="button" class="link-btn" data-action="setup-listen-free">play it my own way</button>: any notes, any order, and Oakhum works it out.</p>`,
+      bar: {
+        right: `<button type="button" class="btn btn-primary" data-action="setup-wind-listen">${icon('mic')} I don’t know: listen</button>`,
+      },
     });
   }
 
@@ -1783,9 +1879,10 @@ function viewBeginnerSetup() {
     return stepFrame({
       header, count: count(3),
       title: g.idx === 0 ? 'Cover every hole and blow gently' : `Now play ${windNoteName(want + g.offset)}`,
-      sub: g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.',
+      sub: (g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.')
+        + (g.chartId.startsWith('naf6') ? ' On a 6-hole Native American flute the third hole from the top stays closed for this whole scale.' : ''),
       body: `${steps}
-        <div class="setup-wind setup-wind-finger">${renderFingering(inst, want, { size: 'large', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: prev })}</div>
+        <div class="setup-wind setup-wind-finger">${renderFingering(inst, want, { size: 'large', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: prev, closeUp: state.closeUp })}</div>
         ${g.msg ? `<p class="setup-guide-msg is-${g.tone}" aria-live="polite">${escHtml(g.msg)}</p>` : ''}
         ${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
       bar: {
@@ -1939,7 +2036,7 @@ function viewBeginnerSetup() {
   // done
   const s = setupFindTuning(st, st.scaleId);
   if (!s) { st.step = 'what'; return viewBeginnerSetup(); }
-  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId ? 'maj' : 'min' });
+  const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
     header, count: count(4), title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
@@ -1951,7 +2048,8 @@ function viewBeginnerSetup() {
         <p class="setup-result-notes">${chord.notes.map(x => escHtml(nn(x))).join(' · ')}</p>
         ${setupPanHtml({ scale: s, highlight: chord.notes, family: st.family })}
       </div>` : ''}
-      ${st.windGuide ? listenReportLinkHtml('Did Oakhum mishear a note?') : ''}`,
+      ${st.windGuide ? listenReportLinkHtml('Did Oakhum mishear a note?') : ''}
+      ${fi.wind && !st.windGuide && st.windType != null && SETUP_WIND_TYPES[st.family]?.[st.windType]?.group ? `<p class="wizard-foot">Want to be sure? <button type="button" class="link-btn" data-action="setup-wind-check">Check it by playing</button>: Oakhum shows each fingering and listens.</p>` : ''}`,
     bar: {
       left: `<button type="button" class="btn btn-secondary" data-action="setup-save">${accountOn() ? 'Save' : 'Save for next time'}</button>`,
       right: `<button type="button" class="btn btn-primary" data-action="setup-first-chord">${chord ? 'Play my first chord' : 'Start playing'}</button>`,
@@ -1983,6 +2081,8 @@ function setupAction(action, el) {
   if (action === 'setup-family') {
     const fam = el.dataset.family;
     logEvent('setup', { step: 'family', family: fam });
+    // An ocarina or flute: which type first, then its key (setupWindKeys).
+    if (SETUP_WIND_TYPES[fam]) { setupGo('windtype', { family: fam, windType: null, windRoot: null }); return true; }
     if (isLayoutFamily(fam) || SETUP_WIND_WORDS[fam]) { setupGo('how', { family: fam }); return true; }
     return true;
   }
@@ -2034,7 +2134,38 @@ function setupAction(action, el) {
     const t = SETUP_WIND_TYPES[st.family]?.[parseInt(el.dataset.i, 10)];
     if (!t) return true;
     if (!t.group) { el.dataset.holes = String(t.holes); return setupAction('setup-own-wind', el); }
-    st.windGuide = newWindGuide(t.group);
+    // Do you know its key? One key only (a tin whistle in D): it's that.
+    const keys = setupWindKeys(t.group);
+    if (keys.length === 1 && keys[0].variants.length === 1) {
+      const v = keys[0].variants[0];
+      setupGo('done', { windType: parseInt(el.dataset.i, 10), scaleId: `chart:${v.chartId}/${v.keyId}`, windGuide: null });
+      return true;
+    }
+    setupGo('windkey', { windType: parseInt(el.dataset.i, 10), windRoot: null });
+    return true;
+  }
+  // Its key, known: a root, then (when it comes in more sizes) which one.
+  if (action === 'setup-wind-root') {
+    const t = SETUP_WIND_TYPES[st.family]?.[st.windType];
+    const k = t && setupWindKeys(t.group).find(x => x.root === el.dataset.root);
+    if (!k) return true;
+    if (k.variants.length === 1) return setupAction('setup-wind-key', { dataset: { chart: k.variants[0].chartId, key: k.variants[0].keyId } });
+    st.windRoot = k.root;
+    render();
+    return true;
+  }
+  if (action === 'setup-wind-key') {
+    logEvent('setup', { step: 'scale', how: 'knew-key' });
+    setupGo('done', { scaleId: `chart:${el.dataset.chart}/${el.dataset.key}`, windGuide: null });
+    return true;
+  }
+  // Not known: Oakhum listens to the lowest note (and then checks the scale).
+  if (action === 'setup-wind-listen' || action === 'setup-wind-check') {
+    const t = SETUP_WIND_TYPES[st.family]?.[st.windType];
+    if (!t?.group) return true;
+    // Checking a key already chosen: only its chart.
+    const chartId = action === 'setup-wind-check' ? /^chart:([^/]+)\//.exec(st.scaleId ?? '')?.[1] : null;
+    st.windGuide = newWindGuide(chartId ? [chartId] : t.group);
     st.history.push(st.step); st.step = 'listen';
     stopListen(); state.listen = null; startListen();
     return true;
@@ -2145,7 +2276,7 @@ function setupAction(action, el) {
   if (action === 'setup-first-chord' || action === 'setup-save') {
     const s = setupFindTuning(st, st.scaleId);
     if (!s) return true;
-    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId ? 'maj' : 'min' });
+    const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
     if (s.chartId) {
       // An ocarina or flute: it opens on its Chords tab, the first chord
       // open with its fingerings, and plays it one note at a time.
@@ -3102,11 +3233,14 @@ function ocChordModel(inst) {
   const layout = ocarinaToLayout(inst, pcs);
   const chords = layout.top.ding ? findAllChords(layout) : [];
   const counts = new Set(oc.counts ?? []);
-  const items = chords
+  const listed = chords
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
     .filter(c => !counts.size || counts.has(chordCountKey(c.noteCount)))
     .filter(c => !oc.root || oc.root === 'All' || notePC(c.rootNote) === NOTE_NAMES.indexOf(oc.root))
-    .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount)
+    .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount);
+  const main = chordsMainOn(listed, oc.category !== 'All' || counts.size > 0 || (oc.root && oc.root !== 'All'));
+  const all = listed.length;
+  const items = (main ? mainChordsInKey(listed, notePC(layout.top.ding), layoutPitchClasses(layout)) : listed)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
   const sourceId = oc.scaleFilter !== 'All' ? oc.scaleFilter : inst.scaleId;
   const source = findTuning(sourceId);
@@ -3116,7 +3250,7 @@ function ocChordModel(inst) {
     .filter(c => oc.category === 'All' || c.type.category === oc.category)
     .map(c => ({ chord: c, fit: fitChordToInstrument(inst, c.notes) }))
     .filter(x => x.fit.missing.length > 0);
-  return { chords, items, missing, source };
+  return { chords, items, missing, source, main, all };
 }
 
 // The moves line (§5.14): "Lift R3 and R2", with "lift …" and "cover …" in
@@ -3221,7 +3355,7 @@ function viewOcarinaChords(inst) {
   const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0);
   const listHead = `
     ${chordFilterRowHtml({ open: 'oc-filters-open', count: nFilters, roots: chordRootsOf(model.chords), root: oc.root ?? 'All', rootAction: 'oc-filter-root' })}
-    <div class="hp-count">${model.items.length} chord${model.items.length !== 1 ? 's' : ''}</div>`;
+    ${chordCountLineHtml({ shown: model.items.length, all: model.all, main: model.main })}`;
   const stage = oc.listen ? listenOcStageParts(inst)
     : oc.identify ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
@@ -3280,7 +3414,7 @@ function ocChordStageParts(inst, a) {
   const nn = m => displayNote(midiToNoteName(m), uf, us);
   const key = escHtml(a.key);
   const sel = Math.min(state.oc.chordStep?.[a.key] ?? 0, parts.arp.length - 1);
-  const opts = { useFlats: uf, useSolfege: us, size: 'medium', showFingers: true, noteLabel: false };
+  const opts = { useFlats: uf, useSolfege: us, size: 'medium', showFingers: true, noteLabel: false, closeUp: state.closeUp };
   const picture = `
       <div class="oc-stage-fg">
         ${parts.arp.map((m, i) => `
@@ -3300,6 +3434,7 @@ function ocChordStageParts(inst, a) {
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
     below: `
+        ${goesWithLineHtml()}
         <div class="oc-player-notes" role="group" aria-label="Notes of the chord, in playing order">
           ${parts.arp.map((m, i) => `
             <button type="button" class="oc-pnote${i === sel ? ' is-current' : ''}" data-action="oc-step" data-key="${key}" data-i="${i}" data-midi="${m}"
@@ -3412,7 +3547,7 @@ function viewOcarinaPractice(inst) {
   const noteNo = idx - steps.indexOf(ofChord[0]) + 1;
   const uf = state.useFlats, us = state.useSolfege;
   const nn = m => displayNote(midiToNoteName(m), uf, us);
-  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes };
+  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes, closeUp: state.closeUp };
   const moves = fingeringMoves(inst, cur.midi, next.midi);
   const nextEn = entries.find(c => c.id === next.entryId);
   const progress = Math.round(((idx + 1) / steps.length) * 100);
@@ -3490,7 +3625,7 @@ function viewInstrument() {
   if (!midis.includes(oc.selected)) { oc.selected = midis[0]; oc.previous = null; }
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const inScale = m => !pcs || pcs.has(((m % 12) + 12) % 12);
-  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes };
+  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes, closeUp: state.closeUp };
   const moves = oc.previous != null && oc.previous !== oc.selected ? fingeringMoves(inst, oc.previous, oc.selected) : null;
 
   return `${ocHeader(inst, 'notes')}
@@ -3526,7 +3661,7 @@ function viewInstrument() {
         <div class="fg-grid">
           ${midis.map(m => `
             <button type="button" class="fg-cell${inScale(m) ? '' : ' is-dim'}" aria-pressed="${m === oc.selected ? 'true' : 'false'}" data-action="oc-select-note" data-midi="${m}">
-              ${renderFingering(inst, m, { ...opts, size: 'medium' })}
+              ${renderFingering(inst, m, { ...opts, size: 'medium', closeUp: false })}
             </button>`).join('')}
         </div>
         <p class="oc-count">${escHtml(instrumentStatus(inst))}</p>
@@ -5512,7 +5647,10 @@ function hpFilteredChords() {
       return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
     });
   }
-  return { filtered, roots, layoutId };
+  const narrowed = playlistChordKeys !== null || chordFilter.category !== 'All' || chordFilter.root !== 'All' || state.chordCountSet.size > 0;
+  const main = chordsMainOn(filtered, narrowed) && !!layout.top.ding;
+  const all = filtered.length;
+  return { filtered: main ? mainChordsInKey(filtered, notePC(layout.top.ding), layoutPitchClasses(layout)) : filtered, roots, layoutId, main, all };
 }
 
 // The playlist entry the selected chord was opened from, and whether its
@@ -5834,6 +5972,110 @@ function speedSheet() {
   });
 }
 
+// ── Goes well with (js/harmony.js) ─────────────────────────────────────────
+// On every instrument's chord card: the chords that usually come next in the
+// instrument's key (tap one to see it), and a sheet of well-known
+// progressions with this chord, each to hear and to save as a progression.
+
+// The chord on show, the instrument's chords and its key, and how a chord
+// is picked on this screen.
+function goesWithContext() {
+  if (state.view === 'instrument') {
+    const inst = currentInstrument();
+    if (!inst || state.oc.tab !== 'chords') return null;
+    const model = ocChordModel(inst);
+    const chord = model.chords.find(c => c.id === state.oc.expanded);
+    const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
+    const layout = ocarinaToLayout(inst, pcs);
+    if (!chord || !layout.top.ding) return null;
+    return { chord, chords: model.chords, layout, pick: c => ({ action: 'oc-chord-select', data: { key: c.id } }) };
+  }
+  if (state.view !== 'chords' || !state.selectedChord || !state.layout?.top.ding) return null;
+  return { chord: state.selectedChord, chords: state.chords, layout: state.layout, pick: c => ({ action: 'select-chord', data: { id: c.id } }) };
+}
+function goesWithFor(ctx) {
+  const key = instrumentKey(layoutPitchClasses(ctx.layout), notePC(ctx.layout.top.ding));
+  return { key, g: goesWellWith(ctx.chord, ctx.chords, key, { progressions: 4 }) };
+}
+function gwChordName(c) {
+  const q = c.type.id === 'min' ? 'm' : c.type.id === 'dim' ? '°' : c.type.id === 'maj' ? '' : ` ${c.type.name}`;
+  return `${displayNote(c.rootName, state.useFlats, state.useSolfege)}${q}`;
+}
+
+// The line on the card: "Goes well with  [Gm] [B♭] [C]  Progressions".
+function goesWithLineHtml() {
+  const ctx = goesWithContext();
+  if (!ctx) return '';
+  const { g } = goesWithFor(ctx);
+  if (!g || (!g.next.length && !g.progressions.length)) return '';
+  const chips = g.next.slice(0, 4).map(c => {
+    const p = ctx.pick(c);
+    return `<button type="button" class="chip gw-chip" data-action="${p.action}"${uiData(p.data)}>${escHtml(gwChordName(c))}</button>`;
+  }).join('');
+  return `<div class="gw-line">
+      <div class="gw-head">
+        <span class="gw-label">Goes well with</span>
+        ${g.progressions.length ? `<button type="button" class="link-btn gw-more" data-action="gw-open">Progressions ${icon('chevron-right')}</button>` : ''}
+      </div>
+      <div class="gw-chips">${chips}</div>
+    </div>`;
+}
+
+// The sheet: the progressions with this chord, each with ▶ and Save.
+function goesWithSheet() {
+  const ctx = goesWithContext();
+  const res = ctx && goesWithFor(ctx);
+  if (!res?.g) { state.goesWith = null; return ''; }
+  const { key, g } = res;
+  const keyName = `${displayNote(NOTE_NAMES[key.tonic], state.useFlats, state.useSolfege)} ${key.mode}`;
+  const rows = g.progressions.map((p, i) => uiRow({
+    title: p.name, titleHtml: false,
+    meta: p.chords.map((c, j) => (j === p.at ? `<strong>${escHtml(gwChordName(c))}</strong>` : escHtml(gwChordName(c)))).join(' – '),
+    meta2: escHtml(p.degrees.join(' – ')),
+    trail: `${uiIconBtn('play', `Play ${p.name}`, { action: 'gw-play', data: { i } })}
+      <button type="button" class="btn btn-secondary btn-sm" data-action="gw-save" data-i="${i}">Save</button>`,
+  })).join('');
+  return uiSheet({
+    key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
+    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? (currentInstrument()?.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a progression.</p>
+      <div class="list gw-list">${rows}</div>`,
+  });
+}
+
+// Plays a progression: each chord's notes one after another, as one-note
+// instruments play chords.
+function playGoesWith(chords) {
+  initAudio();
+  const seq = [];
+  for (const c of chords) {
+    const root = c.notes.find(n => notePC(n) === notePC(c.rootNote)) ?? c.notes[0];
+    seq.push(...arpeggioOrder(c.notes, root).map(midiToNoteName));
+  }
+  playSequence(seq, () => {}, 0.28);
+}
+
+function goesWithAction(action, el) {
+  if (action === 'gw-open') { state.goesWith = true; render(); return true; }
+  if (!state.goesWith) return false;
+  if (action === 'gw-close') { state.goesWith = null; render(); return true; }
+  const ctx = goesWithContext();
+  const p = ctx && goesWithFor(ctx).g?.progressions[parseInt(el.dataset.i, 10)];
+  if (action === 'gw-play') { if (p) playGoesWith(p.chords); return true; }
+  if (action === 'gw-save') {
+    if (!p) return true;
+    const steps = p.chords.map(c => newProgressionStep(playlistEntryFor(c, `gw-${c.id}`)));
+    const name = `${p.name}: ${p.chords.map(gwChordName).join(' ')}`;
+    const id = addProgression(name, steps);
+    state.progressions = getProgressions();
+    state.goesWith = null;
+    logEvent('feature', { name: 'goes-with-save', family: measureFamily() });
+    showToast(`Saved "${name}"`, { action: { label: 'Open', run: () => openProgression(id) } });
+    render();
+    return true;
+  }
+  return false;
+}
+
 // The selected chord's card: title, meta lines ([html, extra class]), the
 // actions (♡, ▶ Chord, ⋯), then anything the instrument adds below.
 function chordCardHtml({ title, metas = [], actions, below = '' }) {
@@ -5876,6 +6118,23 @@ function chordFilterRowHtml({ open, count, roots, root, rootAction }) {
     </div>`;
 }
 
+// Main chords (chords.js mainChordsInKey): every Chords list shows the plain
+// major and minor chords first, from the instrument's home note up, and the
+// rest behind "Show all". Not while another filter, a root or a playlist
+// narrows the list, and not when the instrument has no main chords at all.
+function chordsMainOn(chords, narrowed) {
+  return !state.chordsAll && !narrowed && chords.some(c => c.type.id === 'maj' || c.type.id === 'min');
+}
+function layoutPitchClasses(layout) { return new Set(getAllNotes(layout).map(notePC)); }
+// The count under the filters, with the switch between main chords and all.
+function chordCountLineHtml({ shown, all, main }) {
+  const n = (k, w) => `${k} ${w}${k !== 1 ? 's' : ''}`;
+  const sw = main
+    ? `<button type="button" class="link-btn" data-action="chords-scope">Show all ${all}</button>`
+    : all > shown || !state.chordsAll ? '' : `<button type="button" class="link-btn" data-action="chords-scope">Main chords only</button>`;
+  return `<div class="hp-count">${main ? n(shown, 'main chord') : n(shown, 'chord')}${sw ? ` · ${sw}` : ''}</div>`;
+}
+
 // Root chips: All, then the roots the chords have, in pitch order.
 function chordRootsOf(chords) {
   const used = new Set(chords.map(c => notePC(c.rootNote)));
@@ -5906,7 +6165,7 @@ function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
   const uf = state.useFlats;
   const us = state.useSolfege;
-  const { filtered, roots, layoutId } = hpFilteredChords();
+  const { filtered, roots, layoutId, main, all } = hpFilteredChords();
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
@@ -5947,7 +6206,7 @@ function viewChords() {
           ${speedBtnHtml()}
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
           ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}`,
-    below: `<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
+    below: `${goesWithLineHtml()}<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
       <span class="hp-card-hint">Tap a chord to see it on the ${layoutFamilyInfo(layoutInstrument(state.layout)).word}</span>
@@ -5977,7 +6236,7 @@ function viewChords() {
   const browseHead = `
     ${nowPlaying}
     ${chordFilterRowHtml({ open: 'hp-filters-open', count: nFilters, roots, root: chordFilter.root, rootAction: 'filter-root' })}
-    <div class="hp-count">${filtered.length} chord${filtered.length !== 1 ? 's' : ''}</div>`;
+    ${chordCountLineHtml({ shown: filtered.length, all, main })}`;
 
   const rows = filtered.length === 0
     ? uiEmpty({
@@ -6135,6 +6394,7 @@ function installHelpSheet() {
 function sheetHtml() {
   if (state.speedSheet) return speedSheet();
   if (state.listenReport) return listenReportSheet();
+  if (state.goesWith) return goesWithSheet();
   if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
   if (state.accountConfirm) return accountConfirmSheet();
@@ -7482,6 +7742,8 @@ function loadPrefs() {
     else if (p.playbackSpeed === 'fast') state.tempo = 140;
     if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
+    if (typeof p.closeUp === 'boolean') state.closeUp = p.closeUp;
+    if (typeof p.chordsAll === 'boolean') state.chordsAll = p.chordsAll;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
     if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
@@ -7516,6 +7778,8 @@ function savePrefs() {
     tempo: state.tempo,
     showFingers: state.showFingers,
     showSizes: state.showSizes,
+    closeUp: state.closeUp,
+    chordsAll: state.chordsAll,
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
     theme: state.theme,
@@ -7764,7 +8028,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'closeUp', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -8328,6 +8592,7 @@ document.addEventListener('click', e => {
   if (action === 'add-instrument') { setupAction('setup-open', el); return; }
   if (songAction(action, el)) return;
   if (listenReportAction(action)) return;
+  if (goesWithAction(action, el)) return;
   if (setupAction(action, el)) return;
 
 
@@ -8366,6 +8631,7 @@ document.addEventListener('click', e => {
     savePrefs(); render(); return;
   }
   if (action === 'oc-toggle-sizes') { state.showSizes = !state.showSizes; savePrefs(); render(); return; }
+  if (action === 'toggle-closeup') { state.closeUp = !state.closeUp; savePrefs(); render(); return; }
   if (action === 'oc-legend-dismiss') { state.ocLegendSeen = true; savePrefs(); render(); return; }
   if (action === 'oc-hand-open') { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; }
   if (action === 'oc-hand-close') { state.oc.handLegend = false; render(); return; }
@@ -9534,6 +9800,7 @@ document.addEventListener('click', e => {
   }
 
   // ── Pan rotation ──────────────────────────────────────────────────────────
+  if (action === 'chords-scope') { state.chordsAll = !state.chordsAll; savePrefs(); render(); return; }
   if (action === 'ed-arrange') { state.edArrange = !edArranging(); render(); return; }
   if (action === 'ed-arrange-reset') { delete state.layout.pos; render(); return; }
   if (action === 'toggle-rotation') {
@@ -9948,6 +10215,7 @@ document.addEventListener('change', e => {
     }).catch(() => showToast('That photo couldn\'t be read'));
     return;
   }
+  if (action === 'lr-photo') { listenReportPhoto(el.files?.[0]); return; }
   if (action === 'cs-target' && state.chordSheet) { state.chordSheet.target = el.value; return; }
   if (action === 'oc-scale-filter') { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); }
   if (action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')

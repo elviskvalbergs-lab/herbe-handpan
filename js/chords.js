@@ -105,3 +105,27 @@ export function getRelatedChords(chord, allChords) {
 
   return { sameType, sharedNotes };
 }
+
+// ── Main chords ───────────────────────────────────────────────────────────────
+// The plain major and minor chords (triads): most songs are made mostly of
+// them. The Chords screens show these first ("main chords"), everything else
+// (7ths, 6ths, sus, add9, 9ths, diminished, augmented, intervals) behind
+// "Show all".
+export const MAIN_CHORD_TYPES = ['maj', 'min'];
+export function isMainChord(chord) { return MAIN_CHORD_TYPES.includes(chord.type.id); }
+
+// Main chords in the instrument's own order: the chord on its home note (a
+// handpan's ding, an ocarina's or whistle's key note) first, then up the
+// scale from it; on the same root, the fuller voicing first. tonic: pitch
+// class 0–11. An instrument that plays every semitone (a 12-hole ocarina, a
+// whistle with half-holing: pcs, its pitch classes, more than 7) would have
+// all 24; its main chords are those of the major key on its home note.
+const MAJOR_KEY = [0, 2, 4, 5, 7, 9, 11];
+export function mainChordsInKey(chords, tonic, pcs = null) {
+  const pc = c => notePC(c.rootNote);
+  const step = c => (pc(c) - tonic + 12) % 12;
+  const key = pcs && pcs.size > 7 ? new Set(MAJOR_KEY.map(s => (tonic + s) % 12)) : null;
+  return chords.filter(isMainChord)
+    .filter(c => !key || c.notes.every(n => key.has(notePC(n))))
+    .sort((a, b) => step(a) - step(b) || b.noteCount - a.noteCount || MAIN_CHORD_TYPES.indexOf(a.type.id) - MAIN_CHORD_TYPES.indexOf(b.type.id));
+}
