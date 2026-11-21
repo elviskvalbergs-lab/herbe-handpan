@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songsForFilter, SONG_COLLECTION_ORIGINS, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
+import { songFit, songsInOrder, SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songsForFilter, SONG_COLLECTION_ORIGINS, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { kalimbaNumbers } from './kalimbas.js';
@@ -2998,7 +2998,15 @@ function songHave(inst) {
 function songEasy(inst) {
   return inst ? new Set(playableMidis(inst).filter(m => !fingeringFor(inst, m)?.states?.includes('h'))) : null;
 }
-function songsFor(inst, songs) { return playableSongs(songHave(inst), songs, { easy: songEasy(inst) }); }
+// near: the songs that almost fit too (one note missing, songFit), after the ones that fit.
+function songsFor(inst, songs, { near = false } = {}) { return playableSongs(songHave(inst), songs, { easy: songEasy(inst), near }); }
+// The browser's languages, for the order of the list (songsInOrder).
+function songLanguages() { return navigator.languages?.length ? navigator.languages : [navigator.language ?? 'en']; }
+// "without E5, 3 times": the one note an almost-fitting song lacks here.
+function songMissingLabel(x) {
+  const n = displayNote(midiToNoteName(x.missing), state.useFlats, state.useSolfege);
+  return `without ${n}, ${x.times === 1 ? 'once' : x.times === 2 ? 'twice' : `${x.times} times`}`;
+}
 function songInstWord(inst) {
   return inst ? (inst.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word;
 }
@@ -3007,6 +3015,7 @@ function songMeta(song, shift) {
 }
 
 const SONGS_SHOWN = 8;
+const SONGS_ALMOST_SHOWN = 4;
 // Which songs the list shows (songsForFilter): 'christmas', 'popular' or
 // 'origin:<code>'. Christmas is the spotlight in season (15 Nov – 6 Jan):
 // the list opens on it, and its chip is highlighted.
@@ -3016,10 +3025,13 @@ function songsFilter() {
 }
 function songsSectionHtml(inst) {
   const filter = songsFilter();
-  const ok = songsFor(inst, songsForFilter(filter));
-  const more = songsForFilter(filter).length - ok.length;
+  const langs = songLanguages();
+  const pool = songsInOrder(songsForFilter(filter, SONGS, { languages: langs }), langs);
+  const fits = songsFor(inst, pool, { near: true });
+  const ok = fits.filter(x => x.missing == null), almost = fits.filter(x => x.missing != null);
+  const more = pool.length - fits.length;
   const nXmas = songsFor(inst, christmasSongs()).length;
-  const nPop = songsFor(inst, songsForFilter('popular')).length;
+  const nPop = songsFor(inst, songsForFilter('popular', SONGS, { languages: langs })).length;
   const word = songInstWord(inst);
   const origin = filter.startsWith('origin:') ? filter.slice(7) : null;
   const spotlight = christmasSeason();
@@ -3039,8 +3051,14 @@ function songsSectionHtml(inst) {
             lead: 'music', title: song.title, meta: escHtml(songMeta(song, shift)), chevron: true,
             action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
           })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${what}`, action: 'songs-all' }) : ''}</div>`
-        : `<p class="pl-section-hint">None of these ${escHtml(what)} fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
-      ${ok.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
+        : `<p class="pl-section-hint">None of these ${escHtml(what)} fits your ${escHtml(word)} completely${almost.length ? '' : ': each needs notes it doesn’t have'}.</p>`}
+      ${almost.length ? `<h3 class="list-title song-almost-title">Almost fit: one note missing</h3>
+        <div class="list">${(state.songsAlmostAll ? almost : almost.slice(0, SONGS_ALMOST_SHOWN)).map(x => uiRow({
+            lead: 'music', title: x.song.title, meta: escHtml(`${songMeta(x.song, x.shift)} · ${songMissingLabel(x)}`), chevron: true,
+            action: 'song-open', data: { id: x.song.id, inst: inst?.id ?? '' },
+          })).join('')}${!state.songsAlmostAll && almost.length > SONGS_ALMOST_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${almost.length}`, action: 'songs-almost-all' }) : ''}</div>
+        <p class="pl-section-hint">The note is marked in the song and never swapped for another: leave it out or sing it.</p>` : ''}
+      ${fits.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
       <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, the best known first; collections such as Latvian folk songs under Countries. ${escHtml(SONG_LICENCE)}.</p>
     </section>`;
 }
@@ -3049,7 +3067,7 @@ function songsSectionHtml(inst) {
 function songsCountriesSheet() {
   const inst = songListInstrument();
   const counts = new Map();
-  for (const { song } of songsFor(inst, SONGS)) counts.set(song.origin, (counts.get(song.origin) ?? 0) + 1);
+  for (const { song } of songsFor(inst, SONGS, { near: true })) counts.set(song.origin, (counts.get(song.origin) ?? 0) + 1);
   const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([o, n]) => uiRow({
     lead: 'music', title: SONG_ORIGINS[o],
     meta: `${n} song${n !== 1 ? 's' : ''} on your ${escHtml(songInstWord(inst))}${SONG_COLLECTION_ORIGINS.includes(o) ? ' · a collection of folk songs' : ''}`,
@@ -3116,7 +3134,7 @@ function songOpenPending() {
   state.pendingSong = null;
   const song = SONGS.find(x => x.id === id);
   if (!song) return;
-  if (!songsFor(inst, [song]).length) {
+  if (!songsFor(inst, [song], { near: true }).length) {
     if (inst) state.oc.tab = 'playlists'; else state.view = 'hp-playlists';
     navReplace(inst ? instUrl(inst.id, 'playlists') : stateToHash());
     showToast(`${song.title} needs notes this ${songInstWord(inst)} doesn’t have. These songs fit.`);
@@ -3134,10 +3152,10 @@ function songOpenPending() {
 function openSongAnywhere(id) {
   const song = SONGS.find(x => x.id === id);
   if (!song) return;
-  const mine = sortInstruments(getInstruments()).find(inst => {
-    const have = songHaveOf(inst);
-    return have && playableSongs(have, [song]).length;
-  });
+  // Where it fits completely before where it almost fits.
+  const fitOn = inst => { const have = songHaveOf(inst); return have ? songFit(song, have) : null; };
+  const all = sortInstruments(getInstruments()).map(inst => ({ inst, fit: fitOn(inst) })).filter(x => x.fit);
+  const mine = (all.find(x => x.fit.missing == null) ?? all[0])?.inst;
   state.pendingSong = id;
   if (mine && openInstrument(mine.id, { push: false })) return;
   Object.assign(state, { view: 'play', layout: null, currentInstrumentId: null });
@@ -3198,13 +3216,14 @@ function songOnInstrument() {
   if (!song) return null;
   const inst = songInstrument();
   if (ctx.instId && !inst) return null;
-  const here = songsFor(inst, [song])[0];
+  const here = songsFor(inst, [song], { near: true })[0];
   if (!here) return null;
-  const notes = songNotes(song).map(n => ({ ...n, midi: n.midi == null ? null : n.midi + here.shift }));
+  // gone: the one note this instrument doesn't have (a song that almost fits).
+  const notes = songNotes(song).map(n => ({ ...n, midi: n.midi == null ? null : n.midi + here.shift, gone: n.midi != null && n.midi + here.shift === here.missing }));
   // A handpan's notes by its own spelling, so the drawing lights them.
   const spell = inst ? null : new Map(getAllNotes(state.layout).map(n => [noteToMidi(n), n]));
   const name = m => (spell?.get(m) ?? midiToNoteName(m));
-  return { song, shift: here.shift, notes, inst, name };
+  return { song, shift: here.shift, missing: here.missing ?? null, notes, inst, name };
 }
 
 function viewSong() {
@@ -3220,8 +3239,9 @@ function viewSong() {
   const LY = song.lyrics && state.showLyrics ? songLyrics(song, notes) : null;
   const T = songTabShown(inst) ? songTab(S, { lyrics: !!LY }) : null;
   const picture = inst
-    ? (cur.midi != null
-      ? renderFingering(inst, cur.midi, { size: 'large', useFlats: uf, useSolfege: us, showFingers: state.showFingers, closeUp: state.closeUp, nextMidi: nextNote?.midi ?? null })
+    ? (cur.gone ? '<p class="song-rest">Not on this instrument</p>'
+      : cur.midi != null
+      ? renderFingering(inst, cur.midi, { size: 'large', useFlats: uf, useSolfege: us, showFingers: state.showFingers, closeUp: state.closeUp, nextMidi: nextNote && !nextNote.gone ? nextNote.midi : null })
       : '<p class="song-rest">Rest</p>')
     : renderPan(state.layout, {
       shellMode: 'both', highlightNotes: cur.midi != null ? [name(cur.midi)] : [],
@@ -3230,18 +3250,19 @@ function viewSong() {
       strikeMarks: T ? songTabMarks(S, T) : [],
     });
   const playing = !!state.songPlay;
-  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}${LY ? ' has-lyric' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}${LY ? `<span class="song-note-lyric">${escHtml(LY[i]?.text ?? '')}</span>` : ''}</button>`).join('');
-  const after = songsThatGoTogether(song, songsFor(inst));
+  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}${n.gone ? ' is-gone' : ''}${LY ? ' has-lyric' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}${LY ? `<span class="song-note-lyric">${escHtml(LY[i]?.text ?? '')}</span>` : ''}</button>`).join('');
+  const after = songsThatGoTogether(song, songsFor(inst, SONGS, { near: true }).filter(x => x.missing == null || x.song.id === song.id));
   return `${backAppBar(song.title, { fallback: 'songs', actions: [uiIconBtn('share-2', 'Share this song', { action: 'song-share' })] })}
     <div class="song">
       <h1 class="song-print-title">${escHtml(song.title)}</h1>
-      <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}</p>
+      <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}${S.missing != null ? ' · <span class="song-gone-text">one note missing</span>' : ''}</p>
       <div class="song-stage${inst ? ' fg-stage' : ' pan-wrap'}">${picture}</div>
       <div class="song-now" aria-live="polite">
         <span class="song-now-note">${cur.midi == null ? 'Rest' : escHtml(nn(cur.midi))}</span>
         ${nextNote ? `<span class="song-now-next">Next ${escHtml(nn(nextNote.midi))}</span>` : '<span class="song-now-next">Last note</span>'}
         <span class="song-now-pos">${idx + 1} / ${notes.length}</span>
       </div>
+      ${cur.gone ? `<p class="song-gone-note" role="status">${escHtml(nn(cur.midi))} isn’t on your ${escHtml(songInstWord(inst))}: leave it out or sing it.</p>` : ''}
       ${LY && !state.songPrinting ? songLyricLineHtml(LY, idx) : ''}
       <div class="song-controls">
         ${uiIconBtn('rewind', 'Back to the start', { action: 'song-restart', disabled: idx === 0 && !playing })}
@@ -3313,7 +3334,7 @@ function songTab(S, { lyrics = false } = {}) {
         let k = 0, prev = null;
         const total = line.cols;
         for (const b of line.bars) for (const c of b.cols) {
-          if (c.i != null && S.notes[c.i].midi != null) {
+          if (c.i != null && S.notes[c.i].midi != null && !S.notes[c.i].gone) {
             const lane = prev && k - prev.k < 2 && prev.lane === 0 ? 1 : 0;
             fgPlace.set(c.i, { lane, last: k === total - 1 });
             prev = { k, lane };
@@ -3334,7 +3355,7 @@ function songTab(S, { lyrics = false } = {}) {
     // middle key), within its own half-width.
     return Math.abs(dx) < Math.max(p.r, 6) ? 0 : Math.sign(dx);
   };
-  const sides = S.notes.map(n => (n.midi == null ? null : sideOf(S.name(n.midi))));
+  const sides = S.notes.map(n => (n.midi == null || n.gone ? null : sideOf(S.name(n.midi))));
   return { family, nums, hands: songHands(sides), sideOf, lines };
 }
 // The picture's badges: each note the song uses, with its number, coloured
@@ -3368,7 +3389,7 @@ function songTabRows(S, T, idx) {
   const nameBtn = c => {
     const n = S.notes[c.i];
     const cur = c.i === idx;
-    return `<button type="button" class="tab-name${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''}>${escHtml(displayNote(midiToNoteName(n.midi), uf, us).replace(/\d+$/, ''))}</button>`;
+    return `<button type="button" class="tab-name${cur ? ' is-current' : ''}${n.gone ? ' is-gone' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''}>${escHtml(displayNote(midiToNoteName(n.midi), uf, us).replace(/\d+$/, ''))}</button>`;
   };
   const nameRow = {
     label: '', h: 22, cls: 'tab-names',
@@ -3390,6 +3411,7 @@ function songTabRows(S, T, idx) {
         label: h.finger, h: 13, cls: 'tab-hole',
         cell: c => {
           if (c.i == null || S.notes[c.i].midi == null) return '';
+          if (S.notes[c.i].gone) return k === 0 ? '<span class="tab-gone" title="Not on this instrument">×</span>' : '';
           const st = fg(c.i);
           if (!st) return '';
           if (st.every(x => x === 'o')) return k === 0 ? '<span class="tab-allopen" aria-hidden="true"></span>' : '';
@@ -3406,7 +3428,8 @@ function songTabRows(S, T, idx) {
     const place = i => T.fgPlace.get(i) ?? { lane: 0, last: false };
     return [nameRow, {
       label: '', h: two ? 112 : 58, cls: 'tab-fgs',
-      cell: c => (c.i != null && S.notes[c.i].midi != null
+      cell: c => (c.i != null && S.notes[c.i].gone ? '<span class="tab-gone" title="Not on this instrument">×</span>'
+        : c.i != null && S.notes[c.i].midi != null
         ? `<button type="button" class="tab-fg${place(c.i).lane ? ' is-lane2' : ''}${place(c.i).last ? ' is-last' : ''}" data-action="song-step" data-i="${c.i}" tabindex="-1" aria-hidden="true">${renderFingering(S.inst, S.notes[c.i].midi, { size: 'mini', noteLabel: false, useFlats: uf, useSolfege: us })}</button>`
         : ''),
     }];
@@ -3414,6 +3437,12 @@ function songTabRows(S, T, idx) {
   const handWord = family === 'kalimba' ? 'thumb' : 'hand';
   const num = i => T.nums.get(S.name(S.notes[i].midi)) ?? '?';
   const handCell = hand => c => {
+    // The note this instrument lacks: a cross in the R row, no number.
+    if (c.i != null && S.notes[c.i].gone) {
+      if (hand !== 'R') return '';
+      const cur = c.i === idx;
+      return `<button type="button" class="tab-note tab-note-gone${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${escHtml(displayNote(midiToNoteName(S.notes[c.i].midi), uf, us))}, not on this instrument">×</button>`;
+    }
     if (c.i != null && T.hands[c.i] === hand) {
       const cur = c.i === idx;
       return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} ${handWord} ${num(c.i)}">${num(c.i)}</button>`;
@@ -3516,7 +3545,8 @@ function songAction(action, el) {
   if (action === 'lists-other') { state.listsShowOther = !state.listsShowOther; render(); return true; }
   if (action === 'song-open') { openSong(el.dataset.id, el.dataset.inst); return true; }
   if (action === 'songs-all') { state.songsAll = true; render(); return true; }
-  if (action === 'songs-filter') { state.songsFilter = el.dataset.value; state.songsAll = false; state.songsCountries = false; render(); return true; }
+  if (action === 'songs-almost-all') { state.songsAlmostAll = true; render(); return true; }
+  if (action === 'songs-filter') { state.songsFilter = el.dataset.value; state.songsAll = false; state.songsAlmostAll = false; state.songsCountries = false; render(); return true; }
   if (action === 'songs-countries-open') { state.songsCountries = true; render(); return true; }
   if (action === 'songs-countries-close') { state.songsCountries = false; render(); return true; }
   if (state.view !== 'song' || !state.songCtx) return false;
