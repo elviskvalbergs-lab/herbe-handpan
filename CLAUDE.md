@@ -16,7 +16,7 @@ Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starti
 
 ## Scope
 - Don't change existing handpan behaviour unless the current phase says so.
-- Progressions, chord-sheet import and the play levels from the brief's last two sections are built (at the owner's request). The rest of the songs project (melody, MusicXML/MIDI import, a song catalogue) is still for later: don't build it unless asked.
+- Progressions, chord-sheet import, the play levels from the brief's last two sections and Songs to learn (folk melodies in `js/songs.js`, each read from a published score with its source and licence noted) are built (at the owner's request). The rest of the songs project (MusicXML/MIDI import, a large song catalogue) is still for later: don't build it unless asked. Melodies follow the same rule as fingering charts: from a published source, never from memory.
 - If anything in the brief conflicts with the code, stop and ask rather than guessing.
 
 ## Design consistency (reuse, don't copy)
