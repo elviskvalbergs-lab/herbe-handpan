@@ -38,6 +38,7 @@ for (const f of ['supabase/tests/stubs.sql', ...readdirSync(join(ROOT, 'supabase
 }
 export const sql = text => psqlRun(dbUrl, ['-f', '-'], text);
 const lit = v => (v == null ? 'null' : typeof v === 'number' || typeof v === 'boolean' ? String(v)
+  : Array.isArray(v) && v.every(x => typeof x === 'string') ? `array[${v.map(x => `'${x.replace(/'/g, "''")}'`).join(', ')}]::text[]`
   : typeof v === 'object' ? `'${JSON.stringify(v).replace(/'/g, "''")}'::jsonb` : `'${String(v).replace(/'/g, "''")}'`);
 // As PostgREST would: the caller's id in request.jwt.claim.sub, the API role, the request's headers.
 const as = (uid, headers = {}) => `select set_config('request.jwt.claim.sub', ${lit(uid ?? '')}, false);
@@ -290,6 +291,148 @@ try {
     assert.equal(await b.locator('.made-by').count(), 0);
     await m.goto(`${BASE}/#maker`);
     await m.getByText('Please send us your own logo').waitFor();
+  });
+
+  // ── Phase 2: instruments, codes, cards, importing, counting ───────────────
+  sql("update public.makers set status = 'approved', status_note = null where slug = 'ilze-pans';");
+  const counts = c => JSON.parse(sql(`select coalesce(jsonb_agg(to_jsonb(d) - 'day' order by d.via, d.country), '[]'::jsonb) from public.maker_scan_days d where d.code = ${lit(c)};`));
+
+  await step('the maker screen lists the instrument with its code', async () => {
+    await m.goto(`${BASE}/#maker`);
+    await m.locator('[data-action="maker-inst-open"]').first().waitFor();
+    assert.match(await m.locator('[data-action="maker-inst-open"]').first().innerText(), new RegExp(code));
+    await shot(m, '09-instruments');
+    await m.click('[data-action="maker-inst-open"]');
+    await m.locator('.maker-code').waitFor();
+    assert.equal((await m.locator('.maker-code').innerText()).trim(), code);
+  });
+
+  await step('serial numbers each get a code; a range is filled in', async () => {
+    await m.click('[data-action="maker-serials-open"]');
+    await m.fill('#maker-serials-input', '9-7');
+    await m.click('[data-action="maker-serials-ok"]');
+    await m.getByText('runs backwards').waitFor();
+    await m.fill('#maker-serials-input', '101-103, A-07');
+    await m.click('[data-action="maker-serials-ok"]');
+    await toast(m).filter({ hasText: '4 serial numbers added' }).waitFor();
+    assert.equal(await m.locator('[data-action="maker-code-retire"]').count(), 4);
+    assert.equal(sql('select count(*) from public.maker_codes;'), '4');
+    await shot(m, '10-codes');
+  });
+  const serialCode = sql("select code from public.maker_codes where serial = '102';");
+
+  await step('the QR card: a preview, an SVG, and a print page of every card', async () => {
+    await m.click(`[data-action="maker-card-open"][data-code="${serialCode}"]`);
+    await m.locator('.maker-card-preview svg').waitFor({ timeout: 10000 });
+    const svg = await m.locator('.maker-card-preview').innerHTML();
+    assert.match(svg, /No\. 102/);
+    assert.match(svg, /Ilze Pans/);
+    await shot(m, '11-card');
+    const [dl] = await Promise.all([m.waitForEvent('download'), m.click('[data-action="maker-card-svg"]')]);
+    assert.match(dl.suggestedFilename(), /^oakhum-d-kurd-102-card\.svg$/);
+    await m.click('.sheet-head [data-action="maker-card-close"]');
+    await m.click('[data-action="maker-card-open"][data-code="all"]');
+    await m.locator('.maker-card-preview svg').waitFor();
+    await m.click('[data-action="maker-card-format"][data-value="label"]');
+    await m.locator('.maker-card-preview svg').waitFor();
+    const [popup] = await Promise.all([maker.ctx.waitForEvent('page'), m.click('[data-action="maker-card-print"]')]);
+    await popup.waitForLoadState();
+    await popup.locator('svg').first().waitFor();
+    assert.equal(await popup.locator('svg').count(), 1, 'four stickers fit one sheet');
+    assert.equal(await popup.locator('svg > g').count(), 4);
+    if (SHOTS) await popup.screenshot({ path: join(SHOTS, '12-sheet.png') });
+    await popup.close();
+    await m.click('.sheet-head [data-action="maker-card-close"]');
+  });
+
+  await step('the NFC sheet gives a link that says it came from a tag', async () => {
+    await m.click(`[data-action="maker-nfc-open"][data-code="${serialCode}"]`);
+    assert.equal(await m.locator('.sheet .share-url').inputValue(), `${BASE}/s/${serialCode}?via=nfc`);
+    await m.click('.sheet-head [data-action="maker-nfc-close"]');
+  });
+
+  await step('a buyer scans the serial code: Made by, the code stays in the address, and it is counted', async () => {
+    await b.goto(`${BASE}/s/${serialCode}?via=qr`);
+    await b.locator('.made-by').waitFor();
+    await b.waitForFunction(c => location.pathname === `/s/${c}`, serialCode);
+    await b.click('[data-action="go-chords"]');
+    await b.waitForFunction(c => location.pathname === `/s/${c}/chords`, serialCode);
+    for (let i = 0; i < 3; i++) await b.locator('[data-action="select-chord"]').nth(i).click();
+    await b.evaluate(() => makerFlushPlayed());
+    await b.waitForTimeout(400);
+    const d = counts(serialCode);
+    assert.equal(d.length, 1, JSON.stringify(d));
+    assert.deepEqual({ via: d[0].via, opens: d[0].opens, devices: d[0].devices, chord_visits: d[0].chord_visits, chords: d[0].chords }, { via: 'qr', opens: 1, devices: 1, chord_visits: 1, chords: 3 });
+    await b.reload();
+    await b.locator('.made-by').waitFor();
+    await b.waitForTimeout(300);
+    // Opened again without the card's mark: a second open (as a plain link), the same device.
+    const sum = k => counts(serialCode).reduce((n, r) => n + r[k], 0);
+    assert.equal(sum('opens'), 2);
+    assert.equal(sum('devices'), 1);
+  });
+
+  await step('the maker opening their own code is not counted', async () => {
+    await m.goto(`${BASE}/s/${serialCode}?via=qr`);
+    await m.locator('.pan-note').first().waitFor();
+    await m.waitForTimeout(400);
+    assert.equal(counts(serialCode).reduce((n, r) => n + r.opens, 0), 2);
+  });
+
+  await step('a retired code opens nothing', async () => {
+    await m.goto(`${BASE}/#maker`);
+    await m.click('[data-action="maker-inst-open"]');
+    await m.locator(`[data-action="maker-code-retire"][data-code="${serialCode}"]`).click();
+    await toast(m).filter({ hasText: 'Retired' }).waitFor();
+    await b.goto(`${BASE}/s/${serialCode}`);
+    await b.waitForTimeout(500);
+    assert.equal(await b.locator('.made-by').count(), 0);
+    assert.equal(await b.locator('.pan-note').count(), 0);
+  });
+
+  await step('"Made by" can be switched off for one instrument', async () => {
+    await m.click('[data-action="maker-hide-toggle"]');
+    await m.waitForTimeout(400);
+    await b.goto(`${BASE}/s/${code}`);
+    await b.locator('.pan-note').first().waitFor();
+    await b.waitForTimeout(300);
+    assert.equal(await b.locator('.made-by').count(), 0);
+    await m.click('[data-action="maker-hide-toggle"]');
+  });
+
+  await step('importing a list: bad rows are named, good ones become instruments with codes', async () => {
+    await m.goto(`${BASE}/#maker`);
+    await m.click('[data-action="maker-import-open"]');
+    await m.fill('#maker-import-text', [
+      'name,instrument,scale,ding,top,bottom,serials',
+      'Celtic nine,handpan,d-celtic-minor,,,,201-203',
+      'Low Pygmy special,handpan,,F3,G3 Ab3 C4 Eb4 F4 G4 Ab4 C5,C3 Eb3,204',
+      'Odd one,handpan,d-kurdd,,,,',
+      'Wrong note,handpan,,D3,A3 H3,,',
+      'Little whistle,flute,tin-whistle-d,,,,',
+    ].join('\n'));
+    await m.click('[data-action="maker-import-check"]');
+    await m.getByText('Preview · 5 rows').waitFor();
+    assert.match(await m.locator('.row.is-bad').first().innerText(), /No such scale: d-kurdd\. Did you mean d-kurd\?/);
+    assert.match(await m.locator('.row.is-bad').nth(1).innerText(), /H3 isn’t a note/);
+    await shot(m, '13-import');
+    await m.click('[data-action="maker-import-go"]');
+    await m.getByText('3 instruments added').waitFor({ timeout: 15000 });
+    assert.equal(sql('select count(*) from public.instruments where public_id is not null;'), '4');
+    assert.equal(sql("select count(*) from public.maker_codes where serial in ('201','202','203','204');"), '4');
+    await m.click('[data-action="open-maker"]');
+    await m.getByText('Low Pygmy special').waitFor();
+    await shot(m, '14-after-import');
+  });
+
+  await step('an imported custom handpan opens for a buyer with its notes and maker', async () => {
+    const c = sql("select code from public.maker_codes where serial = '204';");
+    await b.goto(`${BASE}/s/${c}?via=nfc`);
+    await b.locator('.made-by').waitFor();
+    assert.match(await b.locator('.appbar').innerText(), /Low Pygmy special/);
+    assert.ok(await b.locator('.pan-note[data-note="Eb3"], .pan-note[data-note="D#3"]').count() >= 1, 'the bottom note is on the picture');
+    await b.waitForTimeout(300);
+    assert.equal(counts(c)[0].via, 'nfc');
   });
 
   if (typeof globalThis.makersMoreSteps === 'function') await globalThis.makersMoreSteps({ step, device, signIn, sql, lit, BASE, toast, shot, users, maker, buyer, admin, code });

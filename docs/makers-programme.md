@@ -1,6 +1,6 @@
 # The makers programme
 
-Version 1, 21 Nov 2026. **Status:** design, being built in phases (see "Build order"). Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
+Version 1, 21 Nov 2026. **Status:** phases 1 and 2 are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
 
 Until now "for makers" meant a page in the website's footer with two `mailto:` buttons. This turns it into something a maker can use alone: ask for the maker role, set up a public profile, manage instruments, print a code for each one, and see how those codes are used.
 
@@ -131,6 +131,8 @@ What is kept, in full:
 - **Nothing is written on the buyer's device.** No cookie, no local storage, no identifier. Within one visit the app remembers in memory that the code was counted.
 - **The maker's own scans don't count** (the maker is signed in; the function skips the code's owner), so testing a card doesn't inflate the numbers.
 - **Limits**: a visit reports at most 500 chords and 100 songs; the log function accepts only known codes and event names.
+- **A reload or a second visit without the card's mark** counts as an open by plain link: the mark (`?via=qr`) is read once and then dropped from the address, so a link copied from the address bar never claims to be a scan.
+- **One device** counts at most 20 opens a day for one code, and can only add saves and chords for a code it opened that day or the day before.
 - **Small numbers**: countries are shown only for a code or maker with at least 5 devices in the period, so a single buyer's country isn't singled out.
 
 **Proposed privacy notice paragraph** (the notice is website content; it needs adding there):
@@ -169,6 +171,7 @@ Low Pygmy special,handpan,,F3,"G3 Ab3 C4 Eb4 F4 G4 Ab4 C5","C3 Eb3",111
 - `serials` is optional: a list or ranges.
 - The preview shows each row as it will be created and marks what's wrong ("no such scale: d-kurdd, did you mean d-kurd?", "G3# is not a note"). Nothing is created until every kept row is valid; bad rows can be skipped.
 - Limit: 200 rows and 2,000 serial numbers per import.
+- Each row becomes an instrument of its own under the name given, even when two rows use the same scale. Ocarinas and flutes are imported by chart (`alto-c-12`, `tin-whistle-d`), not by notes.
 
 ---
 

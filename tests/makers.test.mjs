@@ -6,8 +6,11 @@ import {
   MAKER_FAMILIES, MAKER_RESERVED_SLUGS, MAKER_LIMITS, makerSlug, makerSlugError, makerWebsite, makerWebsiteLabel, makerLogoOk,
   validateMakerProfile, makerFormFrom, makerPlaceLine, makerInitials, makerStatusText, makerCountries, makerCountryName,
   withoutMadeBy, sharedOpening, madeByToKeep, makerPagePath, makerLinkPreview,
+  makerCodeUrl, makerCodeLabel, makerViaFromSearch, parseSerials, qrPath, qrCardSvg, qrSheetSvgs, qrPrintDocument, MAKER_CARD_FORMATS,
+  parseCsv, makerImportRows, MAKER_IMPORT_EXAMPLE, MAKER_IMPORT_LIMITS,
 } from '../js/makers.js';
-import { LINK_FAMILIES, linkPreview, withLinkPreview } from '../js/links.js';
+import { LINK_FAMILIES, linkPreview, withLinkPreview, parseLink, closestLinks } from '../js/links.js';
+import { safeNoteName } from '../js/layoutfamilies.js';
 import { SAVE_ACTIONS, SAVE_TEXTS } from '../js/store.js';
 
 const PNG = 'data:image/png;base64,iVBORw0KGgo=';
@@ -134,4 +137,138 @@ test('the link preview of a code names the instrument and its maker, escaped', (
 test('asking for the maker role is a save action with its own words', () => {
   assert.equal(SAVE_ACTIONS['maker-start'], 'maker');
   assert.match(SAVE_TEXTS.maker.title, /maker page/);
+});
+
+// ── Phase 2: codes, the printed card, importing a list ──────────────────────
+test('a code\'s link says where a scan came from', () => {
+  assert.equal(makerCodeUrl('https://oakhum.com/', 'b7xk3n'), 'https://oakhum.com/s/B7XK3N');
+  assert.equal(makerCodeUrl('https://oakhum.com', 'B7XK3N', 'qr'), 'https://oakhum.com/s/B7XK3N?via=qr');
+  assert.equal(makerCodeUrl('https://oakhum.com', 'B7XK3N', 'nonsense'), 'https://oakhum.com/s/B7XK3N');
+  assert.equal(makerCodeLabel('https://www.oakhum.com', 'B7XK3N'), 'oakhum.com/s/B7XK3N');
+  assert.equal(makerViaFromSearch('?via=nfc'), 'nfc');
+  assert.equal(makerViaFromSearch('?via=<script>'), null);
+  assert.equal(makerViaFromSearch(''), null);
+  // The app still reads the link, with or without the mark.
+  assert.equal(parseLink('/s/B7XK3N', '?via=qr').code, 'B7XK3N');
+});
+
+test('serial numbers as a maker types them', () => {
+  assert.deepEqual(parseSerials('17, 18\n20-22').serials, ['17', '18', '20', '21', '22']);
+  assert.deepEqual(parseSerials('001-003').serials, ['001', '002', '003'], 'leading zeros stay');
+  assert.deepEqual(parseSerials('A-07; #12, 12').serials, ['A-07', '12'], 'a name with a hyphen is not a range; no repeats');
+  assert.match(parseSerials('9-7').error, /backwards/);
+  assert.match(parseSerials('1-9999').error, /At most 500/);
+  assert.match(parseSerials('x'.repeat(41)).error, /too long/);
+  assert.ok(parseSerials('  ').error);
+  assert.equal(parseSerials('1-500').serials.length, 500);
+});
+
+// A tiny "QR code": the real ones come from the QR library in the browser.
+const MODULES = [[true, true, false], [false, true, false], [true, false, true]];
+
+test('the QR path draws exactly the dark squares', () => {
+  const d = qrPath(MODULES, 0, 0, 3);
+  assert.equal(d, 'M0 0h2v1h-2zM1 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1z');
+  assert.equal(qrPath([[false]], 0, 0, 10), '');
+});
+
+test('the printed card: sizes, words, and nothing a name can break', () => {
+  const card = { modules: MODULES, name: 'D Kurd 9', serial: '101', maker: 'Ilze Pans', logo: '', label: 'oakhum.com/s/B7XK3N' };
+  const svg = qrCardSvg(card);
+  assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 85 55" width="85mm" height="55mm"/);
+  for (const t of ['Scan to see what it can play', 'D Kurd 9', 'No. 101', 'Ilze Pans', 'oakhum.com/s/B7XK3N']) assert.ok(svg.includes(t), t);
+  const label = qrCardSvg(card, 'label');
+  assert.match(label, /viewBox="0 0 63\.5 38\.1"/);
+  assert.ok(label.includes('oakhum.com/s/B7XK3N'), 'the address fits on a sticker too');
+  assert.ok(!qrCardSvg({ ...card, serial: '', maker: '' }).includes('No.'));
+  const evil = qrCardSvg({ ...card, name: '</text><script>alert(1)</script>', maker: '"><image href="x"/>', logo: 'javascript:alert(1)' });
+  assert.ok(!evil.includes('<script>') && !evil.includes('<image'), 'text is escaped and a logo that isn\'t a picture is left out');
+  assert.ok(qrCardSvg({ ...card, logo: PNG }).includes(`<image href="${PNG}"`));
+  assert.ok(qrCardSvg({ ...card, name: 'A very long instrument name that would run off the card' }).includes('…'));
+});
+
+test('sheets: ten cards or 21 stickers to an A4 page, cut marks on cards only', () => {
+  const cards = Array.from({ length: 23 }, (_, i) => ({ modules: MODULES, name: 'D Kurd 9', serial: String(100 + i), maker: 'Ilze Pans', label: 'oakhum.com/s/B7XK3N' }));
+  const pages = qrSheetSvgs(cards, 'card');
+  assert.equal(pages.length, 3);
+  assert.equal((pages[0].match(/<g transform=/g) ?? []).length, 10);
+  assert.equal((pages[2].match(/<g transform=/g) ?? []).length, 3);
+  assert.ok(pages[0].includes('stroke-dasharray'));
+  const labels = qrSheetSvgs(cards, 'label');
+  assert.equal(labels.length, 2);
+  assert.ok(!labels[0].includes('stroke-dasharray'));
+  for (const f of Object.values(MAKER_CARD_FORMATS)) {
+    assert.ok(f.cols * f.w + (f.cols - 1) * f.gapX <= 210 && f.rows * f.h + (f.rows - 1) * f.gapY <= 297, `${f.label} fit A4`);
+  }
+  // Every card is inside the page.
+  for (const m of pages[0].matchAll(/translate\(([\d.]+) ([\d.]+)\)/g)) assert.ok(+m[1] >= 0 && +m[1] + 85 <= 210 && +m[2] >= 0 && +m[2] + 55 <= 297);
+  const doc = qrPrintDocument(pages, 'D Kurd 9 <cards>');
+  assert.match(doc, /@page\{size:A4;margin:0\}/);
+  assert.ok(doc.includes('<title>D Kurd 9 &lt;cards&gt;</title>'));
+  assert.equal((doc.match(/<svg /g) ?? []).length, 3);
+});
+
+test('CSV: commas, semicolons or tabs, quoted cells', () => {
+  assert.deepEqual(parseCsv('a,b\n"x, y","say ""hi"""\n\n'), [['a', 'b'], ['x, y', 'say "hi"']]);
+  assert.deepEqual(parseCsv('a;b\r\n1;2'), [['a', 'b'], ['1', '2']]);
+  assert.deepEqual(parseCsv('﻿a\tb\n1\t2'), [['a', 'b'], ['1', '2']]);
+  assert.deepEqual(parseCsv(''), []);
+});
+
+const tools = { parseLink, closestLinks, safeNoteName };
+
+test('importing a list: each row says what it makes, or what is wrong with it', () => {
+  const { rows, error } = makerImportRows(MAKER_IMPORT_EXAMPLE, tools);
+  assert.equal(error, '');
+  assert.deepEqual(rows.map(r => r.ok), [true, true, true], JSON.stringify(rows.map(r => r.error)));
+  assert.deepEqual({ kind: rows[0].kind, scaleId: rows[0].scaleId, family: rows[0].family, serials: rows[0].serials }, { kind: 'scale', scaleId: 'D-Kurd', family: 'handpan', serials: ['101', '102', '103'] });
+  assert.deepEqual({ kind: rows[1].kind, ding: rows[1].ding, top: rows[1].top.length, bottom: rows[1].bottom }, { kind: 'custom', ding: 'F3', top: 8, bottom: ['C3', 'Eb3'] });
+  assert.equal(rows[2].family, 'kalimba');
+
+  const bad = makerImportRows([
+    'name,instrument,scale,ding,top,bottom,serials',
+    ',handpan,d-kurd,,,,',
+    'Odd,handpan,d-kurdd,,,,',
+    'Note,handpan,,D3,A3 H3,,',
+    'Nothing,handpan,,,,,',
+    'Thing,theremin,,,,,',
+    'Drum,tongue drum,,C4,D4 E4,G3,',
+    'Flute,flute,,D4,E4,,',
+    'Whistle,flute,tin-whistle-d,,,,',
+    'Serials,handpan,d-kurd,,,,9-7',
+    'Whistle,flute,tin-whistle-d,,,,',
+  ].join('\n'), tools).rows;
+  assert.deepEqual(bad.map(r => r.ok), [false, false, false, false, false, false, false, true, false, false]);
+  assert.match(bad[0].error, /No name/);
+  assert.match(bad[1].error, /No such scale: d-kurdd\. Did you mean d-kurd\?/);
+  assert.match(bad[2].error, /H3 isn’t a note/);
+  assert.match(bad[3].error, /Give a scale, or the notes/);
+  assert.match(bad[4].error, /Unknown instrument: theremin/);
+  assert.match(bad[5].error, /Only a handpan has bottom notes/);
+  assert.match(bad[6].error, /Give the chart/);
+  assert.deepEqual({ kind: bad[7].kind, chartId: bad[7].chartId }, { kind: 'chart', chartId: 'tin-whistle-d' });
+  assert.match(bad[8].error, /backwards/);
+  assert.match(bad[9].error, /The same name as row 9/);
+  assert.equal(bad[1].line, 3, 'rows are numbered as in the file');
+});
+
+test('importing a list: no heading, other headings, and the limits', () => {
+  assert.equal(makerImportRows('D Kurd 9,handpan,d-kurd', tools).rows[0].ok, true, 'without a heading the columns are in the usual order');
+  const other = makerImportRows('Model;Type;Tuning;Serial numbers\nMy pan;handpan;D Kurd;1-2', tools).rows[0];
+  assert.deepEqual({ ok: other.ok, scaleId: other.scaleId, serials: other.serials }, { ok: true, scaleId: 'D-Kurd', serials: ['1', '2'] });
+  assert.ok(makerImportRows('', tools).error);
+  assert.ok(makerImportRows('name,instrument', tools).error);
+  const many = Array.from({ length: MAKER_IMPORT_LIMITS.rows + 1 }, (_, i) => `Pan ${i},handpan,d-kurd`).join('\n');
+  assert.match(makerImportRows(many, tools).error, /At most 200 rows/);
+  const serials = Array.from({ length: 5 }, (_, i) => `Pan ${i},handpan,d-kurd,,,,${i * 1000 + 1}-${i * 1000 + 500}`).join('\n');
+  assert.match(makerImportRows(serials, tools).error, /At most 2000 serial numbers/);
+  // Every note in a row passes safeNoteName, so nothing but note names reaches the picture.
+  assert.equal(makerImportRows('X,handpan,,D3,"A3 <img>"', tools).rows[0].ok, false);
+});
+
+test('the scan-counting SQL takes only the events and sources the app sends', () => {
+  const sql = readFileSync(new URL('../supabase/migrations/20261122_maker_codes_scans.sql', import.meta.url), 'utf8');
+  for (const v of ['qr', 'nfc', 'embed']) assert.ok(sql.includes(`'${v}'`), v);
+  for (const e of ['open', 'save', 'chords', 'songs']) assert.ok(sql.includes(`'${e}'`), e);
+  assert.doesNotMatch(sql.replace(/--.*$/gm, ''), /\b(ip|address)\s+(text|inet)\b/i, 'no column holds an address');
 });
