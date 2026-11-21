@@ -24,6 +24,7 @@ import { instrumentKey, goesWellWith } from './harmony.js';
 import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
+import { kalimbaNumbers } from './kalimbas.js';
 import { renderPan, panPlaces, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
@@ -3115,10 +3116,12 @@ function viewSong() {
 function songTabFamily(inst) {
   if (inst) return null;
   const f = layoutInstrument(state.layout);
-  return f === 'handpan' || f === 'tongue-drum' ? f : null;
+  return f === 'handpan' || f === 'tongue-drum' || f === 'kalimba' ? f : null;
 }
 function songTabShown(inst) { return !!songTabFamily(inst) && (state.songView ?? 'tab') === 'tab'; }
 function songFieldNumbers(layout) {
+  // A kalimba: its own numbered notation (1–7 with octave dots, js/kalimbas.js).
+  if (layoutInstrument(layout) === 'kalimba') return kalimbaNumbers(getAllNotes(layout));
   const byPitch = a => [...new Set(a.filter(Boolean))].sort((x, y) => noteToMidi(x) - noteToMidi(y));
   const order = layoutInstrument(layout) === 'handpan'
     ? [layout.top.ding, ...byPitch(layout.top.slots.map(x => x.note)), ...byPitch(layout.bottom.slots.map(x => x.note))]
@@ -3138,7 +3141,9 @@ function songTab(S, { lyrics = false } = {}) {
     const p = places.get(note);
     if (!p) return 0;
     const dx = p.x - 250;
-    return Math.abs(dx) < 30 ? 0 : Math.sign(dx);
+    // The middle: a note drawn across the centre line (a ding, a kalimba's
+    // middle key), within its own half-width.
+    return Math.abs(dx) < Math.max(p.r, 6) ? 0 : Math.sign(dx);
   };
   const sides = S.notes.map(n => (n.midi == null ? null : sideOf(S.name(n.midi))));
   const bars = songBars(S.song, S.notes);
@@ -3157,15 +3162,20 @@ function songTabMarks(S, T) {
   const used = [...new Set(S.notes.filter(n => n.midi != null).map(n => S.name(n.midi)))];
   return used.filter(n => T.nums.has(n)).map(n => {
     const side = T.sideOf(n);
-    return { note: n, marks: [{ n: T.nums.get(n), hand: side < 0 ? 'L' : side > 0 ? 'R' : '' }] };
+    const hand = side < 0 ? 'L' : side > 0 ? 'R' : '';
+    // A kalimba's keys are narrow: the number alone, coloured by thumb.
+    const label = layoutInstrument(state.layout) === 'kalimba' ? String(T.nums.get(n)) : undefined;
+    return { note: n, marks: [{ n: T.nums.get(n), hand, label }] };
   });
 }
 function songTabHtml(S, T, idx, LY = null) {
+  const family = songTabFamily(null);
+  const handWord = family === 'kalimba' ? 'thumb' : 'hand';
   const num = i => T.nums.get(S.name(S.notes[i].midi)) ?? '?';
   const cell = (c, hand) => {
     if (c.i != null && T.hands[c.i] === hand) {
       const cur = c.i === idx;
-      return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} hand ${num(c.i)}">${num(c.i)}</button>`;
+      return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} ${handWord} ${num(c.i)}">${num(c.i)}</button>`;
     }
     const held = c.hold;
     return held != null && T.hands[held] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
@@ -3179,9 +3189,13 @@ function songTabHtml(S, T, idx, LY = null) {
       </div>`).join('');
     return `<div class="tab-line${LY ? ' has-lyrics' : ''}"><div class="tab-hands" aria-hidden="true"><span></span><span>R</span><span>L</span>${LY ? '<span></span>' : ''}</div>${bars}</div>`;
   }).join('');
-  const word = songTabFamily(null) === 'tongue-drum' ? 'tongue' : 'note';
-  return `<div class="song-tab" role="group" aria-label="Tab: the number of each ${word}, R right hand, L left hand">${lines}</div>
-    <p class="pl-section-hint song-tab-key">${songTabFamily(null) === 'handpan' ? 'Numbers: the ding is 0, then the notes from low to high, as on the picture.' : 'Numbers: the tongues from low to high, as on the picture.'} R is the right hand, L the left. A line after a number: let it ring.</p>`;
+  const word = { 'tongue-drum': 'tongue', kalimba: 'key' }[family] ?? 'note';
+  return `<div class="song-tab" role="group" aria-label="Tab: the number of each ${word}, R right ${handWord}, L left ${handWord}">${lines}</div>
+    <p class="pl-section-hint song-tab-key">${{
+      handpan: 'Numbers: the ding is 0, then the notes from low to high, as on the picture.',
+      'tongue-drum': 'Numbers: the tongues from low to high, as on the picture.',
+      kalimba: 'Numbers: kalimba notation, 1 to 7 up the scale from the key’s first note, a dot above for an octave up and below for an octave down, as on the picture.',
+    }[family]} R is the right ${handWord}, L the left. A line after a number: let it ring.</p>`;
 }
 // The words around the current note, the current syllable marked: a few
 // syllables before it and the rest of the phrase after.
