@@ -8,7 +8,7 @@ import {
   getFavorites, isFavorite,
   getPlaylists, addPlaylist, renamePlaylist, deletePlaylist,
   addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
-  isChordBookmarkedAnyVoicing, updatePlaylistChordVoicing,
+  isChordBookmarkedAnyVoicing, updatePlaylistChordVoicing, mergePlaylistsIntoProgressions,
   PROG_DEFAULTS, PROG_LIMITS, newProgressionStep, progressionStepMs, progressionTotals,
   nextProgressionStep, getProgressions, getProgressionsRaw, writeProgressionsRaw,
   addProgression, renameProgression, deleteProgression, setProgressionTiming, addStepToProgression,
@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
+import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songsForFilter, SONG_COLLECTION_ORIGINS, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { kalimbaNumbers } from './kalimbas.js';
@@ -68,6 +68,9 @@ import { offline } from './offline.js';
 import { saveIntentFor, saveText, keepPendingSave, takePendingSave, dropPendingSave, plainDataset, alsoSavedText } from './store.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
+// Old playlists become the one kind of list before anything reads them.
+mergePlaylistsIntoProgressions();
+
 const state = {
   view: 'selector',        // 'home' | 'wizard' | 'instrument' | 'selector' | 'editor' | 'chords' | 'playlist'
   instruments: [],         // My instruments (instruments.js), most recently played first
@@ -2409,7 +2412,7 @@ function viewHome() {
       </section>
       <section class="home-side" aria-label="Playlists">
         ${state.playlists.length ? `<h2 class="list-title">Playlists</h2><div class="list">${playlists}</div>` : ''}
-        ${state.progressions.length ? `<h2 class="list-title">Progressions</h2><div class="list">${progressionRowsHtml(null, { home: true })}</div>` : ''}
+        ${state.progressions.length ? `<h2 class="list-title">Playlists</h2><div class="list">${progressionRowsHtml(null, { home: true })}</div>` : ''}
         ${tip}
       </section>
     </div>`;
@@ -2950,19 +2953,17 @@ function handpanTabs(current) {
 // The Playlists tab: the user's playlists, with how many of each one's
 // chords belong to this instrument. A row opens the playlist; on a handpan
 // Play opens it in Chords and auto-plays it, on an ocarina Practice starts.
+// The Playlists tab: one kind of list (chords in order, the same one as
+// often as you like, played in time; stored as progressions), then songs.
 function playlistsTabHtml(inst) {
   return `
     <section class="pl-section" aria-labelledby="pl-sec-playlists">
       <h2 class="list-title" id="pl-sec-playlists">Playlists</h2>
-      ${playlistsListHtml(inst)}
-    </section>
-    <section class="pl-section" aria-labelledby="pl-sec-progressions">
-      <h2 class="list-title" id="pl-sec-progressions">Progressions</h2>
       ${state.progressions.length
         ? `<div class="list">${progressionRowsHtml(inst)}</div>`
-        : '<p class="pl-section-hint">Chords in order, and the same chord as often as you like (Am – Dm – Am). Start one here, from any chord\'s ♡, or copy a playlist.</p>'}
+        : '<p class="pl-section-hint">Chords in order, the same chord as often as you like (Am – Dm – Am), played in time. Tap ♡ on any chord to start one, or paste a chord sheet.</p>'}
       <div class="pl-new-row">
-        <button type="button" class="btn btn-ghost pl-new" data-action="prog-new-open">${icon('plus')} New progression</button>
+        <button type="button" class="btn btn-ghost pl-new" data-action="prog-new-open">${icon('plus')} New playlist</button>
         <button type="button" class="btn btn-ghost pl-new" data-action="cs-open">${icon('clipboard-paste')} Paste a chord sheet</button>
       </div>
     </section>
@@ -3001,29 +3002,62 @@ function songMeta(song, shift) {
 }
 
 const SONGS_SHOWN = 8;
-// Which songs the list shows: 'christmas' or 'all'; Christmas first in season.
-function songsFilter() { return state.songsFilter ?? (christmasSeason() ? 'christmas' : 'all'); }
+// Which songs the list shows (songsForFilter): 'christmas', 'popular' or
+// 'origin:<code>'. Christmas is the spotlight in season (15 Nov – 6 Jan):
+// the list opens on it, and its chip is highlighted.
+function songsFilter() {
+  const f = state.songsFilter ?? (christmasSeason() ? 'christmas' : 'popular');
+  return f === 'all' ? 'popular' : f;
+}
 function songsSectionHtml(inst) {
   const filter = songsFilter();
-  const pool = filter === 'christmas' ? christmasSongs() : SONGS;
-  const ok = songsFor(inst, pool);
+  const ok = songsFor(inst, songsForFilter(filter));
+  const more = songsForFilter(filter).length - ok.length;
   const nXmas = songsFor(inst, christmasSongs()).length;
-  const more = pool.length - ok.length;
+  const nPop = songsFor(inst, songsForFilter('popular')).length;
   const word = songInstWord(inst);
+  const origin = filter.startsWith('origin:') ? filter.slice(7) : null;
+  const spotlight = christmasSeason();
+  const chip = (value, label, { cls = '', lead = '' } = {}) => `<button type="button" class="chip${cls}" data-action="songs-filter" data-value="${escHtml(value)}" aria-pressed="${filter === value}">${lead}${escHtml(label)}</button>`;
+  const what = filter === 'christmas' ? 'Christmas songs' : origin ? `songs from ${SONG_ORIGINS[origin]}` : 'songs';
   return `
     <section class="pl-section" aria-labelledby="pl-sec-songs">
       <h2 class="list-title" id="pl-sec-songs">Songs to learn</h2>
-      ${nXmas ? `<div class="songs-filter">${uiSeg([{ value: 'christmas', label: `Christmas · ${nXmas}` }, { value: 'all', label: 'All songs' }], filter, { action: 'songs-filter', label: 'Which songs' })}</div>` : ''}
+      <div class="chips songs-filter" role="group" aria-label="Which songs">
+        ${nXmas ? chip('christmas', `Christmas · ${nXmas}`, { cls: spotlight ? ' is-spotlight' : '', lead: spotlight ? icon('sparkles') : '' }) : ''}
+        ${chip('popular', `Popular · ${nPop}`)}
+        ${origin ? `<button type="button" class="chip" data-action="songs-filter" data-value="popular" aria-pressed="true" aria-label="${escHtml(SONG_ORIGINS[origin])}: show Popular again">${escHtml(SONG_ORIGINS[origin])} ${icon('x')}</button>` : ''}
+        <button type="button" class="chip" data-action="songs-countries-open">${icon('sliders-horizontal')} Countries</button>
+      </div>
       ${ok.length
         ? `<div class="list">${(state.songsAll ? ok : ok.slice(0, SONGS_SHOWN)).map(({ song, shift }) => uiRow({
             lead: 'music', title: song.title, meta: escHtml(songMeta(song, shift)), chevron: true,
             action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
-          })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${filter === 'christmas' ? 'Christmas songs' : 'songs'}`, action: 'songs-all' }) : ''}</div>`
-        : `<p class="pl-section-hint">None of these songs fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
+          })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${what}`, action: 'songs-all' }) : ''}</div>`
+        : `<p class="pl-section-hint">None of these ${escHtml(what)} fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
       ${ok.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
-      <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, Latvia too, the best known first. ${escHtml(SONG_LICENCE)}.</p>
+      <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, the best known first; collections such as Latvian folk songs under Countries. ${escHtml(SONG_LICENCE)}.</p>
     </section>`;
 }
+// Countries: every country with songs that fit this instrument, most first;
+// a collection (Latvian folk songs) says what it is.
+function songsCountriesSheet() {
+  const inst = songListInstrument();
+  const counts = new Map();
+  for (const { song } of songsFor(inst, SONGS)) counts.set(song.origin, (counts.get(song.origin) ?? 0) + 1);
+  const rows = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([o, n]) => uiRow({
+    lead: 'music', title: SONG_ORIGINS[o],
+    meta: `${n} song${n !== 1 ? 's' : ''} on your ${escHtml(songInstWord(inst))}${SONG_COLLECTION_ORIGINS.includes(o) ? ' · a collection of folk songs' : ''}`,
+    action: 'songs-filter', data: { value: `origin:${o}` }, chevron: true,
+  })).join('');
+  return uiSheet({
+    key: 'songs-countries', title: 'Songs by country', close: 'songs-countries-close',
+    body: `<div class="list">${rows}</div>`,
+  });
+}
+// The instrument whose Playlists tab is on screen: an ocarina or flute, or
+// null for the handpan, tongue drum or kalimba.
+function songListInstrument() { return state.view === 'instrument' ? currentInstrument() : null; }
 
 function openSong(id, instId, { push = true } = {}) {
   songStop();
@@ -3087,6 +3121,7 @@ function viewSong() {
       </div>
       ${LY && !state.songPrinting ? songLyricLineHtml(LY, idx) : ''}
       <div class="song-controls">
+        ${uiIconBtn('rewind', 'Back to the start', { action: 'song-restart', disabled: idx === 0 && !playing })}
         ${uiIconBtn('skip-back', 'Back one note', { action: 'song-prev' })}
         <button type="button" class="btn btn-primary song-play" data-action="song-play">${icon(playing ? 'square' : 'play')} ${playing ? 'Stop' : idx ? 'Play on' : 'Play'}</button>
         ${uiIconBtn('skip-forward', 'Next note', { action: 'song-next' })}
@@ -3115,7 +3150,7 @@ function viewSong() {
 // Move notes, and as rotated), a middle note the other hand from the note
 // before (songHands). The picture numbers the song's notes the same way.
 function songTabFamily(inst) {
-  if (inst) return null;
+  if (inst) return inst.family === 'flute' ? 'flute' : 'ocarina';
   const f = layoutInstrument(state.layout);
   return f === 'handpan' || f === 'tongue-drum' || f === 'kalimba' ? f : null;
 }
@@ -3132,10 +3167,40 @@ function songFieldNumbers(layout) {
   order.filter(Boolean).forEach(n => { if (!nums.has(n)) nums.set(n, start + nums.size); });
   return nums;
 }
-// Columns on a line of the tab: fewer with lyrics, so the words fit.
-const SONG_TAB_LINE = 16, SONG_TAB_LINE_LYRICS = 12;
+// Columns on a line of the tab: fewer with lyrics, so the words fit, and
+// fewer on an ocarina, whose fingering pictures need the room.
+const SONG_TAB_LINE = { plain: 16, lyrics: 12, ocarina: 8 };
 function songTab(S, { lyrics = false } = {}) {
-  const lineCols = lyrics ? SONG_TAB_LINE_LYRICS : SONG_TAB_LINE;
+  const family = songTabFamily(S.inst);
+  const lineCols = family === 'ocarina' ? SONG_TAB_LINE.ocarina : lyrics ? SONG_TAB_LINE.lyrics : SONG_TAB_LINE.plain;
+  const bars = songBars(S.song, S.notes);
+  const lines = [];
+  for (const b of bars) {
+    const line = lines[lines.length - 1];
+    if (line && line.cols + b.cols.length <= lineCols) { line.bars.push(b); line.cols += b.cols.length; }
+    else lines.push({ bars: [b], cols: b.cols.length });
+  }
+  if (S.inst) {
+    // An ocarina's pictures are two columns wide: a note starting in the
+    // next column goes on a second level, and one in a line's last column
+    // is drawn back over the column before (so nothing hangs off the line).
+    const fgPlace = new Map();
+    if (family === 'ocarina') {
+      for (const line of lines) {
+        let k = 0, prev = null;
+        const total = line.cols;
+        for (const b of line.bars) for (const c of b.cols) {
+          if (c.i != null && S.notes[c.i].midi != null) {
+            const lane = prev && k - prev.k < 2 && prev.lane === 0 ? 1 : 0;
+            fgPlace.set(c.i, { lane, last: k === total - 1 });
+            prev = { k, lane };
+          }
+          k++;
+        }
+      }
+    }
+    return { family, lines, fgPlace };
+  }
   const nums = songFieldNumbers(state.layout);
   const places = new Map(panPlaces(state.layout, { rotated: state.ringRotated }).map(p => [p.note, p]));
   const sideOf = note => {
@@ -3147,15 +3212,7 @@ function songTab(S, { lyrics = false } = {}) {
     return Math.abs(dx) < Math.max(p.r, 6) ? 0 : Math.sign(dx);
   };
   const sides = S.notes.map(n => (n.midi == null ? null : sideOf(S.name(n.midi))));
-  const bars = songBars(S.song, S.notes);
-  // Bars on lines of up to SONG_TAB_LINE columns.
-  const lines = [];
-  for (const b of bars) {
-    const line = lines[lines.length - 1];
-    if (line && line.cols + b.cols.length <= lineCols) { line.bars.push(b); line.cols += b.cols.length; }
-    else lines.push({ bars: [b], cols: b.cols.length });
-  }
-  return { nums, hands: songHands(sides), sideOf, lines };
+  return { family, nums, hands: songHands(sides), sideOf, lines };
 }
 // The picture's badges: each note the song uses, with its number, coloured
 // by the side it's on (no colour in the middle).
@@ -3169,34 +3226,106 @@ function songTabMarks(S, T) {
     return { note: n, marks: [{ n: T.nums.get(n), hand, label }] };
   });
 }
-function songTabHtml(S, T, idx, LY = null) {
-  const family = songTabFamily(null);
+// The tab's rows under the counts, by instrument; each { label, h (px),
+// cell(column) → html, cls }. Every instrument shares the grid (bars,
+// counts, the lyrics row, the current note, print); only these differ.
+//  · handpan, tongue drum, kalimba: an R and an L row, each note's number
+//    in the row of the hand (or thumb) that plays it.
+//  · flute (tin whistle, Native American flute): Grey Larsen's staff-based
+//    tablature (https://greylarsen.com/FreeDownloads/Tablature_System_Explanation.pdf):
+//    a line per finger hole, the mouthpiece end on top, a gap between the
+//    hands; a dot on a line closes that hole (half a dot: half-cover it),
+//    a ring with a tail opens them all, + above: the second octave (blow
+//    harder). The note's name is above, as Larsen pairs letter names.
+//  · ocarina: an ocarina tab's picture of the fingering for each note
+//    (filled holes closed), here on the beat it starts on.
+function songTabRows(S, T, idx) {
+  const family = T.family;
+  const uf = state.useFlats, us = state.useSolfege;
+  const nameBtn = c => {
+    const n = S.notes[c.i];
+    const cur = c.i === idx;
+    return `<button type="button" class="tab-name${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''}>${escHtml(displayNote(midiToNoteName(n.midi), uf, us).replace(/\d+$/, ''))}</button>`;
+  };
+  const nameRow = {
+    label: '', h: 22, cls: 'tab-names',
+    cell: c => (c.i != null && S.notes[c.i].midi != null ? nameBtn(c) : c.hold != null ? '<span class="tab-hold" aria-hidden="true"></span>' : ''),
+  };
+  if (family === 'flute') {
+    const inst = S.inst;
+    const ch = inst.chambers[0];
+    const holes = ch.holes;
+    const fg = i => fingeringFor(inst, S.notes[i].midi)?.states ?? null;
+    const rows = [nameRow];
+    const overblown = i => !!fingeringFor(inst, S.notes[i].midi)?.chamber.overblow?.includes(S.notes[i].midi);
+    if (S.notes.some((n, i) => n.midi != null && overblown(i))) {
+      rows.push({ label: '', h: 12, cls: 'tab-plus', cell: c => (c.i != null && S.notes[c.i].midi != null && overblown(c.i) ? '+' : '') });
+    }
+    holes.forEach((h, k) => {
+      if (k > 0 && h.finger[0] !== holes[k - 1].finger[0]) rows.push({ label: '', h: 8, cls: 'tab-gap', cell: () => '' });
+      rows.push({
+        label: h.finger, h: 13, cls: 'tab-hole',
+        cell: c => {
+          if (c.i == null || S.notes[c.i].midi == null) return '';
+          const st = fg(c.i);
+          if (!st) return '';
+          if (st.every(x => x === 'o')) return k === 0 ? '<span class="tab-allopen" aria-hidden="true"></span>' : '';
+          return st[k] === 'c' ? '<span class="tab-dot" aria-hidden="true"></span>' : st[k] === 'h' ? '<span class="tab-dot is-half" aria-hidden="true"></span>' : '';
+        },
+      });
+    });
+    return rows;
+  }
+  if (family === 'ocarina') {
+    // Pictures two columns wide, on two levels where notes are close
+    // (songTab's fgPlace).
+    const two = [...T.fgPlace.values()].some(p => p.lane === 1);
+    const place = i => T.fgPlace.get(i) ?? { lane: 0, last: false };
+    return [nameRow, {
+      label: '', h: two ? 112 : 58, cls: 'tab-fgs',
+      cell: c => (c.i != null && S.notes[c.i].midi != null
+        ? `<button type="button" class="tab-fg${place(c.i).lane ? ' is-lane2' : ''}${place(c.i).last ? ' is-last' : ''}" data-action="song-step" data-i="${c.i}" tabindex="-1" aria-hidden="true">${renderFingering(S.inst, S.notes[c.i].midi, { size: 'mini', noteLabel: false, useFlats: uf, useSolfege: us })}</button>`
+        : ''),
+    }];
+  }
   const handWord = family === 'kalimba' ? 'thumb' : 'hand';
   const num = i => T.nums.get(S.name(S.notes[i].midi)) ?? '?';
-  const cell = (c, hand) => {
+  const handCell = hand => c => {
     if (c.i != null && T.hands[c.i] === hand) {
       const cur = c.i === idx;
       return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} ${handWord} ${num(c.i)}">${num(c.i)}</button>`;
     }
-    const held = c.hold;
-    return held != null && T.hands[held] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
+    return c.hold != null && T.hands[c.hold] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
   };
+  return [{ label: 'R', h: 32, cell: handCell('R'), cls: '' }, { label: 'L', h: 32, cell: handCell('L'), cls: '' }];
+}
+function songTabHtml(S, T, idx, LY = null) {
+  const family = T.family;
+  const rows = songTabRows(S, T, idx);
+  const heights = `18px ${rows.map(r => `${r.h}px`).join(' ')}${LY ? ' 22px' : ''}`;
+  const colCls = c => (c.i != null && c.i === idx && (family === 'flute' || family === 'ocarina') ? ' is-current-col' : '');
   const lines = T.lines.map(line => {
-    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length}">${b.change ? `<span class="tab-time" aria-label="Time changes to ${b.time}">${b.time}</span>` : ''}
+    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length};grid-template-rows:${heights}">${b.change ? `<span class="tab-time" aria-label="Time changes to ${b.time}">${b.time}</span>` : ''}
         ${b.cols.map(c => `<span class="tab-count${c.count && c.count !== '+' ? ' is-beat' : ''}">${c.count}</span>`).join('')}
-        ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'R')}</span>`).join('')}
-        ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'L')}</span>`).join('')}
+        ${rows.map(r => b.cols.map(c => `<span class="tab-cell ${r.cls}${colCls(c)}">${r.cell(c)}</span>`).join('')).join('')}
         ${LY ? b.cols.map(c => `<span class="tab-lyric${c.i === idx ? ' is-current' : ''}">${c.i != null && LY[c.i] ? escHtml(LY[c.i].text) : ''}</span>`).join('') : ''}
       </div>`).join('');
-    return `<div class="tab-line${LY ? ' has-lyrics' : ''}"><div class="tab-hands" aria-hidden="true"><span></span><span>R</span><span>L</span>${LY ? '<span></span>' : ''}</div>${bars}</div>`;
+    return `<div class="tab-line${LY ? ' has-lyrics' : ''} tab-${family}"><div class="tab-hands" aria-hidden="true" style="grid-template-rows:${heights}"><span></span>${rows.map(r => `<span class="${r.cls}">${escHtml(r.label)}</span>`).join('')}${LY ? '<span></span>' : ''}</div>${bars}</div>`;
   }).join('');
-  const word = { 'tongue-drum': 'tongue', kalimba: 'key' }[family] ?? 'note';
-  return `<div class="song-tab" role="group" aria-label="Tab: the number of each ${word}, R right ${handWord}, L left ${handWord}">${lines}</div>
-    <p class="pl-section-hint song-tab-key">${{
-      handpan: 'Numbers: the ding is 0, then the notes from low to high, as on the picture.',
-      'tongue-drum': 'Numbers: the tongues from low to high, as on the picture.',
-      kalimba: 'Numbers: kalimba notation, 1 to 7 up the scale from the key’s first note, a dot above for an octave up and below for an octave down, as on the picture.',
-    }[family]} R is the right ${handWord}, L the left. A line after a number: let it ring.</p>`;
+  const handWord = family === 'kalimba' ? 'thumb' : 'hand';
+  const label = {
+    flute: 'Tab: a line for each finger hole, a dot to close it',
+    ocarina: 'Tab: the fingering for each note',
+  }[family] ?? `Tab: the number of each ${{ 'tongue-drum': 'tongue', kalimba: 'key' }[family] ?? 'note'}, R right ${handWord}, L left ${handWord}`;
+  const key = {
+    handpan: 'Numbers: the ding is 0, then the notes from low to high, as on the picture. R is the right hand, L the left. A line after a number: let it ring.',
+    'tongue-drum': 'Numbers: the tongues from low to high, as on the picture. R is the right hand, L the left. A line after a number: let it ring.',
+    kalimba: 'Numbers: kalimba notation, 1 to 7 up the scale from the key’s first note, a dot above for an octave up and below for an octave down, as on the picture. R is the right thumb, L the left. A line after a number: let it ring.',
+    flute: 'Each line is a finger hole, the mouthpiece end on top, the left hand above the gap and the right hand below it. A dot: close the hole; half a dot: half-cover it; a ring with a tail: open them all. + : blow harder, the second octave. A line after a note: hold it.',
+    ocarina: 'Each picture is the fingering for the note that starts on that beat, filled holes closed, as on the big picture. A line after a note: hold it.',
+  }[family];
+  return `<div class="song-tab" role="group" aria-label="${label}">${lines}</div>
+    <p class="pl-section-hint song-tab-key">${key}</p>`;
 }
 // The words around the current note, the current syllable marked: a few
 // syllables before it and the rest of the phrase after.
@@ -3261,9 +3390,12 @@ function songTick() {
   }, ms);
 }
 function songAction(action, el) {
+  if (action === 'lists-other') { state.listsShowOther = !state.listsShowOther; render(); return true; }
   if (action === 'song-open') { openSong(el.dataset.id, el.dataset.inst); return true; }
   if (action === 'songs-all') { state.songsAll = true; render(); return true; }
-  if (action === 'songs-filter') { state.songsFilter = el.dataset.value; state.songsAll = false; render(); return true; }
+  if (action === 'songs-filter') { state.songsFilter = el.dataset.value; state.songsAll = false; state.songsCountries = false; render(); return true; }
+  if (action === 'songs-countries-open') { state.songsCountries = true; render(); return true; }
+  if (action === 'songs-countries-close') { state.songsCountries = false; render(); return true; }
   if (state.view !== 'song' || !state.songCtx) return false;
   const S = songOnInstrument();
   if (!S) return false;
@@ -3283,6 +3415,8 @@ function songAction(action, el) {
   if (action === 'song-lyrics') { state.showLyrics = !state.showLyrics; savePrefs(); render(); return true; }
   if (action === 'song-print') { songPrint(); return true; }
   if (action === 'song-prev') { go(state.songCtx.idx - 1); return true; }
+  // Back to the first note, stopped, so the next Play starts the song over.
+  if (action === 'song-restart') { songStop(); state.songCtx.idx = 0; render(); return true; }
   if (action === 'song-next') { go(state.songCtx.idx + 1); return true; }
   return false;
 }
@@ -3296,10 +3430,16 @@ function playlistsListHtml(inst) {
     }) + newBtn;
   }
   const layoutId = !inst ? hpCurrentLayoutId() : null;
+  const hereOf = pl => pl.chords.filter(c => (inst ? entryIsFor(c, inst) : !c.instrumentId && c.layoutId === layoutId)).length;
+  // Playlists with nothing for this instrument wait behind "Show … from
+  // other instruments" (listsOtherHtml); an empty one stays in view.
+  const isOther = pl => pl.chords.length > 0 && hereOf(pl) === 0;
+  const other = state.playlists.filter(isOther).length;
+  const shown = state.playlists.filter(pl => state.listsShowOther || !isOther(pl));
   return `
     <div class="list">
-      ${state.playlists.map(pl => {
-        const here = pl.chords.filter(c => (inst ? entryIsFor(c, inst) : !c.instrumentId && c.layoutId === layoutId)).length;
+      ${shown.map(pl => {
+        const here = hereOf(pl);
         const trail = inst
           ? `<button type="button" class="btn btn-primary btn-sm" data-action="oc-practice-start" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
           : `<button type="button" class="btn btn-primary btn-sm" data-action="hp-play-playlist" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
@@ -3308,8 +3448,17 @@ function playlistsListHtml(inst) {
           meta: `${here} chord${here !== 1 ? 's' : ''} here · ${pl.chords.length} in total`,
         });
       }).join('')}
+      ${listsOtherHtml(other, 'playlist')}
     </div>
     ${newBtn}`;
+}
+// The row that shows (or hides again) the lists made on other instruments.
+function listsOtherHtml(other, word) {
+  if (!other) return '';
+  const what = `${other} ${word}${other !== 1 ? 's' : ''}`;
+  return state.listsShowOther
+    ? uiRow({ lead: 'chevron-up', title: `Hide the ${what} with chords this instrument doesn’t have`, action: 'lists-other' })
+    : uiRow({ lead: 'chevron-down', title: `Show ${what} with chords this instrument doesn’t have`, meta: 'They play the chords it does have', action: 'lists-other' });
 }
 
 // Id that playlist entries of the handpan on screen carry, or null.
@@ -3663,9 +3812,10 @@ function ocChordMoreSheet() {
 function practiceSource(inst, pr = state.oc.practice) {
   if (!inst || !pr) return null;
   if (pr.progressionId) {
-    const prog = state.progressions.find(p => p.id === pr.progressionId);
-    if (!prog) return null;
-    return { name: prog.name, unit: 'Step', entries: prog.steps.filter(s => entryIsFor(s, inst) && !s.missing).map(s => ({ ...s, id: s.stepId })) };
+    const raw = state.progressions.find(p => p.id === pr.progressionId);
+    if (!raw) return null;
+    const prog = progVoiced(raw, progOcContext(inst));
+    return { name: prog.name, unit: 'Chord', entries: prog.steps.filter(s => entryIsFor(s, inst) && !s.missing).map(s => ({ ...s, id: s.stepId })) };
   }
   const pl = state.playlists.find(p => p.id === pr.playlistId);
   if (!pl) return null;
@@ -3733,6 +3883,7 @@ function viewOcarinaPractice(inst) {
       </div>
       <p class="practice-status">${state.tuner.on ? `Listening for ${nn(cur.midi)} · play the note` : 'Tap the diagram or Next to move on'}</p>
       <div class="actionbar practice-bar">
+        ${uiIconBtn('rewind', 'Back to the first note', { action: 'oc-practice-restart', cls: 'btn-lg' })}
         <button type="button" class="btn btn-secondary btn-lg" data-action="oc-practice-prev">${icon('chevron-left')} Back</button>
         <button type="button" class="btn btn-primary btn-lg" data-action="oc-practice-next">Next ${icon('chevron-right')}</button>
       </div>
@@ -6189,7 +6340,7 @@ function goesWithSheet() {
   })).join('');
   return uiSheet({
     key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
-    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? (currentInstrument()?.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a progression.</p>
+    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? (currentInstrument()?.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a playlist.</p>
       <div class="list gw-list">${rows}</div>`,
   });
 }
@@ -6375,6 +6526,7 @@ function viewChords() {
         ${uiIconBtn('x', 'Show all chords', { action: 'hp-clear-playlist', cls: 'is-dense' })}
       </div>
       <div class="hp-now-ctl">
+        ${uiIconBtn('rewind', 'Back to the first chord', { action: 'autoplay-restart', disabled: autoplayPos <= 0 })}
         <button type="button" class="btn btn-primary" data-action="toggle-autoplay">
           ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
         </button>
@@ -6458,7 +6610,7 @@ function hpFiltersSheet() {
     <div class="hp-sheet-form">
       ${chordCountField(state.chordCountSet, 'toggle-note-count')}
       ${chordTypeField(f.category, 'filter-category')}
-      ${uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
+      ${!state.playlists.length ? '' : uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
         id: 'hp-playlist-filter', value: f.playlist, label: 'Playlist', action: 'select-playlist-filter',
         options: [{ value: 'All', label: 'All chords' }, ...state.playlists.map(p => ({ value: p.id, label: p.name, meta: `${p.chords.length} chord${p.chords.length !== 1 ? 's' : ''}` }))],
       }) })}
@@ -6557,6 +6709,7 @@ function sheetHtml() {
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
   if (state.plName) return plNameSheet();
+  if (state.songsCountries && ['hp-playlists', 'instrument'].includes(state.view)) return songsCountriesSheet();
   if (state.chordSheet && ['hp-playlists', 'instrument', 'progression'].includes(state.view)) return chordSheetSheet();
   if (state.plRowMenu != null && state.view === 'playlist') return plRowMenuSheet();
   if (state.progRowMenu != null && state.view === 'progression') return progRowMenuSheet();
@@ -6573,45 +6726,29 @@ function sheetHtml() {
 
 // Add to playlist: tick playlists, or start a new one. Its Progression
 // segment appends the chord as a step instead (repeats allowed).
+// ♡ of a chord: add it to a playlist (at the end; the same chord can go in
+// more than once). A ✓ shows the playlists it is in already.
 function renderPlaylistPicker() {
-  const seg = `<div class="picker-mode">${uiSeg([{ value: 'playlist', label: 'Playlist' }, { value: 'progression', label: 'Progression' }],
-    state.pickerMode, { action: 'picker-mode', label: 'Add to' })}</div>`;
-  if (state.pickerMode === 'progression') {
-    const rows = state.progressions.map(p => uiRow({
-      lead: `<span class="row-check">${icon('plus')}</span>`, title: p.name,
-      meta: p.steps.length ? escHtml(p.steps.slice(-3).map(progStepTitle).join(' · ')) : 'No steps yet',
-      trail: `<span class="chord-count">${p.steps.length}</span>`,
-      action: 'add-to-progression', data: { 'prog-id': p.id },
-    })).join('');
-    const create = state.pickerNewProgression
-      ? `<div class="picker-new-row">
-           <input class="input" id="new-progression-input" placeholder="Progression name" aria-label="New progression name">
-           <button class="btn btn-primary" data-action="confirm-new-progression">Create</button>
-         </div>`
-      : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New progression', action: 'show-new-progression-input' });
-    return uiSheet({
-      key: 'picker', title: 'Add to progression', close: 'close-playlist-picker',
-      body: `${seg}<p class="picker-hint">Adds the chord as the next step. The same chord can go in more than once.</p><div class="list">${rows}${create}</div>`,
-    });
-  }
-  const favId = state.pickerChordFavId;
-  const rows = state.playlists.map(pl => {
-    const inPl = pl.chords.some(c => c.id === favId);
+  const chord = state.pickerChordObj;
+  const entry = chord && state.pickerChordFavId ? playlistEntryFor(chord, state.pickerChordFavId) : null;
+  const rows = state.progressions.map(p => {
+    const n = entry ? p.steps.filter(st => st.chordId === entry.chordId && st.layoutId === entry.layoutId).length : 0;
     return uiRow({
-      lead: `<span class="row-check">${inPl ? icon('check') : ''}</span>`, title: pl.name,
-      trail: `<span class="chord-count">${pl.chords.length}</span>`, cls: inPl ? 'is-current' : '',
-      action: 'toggle-playlist-chord', data: { 'playlist-id': pl.id },
+      lead: `<span class="row-check">${icon(n ? 'check' : 'plus')}</span>`, title: p.name,
+      meta: p.steps.length ? escHtml(p.steps.slice(-3).map(progStepTitle).join(' · ')) : 'No chords yet',
+      trail: `<span class="chord-count">${p.steps.length}</span>`, cls: n ? 'is-current' : '',
+      action: 'add-to-progression', data: { 'prog-id': p.id },
     });
   }).join('');
-  const create = state.pickerNewPlaylist
+  const create = state.pickerNewProgression
     ? `<div class="picker-new-row">
-         <input class="input" id="new-playlist-input" placeholder="Playlist name" aria-label="New playlist name">
-         <button class="btn btn-primary" data-action="confirm-new-playlist">Create</button>
+         <input class="input" id="new-progression-input" placeholder="Playlist name" aria-label="New playlist name">
+         <button class="btn btn-primary" data-action="confirm-new-progression">Create</button>
        </div>`
-    : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New playlist', action: 'show-new-playlist-input' });
+    : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New playlist', action: 'show-new-progression-input' });
   return uiSheet({
     key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
-    body: `${seg}<div class="list">${rows}${create}</div>`,
+    body: `<p class="picker-hint">Adds the chord at the end. The same chord can go in more than once; ✓ marks the playlists it is in already.</p><div class="list">${rows}${create}</div>`,
   });
 }
 
@@ -6631,7 +6768,7 @@ function menuSheet() {
     title = prog?.name ?? title;
     if (prog) {
       rows.push(uiRow({ lead: 'pencil', title: 'Rename', action: 'prog-rename-open' }));
-      rows.push(uiRow({ lead: 'trash-2', title: 'Delete progression', action: 'prog-delete', cls: 'is-danger' }));
+      rows.push(uiRow({ lead: 'trash-2', title: 'Delete playlist', action: 'prog-delete', cls: 'is-danger' }));
     }
   } else if (state.view === 'instrument') {
     const inst = currentInstrument();
@@ -6770,7 +6907,7 @@ function plRowMenuSheet() {
 function plNameSheet() {
   const n = state.plName;
   const isNew = n.mode === 'new' || n.mode === 'prog-new';
-  const what = n.mode.startsWith('prog-') ? 'progression' : 'playlist';
+  const what = 'playlist';
   return uiSheet({
     key: 'pl-name', title: `${isNew ? 'New' : 'Rename'} ${what}`, close: 'pl-name-cancel',
     body: `<div class="hp-sheet-form">${uiField({
@@ -6803,8 +6940,50 @@ function hpPlayPlaylist(pl) {
 // on an ocarina or flute Practice walks each step's arpeggio. Steps of other
 // instruments are listed with their instrument's name and skipped.
 
+// A playlist as it plays here: its chords found again on the instrument on
+// screen when they were added on another one (progVoiced). Edits go by id,
+// so they always change the stored playlist, never these copies.
 function progFind(id = state.activeProgressionId) {
-  return state.progressions.find(p => p.id === id) ?? null;
+  const prog = state.progressions.find(p => p.id === id) ?? null;
+  if (!prog) return null;
+  const ctx = progContext(prog);
+  return ctx && !ctx.load && !ctx.open ? progVoiced(prog, ctx) : prog;
+}
+
+// ── Playing a playlist on any instrument that has its chords ─────────────
+// A chord added on one instrument plays on another when that one has the
+// same chord (the same root and type), in its own notes or fingering: by
+// the notes, not the key. A chord it lacks stays, marked for the instrument
+// it was added on.
+function progChordsOn(ctx) {
+  if (ctx.kind === 'hp') return state.chords ?? [];
+  const layout = ocarinaToLayout(ctx.inst);
+  return layout.top.ding ? findAllChords(layout) : [];
+}
+function progStepOn(s, ctx, chords = progChordsOn(ctx)) {
+  if (!s || s.missing) return null;
+  if (ctx.isHere(s)) return s;
+  const typeId = s.chordId?.slice(s.chordId.indexOf('-') + 1);
+  const root = String(s.rootName ?? '').replace(/-?\d+$/, '');
+  if (!typeId || !root) return null;
+  const pc = notePC(root + '4');
+  const c = chords.find(x => x.type.id === typeId && notePC(String(x.rootName).replace(/-?\d+$/, '') + '4') === pc);
+  if (!c) return null;
+  const voiced = { ...s, chordId: c.id, rootName: c.rootName, typeName: c.type.name, notes: c.notes, noteCount: c.notes.length, addedOn: s.scaleName };
+  if (ctx.kind === 'hp') return { ...voiced, layoutId: ctx.layoutId, layoutData: null, instrumentId: undefined, family: undefined, scaleName: ctx.name };
+  return { ...voiced, layoutId: ocLayoutId(ctx.inst), instrumentId: entryInstId(ctx.inst), family: ctx.inst.family, scaleName: ctx.inst.name };
+}
+function progVoiced(prog, ctx) {
+  const chords = progChordsOn(ctx);
+  return { ...prog, steps: prog.steps.map(s => progStepOn(s, ctx, chords) ?? s) };
+}
+// How many of a playlist's chords play on this instrument (the oc instrument,
+// or the handpan, drum or kalimba on screen).
+function progHereCount(prog, inst) {
+  const ctx = inst ? progOcContext(inst) : state.layout ? progHpContext(hpCurrentLayoutId(), state.layout.name) : null;
+  if (!ctx) return 0;
+  const chords = progChordsOn(ctx);
+  return prog.steps.filter(s => progStepOn(s, ctx, chords)).length;
 }
 
 function progStepTitle(s) {
@@ -6887,7 +7066,7 @@ function progStart(prog, fromIdx = null) {
   }
   if (!ctx || ctx.kind !== 'hp') return;
   const idx = fromIdx != null && ctx.isHere(prog.steps[fromIdx]) ? fromIdx : nextProgressionStep(prog.steps, -1, ctx.isHere);
-  if (idx < 0) { showToast(`No steps on ${ctx.name}`); return; }
+  if (idx < 0) { showToast(`None of these chords is on ${ctx.name}`); return; }
   if (progressionLevel(prog) !== 'chord') { progStartLevel(prog, idx); return; }
   state.progPlay = { id: prog.id, stepId: prog.steps[idx].stepId, beat: 0, playing: true };
   render();
@@ -7058,7 +7237,7 @@ function progStepRow(s, idx, { here, current, last }) {
         <span class="prog-bars-val">${progStepLenText(s)}</span>
         ${uiIconBtn('plus', `More bars (step ${no})`, { action: 'prog-step-bars', data: { idx, delta: 1 }, cls: 'tonal', disabled: s.bars >= PROG_LIMITS.bars[1] })}
       </span>
-      <span class="row-trail">${uiIconBtn('ellipsis', `Step ${no}: duplicate, move or remove`, { action: 'prog-row-menu', data: { idx }, attrs: 'aria-haspopup="dialog"' })}</span>
+      <span class="row-trail">${uiIconBtn('ellipsis', `Chord ${no}: duplicate, move or remove`, { action: 'prog-row-menu', data: { idx }, attrs: 'aria-haspopup="dialog"' })}</span>
     </div>`;
 }
 
@@ -7086,7 +7265,7 @@ function viewProgression() {
   if (prog.steps.length === 0) {
     player = ''; // the empty state below says how to add steps
   } else if (ctx && !nHere) {
-    player = `<p class="prog-now-hint">None of these steps is on ${escHtml(ctx.name)}. Each one plays on its own instrument.</p>`;
+    player = `<p class="prog-now-hint">None of these chords is on ${escHtml(ctx.name)}. Open it on an instrument that has them.</p>`;
   } else if (ctx?.kind === 'hp' && !ctx.load) {
     const level = progressionLevel(prog);
     const shown = cur && isHere(cur);
@@ -7115,16 +7294,19 @@ function viewProgression() {
           ${shown ? `
             <div class="prog-now-text">
               <div class="prog-now-title">${escHtml(progStepTitle(cur))}</div>
-              <div class="prog-now-meta">Step ${curIdx + 1} of ${prog.steps.length}${cur.section ? ` · ${escHtml(cur.section)}` : ''} · ${escHtml((level !== 'chord' ? panOpts.highlightNotes : cur.notes).map(n => displayNote(n, uf, us)).join(' · '))}</div>
+              <div class="prog-now-meta">Chord ${curIdx + 1} of ${prog.steps.length}${cur.section ? ` · ${escHtml(cur.section)}` : ''} · ${escHtml((level !== 'chord' ? panOpts.highlightNotes : cur.notes).map(n => displayNote(n, uf, us)).join(' · '))}</div>
               ${patternLine}
             </div>
             ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
-          : `<div class="prog-now-hint">${level === 'chord' ? 'Play runs the steps in order, in time. Tap a step to hear it.' : 'Play counts in one bar, then shows each chord numbered in strike order with L and R hands, the next chord faint. Tap a step to see it.'}</div>`}
+          : `<div class="prog-now-hint">${level === 'chord' ? 'Play runs the chords in order, in time. Tap a chord to hear it.' : 'Play counts in one bar, then shows each chord numbered in strike order with L and R hands, the next chord faint. Tap a chord to see it.'}</div>`}
         </div>
         <div class="prog-level">${levelSeg}</div>
-        ${playing
-          ? `<button type="button" class="btn btn-secondary btn-lg btn-block" data-action="prog-stop">${icon('square')} Stop</button>`
-          : `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play" ${nHere ? '' : 'disabled'}>${icon('play')} Play</button>`}
+        <div class="prog-play-row">
+          ${uiIconBtn('rewind', 'Back to the first chord', { action: 'prog-restart', cls: 'btn-lg', disabled: !nHere || curIdx <= 0 })}
+          ${playing
+            ? `<button type="button" class="btn btn-secondary btn-lg btn-block" data-action="prog-stop">${icon('square')} Stop</button>`
+            : `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play" ${nHere ? '' : 'disabled'}>${icon('play')} ${curIdx > 0 ? 'Play from here' : 'Play'}</button>`}
+        </div>
       </div>`;
   } else if (ctx?.kind === 'hp') {
     player = `<div class="prog-player"><button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play">${icon('play')} Play on ${escHtml(ctx.name)}</button></div>`;
@@ -7132,7 +7314,7 @@ function viewProgression() {
     const can = nHere > 0 && playableMidis(ctx.inst).length > 0;
     player = `<div class="prog-player">${can
       ? `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-practice">${icon('play')} Practice on ${escHtml(ctx.name)}</button>`
-      : `<p class="prog-now-hint">No steps on ${escHtml(ctx.name)} yet.</p>`}</div>`;
+      : `<p class="prog-now-hint">None of these chords is on ${escHtml(ctx.name)}.</p>`}</div>`;
   }
 
   const timing = `
@@ -7146,13 +7328,13 @@ function viewProgression() {
         min: prog.beatsPerBar <= PROG_LIMITS.beatsPerBar[0], max: prog.beatsPerBar >= PROG_LIMITS.beatsPerBar[1],
       }) })}
     </div>
-    <p class="prog-summary">${tot.steps} step${tot.steps !== 1 ? 's' : ''}${ctx && nHere ? ` on ${escHtml(ctx.name)}` : ''} · ${csFmtBars(tot.bars)} · ${progFmtLength(tot.ms)} at ${prog.bpm} BPM</p>`;
+    <p class="prog-summary">${tot.steps} chord${tot.steps !== 1 ? 's' : ''}${ctx && nHere ? ` on ${escHtml(ctx.name)}` : ''} · ${csFmtBars(tot.bars)} · ${progFmtLength(tot.ms)} at ${prog.bpm} BPM</p>`;
 
   let steps;
   if (prog.steps.length === 0) {
     steps = uiEmpty({
-      icon: 'list-ordered', title: 'No steps yet',
-      body: 'Tap ♡ on any chord, choose Progression and pick this one. The same chord can go in more than once. Or paste a chord sheet.',
+      icon: 'list-ordered', title: 'No chords yet',
+      body: 'Tap ♡ on any chord and pick this playlist. The same chord can go in more than once. Or paste a chord sheet.',
       action: `<div class="empty-actions">
         <button type="button" class="btn btn-secondary" data-action="cs-open" data-prog-id="${escHtml(prog.id)}">${icon('clipboard-paste')} Paste a chord sheet</button>
         ${ctx && !ctx.load && !ctx.open ? '<button type="button" class="btn btn-ghost" data-action="pl-go-chords">Go to Chords</button>' : ''}
@@ -7177,7 +7359,7 @@ function viewProgression() {
       <div class="prog-side">${player}</div>
       <div class="prog-main">
         ${timing}
-        ${prog.steps.length > 1 ? uiSeg([{ value: 'steps', label: 'Steps' }, { value: 'order', label: 'Order' }], state.progMode, { action: 'prog-mode', label: 'Show' }) : ''}
+        ${prog.steps.length > 1 ? uiSeg([{ value: 'steps', label: 'Chords' }, { value: 'order', label: 'Order' }], state.progMode, { action: 'prog-mode', label: 'Show' }) : ''}
         ${steps}
       </div>
     </div>`;
@@ -7195,30 +7377,35 @@ function progRowMenuSheet() {
     uiRow({ lead: 'chevron-down', title: 'Move down', action: 'prog-step-down', data: { idx }, cls: idx === prog.steps.length - 1 ? 'is-disabled' : '' }),
     uiRow({ lead: 'trash-2', title: 'Remove step', action: 'prog-step-remove', data: { idx }, cls: 'is-danger' }),
   ].join('');
-  return uiSheet({ key: 'prog-row', variant: 'progrow', title: `Step ${idx + 1} · ${progStepTitle(s)}`, close: 'prog-row-close', body: `<div class="list">${rows}</div>` });
+  return uiSheet({ key: 'prog-row', variant: 'progrow', title: `Chord ${idx + 1} · ${progStepTitle(s)}`, close: 'prog-row-close', body: `<div class="list">${rows}</div>` });
 }
 
 // Progressions on the Playlists tab (and Home): a row opens one; on a
 // handpan Play opens it and plays, on an ocarina Practice starts.
 function progressionRowsHtml(inst, { home = false } = {}) {
-  const layoutId = !inst && !home ? hpCurrentLayoutId() : null;
-  return state.progressions.map(p => {
+  // A playlist shows when this instrument has all its chords (by the notes,
+  // progStepOn); the others wait behind "Show …" (listsOtherHtml).
+  const hereOf = p => progHereCount(p, inst);
+  const isOther = p => p.steps.length > 0 && hereOf(p) < p.steps.filter(st => !st.missing).length;
+  const other = home ? 0 : state.progressions.filter(isOther).length;
+  const list = home || state.listsShowOther ? state.progressions : state.progressions.filter(p => !isOther(p));
+  return list.map(p => {
     const n = p.steps.length;
     if (home) {
       return uiRow({
         lead: 'list-ordered', title: p.name, chevron: true, action: 'open-progression', data: { id: p.id },
-        meta: `${n} step${n !== 1 ? 's' : ''} · ${p.bpm} BPM`,
+        meta: `${n} chord${n !== 1 ? 's' : ''} · ${p.bpm} BPM`,
       });
     }
-    const here = p.steps.filter(s => !s.missing && (inst ? entryIsFor(s, inst) : !s.instrumentId && s.layoutId === layoutId)).length;
+    const here = hereOf(p);
     const trail = inst
       ? `<button type="button" class="btn btn-primary btn-sm" data-action="prog-practice" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
       : `<button type="button" class="btn btn-primary btn-sm" data-action="prog-play" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
     return uiRow({
       lead: 'list-ordered', title: p.name, chevron: true, action: 'open-progression', data: { id: p.id }, trail,
-      meta: `${here} step${here !== 1 ? 's' : ''} here · ${n} in total · ${p.bpm} BPM`,
+      meta: `${here === n ? `${n} chord${n !== 1 ? 's' : ''}` : `${here} of ${n} chords here`} · ${p.bpm} BPM`,
     });
-  }).join('');
+  }).join('') + (home ? '' : listsOtherHtml(other, 'playlist'));
 }
 
 function openProgression(id, { push = true } = {}) {
@@ -7371,7 +7558,7 @@ function chordSheetSheet() {
   const first = sheet.steps[0]?.chord;
   const bars = sheet.steps.reduce((n, s) => n + s.beats, 0) / sheet.beatsPerBar;
   const facts = [
-    `${sheet.steps.length} step${sheet.steps.length !== 1 ? 's' : ''}`, csFmtBars(bars),
+    `${sheet.steps.length} chord${sheet.steps.length !== 1 ? 's' : ''}`, csFmtBars(bars),
     `${sheet.beatsPerBar}/${sheet.beatUnit}`, sheet.bpm ? `${sheet.bpm} BPM` : `${PROG_DEFAULTS.bpm} BPM (none given)`,
   ].join(' · ');
   const missingNow = new Set(sheet.steps.filter(s => !matchSheetChord(s.chord, chords, cs.semis)).map(s => s.symbol));
@@ -7384,7 +7571,7 @@ function chordSheetSheet() {
   return uiSheet({
     key: 'chordsheet', title: `Fit to ${target?.name ?? 'instrument'}`, close: 'cs-cancel',
     body: `<div class="hp-sheet-form">
-      ${uiField({ label: 'Name', id: 'cs-name', control: `<input class="input" id="cs-name" value="${escHtml(cs.name)}" placeholder="Progression name" autocomplete="off">` })}
+      ${uiField({ label: 'Name', id: 'cs-name', control: `<input class="input" id="cs-name" value="${escHtml(cs.name)}" placeholder="Playlist name" autocomplete="off">` })}
       <p class="cs-facts">${escHtml(facts)}${sheet.sections.length ? `<br>Sections: ${escHtml(sheet.sections.join(', '))}` : ''}</p>
       ${sheet.unknown.length ? `<p class="cs-note">${icon('info')}<span>Not in the app's chord list: ${escHtml(sheet.unknown.join(', '))}. They stay in, marked, and are skipped when playing.</span></p>` : ''}
       <div>
@@ -7398,7 +7585,7 @@ function chordSheetSheet() {
     </div>`,
     footer: `
       <button type="button" class="btn btn-ghost" data-action="cs-back">Back</button>
-      <button type="button" class="btn btn-primary" data-action="cs-save">Save progression</button>`,
+      <button type="button" class="btn btn-primary" data-action="cs-save">Save playlist</button>`,
   });
 }
 
@@ -7752,7 +7939,10 @@ function loadFromHash() {
   if (hash === '#settings/listen') { state.view = 'listen-debug'; return; }
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
-    if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; }
+    if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; return; }
+    // A playlist moved into the one kind of list opens as that list.
+    const moved = state.progressions.find(p => p.fromPlaylist === id || p.id === `pr-from-${id}`);
+    if (moved) { state.activeProgressionId = moved.id; state.view = 'progression'; state.progMode = 'steps'; }
     return;
   }
   if (hash.startsWith('#song/')) {
@@ -7973,6 +8163,9 @@ function refreshAccess() {
 // Every saved list read again (after a sync, a carry-over or a sign-out).
 function reloadSaved() {
   state.savedLayouts = getSavedLayouts();
+  // A playlist that came in from sync (another device, an older version of
+  // the app) moves into the one kind of list too.
+  mergePlaylistsIntoProgressions();
   state.playlists = getPlaylists();
   state.favorites = getFavorites();
   state.progressions = getProgressions();
@@ -8421,7 +8614,9 @@ function refreshAccountCounts() {
   if (!accountOn() || !isLoggedIn()) return;
   fetchAccountCounts().then(c => { state.accountCounts = c ?? 'error'; if (state.view === 'settings') render(); });
 }
-const COUNT_WORDS = [['layout', 'handpan/drum/kalimba', 'handpans, drums and kalimbas'], ['instrument', 'ocarina or flute', 'ocarinas and flutes'], ['playlist', 'playlist', 'playlists'], ['progression', 'progression', 'progressions']];
+// Playlists are kept as kind 'progression' (the old kind 'playlist' holds only
+// the backups of lists moved over, mergePlaylistsIntoProgressions).
+const COUNT_WORDS = [['layout', 'handpan/drum/kalimba', 'handpans, drums and kalimbas'], ['instrument', 'ocarina or flute', 'ocarinas and flutes'], ['progression', 'playlist', 'playlists']];
 function countsText(c) {
   const parts = COUNT_WORDS.map(([k, one, many]) => c[k] ? `${c[k]} ${c[k] === 1 ? one : many}` : '').filter(Boolean);
   return parts.length ? parts.join(' · ') : 'nothing yet';
@@ -8467,7 +8662,7 @@ function accountConfirmSheet() {
     return uiSheet({
       key: 'account-delete', title: 'Delete your account?', close: 'account-confirm-cancel', variant: 'confirm',
       body: `
-        <p class="sheet-text">Your instruments, playlists, progressions and settings are deleted from the server and this device. This can't be undone. Export your data first if you want a copy.</p>
+        <p class="sheet-text">Your instruments, playlists and settings are deleted from the server and this device. This can't be undone. Export your data first if you want a copy.</p>
         ${uiField({ label: 'Type DELETE to confirm', id: 'account-delete-input', error: state.accountError ?? '',
           control: '<input class="input" id="account-delete-input" autocomplete="off" autocapitalize="characters">' })}`,
       footer: `
@@ -9304,6 +9499,14 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'oc-practice-stop') { state.oc.practice = null; render(); return; }
+  if (action === 'oc-practice-restart') {
+    if (!state.oc.practice) return;
+    state.oc.practice.idx = 0;
+    state.tuner.lastAdvance = performance.now();
+    playPracticeStep();
+    render();
+    return;
+  }
   if (action === 'oc-practice-next' || action === 'oc-practice-prev') {
     const src = practiceSource(currentInstrument());
     if (!src) return;
@@ -9678,7 +9881,7 @@ document.addEventListener('click', e => {
       if (n.mode === 'prog-rename') renameProgression(id, name);
       state.progressions = getProgressions();
       state.plName = null;
-      if (n.mode === 'prog-new') showToast('Progression created', { action: { label: 'Open', run: () => openProgression(id) } });
+      if (n.mode === 'prog-new') showToast('Playlist created', { action: { label: 'Open', run: () => openProgression(id) } });
       render();
       return;
     }
@@ -9710,7 +9913,7 @@ document.addEventListener('click', e => {
     // The sheet closes so the toast doesn't cover it; ♡ opens it again on
     // Progression for the next chord.
     Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
-    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${prog.name} (step ${no})`);
+    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${prog.name} (chord ${no})`);
     render();
     return;
   }
@@ -9727,7 +9930,7 @@ document.addEventListener('click', e => {
     const id = addProgression(name, [newProgressionStep(playlistEntryFor(chord, state.pickerChordFavId))]);
     state.progressions = getProgressions();
     Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
-    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${name} (step 1)`);
+    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${name} (chord 1)`);
     render();
     return;
   }
@@ -9773,7 +9976,7 @@ document.addEventListener('click', e => {
     if (!prog) return;
     state.confirm = {
       kind: 'progression', id: prog.id, ok: 'Delete', title: `Delete ${prog.name}?`,
-      body: 'The progression is removed on this device and from sync. The chords stay on your instruments.',
+      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
     };
     render();
     return;
@@ -9818,7 +10021,7 @@ document.addEventListener('click', e => {
     if (!s) return;
     let ctx = progContext(prog);
     if (s.missing) { showToast(`${s.symbol ?? 'This chord'} isn't on ${s.scaleName ?? 'this instrument'}`); return; }
-    if (!ctx || !ctx.isHere(s)) { showToast(`This step plays on ${s.scaleName ?? 'another instrument'}`); return; }
+    if (!ctx || !ctx.isHere(s)) { showToast(`This chord isn’t on this instrument; it was added on ${s.scaleName ?? 'another instrument'}`); return; }
     if (ctx.kind === 'oc') {
       initAudio();
       const rootName = s.notes.find(n => notePC(n) === notePC(s.rootName + '4')) ?? s.notes[0];
@@ -9844,7 +10047,23 @@ document.addEventListener('click', e => {
       Object.assign(state, { view: 'progression', activeProgressionId: prog.id, progMode: 'steps', progRowMenu: null });
       navPush(`#prog/${encodeURIComponent(prog.id)}`);
     }
-    progStart(prog);
+    // From the chord it stopped on (the button says Play from here), else the first.
+    const at = state.view === 'progression' ? progCurrentIdx(prog) : -1;
+    progStart(prog, at > 0 ? at : null);
+    return;
+  }
+  if (action === 'prog-restart') {
+    // Back to the first chord: playing goes on from there, stopped stays stopped.
+    const prog = progFind();
+    if (!prog) return;
+    const ctx = progContext(prog);
+    if (!ctx) return;
+    const first = nextProgressionStep(prog.steps, -1, ctx.isHere);
+    if (first < 0) return;
+    if (state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, first); return; }
+    state.progPlay = { id: prog.id, stepId: prog.steps[first].stepId, beat: 0, playing: false };
+    render();
+    progStrike(prog.steps[first]);
     return;
   }
   if (action === 'prog-stop') { progStop(); render(); return; }
@@ -10198,6 +10417,19 @@ document.addEventListener('click', e => {
     return;
   }
 
+  if (action === 'autoplay-restart') {
+    // The playlist's first chord on this handpan; playing goes on from there.
+    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
+    if (!pl) return;
+    const first = pl.chords.findIndex(c => !c.instrumentId);
+    if (first < 0) return;
+    const wasOn = state.autoplayOn;
+    stopAutoplay();
+    if (!loadPlaylistChordAt(pl, first)) return;
+    navReplace(stateToHash());
+    if (wasOn) startAutoplay(pl); else { render(); playSelectedChordSound(); }
+    return;
+  }
   if (action === 'toggle-autoplay') {
     const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
     if (!pl) return;

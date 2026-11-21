@@ -547,7 +547,11 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
 .song-note.is-current { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .song-licence { font-size: var(--fs-13); color: var(--text-3); }
-.songs-filter { margin-bottom: var(--space-2); }
+.songs-filter { margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2); }
+.songs-filter .chip { gap: 6px; }
+.songs-filter .chip svg { width: 16px; height: 16px; }
+.chip.is-spotlight { border-color: var(--accent); color: var(--accent); }
+.chip.is-spotlight[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .song-licence a { color: inherit; text-decoration: underline; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
 /* Move notes: the handpan's tone fields dragged to where they are. */
@@ -1853,6 +1857,28 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .tab-note.is-current { outline: 3px solid var(--accent); outline-offset: 1px; }
 .tab-hold { position: absolute; left: -50%; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--text-3); opacity: 0.45; border-radius: 2px; }
 .song-tab-key { margin: 0; font-size: var(--fs-13); }
+/* Flute and ocarina tabs (songTabRows): note names on top; a flute's hole
+   lines with dots (Grey Larsen's staff tablature); an ocarina's pictures. */
+.tab-hands { width: 22px; }
+.tab-flute .tab-hands span { font-size: 10px; }
+.tab-cell.tab-names { border-top: 0; }
+.tab-name { min-width: 0; padding: 0 1px; border: 0; background: none; font: var(--fw-semibold) 12px/1 var(--font); color: var(--text-1); cursor: pointer; white-space: nowrap; }
+.tab-name.is-current { color: var(--accent); }
+.tab-cell.tab-plus { border-top: 0; font: var(--fw-semibold) 12px/1 var(--font); color: var(--text-2); }
+.tab-cell.tab-gap { border-top: 0; }
+.tab-cell.tab-hole { border-top: 0; background: linear-gradient(var(--text-3), var(--text-3)) center / 100% 1px no-repeat; }
+.tab-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-1); }
+.tab-dot.is-half { background: linear-gradient(90deg, var(--text-1) 50%, var(--bg) 50%); border: 1.5px solid var(--text-1); }
+.tab-allopen { position: relative; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text-1); background: var(--bg); }
+.tab-allopen::after { content: ''; position: absolute; left: 50%; top: 9px; width: 1.5px; height: 16px; margin-left: -0.75px; background: var(--text-1); }
+.tab-cell.tab-fgs { border-top: 0; align-items: flex-start; justify-content: flex-start; overflow: visible; }
+.tab-fg { position: relative; z-index: 1; flex: none; width: 200%; height: 54px; padding: 0; border: 0; background: none; cursor: pointer; }
+.tab-fg.is-lane2 { margin-top: 56px; }
+.tab-fg.is-last { margin-left: -100%; }
+.tab-fg .fingering { width: 100%; height: 100%; }
+.tab-cell.tab-names .tab-hold { left: 0; top: 78%; }
+.tab-cell.is-current-col { background-color: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tab-cell.tab-hole.is-current-col { background: linear-gradient(var(--text-3), var(--text-3)) center / 100% 1px no-repeat, color-mix(in srgb, var(--accent) 14%, transparent); }
 /* Lyrics (songLyrics in js/songs.js): a row under the tab, a line under the
    note on screen, a syllable under each note chip. */
 .tab-line.has-lyrics .tab-hands, .tab-line.has-lyrics .tab-bar { grid-template-rows: 18px 32px 32px 22px; }
@@ -1874,6 +1900,11 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
   body.printing-song .song-now, body.printing-song .song-controls, body.printing-song .song-view-row,
   body.printing-song .song .list, body.printing-song .song .list-title { display: none; }
   body.printing-song .song-stage.pan-wrap svg { max-height: 70mm; }
+  body.printing-song .song-stage.fg-stage { display: none; }
   body.printing-song .tab-line { break-inside: avoid; }
-  body.printing-song .tab-note, body.printing-song .tab-hold { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body.printing-song .tab-note, body.printing-song .tab-hold, body.printing-song .tab-dot, body.printing-song .tab-hole { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* The playlist player's buttons: back to the first chord, then Play/Stop. */
+.prog-play-row { display: flex; gap: var(--space-2); align-items: stretch; }
+.prog-play-row .btn-block { flex: 1; }

@@ -20,7 +20,7 @@ Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starti
 - If anything in the brief conflicts with the code, stop and ask rather than guessing.
 
 ## Design consistency (reuse, don't copy)
-- Every instrument uses the same screens and components. A screen that exists for one instrument (Chords, Playlists, Set up, a sheet, a card, a list row) is built from shared parts, and another instrument plugs its own content into them instead of getting its own version. The Chords screen is `chordsScreenHtml` / `chordCardHtml` / `chordRowHtml` in `js/app.js`: an instrument gives its picture and its chord rows, nothing else.
+- Every instrument uses the same screens and components. A screen that exists for one instrument (Chords, Playlists — one kind of list, stored as progressions —, Set up, a sheet, a card, a list row) is built from shared parts, and another instrument plugs its own content into them instead of getting its own version. The Chords screen is `chordsScreenHtml` / `chordCardHtml` / `chordRowHtml` in `js/app.js`: an instrument gives its picture and its chord rows, nothing else.
 - Before adding UI for one instrument, look for the pattern the others already use and reuse it (or extend the shared part so all of them get it). Only the parts that really differ between instruments (the picture of the instrument, its fingerings) are instrument-specific.
 - When a screen's pattern changes, change the shared part so every instrument changes with it, and remove the old copy. `docs/design-system.md` lists the shared patterns; keep it up to date.
 

@@ -632,6 +632,19 @@ export const SONGS = [
 
 // Song lists: everything, or the Christmas songs (first in the list from
 // mid-November to Epiphany, when people look for them).
+// Countries whose songs are a collection of their own (Jāzeps Vītols' Latvian
+// folk songs): found under Countries, not in everyone's Popular list.
+export const SONG_COLLECTION_ORIGINS = ['lv'];
+
+/** The songs a filter shows: 'christmas', 'popular' (everything but the
+ *  collections above; the old 'all' means the same), or 'origin:<code>'. */
+export function songsForFilter(filter, songs = SONGS) {
+  if (filter === 'christmas') return christmasSongs(songs);
+  const m = /^origin:(.+)$/.exec(filter ?? '');
+  if (m) return songs.filter(s => s.origin === m[1]);
+  return songs.filter(s => !SONG_COLLECTION_ORIGINS.includes(s.origin));
+}
+
 export function christmasSongs(songs = SONGS) { return songs.filter(s => s.tags?.includes('christmas')); }
 export function christmasSeason(date = new Date()) {
   const m = date.getMonth(), d = date.getDate();
