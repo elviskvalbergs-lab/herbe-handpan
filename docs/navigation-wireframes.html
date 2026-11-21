@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Navigation wireframes</title>
+<style>
+  :root { --ink: #1d2b24; --mute: #6b7d74; --line: #b9c6be; --soft: #eef2ef; --bg: #f6f8f6; --acc: #c2412e; --ok: #17734e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 36px 0 4px; }
+  .intro { color: var(--mute); max-width: 760px; margin: 0 0 20px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 28px; }
+  figure { margin: 0; width: 300px; }
+  figcaption { font-weight: 600; margin-bottom: 8px; }
+  figcaption small { display: block; font-weight: 400; color: var(--mute); }
+  .phone { width: 300px; height: 600px; border: 2px solid var(--ink); border-radius: 28px; background: #fff; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .phone.old { border-color: var(--line); }
+  .bar { height: 44px; flex: none; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 14px; font-weight: 600; }
+  .bar .sp { flex: 1; }
+  .ic { width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 6px; font: 10px/19px system-ui; text-align: center; flex: none; }
+  .body { flex: 1; overflow: hidden; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .tabs { height: 46px; flex: none; border-top: 1px solid var(--line); display: flex; justify-content: space-around; align-items: center; color: var(--mute); font-size: 11px; }
+  .tabs b { color: var(--ink); border-top: 2px solid var(--acc); padding-top: 4px; }
+  .pic { border: 1px dashed var(--line); border-radius: 12px; background: var(--soft); display: grid; place-items: center; color: var(--mute); font-size: 12px; flex: none; }
+  .card { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row .sp { flex: 1; }
+  .list { border: 1px solid var(--line); border-radius: 12px; }
+  .list > div { padding: 7px 10px; border-bottom: 1px solid var(--soft); display: flex; align-items: center; gap: 8px; }
+  .list > div:last-child { border-bottom: 0; }
+  .list b { display: block; }
+  .list .sp { flex: 1; }
+  .big { font-size: 17px; font-weight: 700; line-height: 1.2; }
+  .meta { color: var(--mute); font-size: 12px; }
+  .cap { color: var(--mute); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+  .btn { border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; background: #fff; white-space: nowrap; }
+  .btn.p { background: var(--acc); border-color: var(--acc); color: #fff; }
+  .btn.g { border-color: transparent; }
+  .chips { display: flex; flex-wrap: nowrap; gap: 5px; overflow: hidden; }
+  .chip { border: 1px solid var(--line); border-radius: 14px; padding: 3px 9px; font-size: 12px; font-weight: 600; background: #fff; flex: none; }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12px; font-weight: 600; flex: none; }
+  .seg span { flex: 1; text-align: center; padding: 5px 4px; }
+  .seg .on { background: var(--ink); color: #fff; }
+  .banner { background: #fdf0ed; border: 1px solid #f0c8bf; border-radius: 10px; padding: 8px; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: 2px solid var(--ink); border-radius: 18px 18px 0 0; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .scrim { position: absolute; inset: 0; background: rgba(20, 30, 25, .35); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 12px; padding: 8px; font-weight: 600; }
+  .tile small { display: block; font-weight: 400; color: var(--mute); }
+  .dots { display: flex; gap: 5px; align-items: center; font-size: 12px; color: var(--mute); }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .dots i.on { background: var(--acc); }
+  .note { max-width: 760px; color: var(--mute); margin: 6px 0 14px; }
+  table.t { border-collapse: collapse; max-width: 760px; margin: 8px 0 0; }
+  table.t td, table.t th { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+  table.t th { background: var(--soft); }
+  .x { text-decoration: line-through; color: var(--mute); }
+</style>
+</head>
+<body>
+<h1>Navigation wireframes</h1>
+<p class="intro">Phone frames (390 px wide in the app) for <code>docs/navigation-redesign.md</code>. Grey frame: today. Black frame: proposed. Boxes are controls; every instrument gets the same screen with its own picture.</p>
+
+<h2>1. Tabs: Songs gets its own tab</h2>
+<p class="note">At the review the tab called Playlists held four things, with Songs, the content a beginner understands best, third. The owner has since merged playlists and progressions into one list; this moves Songs out into its own tab.</p>
+<div class="grid">
+  <figure>
+    <figcaption>Today: Playlists tab <small>15 controls, 4 concepts</small></figcaption>
+    <div class="phone old">
+      <div class="bar">D Kurd ▾<span class="sp"></span><span class="ic">mic</span><span class="ic">⋯</span></div>
+      <div class="body">
+        <div class="cap">Playlists</div>
+        <div class="list"><div><span><b>Favorites</b><span class="meta">0 chords here · 0 in total</span></span><span class="sp"></span><span class="btn">▶ Play</span></div></div>
+        <span class="btn g">+ New playlist</span>
+        <div class="cap">Progressions</div>
+        <div class="meta">Chords in order, and the same chord as often as you like…</div>
+        <span class="btn g">+ New progression</span>
+        <span class="btn g">Paste a chord sheet</span>
+        <div class="cap">Songs to learn</div>
+        <div class="seg"><span class="on">Christmas · 3</span><span>All songs</span></div>
+        <div class="list"><div><b>Tu scendi dalle stelle</b></div><div><b>Freu dich, Erd und Sternenzelt</b></div></div>
+      </div>
+      <div class="tabs"><span>Chords</span><span>Pan</span><b>Playlists</b></div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Songs tab <small>one concept; the list itself is unchanged</small></figcaption>
+    <div class="phone">
+      <div class="bar">D Kurd ▾<span class="sp"></span><span class="ic">Y</span><span class="ic">⋯</span></div>
+      <div class="body">
+        <div class="cap">Songs to learn</div>
+        <div class="seg"><span class="on">Christmas · 3</span><span>All songs</span></div>
+        <div class="list">
+          <div><span><b>Tu scendi dalle stelle</b><span class="meta">Italy · C major · 6/8</span></span><span class="sp"></span>›</div>
+          <div><span><b>Freu dich, Erd und Sternenzelt</b><span class="meta">Czechia · C major · 2/4</span></span><span class="sp"></span>›</div>
+          <div><span><b>Es ist für uns eine Zeit…</b><span class="meta">Switzerland · C major · 4/4</span></span><span class="sp"></span>›</div>
+        </div>
+        <div class="meta">34 more need notes your handpan doesn’t have.</div>
+        <div class="cap">Chords of a song</div>
+        <div class="list"><div><span><b>Paste a chord sheet</b><span class="meta">Know a song’s chords? Play along with them</span></span><span class="sp"></span>›</div></div>
+      </div>
+      <div class="tabs"><span>Chords</span><b>Songs</b><span>Playlists</span><span>Pan</span></div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Playlists tab <small>the owner's one kind of list, without the songs</small></figcaption>
+    <div class="phone">
+      <div class="bar">D Kurd ▾<span class="sp"></span><span class="ic">Y</span><span class="ic">⋯</span></div>
+      <div class="body">
+        <div class="cap">Playlists</div>
+        <div class="list">
+          <div><span><b>Campfire</b><span class="meta">6 chords · 90 BPM</span></span><span class="sp"></span><span class="btn p">▶ Play</span></div>
+          <div><span><b>Am – Dm – Am – F</b><span class="meta">4 chords · 80 BPM</span></span><span class="sp"></span><span class="btn p">▶ Play</span></div>
+        </div>
+        <div class="row"><span class="btn g">+ New playlist</span><span class="btn g">Paste a chord sheet</span></div>
+      </div>
+      <div class="tabs"><span>Chords</span><span>Songs</span><b>Playlists</b><span>Pan</span></div>
+    </div>
+  </figure>
+</div>
+<table class="t">
+  <tr><th>Instrument</th><th>Today</th><th>Proposed</th></tr>
+  <tr><td>Handpan, tongue drum, kalimba</td><td>Chords · Pan · Playlists</td><td>Chords · Songs · Playlists · Pan (Drum, Kalimba)</td></tr>
+  <tr><td>Ocarina, flute</td><td>Notes · Chords · Playlists (· Build / Set up)</td><td>Chords · Songs · Playlists · Notes (· Build / Set up)</td></tr>
+</table>
+
+<h2>2. Chords: one thing at a time</h2>
+<p class="note">The card answers “what is this chord and what next”. Everything set once or used rarely is one tap away, in ⋯ or Filters.</p>
+<div class="grid">
+  <figure>
+    <figcaption>Today <small>39 controls</small></figcaption>
+    <div class="phone old">
+      <div class="bar">D Kurd ▾<span class="sp"></span><span class="ic">mic</span><span class="ic">⋯</span></div>
+      <div class="body">
+        <div class="pic" style="height:150px">pan · ↻</div>
+        <div class="card">
+          <div class="row"><span><span class="big">A Minor</span><br><span class="meta">A3 · C4 · E4</span></span><span class="sp"></span><span class="ic">♡</span><span class="btn p">▶ Chord</span><span class="btn">1×</span><span class="ic">⋯</span></div>
+          <div class="row meta" style="margin-top:6px">Goes well with<span class="sp"></span><u>Progressions ›</u></div>
+          <div class="chips"><span class="chip">Dm</span><span class="chip">A#</span></div>
+        </div>
+        <div class="seg"><span class="on">Browse</span><span>Identify</span><span>Listen</span></div>
+        <div class="chips"><span class="btn">Filters</span><span class="chip on">All</span><span class="chip">C</span><span class="chip">D</span><span class="chip">E</span><span class="chip">F</span><span class="chip">G</span></div>
+        <div class="meta">6 main chords · <u>Show all 61</u></div>
+        <div class="list">
+          <div><span><b>D Minor</b><span class="meta">Minor</span></span><span class="sp"></span><span class="ic">♡</span>3</div>
+          <div><span><b>F Major</b><span class="meta">Major</span></span><span class="sp"></span><span class="ic">♡</span>3</div>
+        </div>
+      </div>
+      <div class="tabs"><b>Chords</b><span>Pan</span><span>Playlists</span></div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Proposed <small>25 controls</small></figcaption>
+    <div class="phone">
+      <div class="bar">D Kurd ▾<span class="sp"></span><span class="ic">Y</span><span class="ic">⋯</span></div>
+      <div class="body">
+        <div class="pic" style="height:150px">pan · ↻</div>
+        <div class="card">
+          <div class="row"><span><span class="big">A Minor</span><br><span class="meta">A3 · C4 · E4</span></span><span class="sp"></span><span class="btn p">▶ Chord</span><span class="ic">▯</span><span class="ic">⋯</span></div>
+          <div class="row" style="margin-top:6px"><span class="meta">Goes well with</span><span class="chip">Dm</span><span class="chip">B♭</span></div>
+        </div>
+        <div class="seg"><span class="on">All chords</span><span>Tap notes</span><span>Listen</span></div>
+        <div class="row"><span class="meta">6 main chords · <u>Show all 61</u></span><span class="sp"></span><span class="btn">Filters</span></div>
+        <div class="list">
+          <div><span><b>D Minor</b><span class="meta">Minor · 3 notes</span></span></div>
+          <div><span><b>F Major</b><span class="meta">Major · 3 notes</span></span><span class="sp"></span><span class="meta">▮</span></div>
+          <div><span><b>G Minor</b><span class="meta">Minor · 3 notes</span></span></div>
+          <div><span><b>A Minor</b><span class="meta">Minor · 3 notes</span></span></div>
+        </div>
+      </div>
+      <div class="tabs"><b>Chords</b><span>Songs</span><span>Playlists</span><span>Pan</span></div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>⋯ of the chord <small>one sheet for every instrument</small></figcaption>
+    <div class="phone">
+      <div class="bar">D Kurd ▾</div>
+      <div class="body"><div class="pic" style="height:150px">pan</div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="big">A Minor</div>
+        <div class="list">
+          <div><b>Speed</b><span class="sp"></span><span class="meta">1× ›</span></div>
+          <div><b>Play the scale</b></div>
+          <div><b>Progressions with this chord</b><span class="sp"></span>›</div>
+          <div><b>Copy link to this chord</b></div>
+        </div>
+        <div class="meta">An ocarina or flute adds here: Octaves, blown-together pairs, what the holes mean, Which finger is which.</div>
+      </div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Filters <small>one sheet; the root chips live here</small></figcaption>
+    <div class="phone">
+      <div class="bar">D Kurd ▾</div>
+      <div class="body"><div class="pic" style="height:110px">pan</div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="big">Filters</div>
+        <div class="meta">Starts on</div>
+        <div class="chips" style="flex-wrap:wrap"><span class="chip on">All</span><span class="chip">C</span><span class="chip">D</span><span class="chip">E</span><span class="chip">F</span><span class="chip">G</span><span class="chip">A</span><span class="chip">B♭</span></div>
+        <div class="meta">Notes in chord</div>
+        <div class="chips"><span class="chip">2</span><span class="chip">3</span><span class="chip">4</span><span class="chip">5+</span></div>
+        <div class="meta">Type</div>
+        <span class="btn">All types ▾</span>
+        <div class="meta">Playlist (handpan) · Scale (ocarina, flute)</div>
+        <span class="btn">All chords ▾</span>
+        <div class="row"><span class="btn g">Clear all</span><span class="sp"></span><span class="btn p">Done</span></div>
+      </div>
+    </div>
+  </figure>
+</div>
+
+<h2>3. The microphone: three words</h2>
+<table class="t">
+  <tr><th>Word</th><th>Who makes the sound</th><th>What Oakhum does</th><th>Today it is called</th></tr>
+  <tr><td><b>Tuner</b> (tuning-fork icon)</td><td>You, one note</td><td>How sharp or flat it is</td><td>Tuner, behind a microphone icon</td></tr>
+  <tr><td><b>Play my notes</b></td><td>You, your instrument’s notes</td><td>Works out the instrument, scale or key</td><td>Play my notes · Listen · just listen · Detect with tuner · Play it</td></tr>
+  <tr><td><b>Listen</b></td><td>Music around you</td><td>Names the chord and shows it on your instrument</td><td>Listen</td></tr>
+</table>
+<p class="note">All three show the same strip while the microphone is on, and the same sentence before: “Oakhum only listens while this is open. Nothing is recorded.”</p>
+
+<h2>4. First run</h2>
+<div class="grid">
+  <figure>
+    <figcaption>Today <small>2 of 5 tiles above the fold; install ask first</small></figcaption>
+    <div class="phone old">
+      <div class="bar">Welcome<span class="sp"></span><span class="ic">⚙</span></div>
+      <div class="body">
+        <div class="pic" style="height:140px">hero picture</div>
+        <div class="big">oakhum</div>
+        <div class="meta">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</div>
+        <div class="big">What do you play?</div>
+        <div class="banner">Add Oakhum to your home screen…<span class="btn p">Add</span>✕</div>
+        <div class="tiles"><div class="tile">Handpan<small>Round steel drum</small></div><div class="tile">Tongue drum<small>Cut tongues</small></div></div>
+      </div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Proposed <small>all five tiles on the first screen</small></figcaption>
+    <div class="phone">
+      <div class="bar">oakhum<span class="sp"></span><span class="ic">⚙</span></div>
+      <div class="body">
+        <div class="meta">Chords and songs for the instrument you own.</div>
+        <div class="big">What do you play?</div>
+        <div class="meta">Tap your instrument. You can add more later.</div>
+        <div class="tiles">
+          <div class="tile">Handpan<small>Round steel drum</small></div><div class="tile">Tongue drum<small>Cut tongues</small></div>
+          <div class="tile">Kalimba<small>Thumb piano</small></div><div class="tile">Ocarina<small>Clay or plastic</small></div>
+          <div class="tile">Flute<small>Tin whistle, NAF</small></div>
+        </div>
+        <div class="meta">Something else? <u>Ask for your instrument</u>. Just looking? <u>Play a popular tuning</u>.</div>
+      </div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Setup steps <small>four named stages, not “Step 3 of 4” five times</small></figcaption>
+    <div class="phone">
+      <div class="bar">‹ Your handpan</div>
+      <div class="body">
+        <div class="dots"><i class="on"></i><i class="on"></i><i></i><i></i> Notes</div>
+        <div class="big">Play the lowest note</div>
+        <div class="pic" style="height:170px">pan, notes heard so far</div>
+        <div class="meta">3 of 9 · listening</div>
+        <div class="dots" style="margin-top:14px"><i class="on"></i><i class="on"></i><i class="on"></i><i></i> Match</div>
+        <div class="big">We heard 9 notes</div>
+        <div class="dots" style="margin-top:14px"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i> Ready</div>
+        <div class="row"><span class="btn">Keep this handpan</span><span class="sp"></span><span class="btn p">Play my first chord</span></div>
+      </div>
+    </div>
+  </figure>
+</div>
+
+<h2>5. Settings</h2>
+<div class="grid">
+  <figure>
+    <figcaption>Today <small>8 sections, 27 controls, every family’s rows</small></figcaption>
+    <div class="phone old">
+      <div class="bar">‹ Settings</div>
+      <div class="body">
+        <div class="cap">Display</div><div class="list"><div>Theme</div><div>Note names</div><div>Note style</div></div>
+        <div class="cap">Sound</div><div class="list"><div>Speed</div></div>
+        <div class="cap">Handpan</div><div class="list"><div>Ring orientation</div><div>Seconds per chord</div></div>
+        <div class="cap">Fingering diagrams</div><div class="list"><div>Finger labels</div><div>Hole sizes</div><div>Close-up</div><div>Which finger…</div><div>Legend again</div></div>
+        <div class="cap">Listen · Account · About</div>
+      </div>
+    </div>
+  </figure>
+  <figure>
+    <figcaption>Proposed <small>4 sections; a family’s rows only if you play it</small></figcaption>
+    <div class="phone">
+      <div class="bar">‹ Settings</div>
+      <div class="body">
+        <div class="cap">Notes and display</div><div class="list"><div>Theme</div><div>Note names · Auto / C# / D♭</div><div>Note style</div></div>
+        <div class="cap">Playing</div><div class="list"><div>Speed</div><div>Seconds per chord in auto-play</div></div>
+        <div class="cap">Your handpan</div><div class="list"><div>Ring orientation</div></div>
+        <div class="cap">Account and about</div><div class="list"><div>Sign in</div><div>Privacy notice</div><div>Send feedback</div><div>Check for updates</div></div>
+      </div>
+    </div>
+  </figure>
+</div>
+</body>
+</html>

@@ -198,6 +198,7 @@ function render() {
   else if (state.view === 'editor') html = viewEditor();
   else if (state.view === 'chords') html = viewChords();
   else if (state.view === 'hp-playlists') html = viewHandpanPlaylists();
+  else if (state.view === 'hp-songs') html = viewHandpanSongs();
   else if (state.view === 'playlist') html = viewPlaylist();
   else if (state.view === 'progression') html = viewProgression();
   else if (state.view === 'song') html = viewSong();
@@ -2384,7 +2385,7 @@ function viewHome() {
     const where = new Set(pl.chords.map(c => c.instrumentId || c.layoutId)).size;
     return uiRow({
       lead: 'list-music', title: pl.name, chevron: true, action: 'open-playlist', data: { id: pl.id },
-      meta: `${n} chord${n !== 1 ? 's' : ''}${n ? ` · ${where} instrument${where !== 1 ? 's' : ''}` : ''}`,
+      meta: `Playlist · ${n} chord${n !== 1 ? 's' : ''}${n ? ` · ${where} instrument${where !== 1 ? 's' : ''}` : ''}`,
       trail: n ? uiIconBtn('play', `Play ${pl.name}`, { action: 'open-playlist-chords', data: { id: pl.id } }) : '',
     });
   }).join('');
@@ -2899,17 +2900,37 @@ function scalePitchClasses(scaleId) {
 
 // Tabs of an ocarina or flute: [id, label, icon]. Notes, Chords and
 // Playlists need a playable chart; a shared instrument is read-only.
-function ocTabs(inst) {
+// The tabs of an instrument, the same on every one and in the same order
+// (docs/navigation-redesign.md): the three things people come for, Chords,
+// Songs and Playlists, then the instrument's own tab (Pan, Drum, Kalimba, or an
+// ocarina's or flute's Notes). inst is an ocarina or flute, or null for the
+// handpan, tongue drum or kalimba on screen. One it made itself also has
+// Build or Set up.
+function instrumentTabs(inst) {
+  const chords = { id: 'chords', label: 'Chords', icon: 'music' };
+  const songs = { id: 'songs', label: 'Songs', icon: 'music-2' };
+  const sets = { id: 'playlists', label: 'Playlists', icon: 'list-music' };
+  if (!inst) return [chords, songs, sets, { id: 'editor', label: layoutFamilyInfo(layoutInstrument(state.layout)).tab, icon: 'circle-dot' }];
   const tabs = [];
-  const playable = playableMidis(inst).length > 0;
-  if (playable) tabs.push(['notes', 'Notes', 'layout-grid'], ['chords', 'Chords', 'music']);
-  // Playlists on every instrument, saved or opened from a link (as on a
-  // handpan); not on someone's instrument shared by code, which is read-only.
-  if (playable && (inst.id !== SHARED_ID || inst.link)) tabs.push(['playlists', 'Playlists', 'list-music']);
+  if (playableMidis(inst).length > 0) {
+    tabs.push(chords, songs);
+    // Playlists on every instrument, saved or opened from a link; not on someone's
+    // instrument shared by code, which is read-only.
+    if (inst.id !== SHARED_ID || inst.link) tabs.push(sets);
+    tabs.push({ id: 'notes', label: 'Notes', icon: 'layout-grid' });
+  }
   if (inst.id === SHARED_ID) return tabs;
-  if (inst.kind === 'scale' && canBuild()) tabs.push(['builder', 'Build', 'hammer']);
-  if (inst.kind === 'custom' || inst.kind === 'traditional') tabs.push(['setup', 'Set up', 'wrench']);
+  if (inst.kind === 'scale' && canBuild()) tabs.push({ id: 'builder', label: 'Build', icon: 'hammer' });
+  if (inst.kind === 'custom' || inst.kind === 'traditional') tabs.push({ id: 'setup', label: 'Set up', icon: 'wrench' });
   return tabs;
+}
+// The tab bar: an ocarina's or flute's tabs are one view's (oc-tab), a
+// handpan's are views of their own.
+const LAYOUT_TAB_ACTIONS = { chords: 'go-chords', songs: 'hp-songs', playlists: 'hp-playlists', editor: 'back-editor' };
+function instrumentTabBar(inst, current) {
+  return uiTabBar(instrumentTabs(inst).map(t => (inst
+    ? { ...t, action: 'oc-tab', data: { tab: t.id } }
+    : { ...t, action: LAYOUT_TAB_ACTIONS[t.id] })), current);
 }
 
 // An instrument being tried, not in My instruments: the same banner on every
@@ -2928,7 +2949,7 @@ function notSavedBannerHtml(action) {
 // App bar of an ocarina or flute, with its tabs (none in practice mode).
 function ocHeader(inst, view, { practice = false } = {}) {
   const shared = inst.id === SHARED_ID;
-  const tabs = practice ? '' : uiTabBar(ocTabs(inst).map(([id, label, ic]) => ({ id, label, icon: ic, action: 'oc-tab', data: { tab: id } })), view);
+  const tabs = practice ? '' : instrumentTabBar(inst, view);
   return `
     ${uiAppBar({
       switcher: inst.link ? { name: inst.name, action: 'open-play', data: { family: inst.family }, title: inst.family === 'flute' ? 'Other flutes' : 'Other ocarinas' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
@@ -2943,20 +2964,12 @@ function ocHeader(inst, view, { practice = false } = {}) {
       </div>` : ''}`;
 }
 
-// Tabs of a handpan: Chords and Pan are the existing chords and editor views.
-function handpanTabs(current) {
-  return uiTabBar([
-    { id: 'chords', label: 'Chords', icon: 'music', action: 'go-chords' },
-    { id: 'editor', label: layoutFamilyInfo(layoutInstrument(state.layout)).tab, icon: 'circle-dot', action: 'back-editor' },
-    { id: 'playlists', label: 'Playlists', icon: 'list-music', action: 'hp-playlists' },
-  ], current);
-}
-
 // The Playlists tab: the user's playlists, with how many of each one's
 // chords belong to this instrument. A row opens the playlist; on a handpan
 // Play opens it in Chords and auto-plays it, on an ocarina Practice starts.
 // The Playlists tab: one kind of list (chords in order, the same one as
-// often as you like, played in time; stored as progressions), then songs.
+// often as you like, played in time; stored as progressions). Songs have
+// their own tab (songsTabHtml).
 function playlistsTabHtml(inst) {
   return `
     <section class="pl-section" aria-labelledby="pl-sec-playlists">
@@ -2968,8 +2981,17 @@ function playlistsTabHtml(inst) {
         <button type="button" class="btn btn-ghost pl-new" data-action="prog-new-open">${icon('plus')} New playlist</button>
         <button type="button" class="btn btn-ghost pl-new" data-action="cs-open">${icon('clipboard-paste')} Paste a chord sheet</button>
       </div>
-    </section>
-    ${songsSectionHtml(inst)}`;
+    </section>`;
+}
+
+// The Songs tab: songs to learn, then the way in for a song whose chords
+// you have (it becomes a playlist).
+function songsTabHtml(inst) {
+  return `${songsSectionHtml(inst)}
+    <section class="pl-section" aria-labelledby="pl-sec-sheet">
+      <h2 class="list-title" id="pl-sec-sheet">Chords of a song</h2>
+      <div class="list">${uiRow({ lead: 'clipboard-paste', title: 'Paste a chord sheet', meta: 'Know a song’s chords? Play along with them', chevron: true, action: 'cs-open' })}</div>
+    </section>`;
 }
 
 // ── Songs to learn (js/songs.js) ──────────────────────────────────────────
@@ -3470,11 +3492,10 @@ function hpCurrentLayoutId() {
 }
 
 function viewHandpanPlaylists() {
-  return `${handpanAppBar(handpanTabs('playlists'))}${playlistsTabHtml(null)}`;
+  return `${handpanAppBar(instrumentTabBar(null, 'playlists'))}${playlistsTabHtml(null)}`;
 }
-
-function viewOcarinaPlaylists(inst) {
-  return `${ocHeader(inst, 'playlists')}${playlistsTabHtml(inst)}`;
+function viewHandpanSongs() {
+  return `${handpanAppBar(instrumentTabBar(null, 'songs'))}${songsTabHtml(null)}`;
 }
 
 // State of the ocarina / flute views; reset when switching instrument.
@@ -3926,7 +3947,8 @@ function viewInstrument() {
   const oc = state.oc;
   if (oc.practice) return viewOcarinaPractice(inst);
   if (oc.tab === 'chords') return viewOcarinaChords(inst);
-  if (oc.tab === 'playlists') return viewOcarinaPlaylists(inst);
+  if (oc.tab === 'playlists') return `${ocHeader(inst, 'playlists')}${playlistsTabHtml(inst)}`;
+  if (oc.tab === 'songs') return `${ocHeader(inst, 'songs')}${songsTabHtml(inst)}`;
   if (!midis.includes(oc.selected)) { oc.selected = midis[0]; oc.previous = null; }
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const inScale = m => !pcs || pcs.has(((m % 12) + 12) % 12);
@@ -4024,7 +4046,7 @@ function ocCardData(inst, key) {
 // handpan screens included, keeps the handpan sound.
 function voiceForState() {
   // A handpan, tongue drum or kalimba on screen sounds like itself.
-  if (state.layout && ['editor', 'chords', 'hp-playlists', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
+  if (state.layout && ['editor', 'chords', 'hp-playlists', 'hp-songs', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
   if (state.view === 'setup') return setupFamilyInfo(state.setup?.family).voice;
   if (state.view === 'song') {
     const inst = songInstrument();
@@ -5740,7 +5762,7 @@ function viewEditor() {
   const fi = layoutFamilyInfo(fam);
   const drum = fam !== 'handpan'; // one row of notes, no shells
   return `
-    ${handpanAppBar(handpanTabs('editor'))}
+    ${handpanAppBar(instrumentTabBar(null, 'editor'))}
     ${state.currentInstrumentId ? (accountOn() ? '' : notSavedBannerHtml('visit-save')) : notSavedBannerHtml('save-layout')}
 
     <div class="editor-layout">
@@ -6596,7 +6618,7 @@ function viewChords() {
     </div>`;
 
   return `
-    ${handpanAppBar(handpanTabs('chords'))}${chordsScreenHtml({
+    ${handpanAppBar(instrumentTabBar(null, 'chords'))}${chordsScreenHtml({
     cls: state.discoverMode ? ' is-identify' : '',
     picture: `<div class="pan-wrap hp-pan">${panRotateBtn()}${panSvg}</div>`,
     card,
@@ -6714,8 +6736,8 @@ function sheetHtml() {
   if (state.shareModal) return shareModalHtml();
   if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
   if (state.plName) return plNameSheet();
-  if (state.songsCountries && ['hp-playlists', 'instrument'].includes(state.view)) return songsCountriesSheet();
-  if (state.chordSheet && ['hp-playlists', 'instrument', 'progression'].includes(state.view)) return chordSheetSheet();
+  if (state.songsCountries && ['hp-playlists', 'hp-songs', 'instrument'].includes(state.view)) return songsCountriesSheet();
+  if (state.chordSheet && ['hp-playlists', 'hp-songs', 'instrument', 'progression'].includes(state.view)) return chordSheetSheet();
   if (state.plRowMenu != null && state.view === 'playlist') return plRowMenuSheet();
   if (state.progRowMenu != null && state.view === 'progression') return progRowMenuSheet();
   if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
@@ -7781,7 +7803,7 @@ function startAutoplay(pl) {
 // link to what's on screen. (The name is from when these were '#…' hashes.)
 function stateToHash() {
   if (!state.layout) return '';
-  const tab = state.view === 'chords' ? 'chords' : state.view === 'hp-playlists' ? 'playlists' : null;
+  const tab = state.view === 'chords' ? 'chords' : state.view === 'hp-playlists' ? 'playlists' : state.view === 'hp-songs' ? 'songs' : null;
   const chord = state.view === 'chords' ? state.selectedChord?.id ?? null : null;
 
   if (!state.layout.isCustom) {
@@ -7847,6 +7869,14 @@ function urlIsLink() {
   return !!parseLink(location.pathname, location.search) || (!!location.hash && location.hash !== '#');
 }
 
+// The screen a link's tab opens: a handpan's view, an ocarina's or flute's tab.
+function layoutTabView(tab) {
+  return tab === 'chords' || tab === 'listen' ? 'chords' : tab === 'playlists' ? 'hp-playlists' : tab === 'songs' ? 'hp-songs' : 'editor';
+}
+function windTabOf(tab) {
+  return tab === 'chords' || tab === 'listen' ? 'chords' : tab === 'playlists' || tab === 'songs' ? tab : 'notes';
+}
+
 // An ocarina or flute from a published chart, opened as a visiting
 // instrument (a deep link, or a playlist entry added from one).
 function openChartLink({ chartId, keyId }) {
@@ -7868,7 +7898,7 @@ function openSharedLayout(data, tab) {
   Object.assign(state, {
     layout, currentInstrumentId: null, shared: null, sharedStatus: null, selectedChord: null,
     chords: findAllChords(layout), shellMode: 'both', chordFilter: { category: 'All', root: 'All', playlist: 'All' },
-    view: tab === 'chords' || tab === 'listen' ? 'chords' : tab === 'playlists' ? 'hp-playlists' : 'editor',
+    view: layoutTabView(tab),
   });
   navReplace(stateToHash());
 }
@@ -7907,12 +7937,12 @@ function openLink(link) {
   }
   if (link.kind === 'shared') {
     openSharedLink(link.code, link.tab);
-    if (link.tab === 'chords' || link.tab === 'listen') state.oc.tab = 'chords';
+    state.oc.tab = windTabOf(link.tab);
     return;
   }
   if (link.kind === 'chart') {
     openChartLink(link);
-    if (link.tab === 'chords' || link.tab === 'listen') state.oc.tab = 'chords';
+    state.oc.tab = windTabOf(link.tab);
     return;
   }
   // Handpans: a scale, or custom notes carried in the link.
@@ -7926,7 +7956,7 @@ function openLink(link) {
   }
   state.shellMode = 'both';
   state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
-  state.view = link.tab === 'chords' || link.tab === 'listen' || link.chord ? 'chords' : link.tab === 'playlists' ? 'hp-playlists' : 'editor';
+  state.view = link.chord ? 'chords' : layoutTabView(link.tab);
   if (link.chord) state.selectedChord = state.chords.find(c => linkSlug(c.id) === link.chord) || null;
 }
 
@@ -7963,7 +7993,7 @@ function loadFromHash() {
   if (hash.startsWith('#p/')) { openSharedLink(decodeURIComponent(hash.slice(3))); return; }
   if (hash.startsWith('#i/')) {
     const [id, tab] = hash.slice(3).split('/');
-    if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'playlists', 'builder', 'setup'].includes(tab)) {
+    if (openInstrument(decodeURIComponent(id), { push: false }) && ['chords', 'notes', 'songs', 'playlists', 'builder', 'setup'].includes(tab)) {
       state.oc.tab = tab;
     }
     return;
@@ -8943,12 +8973,12 @@ document.addEventListener('click', e => {
     return;
   }
 
-  if (action === 'hp-playlists') {
+  if (action === 'hp-playlists' || action === 'hp-songs') {
     stopAutoplay();
     state.pendingSlot = null;
-    state.view = 'hp-playlists';
+    state.view = action;
     // Remembered on the history entry, so coming back to it reopens this tab.
-    if (state.layout) navReplace(stateToHash(), { hpTab: 'playlists' });
+    if (state.layout) navReplace(stateToHash(), { hpTab: action === 'hp-songs' ? 'songs' : 'playlists' });
     render();
     return;
   }
@@ -10932,6 +10962,7 @@ window.addEventListener('popstate', () => {
   refreshInstruments();
   if (urlIsLink()) loadFromUrl();
   else state.view = state.instruments.length ? 'home' : 'play';
-  if (history.state?.hpTab === 'playlists' && state.layout && (state.view === 'editor' || state.view === 'chords')) state.view = 'hp-playlists';
+  const hpTab = history.state?.hpTab;
+  if ((hpTab === 'playlists' || hpTab === 'songs') && state.layout && (state.view === 'editor' || state.view === 'chords')) state.view = hpTab === 'songs' ? 'hp-songs' : 'hp-playlists';
   render();
 });

@@ -90,8 +90,8 @@ Home = My instruments                        #  (empty hash)
  ├─ Settings                                 #settings
  ├─ Playlist detail                          (existing playlist view)
  └─ Instrument ─ tabs (bottom tab bar)
-     Handpan:  Chords · Pan · Playlists      (existing #scale= / #custom? hashes unchanged)
-     Ocarina:  Notes · Chords · Playlists · Build | Set up      #i/<id>/<tab>
+     Handpan:  Chords · Songs · Playlists · Pan         /handpan/<slug>[/chords|/songs|/playlists]
+     Ocarina:  Chords · Songs · Playlists · Notes · Build | Set up      #i/<id>/<tab>
          └─ Practice (full-screen focus view, entered from Playlists)
 Sheets (overlays): instrument menu (⋯), Share, Add to playlist, Filters, Related chords,
                    Note picker, Which finger is which, Confirm delete, Hole fingers
@@ -125,16 +125,21 @@ Breadcrumbs (`.breadcrumb`) are removed everywhere.
 
 **Desktop (≥1024px):** the same tabs move into the app bar as text tabs (40px tall, 2px accent underline on the selected tab), and the bottom bar is hidden. The DOM is the same, and a media query moves it: render the tabs once inside the app bar and position them `fixed; bottom: 0` below 1024px.
 
+Every instrument has the same tabs in the same order (`instrumentTabs` in `js/app.js`, one function for both shells; `docs/navigation-redesign.md` has the reasoning): the three things people come for, then the instrument's own tab.
+
 | Family | Tabs (in order) | Opens on |
 | --- | --- | --- |
-| Handpan (saved) | **Chords** (`chords` view) · **Pan** (`editor` view) · **Playlists** | Chords, as today |
-| Handpan (unsaved, from Try a scale) | Chords · Pan · Playlists | Pan, as today (`select-scale` lands in the editor) |
-| Ocarina/flute, traditional or calibrated | Notes · Chords · Playlists | Notes |
-| Ocarina, scale-built | Notes · Chords · Playlists · **Build** | Build while `build.stage !== 'done'`, otherwise Notes (as `openInstrument` does today) |
-| Ocarina, custom | Notes · Chords · Playlists · **Set up** | Set up until calibrated (as today) |
-| Shared (read-only) | Notes · Chords | Notes |
+| Handpan, tongue drum, kalimba (saved) | **Chords** · **Songs** · **Playlists** · **Pan** (Drum, Kalimba: the `editor` view) | Chords |
+| The same, unsaved (from a link or Play something else) | the same | Pan (a link without a tab lands in the editor) |
+| Ocarina/flute, traditional or calibrated | Chords · Songs · Playlists · **Notes** | Notes |
+| Ocarina, scale-built | … · Notes · **Build** | Build while `build.stage !== 'done'`, otherwise Notes |
+| Ocarina, custom | … · Notes · **Set up** | Set up until calibrated |
+| Shared by code (read-only) | Chords · Songs · Notes | Notes |
 
-Notes and Chords only appear when `playableMidis(inst).length > 0`, as `ocTabs` does today. The "Pan" tab replaces the "← D Kurd" breadcrumb and the "Find Chords →" button. The "Playlists" tab is new: it's where Practice is started (ocarina) and where a playlist starts playing (handpan). For ocarina, the hash becomes `#i/<id>/<tab>` as the brief asks (`#i/<id>` alone still opens the default tab). Handpan hashes don't change.
+- Chords, Songs, Playlists and Notes only appear when `playableMidis(inst).length > 0`.
+- **Songs** (`songsTabHtml`): Songs to learn (`songsSectionHtml`), then one row, "Paste a chord sheet", for a song whose chords you have.
+- **Playlists** (`playlistsTabHtml`): the one kind of list, §6.9. It is where Practice is started (ocarina) and where a playlist starts playing (handpan). Songs are no longer under it.
+- Links: `/…/songs` and `/…/playlists` on every family (`LINK_TABS`; ocarinas and flutes had no playlists link before).
 
 ### Current instrument and switching
 
@@ -1005,7 +1010,9 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 | Screen | Shared parts | What an instrument supplies |
 |---|---|---|
 | Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml`, `chordRowHtml`, the filter row `chordFilterRowHtml` (Filters + root chips, `chordRootsOf`), the count line `chordCountLineHtml` (main chords / Show all), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`) and the Filters sheet fields `chordCountField` / `chordTypeField`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows and card actions; anything below the card (ocarina/flute: notes in playing order and the move); extra filters in its sheet (handpan: playlist; ocarina/flute: scale) |
+| Tab bar | `instrumentTabs` / `instrumentTabBar` | its own tab (Pan, Drum, Kalimba or Notes; Build / Set up) |
 | Playlists tab | `playlistsTabHtml` | nothing |
+| Songs tab | `songsTabHtml` | nothing |
 | Playlist page | one row per entry; tapping it opens the chord on its instrument's Chords screen | nothing |
 | Set up | the "Your …" card (`instFieldsHtml`), Holes and fingers, Where the holes are | what it needs set up (readings for a bought one) |
 | Sheets, rows, fields | `uiSheet`, `uiRow`, `uiField`, `uiPicker`, `uiStepper`, `uiSeg` | content |
