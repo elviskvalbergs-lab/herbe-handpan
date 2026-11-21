@@ -101,12 +101,18 @@ function strikeBadgesSvg(placed, strikeMarks) {
   for (const { note, marks } of strikeMarks) {
     const at = placed.find(p => p.note === note);
     if (!at || !marks.length) continue;
-    const label = marks.map(m => `${m.n}${m.hand}`).join(' ');
-    const w = 14 + label.length * 13;
-    const h = 30;
+    const label = marks.map(m => m.label ?? `${m.n}${m.hand}`).join(' ');
+    // A kalimba key's badge is as narrow as the key (keys sit side by side);
+    // combining octave dots take no width.
+    const chars = label.replace(/[\u0300-\u036f]/g, '').length;
+    const w = at.down ? Math.max(Math.round(at.r * 2), 8 + chars * 10) : 14 + label.length * 13;
+    const h = at.down ? 24 : 30;
+    const fs = at.down ? 17 : 23;
     // Just outside the note, away from the pan's centre (above the ding),
     // so the note's name stays readable.
-    const dx = at.x - 250, dy = at.y - 250;
+    // A kalimba key's badge goes straight below the key's end (keys sit side
+    // by side); other notes' away from the middle.
+    const dx = at.down ? 0 : at.x - 250, dy = at.down ? 1 : at.y - 250;
     const d = Math.hypot(dx, dy);
     const ux = d < 1 ? 0 : dx / d, uy = d < 1 ? -1 : dy / d;
     const off = at.r + 3 + Math.max(Math.abs(ux) * w / 2, Math.abs(uy) * h / 2);
@@ -117,7 +123,7 @@ function strikeBadgesSvg(placed, strikeMarks) {
     out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
   <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="23" font-weight="700">${label}</text>
+    font-family="system-ui,sans-serif" font-size="${fs}" font-weight="700">${label}</text>
 </g>`;
   }
   return out;
@@ -239,7 +245,7 @@ function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strike
     const len = Math.round(250 - 130 * t);
     const cx = Math.round(x0 + step * (i + 0.5));
     const y1 = top, y2 = bridgeY + len;
-    if (k.note) placed.push({ x: cx, y: y2 - w, r: w / 2, note: k.note });
+    if (k.note) placed.push({ x: cx, y: y2 - w, r: w / 2, note: k.note, down: true });
     const cls = k.id === 'ding' ? `ding ${noteClass(k.note, true)}` : `ring ${noteClass(k.note, true)}`;
     const shown = k.note ? displayNote(k.note, useFlats, useSolfege) : '+';
     const name = shown.replace(/\d+$/, '');
