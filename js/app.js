@@ -21,10 +21,10 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason } from './songs.js';
+import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
-import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
+import { renderPan, panPlaces, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
 import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
 import {
   renderFingering, renderHandLegend, fingeringMoves, playableMidis, fingeringFor,
@@ -3053,9 +3053,11 @@ function viewSong() {
   const { song, shift, notes, inst, name } = S;
   const uf = state.useFlats, us = state.useSolfege;
   const idx = Math.min(state.songCtx.idx, notes.length - 1);
-  const cur = notes[idx];
-  const nextNote = notes.slice(idx + 1).find(n => n.midi != null);
+  // Printing: a clean sheet, nothing lit.
+  const cur = state.songPrinting ? { midi: null } : notes[idx];
+  const nextNote = state.songPrinting ? null : notes.slice(idx + 1).find(n => n.midi != null);
   const nn = m => displayNote(midiToNoteName(m), uf, us);
+  const T = songTabShown(inst) ? songTab(S) : null;
   const picture = inst
     ? (cur.midi != null
       ? renderFingering(inst, cur.midi, { size: 'large', useFlats: uf, useSolfege: us, showFingers: state.showFingers, closeUp: state.closeUp, nextMidi: nextNote?.midi ?? null })
@@ -3064,12 +3066,14 @@ function viewSong() {
       shellMode: 'both', highlightNotes: cur.midi != null ? [name(cur.midi)] : [],
       faintNotes: nextNote && nextNote.midi !== cur.midi ? [name(nextNote.midi)] : [],
       rotated: state.ringRotated, useFlats: uf, useSolfege: us,
+      strikeMarks: T ? songTabMarks(S, T) : [],
     });
   const playing = !!state.songPlay;
   const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}</button>`).join('');
   const after = songsThatGoTogether(song, songsFor(inst));
   return `${backAppBar(song.title, { fallback: 'home' })}
     <div class="song">
+      <h1 class="song-print-title">${escHtml(song.title)}</h1>
       <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}</p>
       <div class="song-stage${inst ? ' fg-stage' : ' pan-wrap'}">${picture}</div>
       <div class="song-now" aria-live="polite">
@@ -3083,13 +3087,109 @@ function viewSong() {
         ${uiIconBtn('skip-forward', 'Next note', { action: 'song-next' })}
         ${speedBtnHtml()}
       </div>
-      <div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>
+      ${songTabFamily(inst) ? `<div class="song-view-row">
+        ${uiSeg([{ value: 'tab', label: 'Tab' }, { value: 'notes', label: 'Notes' }], T ? 'tab' : 'notes', { action: 'song-view', label: 'Show the song as' })}
+        ${T ? uiIconBtn('printer', 'Print the tab', { action: 'song-print' }) : ''}
+      </div>` : ''}
+      ${T ? songTabHtml(S, T, state.songPrinting ? -1 : idx) : `<div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>`}
       ${after.length ? `<h2 class="list-title">Goes well after it</h2>
         <div class="list">${after.map(({ song: s, shift: sh }) => uiRow({ lead: 'music', title: s.title, meta: escHtml(songMeta(s, sh)), chevron: true, action: 'song-open', data: { id: s.id, inst: inst?.id ?? '' } })).join('')}</div>` : ''}
       <p class="pl-section-hint song-licence">${song.sourceName
         ? `Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">${escHtml(song.sourceName)}</a>, public domain.`
         : `The tune is traditional. Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.`}</p>
     </div>`;
+}
+
+// ── The song's tab (handpan, tongue drum) ───────────────────────────────
+// Like a handpan tab sheet: each note's number on the instrument in a grid
+// of bars counted "1 + 2 +", in the R row or the L row for the hand that
+// plays it. Numbers: a handpan's ding is 0, then its tone fields by pitch
+// (bottom notes after the top ones); a tongue drum's tongues 1, 2, … by
+// pitch. The hand is the side of the drawing the note is on (as moved in
+// Move notes, and as rotated), a middle note the other hand from the note
+// before (songHands). The picture numbers the song's notes the same way.
+function songTabFamily(inst) {
+  if (inst) return null;
+  const f = layoutInstrument(state.layout);
+  return f === 'handpan' || f === 'tongue-drum' ? f : null;
+}
+function songTabShown(inst) { return !!songTabFamily(inst) && (state.songView ?? 'tab') === 'tab'; }
+function songFieldNumbers(layout) {
+  const byPitch = a => [...new Set(a.filter(Boolean))].sort((x, y) => noteToMidi(x) - noteToMidi(y));
+  const order = layoutInstrument(layout) === 'handpan'
+    ? [layout.top.ding, ...byPitch(layout.top.slots.map(x => x.note)), ...byPitch(layout.bottom.slots.map(x => x.note))]
+    : byPitch([layout.top.ding, ...layout.top.slots.map(x => x.note), ...layout.bottom.slots.map(x => x.note)]);
+  const start = layoutInstrument(layout) === 'handpan' && layout.top.ding ? 0 : 1;
+  const nums = new Map();
+  order.filter(Boolean).forEach(n => { if (!nums.has(n)) nums.set(n, start + nums.size); });
+  return nums;
+}
+const SONG_TAB_LINE = 16; // columns on a line of the tab
+function songTab(S) {
+  const nums = songFieldNumbers(state.layout);
+  const places = new Map(panPlaces(state.layout, { rotated: state.ringRotated }).map(p => [p.note, p]));
+  const sideOf = note => {
+    const p = places.get(note);
+    if (!p) return 0;
+    const dx = p.x - 250;
+    return Math.abs(dx) < 30 ? 0 : Math.sign(dx);
+  };
+  const sides = S.notes.map(n => (n.midi == null ? null : sideOf(S.name(n.midi))));
+  const bars = songBars(S.song, S.notes);
+  // Bars on lines of up to SONG_TAB_LINE columns.
+  const lines = [];
+  for (const b of bars) {
+    const line = lines[lines.length - 1];
+    if (line && line.cols + b.cols.length <= SONG_TAB_LINE) { line.bars.push(b); line.cols += b.cols.length; }
+    else lines.push({ bars: [b], cols: b.cols.length });
+  }
+  return { nums, hands: songHands(sides), sideOf, lines };
+}
+// The picture's badges: each note the song uses, with its number, coloured
+// by the side it's on (no colour in the middle).
+function songTabMarks(S, T) {
+  const used = [...new Set(S.notes.filter(n => n.midi != null).map(n => S.name(n.midi)))];
+  return used.filter(n => T.nums.has(n)).map(n => {
+    const side = T.sideOf(n);
+    return { note: n, marks: [{ n: T.nums.get(n), hand: side < 0 ? 'L' : side > 0 ? 'R' : '' }] };
+  });
+}
+function songTabHtml(S, T, idx) {
+  const num = i => T.nums.get(S.name(S.notes[i].midi)) ?? '?';
+  const cell = (c, hand) => {
+    if (c.i != null && T.hands[c.i] === hand) {
+      const cur = c.i === idx;
+      return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} hand ${num(c.i)}">${num(c.i)}</button>`;
+    }
+    const held = c.hold;
+    return held != null && T.hands[held] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
+  };
+  const lines = T.lines.map(line => {
+    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length}">
+        ${b.cols.map(c => `<span class="tab-count${c.count && c.count !== '+' ? ' is-beat' : ''}">${c.count}</span>`).join('')}
+        ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'R')}</span>`).join('')}
+        ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'L')}</span>`).join('')}
+      </div>`).join('');
+    return `<div class="tab-line"><div class="tab-hands" aria-hidden="true"><span></span><span>R</span><span>L</span></div>${bars}</div>`;
+  }).join('');
+  const word = songTabFamily(null) === 'tongue-drum' ? 'tongue' : 'note';
+  return `<div class="song-tab" role="group" aria-label="Tab: the number of each ${word}, R right hand, L left hand">${lines}</div>
+    <p class="pl-section-hint song-tab-key">${songTabFamily(null) === 'handpan' ? 'Numbers: the ding is 0, then the notes from low to high, as on the picture.' : 'Numbers: the tongues from low to high, as on the picture.'} R is the right hand, L the left. A line after a number: let it ring.</p>`;
+}
+function songPrint() {
+  songStop();
+  state.songPrinting = true;
+  render();
+  document.body.classList.add('printing-song');
+  const done = () => {
+    document.body.classList.remove('printing-song');
+    window.removeEventListener('afterprint', done);
+    state.songPrinting = false;
+    render();
+  };
+  window.addEventListener('afterprint', done);
+  logEvent('feature', { name: 'song-print', family: measureFamily() });
+  window.print();
 }
 
 // Playing the song: each note for its length at the chosen speed (100 bpm
@@ -3139,6 +3239,8 @@ function songAction(action, el) {
   }
   const go = i => { songStop(); state.songCtx.idx = Math.max(0, Math.min(last, i)); initAudio(); songSound(S.notes[state.songCtx.idx].midi); render(); };
   if (action === 'song-step') { go(parseInt(el.dataset.i, 10)); return true; }
+  if (action === 'song-view') { state.songView = el.dataset.value; render(); return true; }
+  if (action === 'song-print') { songPrint(); return true; }
   if (action === 'song-prev') { go(state.songCtx.idx - 1); return true; }
   if (action === 'song-next') { go(state.songCtx.idx + 1); return true; }
   return false;

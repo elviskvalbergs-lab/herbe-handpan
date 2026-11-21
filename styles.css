@@ -1831,3 +1831,36 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 @media (display-mode: standalone) {
   :root { --safe-top: calc(env(safe-area-inset-top) + 10px); }
 }
+/* A song's tab (songTabHtml in js/app.js): bars of "1 + 2 +" columns, an R
+   row and an L row, numbers coloured like the pan's strike badges. */
+.song-view-row { display: flex; align-items: center; gap: var(--space-2); }
+.song-view-row .seg { flex: 1; }
+.song-tab { display: flex; flex-direction: column; gap: var(--space-3); }
+.tab-line { display: flex; align-items: stretch; }
+.tab-hands { display: grid; grid-template-rows: 18px 32px 32px; width: 18px; flex: none; font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-3); }
+.tab-hands span { display: flex; align-items: center; }
+.tab-bar { flex: var(--cols) 1 0; min-width: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-template-rows: 18px 32px 32px; border-left: 2px solid var(--border-strong); }
+.tab-bar:last-child { border-right: 2px solid var(--border-strong); }
+.tab-bar.is-pickup { border-left-style: dashed; }
+.tab-count { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tab-count.is-beat { color: var(--text-2); font-weight: var(--fw-semibold); }
+.tab-cell { position: relative; display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--border); min-width: 0; }
+.tab-note { position: relative; z-index: 1; min-width: 24px; height: 24px; padding: 0 3px; border-radius: 12px; border: 1.5px solid #060f0c; font: var(--fw-semibold) 13px/1 var(--font); font-variant-numeric: tabular-nums; cursor: pointer; }
+.tab-note-r { background: #F2E6D3; color: #0B1A14; }
+.tab-note-l { background: #8CC8C4; color: #04211f; }
+.tab-note.is-current { outline: 3px solid var(--accent); outline-offset: 1px; }
+.tab-hold { position: absolute; left: -50%; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--text-3); opacity: 0.45; border-radius: 2px; }
+.song-tab-key { margin: 0; font-size: var(--fs-13); }
+.song-print-title { display: none; }
+@media print {
+  body.printing-song { background: #fff; }
+  body.printing-song * { visibility: hidden; }
+  body.printing-song .song, body.printing-song .song * { visibility: visible; }
+  body.printing-song .song { position: absolute; left: 0; top: 0; width: 100%; max-width: none; padding: 0; color: #000; }
+  body.printing-song .song-print-title { display: block; margin: 0; font-size: 20px; }
+  body.printing-song .song-now, body.printing-song .song-controls, body.printing-song .song-view-row,
+  body.printing-song .song .list, body.printing-song .song .list-title { display: none; }
+  body.printing-song .song-stage.pan-wrap svg { max-height: 70mm; }
+  body.printing-song .tab-line { break-inside: avoid; }
+  body.printing-song .tab-note, body.printing-song .tab-hold { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
