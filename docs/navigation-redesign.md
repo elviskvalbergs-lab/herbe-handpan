@@ -60,7 +60,7 @@ Controls on the phone screen (buttons, links and fields, counted on D Kurd as a 
 | Screen | Before | After |
 | --- | --- | --- |
 | Playlists tab | 15 (4 concepts) | split in two: |
-| Songs tab | – | 11 (1 concept: 2 filter, 3 songs, 1 paste, 4 tabs, …) |
+| Songs tab | – | 13 (songs, and the way in for a chord sheet) |
 | Sets tab | – | 9 (1 concept) |
 
 ### Deep links

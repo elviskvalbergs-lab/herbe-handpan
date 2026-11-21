@@ -690,7 +690,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
 .pl-entries { display: flex; flex-direction: column; gap: var(--space-2); }
 .pl-new { margin-top: var(--space-3); }
-.pl-new-row { display: flex; flex-wrap: wrap; column-gap: var(--space-2); }
+.pl-new-row { display: flex; flex-wrap: wrap; column-gap: var(--space-2); margin-bottom: var(--space-3); }
 .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-4); }
 .empty-actions .btn { margin-top: 0; }
 /* Paste a chord sheet */

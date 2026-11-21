@@ -8,7 +8,7 @@ import { SCALES } from '../js/data.js';
 import { TRADITIONAL_CHARTS } from '../js/charts.js';
 import {
   parseLink, linkFor, linkSlug, linkTitle, linkPreview, withLinkPreview, catalogueLinks, closestLinks,
-  layoutFromCustomParams,
+  layoutFromCustomParams, LINK_TABS, LINK_FAMILIES,
 } from '../js/links.js';
 
 test('slugs: lower case, # as s, dashes', () => {
@@ -59,6 +59,26 @@ test('tabs and chords in the path', () => {
   assert.deepEqual([l.scaleId, l.tab, l.chord], ['D-Kurd', 'chords', 'a-min']);
   assert.equal(parseLink('/handpan/d-kurd/nonsense').tab, null, 'unknown tabs are ignored');
   assert.equal(parseLink('/ocarina/alto-c-12/listen').tab, 'listen');
+});
+
+test('Songs and Sets tabs on every family; the old /playlists opens /sets', () => {
+  for (const fam of LINK_FAMILIES) {
+    assert.ok(LINK_TABS[fam].includes('songs') && LINK_TABS[fam].includes('sets'), fam);
+  }
+  assert.equal(linkFor({ scaleId: 'D-Kurd' }, { tab: 'songs' }), '/handpan/d-kurd/songs');
+  assert.equal(linkFor({ chartId: 'ocarina-12-stl-c', keyId: 'C-A4' }, { tab: 'sets' }), '/ocarina/alto-c-12/sets');
+  for (const { path } of catalogueLinks()) {
+    for (const tab of ['songs', 'sets']) {
+      const l = parseLink(`${path}/${tab}`);
+      assert.equal(l.tab, tab, path);
+      assert.equal(l.path, `${path}/${tab}`, path);
+    }
+  }
+  const old = parseLink('/handpan/d-kurd/playlists');
+  assert.deepEqual([old.scaleId, old.tab, old.path], ['D-Kurd', 'sets', '/handpan/d-kurd/sets']);
+  assert.equal(parseLink('/kalimba/c-major-17/playlists').path, '/kalimba/c-major-17/sets');
+  assert.equal(parseLink('/s/7KQ2PM/playlists').path, '/s/7KQ2PM/sets');
+  assert.equal(linkPreview('/handpan/d-kurd/songs').description.startsWith('Songs to learn'), true);
 });
 
 test('aliases open the canonical instrument', () => {

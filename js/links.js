@@ -10,6 +10,7 @@
 //   /tongue-drum/custom?…                  a custom tongue drum (same query as a custom handpan)
 //   /kalimba/c-major-17, /kalimba/custom?… kalimbas (js/kalimbas.js), the same way
 //   /s/7KQ2PM[/chords]                    an instrument shared by code
+//   …/songs, …/sets                       the Songs and Sets tabs of any of them (/playlists opens /sets)
 //
 // A slug never changes or disappears once published: a rename only adds an
 // alias. Every slug is lower case; '#' is written 's' (F# Kurd → fs-kurd).
@@ -22,12 +23,16 @@ import { TRADITIONAL_CHARTS, getChart, instrumentFromChart } from './charts.js';
 export const APP_NAME = 'Oakhum';
 
 export const LINK_FAMILIES = [...LAYOUT_FAMILY_IDS, 'ocarina', 'flute'];
+// Every instrument has the same tabs (docs/navigation-redesign.md): Chords,
+// Songs, Sets and its own (pan or notes); 'listen' opens Chords listening.
 export const LINK_TABS = {
-  handpan: ['pan', 'chords', 'playlists', 'listen'],
-  ...Object.fromEntries(LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan').map(f => [f, ['pan', 'chords', 'playlists', 'listen']])),
-  ocarina: ['notes', 'chords', 'listen'],
-  flute: ['notes', 'chords', 'listen'],
+  ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, ['pan', 'chords', 'songs', 'sets', 'listen']])),
+  ocarina: ['notes', 'chords', 'songs', 'sets', 'listen'],
+  flute: ['notes', 'chords', 'songs', 'sets', 'listen'],
 };
+const LINK_ANY_TABS = ['pan', 'notes', 'chords', 'songs', 'sets', 'listen'];
+// Old tab names in links already shared: they open the tab's new name.
+const LINK_TAB_ALIASES = { playlists: 'sets' };
 const LINK_DEFAULT_TAB = { ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, 'pan'])), ocarina: 'notes', flute: 'notes' };
 
 export function linkSlug(text) {
@@ -152,7 +157,7 @@ export function linkFor(target, { tab = null, chord = null } = {}) {
     const q = String(target.custom);
     query = q ? `?${q.replace(/^\?/, '')}` : '';
   } else return null;
-  const tabs = family ? LINK_TABS[family] : ['pan', 'notes', 'chords', 'playlists', 'listen'];
+  const tabs = family ? LINK_TABS[family] : LINK_ANY_TABS;
   const useTab = chord ? 'chords' : tab;
   let path = base;
   if (useTab && tabs.includes(useTab) && useTab !== (family ? LINK_DEFAULT_TAB[family] : null)) path += `/${useTab}`;
@@ -168,8 +173,9 @@ export function parseLink(pathname, search = '') {
   if (parts.length < 2) return null;
   const [head, rawSlug, rawTab, rawChord] = parts;
   const tabOf = (fam) => {
-    const t = rawTab ? rawTab.toLowerCase() : null;
-    const ok = fam ? LINK_TABS[fam] : ['pan', 'notes', 'chords', 'playlists', 'listen'];
+    const raw = rawTab ? rawTab.toLowerCase() : null;
+    const t = LINK_TAB_ALIASES[raw] ?? raw;
+    const ok = fam ? LINK_TABS[fam] : LINK_ANY_TABS;
     return t && ok.includes(t) ? t : null;
   };
   const chord = rawChord ? linkSlug(rawChord) : null;
@@ -298,6 +304,7 @@ export function linkPreview(pathname, search = '') {
     return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
   }
   const what = link.tab === 'listen' ? 'Listen to a song and play along'
+    : link.tab === 'songs' ? 'Songs to learn, note by note'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
     : 'Notes, chords, arpeggios and play-along';
   const family = link.family ?? 'app';
