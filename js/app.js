@@ -84,6 +84,7 @@ const state = {
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
+  closeUp: true,           // flute fingerings zoomed in on the holes
   chordsAll: false,        // Chords lists: every chord (true) or the main ones first (false)
   ocLegendSeen: false,     // the hole-state legend line has been dismissed
   handLegendSeen: false,   // the finger legend has been shown once
@@ -447,6 +448,7 @@ function viewSettings() {
       <div class="list">
         ${uiSwitchRow({ label: 'Finger labels in holes', help: 'R4, L1, LT inside each hole', on: state.showFingers, action: 'oc-toggle-fingers' })}
         ${uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' })}
+        ${uiSwitchRow({ label: 'Close-up of flute holes', help: 'Zoom in on the holes when a flute’s fingering is shown', on: state.closeUp, action: 'toggle-closeup' })}
         ${uiRow({ title: 'Which finger is which', action: 'oc-hand-open', chevron: true })}
         ${uiRow({ title: 'Show the diagram legend again', meta: 'The hole and finger legends show once more', action: 'reset-legends' })}
       </div>
@@ -1500,7 +1502,7 @@ function setupPanHtml({ scale = null, heard = null, highlight = [], family = 'ha
     if (scale?.chartId && highlight.length) {
       const inst = instrumentFromChart(scale.chartId, scale.keyId);
       const midis = highlight.map(noteToMidi);
-      return `<div class="setup-wind setup-wind-chord">${midis.map((m, i) => `<div class="setup-wind-step"><span class="setup-wind-step-n">${i + 1}</span>${renderFingering(inst, m, { size: 'medium', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: midis[i - 1] ?? null })}</div>`).join('')}</div>`;
+      return `<div class="setup-wind setup-wind-chord">${midis.map((m, i) => `<div class="setup-wind-step"><span class="setup-wind-step-n">${i + 1}</span>${renderFingering(inst, m, { size: 'medium', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: midis[i - 1] ?? null, closeUp: state.closeUp })}</div>`).join('')}</div>`;
     }
     const tile = SETUP_TILES.find(t => t.family === family);
     // Heard notes, or the notes to play (a chord); a whole chart is its range.
@@ -1878,7 +1880,7 @@ function viewBeginnerSetup() {
       sub: (g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.')
         + (g.chartId.startsWith('naf6') ? ' On a 6-hole Native American flute the third hole from the top stays closed for this whole scale.' : ''),
       body: `${steps}
-        <div class="setup-wind setup-wind-finger">${renderFingering(inst, want, { size: 'large', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: prev })}</div>
+        <div class="setup-wind setup-wind-finger">${renderFingering(inst, want, { size: 'large', useFlats: state.useFlats, useSolfege: state.useSolfege, previousMidi: prev, closeUp: state.closeUp })}</div>
         ${g.msg ? `<p class="setup-guide-msg is-${g.tone}" aria-live="polite">${escHtml(g.msg)}</p>` : ''}
         ${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
       bar: {
@@ -3240,7 +3242,7 @@ function ocChordStageParts(inst, a) {
   const nn = m => displayNote(midiToNoteName(m), uf, us);
   const key = escHtml(a.key);
   const sel = Math.min(state.oc.chordStep?.[a.key] ?? 0, parts.arp.length - 1);
-  const opts = { useFlats: uf, useSolfege: us, size: 'medium', showFingers: true, noteLabel: false };
+  const opts = { useFlats: uf, useSolfege: us, size: 'medium', showFingers: true, noteLabel: false, closeUp: state.closeUp };
   const picture = `
       <div class="oc-stage-fg">
         ${parts.arp.map((m, i) => `
@@ -3373,7 +3375,7 @@ function viewOcarinaPractice(inst) {
   const noteNo = idx - steps.indexOf(ofChord[0]) + 1;
   const uf = state.useFlats, us = state.useSolfege;
   const nn = m => displayNote(midiToNoteName(m), uf, us);
-  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes };
+  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes, closeUp: state.closeUp };
   const moves = fingeringMoves(inst, cur.midi, next.midi);
   const nextEn = entries.find(c => c.id === next.entryId);
   const progress = Math.round(((idx + 1) / steps.length) * 100);
@@ -3451,7 +3453,7 @@ function viewInstrument() {
   if (!midis.includes(oc.selected)) { oc.selected = midis[0]; oc.previous = null; }
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const inScale = m => !pcs || pcs.has(((m % 12) + 12) % 12);
-  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes };
+  const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes, closeUp: state.closeUp };
   const moves = oc.previous != null && oc.previous !== oc.selected ? fingeringMoves(inst, oc.previous, oc.selected) : null;
 
   return `${ocHeader(inst, 'notes')}
@@ -3487,7 +3489,7 @@ function viewInstrument() {
         <div class="fg-grid">
           ${midis.map(m => `
             <button type="button" class="fg-cell${inScale(m) ? '' : ' is-dim'}" aria-pressed="${m === oc.selected ? 'true' : 'false'}" data-action="oc-select-note" data-midi="${m}">
-              ${renderFingering(inst, m, { ...opts, size: 'medium' })}
+              ${renderFingering(inst, m, { ...opts, size: 'medium', closeUp: false })}
             </button>`).join('')}
         </div>
         <p class="oc-count">${escHtml(instrumentStatus(inst))}</p>
@@ -7557,6 +7559,7 @@ function loadPrefs() {
     else if (p.playbackSpeed === 'fast') state.tempo = 140;
     if (typeof p.showFingers === 'boolean') state.showFingers = p.showFingers;
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
+    if (typeof p.closeUp === 'boolean') state.closeUp = p.closeUp;
     if (typeof p.chordsAll === 'boolean') state.chordsAll = p.chordsAll;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
@@ -7592,6 +7595,7 @@ function savePrefs() {
     tempo: state.tempo,
     showFingers: state.showFingers,
     showSizes: state.showSizes,
+    closeUp: state.closeUp,
     chordsAll: state.chordsAll,
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
@@ -7841,7 +7845,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'closeUp', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
@@ -8443,6 +8447,7 @@ document.addEventListener('click', e => {
     savePrefs(); render(); return;
   }
   if (action === 'oc-toggle-sizes') { state.showSizes = !state.showSizes; savePrefs(); render(); return; }
+  if (action === 'toggle-closeup') { state.closeUp = !state.closeUp; savePrefs(); render(); return; }
   if (action === 'oc-legend-dismiss') { state.ocLegendSeen = true; savePrefs(); render(); return; }
   if (action === 'oc-hand-open') { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; }
   if (action === 'oc-hand-close') { state.oc.handLegend = false; render(); return; }
