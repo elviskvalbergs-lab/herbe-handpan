@@ -44,7 +44,7 @@ Items 1, 3 and 4 gate week 1. Item 2 does not.
 | **Website** (home, instrument and tuning pages, `/makers`, `/help`) | Vercel Analytics *(needs: site analytics)* | Page views, referrers and UTM per page, without cookies | Page views, not people. Use it for "which post brought traffic to which page". |
 | **Website to app** | PostHog events on the site *(needs: site analytics)*: `site_cta` (which button, which page), `site_demo_play` (a chord tapped in a page's playable demo), `site_video` (video, 25/50/100 %) | Whether a page sends people on into the app, and whether the videos are watched | The site must pass the UTM tags on in its links to the app, or the app sees every visitor as coming from `oakhum.com`. |
 | **Accounts** | Supabase: `profiles.last_seen_on` | Exact return counts for people with an account | — |
-| **Makers** | A hand-kept list (who was written to, who replied, who said no), then scan statistics *(needs: makers programme)* | Replies, makers with a shared instrument, scans per code | Until scan statistics exist, a maker's scans are `open` events on `/s/<code>` paths in PostHog. |
+| **Makers** | A hand-kept list (who was written to, who replied, who said no), then scan statistics *(needs: makers phase 3)* | Replies, makers with a shared instrument, scans per code | Until scan statistics exist, a maker's scans are `open` events on `/s/<code>` paths in PostHog. |
 
 **App events that exist today:** `open` (path, referrer, utm) · `setup` (the setup steps and which path: listen or know) · `first_play` (family, seconds from landing) · `feature` (name: chords, arpeggio, listen, tuner, chord-sheet, song-play, song-print, …) · `save_tap` · `signup_shown` · `signup_method` · `signup_done` · `save_completed` · `install` · `offline_session` · `guest_offline` · `listen_check`.
 
@@ -273,7 +273,7 @@ About 2–3 hours of the owner's time a week. Posts go out Tuesday to Thursday; 
 | **3 · Ocarina, whistle, flute. Makers batch 1** | Reply 5.10 in the week-2 threads. | r/ocarina and Pure Ocarinas (5.5); r/tinwhistle and Chiff & Fipple (5.6); NAF groups (5.7); clips F4 and F5. **Makers: 20 cold emails** (`docs/maker-kit.md`), 10 on Tuesday and 10 on Thursday. | Weekly review. | Maker replies answered within a day. |
 | **4 · Follow up and decide** | Reply 5.10 in the week-3 threads. | One follow-up to every maker and teacher who didn't answer, then stop. **Makers batch 2: 20 more.** The local Riga handpan community, in person. | The four-week review (§8). | A written decision on where the next two months go. |
 
-Makers are written to in week 3 and not before, for two reasons: by then the site and the makers video say the one promise, and the first weeks' fixes are in. If the makers programme (maker profile, "Made by", scan statistics) is live by week 3, the email offers it; if not, the email offers what works today: a saved instrument and its code.
+Makers are written to in week 3 and not before, for two reasons: by then the site and the makers video say the one promise, and the first weeks' fixes are in. Maker profiles and "Made by" are live (makers phase 1, merged 21 Nov), so the email offers them; codes on a printable card and scan statistics are offered only once phases 2 and 3 are merged.
 
 ## 7. Email: how it's done
 

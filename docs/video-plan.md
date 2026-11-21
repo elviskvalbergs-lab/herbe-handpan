@@ -221,7 +221,7 @@ All three: **Audience** people who opened the app and want to do one thing. **Ho
 ### G3 · Share an instrument with a code (about 70 s)
 
 - **Goal:** more shared instruments opened (`open` on `/s/…` paths). Also the how-to that the maker kit links to.
-- **Folder:** `scripts/demo-video/howto-share/`. Voice: 131 words, about 660 characters. Needs the signed-in demo account. Can be filmed today; the "Made by" line in scene 4 waits for the makers programme.
+- **Folder:** `scripts/demo-video/howto-share/`. Voice: 131 words, about 660 characters. Needs the signed-in demo account. Can be filmed today.
 
 | # | Key · kind | Picture: link and taps | Voice-over | Caption (big / sub / n) |
 |---|---|---|---|---|
@@ -229,7 +229,7 @@ All three: **Audience** people who opened the app and want to do one thing. **Ho
 | 1 | `s1` · phone, 10 s | Signed in, the saved instrument open (a custom D Kurd with two bottom notes). Tap **⋯** (`menu-open`), tap **Share…** ("Code, link and QR code"). | "Sharing works for instruments you've saved." / "Open yours, tap the three dots, then Share." | **⋯ then Share** / For saved instruments / n = 1 |
 | 2 | `s2` · phone, 14 s | The sheet "Share this instrument": the 6-character code, the link `oakhum.com/s/…`, the QR code. | "You get three things: a short code, a link, and a QR code." / "Send the link in a message. Or print the QR code on a card and keep it with the instrument." | **A code, a link, a QR code** / n = 2 |
 | 3 | `s3` · phone, 14 s | A second (guest) browser opens the `/s/<CODE>` link: the same instrument opens; tap **Chords**, tap a chord. | "Whoever opens it sees your instrument, exactly as you set it up, and can play it straight away." / "They don't need an account." | **They open it and play** / No app, no sign-up / n = 3 |
-| 4 | `s4` · phone, 12 s | On the shared instrument, tap **Add to my instruments** (the save sheet appears for a guest). *(needs: makers programme for "Made by <maker>" on the shared instrument; leave it out until then)* | "It's a copy for them to look at. To keep it, they tap Add to my instruments," / "and save it with their own free account." | **To keep it: Add to my instruments** / n = 4 |
+| 4 | `s4` · phone, 12 s | On the shared instrument, tap **Add to my instruments** (the save sheet appears for a guest). (If the sharer is an approved maker, the row "Made by <maker>" shows under the app bar; this how-to is recorded from an ordinary account, without it.) | "It's a copy for them to look at. To keep it, they tap Add to my instruments," / "and save it with their own free account." | **To keep it: Add to my instruments** / n = 4 |
 | 5 | `s5` · card, 8 s | End card. | "Do you make or sell instruments? There's more for you at oakhum dot com, slash makers." | **For makers and shops** / oakhum.com/makers · oakhum.com/help |
 
 ---
@@ -257,11 +257,11 @@ Checked against `preview` on 21 Nov 2026.
 | B · Play my notes | **Yes.** Needs a WAV of kalimba notes (and one of handpan notes for the variant). | — |
 | C · Songs | **Yes**, from the Songs tab. | A link per song, so a post can open the song itself: not needed for the video. |
 | D · Play along | **Yes**, with a signed-in demo account. | — |
-| E · Makers v2 | **Scenes 1–5 yes** (signed-in demo account). | Scene 6 (the maker dashboard) and "Made by <maker>": makers programme. See `docs/video-script-makers.md`. |
+| E · Makers v2 | **Scenes 1–5 and 7 yes**, with "Made by <maker>" (a signed-in demo maker account that an admin has approved). | Scene 6 (the maker dashboard with instruments and scan counts): makers phases 2–3. See `docs/video-script-makers.md`. |
 | F1–F5 · Instruments | **Yes**, all five. | F6 recorder: the recorder. |
 | G1 · Set up | **Yes** (handpan WAV). | The `/help` page it sits on. |
 | G2 · Save and add to home screen | **Yes** (test email; real-phone stills for scene 5). | The `/help` page. |
-| G3 · Share with a code | **Yes** (signed-in demo account), without "Made by". | "Made by <maker>": makers programme. The `/help` page. |
+| G3 · Share with a code | **Yes** (signed-in demo account). | The `/help` page. |
 
 ## 12. Build order and credits
 
