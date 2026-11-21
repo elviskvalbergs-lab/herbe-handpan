@@ -12,7 +12,7 @@ def strip_modules(js):
     js = re.sub(r'import\s+\{[^}]*\}\s+from\s+["\'][^"\']+["\'];?\s*\n?', '', js, flags=re.DOTALL)
     js = re.sub(r'^import\s+.*?;?\s*$', '', js, flags=re.MULTILINE)
     # Remove export keyword from declarations
-    js = re.sub(r'\bexport\s+(default\s+)?', '', js)
+    js = re.sub(r'^export\s+(default\s+)?', '', js, flags=re.MULTILINE)
     return js
 
 # Database migrations first: with DATABASE_URL set (Vercel builds), pending
@@ -38,6 +38,16 @@ for f in js_files:
     js_parts.append(f'// ── {f} ──\n' + stripped)
 
 js_bundle = '\n\n'.join(js_parts)
+
+# The bundle is one script scope, so a top-level name used in two files would
+# break the whole app (a duplicate const stops the script; a duplicate function
+# silently replaces the first). Checked here so it never deploys.
+_seen = {}
+for f, part in zip(js_files, js_parts):
+    for m in re.finditer(r'^(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)', part, flags=re.MULTILINE):
+        if m.group(1) in _seen and _seen[m.group(1)] != f:
+            raise SystemExit(f'Build stopped: top-level name "{m.group(1)}" is in both {_seen[m.group(1)]} and {f}.')
+        _seen.setdefault(m.group(1), f)
 
 # Preview builds can point at a separate Supabase test project (see
 # supabase/README.md). Only set these for Vercel's Preview environment.
@@ -69,13 +79,13 @@ html = f'''<!DOCTYPE html>
 <html lang="en" data-theme="auto">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Oakhum</title>
-  <meta name="description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
+  <meta name="description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina or flute you own. Free, in your browser.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Oakhum">
   <meta property="og:title" content="Oakhum">
-  <meta property="og:description" content="Chords, arpeggios and play-along for handpans, ocarinas and flutes. Free, in your browser.">
+  <meta property="og:description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina or flute you own. Free, in your browser.">
   <meta property="og:image" content="/og/app.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">
@@ -122,5 +132,15 @@ html = f'''<!DOCTYPE html>
 out = os.path.join(ROOT, 'index.html')
 with open(out, 'w') as f:
     f.write(html)
+
+# The bundle must at least parse: a syntax error would deploy a blank app.
+import shutil, subprocess, tempfile
+if shutil.which('node'):
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as _tmp:
+        _tmp.write(js_bundle)
+    _ok = subprocess.call(['node', '--check', _tmp.name]) == 0
+    os.unlink(_tmp.name)
+    if not _ok:
+        raise SystemExit('Build stopped: the bundled script does not parse.')
 
 print(f'Built {out} ({len(html)//1024}KB)')

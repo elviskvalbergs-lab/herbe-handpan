@@ -1,6 +1,9 @@
 import { displayNote, noteToMidi, notePC } from './data.js';
 import { kalimbaOrder } from './kalimbas.js';
 
+// Everything written into the picture goes through this, whatever its source.
+function panEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
 export const PAN_SVG_ID = 'handpan-svg';
 
 // Physical handpan ring layout (confirmed from klangzeug.de for all scales).
@@ -51,7 +54,7 @@ function circlePositions(count, cx, cy, r, rotationOffset = 0) {
 function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false, useSolfege = false) {
   const isEmpty = !note;
   const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
-  const noteAttr = note ? ` data-note="${note}"` : '';
+  const noteAttr = note ? ` data-note="${panEsc(note)}"` : '';
 
   let textHtml;
   if (isEmpty) {
@@ -68,10 +71,10 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
     const octY  = y + Math.round(r * 0.40);
     textHtml = `<text x="${x}" y="${nameY}" text-anchor="middle" dominant-baseline="auto"
       font-family="system-ui,sans-serif" font-size="${nameFontSize}" font-weight="600"
-      fill="var(--note-rest-text)">${name}</text>
+      fill="var(--note-rest-text)">${panEsc(name)}</text>
 <text x="${x}" y="${octY}" text-anchor="middle" dominant-baseline="auto"
       font-family="system-ui,sans-serif" font-size="${octFontSize}" font-weight="400"
-      fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+      fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>`;
   }
 
   return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
@@ -120,7 +123,7 @@ function strikeBadgesSvg(placed, strikeMarks) {
     const y = Math.max(2, Math.min(500 - h - 2, Math.round(at.y + uy * off - h / 2)));
     // Coloured by hand; a badge with no hand (a ding in a song's tab) is neutral.
     const hand = marks[0].hand === 'L' ? 'l' : marks[0].hand === 'R' ? 'r' : 'n';
-    out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
+    out += `<g class="pan-strike pan-strike-${hand}" data-note="${panEsc(note)}" aria-hidden="true">
   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
   <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
     font-family="system-ui,sans-serif" font-size="${fs}" font-weight="700">${label}</text>
@@ -148,7 +151,7 @@ function tongueAngles(count) {
 function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfege) {
   const deg = Math.round((angle * 180) / Math.PI - 90); // local -y points at the middle
   const allClasses = ['pan-note', 'tongue', ...classes.split(' ').filter(Boolean)].join(' ');
-  const noteAttr = note ? ` data-note="${note}"` : '';
+  const noteAttr = note ? ` data-note="${panEsc(note)}"` : '';
   const cut = `M ${-w / 2 - 5} ${h / 2} L ${-w / 2 - 5} ${-h / 2 + w / 2} A ${w / 2 + 5} ${w / 2 + 5} 0 0 1 ${w / 2 + 5} ${-h / 2 + w / 2} L ${w / 2 + 5} ${h / 2}`;
   let text;
   if (!note) {
@@ -158,8 +161,8 @@ function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfeg
     const name = shown.replace(/\d+$/, '');
     const oct = (shown.match(/\d+$/) ?? [''])[0];
     const fs = Math.max(9, Math.round((name.length > 1 ? 12 : 14) * w / 40));
-    text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
-<text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+    text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${panEsc(name)}</text>
+<text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>`;
   }
   return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
   <g transform="translate(${x} ${y}) rotate(${deg})">
@@ -251,10 +254,10 @@ function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strike
     const name = shown.replace(/\d+$/, '');
     const oct = (shown.match(/\d+$/) ?? [''])[0];
     const fs = Math.max(8, Math.min(13, Math.round(w * 0.62)));
-    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${k.note}"` : ''}>
+    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${panEsc(k.note)}"` : ''}>
   <rect x="${cx - w / 2}" y="${y1}" width="${w}" height="${y2 - y1}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
-  <text x="${cx}" y="${y2 - fs * 1.3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
-  ${oct ? `<text x="${cx}" y="${y2 - fs * 0.35}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.7))}" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>` : ''}
+  <text x="${cx}" y="${y2 - fs * 1.3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${panEsc(name)}</text>
+  ${oct ? `<text x="${cx}" y="${y2 - fs * 0.35}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.7))}" fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>` : ''}
 </g>`;
   });
   // The bridge, over the keys' roots.

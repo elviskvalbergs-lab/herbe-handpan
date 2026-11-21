@@ -15,7 +15,7 @@
 // alias. Every slug is lower case; '#' is written 's' (F# Kurd → fs-kurd).
 
 import { SCALES } from './data.js';
-import { LAYOUT_FAMILIES, LAYOUT_FAMILY_IDS, isLayoutFamily, familyOfTuningId, findTuning } from './layoutfamilies.js';
+import { LAYOUT_FAMILIES, LAYOUT_FAMILY_IDS, isLayoutFamily, familyOfTuningId, findTuning, safeNoteName } from './layoutfamilies.js';
 import { TRADITIONAL_CHARTS, getChart, instrumentFromChart } from './charts.js';
 
 // The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
@@ -218,18 +218,18 @@ export function layoutFromCustomParams(params, family = 'handpan') {
   const max = LAYOUT_FAMILIES[fam].maxNotes; // notes besides the lowest, per shell
   const shell = (key, capKey, fallback) => {
     const raw = params.get(key) ? params.get(key).split(',') : [];
-    const notes = raw.map(n => (n && n !== 'null' ? n : null));
+    const notes = raw.map(n => safeNoteName(n)); // only note names reach the picture
     const cap = parseInt(params.get(capKey) ?? '', 10);
     const capacity = Math.min(max, Math.max(Number.isNaN(cap) ? fallback : cap, notes.length, 0));
     return { slots: Array.from({ length: capacity }, (_, i) => ({ note: notes[i] ?? null })), capacity };
   };
   return {
     id: 'custom',
-    name: params.get('name') || 'Custom Layout',
+    name: (params.get('name') || 'Custom Layout').slice(0, 80),
     isCustom: true,
     // A tongue drum: centre=1 when its lowest note is a tongue in the middle.
     ...(fam !== 'handpan' ? { instrument: fam, centre: drum && params.get('centre') === '1' } : {}),
-    top: { ding: params.get('ding') || 'D3', ...shell('top', 'tc', 8) },
+    top: { ding: safeNoteName(params.get('ding')) ?? 'D3', ...shell('top', 'tc', 8) },
     bottom: shell('bottom', 'bc', fam === 'handpan' ? 3 : 0),
     // A handpan's tone fields moved to where they are on the real one.
     ...(fam === 'handpan' && panPosFromParam(params.get('pos')) ? { pos: panPosFromParam(params.get('pos')) } : {}),
@@ -273,7 +273,12 @@ function linkDistance(a, b) {
 export function linkTitle(link) {
   if (!link) return null;
   const what = LAYOUT_FAMILIES[isLayoutFamily(link.family) ? link.family : 'handpan'].word;
-  if (link.kind === 'scale') return `${(findTuning(link.scaleId)?.name ?? link.scaleId).replace(/ \(\d+\)$/, '')} ${what}`;
+  if (link.kind === 'scale') {
+    const name = findTuning(link.scaleId)?.name ?? link.scaleId;
+    // Kalimbas of one key differ only by their number of keys: keep it ("C Major 17-key kalimba").
+    const keys = link.family === 'kalimba' ? / \((\d+)\)$/.exec(name)?.[1] : null;
+    return `${name.replace(/ \(\d+\)$/, '')} ${keys ? `${keys}-key ` : ''}${what}`;
+  }
   if (link.kind === 'custom') return `${link.params.get('name') || 'Custom'} ${what}`;
   if (link.kind === 'shared') return 'Shared instrument';
   if (link.kind === 'chart') {
@@ -322,9 +327,9 @@ export function withLinkPreview(html, preview, origin, url) {
   const meta = (attr, name, value) => {
     const re = new RegExp(`<meta ${attr}="${name}" content="[^"]*">`);
     const tag = `<meta ${attr}="${name}" content="${esc(value)}">`;
-    html = re.test(html) ? html.replace(re, tag) : html.replace('</head>', `  ${tag}\n</head>`);
+    html = re.test(html) ? html.replace(re, () => tag) : html.replace('</head>', () => `  ${tag}\n</head>`);
   };
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(preview.title)}</title>`);
+  html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${esc(preview.title)}</title>`);
   meta('name', 'description', preview.description);
   meta('property', 'og:title', preview.title);
   meta('property', 'og:description', preview.description);
