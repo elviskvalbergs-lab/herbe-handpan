@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 // next/cache only works inside Next; here the cached readers aren't called.
 vi.mock("next/cache", () => ({ cacheLife: () => {} }));
 
-import { cleanMaker, cleanMakerInstrument, cleanMakerList, familiesLine } from "@/lib/makers";
-import { layoutNotes, layoutPicture, findTuningById } from "@/lib/engine";
+import { cleanEmbed, cleanMaker, cleanMakerInstrument, cleanMakerList, familiesLine } from "@/lib/makers";
+import { layoutChords, layoutNotes, layoutPicture, findTuningById } from "@/lib/engine";
 import { validateRequest } from "@/lib/requests";
 import { schemaTypes } from "@/sanity/schemaTypes";
 import * as seed from "@/content/seed";
@@ -93,5 +93,35 @@ describe("the makers page's words are content", () => {
     const text = JSON.stringify(seed.makers);
     expect(text).not.toContain("Not yet. If that would help you");
     expect(seed.makers.heroCta).toBe("Set up your maker page");
+  });
+});
+
+describe("the embed", () => {
+  it("a maker's handpan comes with its chords, drawn from its own notes", () => {
+    const e = cleanEmbed("ser222", { data: { name: "Low Pygmy", family: "handpan", layout: LAYOUT, madeBy: { name: "Someone Famous" } }, maker: { slug: "ilze-pans", name: "Ilze Pans", kind: "maker" } });
+    expect(e).toMatchObject({ code: "SER222", name: "Low Pygmy", family: "handpan", maker: { slug: "ilze-pans", name: "Ilze Pans" } });
+    expect(e!.chords.length).toBeGreaterThan(0);
+    expect(e!.chords.length).toBeLessThanOrEqual(8);
+    expect(e!.notes).toEqual(["C3", "F3", "G3", "Ab3", "C4", "Eb4"]);
+    // The same chords the app finds, lit on the same drawing.
+    const chord = e!.chords[0];
+    expect(layoutChords(LAYOUT, "handpan").map((c) => c.id)).toContain(chord.id);
+    expect(layoutPicture(e!.layout, "handpan", e!.name, chord.notes)).toContain("<svg");
+  });
+
+  it("the maker is the server's word, and an ocarina has no layout to draw", () => {
+    expect(cleanEmbed("SER222", { data: { name: "X", family: "handpan", layout: LAYOUT, madeBy: { slug: "famous", name: "Famous" } }, maker: null })!.maker).toBeNull();
+    expect(cleanEmbed("SER222", { data: { name: "Blue", family: "ocarina", chambers: [] }, maker: null })).toMatchObject({ family: "ocarina", layout: null, chords: [] });
+    expect(cleanEmbed("SER222", null)).toBeNull();
+    expect(cleanEmbed("not a code", { data: { name: "X" } })).toBeNull();
+    expect(cleanEmbed("SER222", { data: { name: "" } })).toBeNull();
+  });
+
+  it("only the embed pages may be framed, and they stay out of search", async () => {
+    const config = (await import("../next.config")).default as { headers?: () => Promise<{ source: string; headers: { key: string; value: string }[] }[]> };
+    const headers = await config.headers!();
+    expect(headers).toEqual([{ source: "/embed/:path*", headers: [{ key: "Content-Security-Policy", value: "frame-ancestors *" }] }]);
+    const robots = (await import("@/app/robots")).default();
+    expect(JSON.stringify(robots)).toContain("/embed");
   });
 });

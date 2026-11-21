@@ -27,6 +27,14 @@ Never put a maker into Sanity. Sanity holds only the fixed words of `/makers`
 and of a maker's page (`makersPage`). Everything read from the database is
 cleaned before it is shown, and a layout passes the engine's `safeLayout`.
 
+## Embeds
+
+`/embed/s/<code>` and `/embed/<family>/<tuning>` are the playable demo alone,
+for a maker's or shop's own website (an `<iframe>`). They use the same demo
+components as the tuning pages inside `EmbedShell`, sit outside the `(site)`
+layout (no header or footer), are the only paths other sites may frame
+(`next.config.ts`), and are kept out of search.
+
 ## Every instrument gets the same pages
 
 Handpan, tongue drum, ocarina, flute and any instrument added later have the same

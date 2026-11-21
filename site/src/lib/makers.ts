@@ -10,7 +10,7 @@
 import { cacheLife } from "next/cache";
 import { supabasePublic } from "@engine/auth.js";
 import { makerWebsite, makerWebsiteLabel, makerLogoOk, makerPlaceLine, makerInitials, MAKER_FAMILIES } from "@engine/makers.js";
-import { type Family, type PanFamily, isPanFamily, layoutPicture, layoutNotes, findTuningById } from "./engine";
+import { type Chord, type Family, type PanFamily, isPanFamily, layoutPicture, layoutNotes, layoutChords, findTuningById, triads } from "./engine";
 
 export type MakerCard = {
   slug: string;
@@ -152,4 +152,53 @@ export async function getMaker(slug: string): Promise<Maker | null> {
     return cleanMakerInstrument(item, (opened as { data?: unknown } | null)?.data ?? null);
   }))).filter((i): i is MakerInstrument => !!i);
   return { ...maker, instruments };
+}
+
+// ── The embed (/embed/s/CODE): one instrument, playable, for a maker's shop page ──
+export type EmbedInstrument = {
+  code: string;
+  name: string;
+  family: Family;
+  /** Its saved notes, cleaned, for a handpan, tongue drum or kalimba; null for an ocarina or flute. */
+  layout: unknown;
+  chords: Chord[];
+  notes: string[];
+  maker: { slug: string; name: string } | null;
+};
+
+/** open_shared_instrument's answer, cleaned for the embed, or null. */
+export function cleanEmbed(code: string, raw: unknown): EmbedInstrument | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = (raw as { data?: unknown }).data;
+  if (!data || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  const name = str(d.name, 80);
+  const theCode = str(code, 6).toUpperCase();
+  if (!name || !CODE.test(theCode)) return null;
+  const family: Family = FAMILY_IDS.includes(d.family as Family) ? (d.family as Family) : "handpan";
+  const pan = isPanFamily(family) ? family : null;
+  const usable = pan && d.layout && layoutPicture(d.layout, pan, name) ? d.layout : null;
+  const all = usable && pan ? layoutChords(usable, pan) : [];
+  const simple = triads(all);
+  const maker = cleanBase((raw as { maker?: unknown }).maker);
+  return {
+    code: theCode, name, family, layout: usable ? JSON.parse(JSON.stringify(usable)) : null,
+    chords: (simple.length ? simple : all).slice(0, 8), notes: usable ? layoutNotes(usable) : [],
+    maker: maker ? { slug: maker.slug, name: maker.name } : null,
+  };
+}
+
+/** One shared instrument for the embed, with who made it. Refreshed about hourly. */
+export async function getEmbed(code: string): Promise<EmbedInstrument | null> {
+  "use cache";
+  cacheLife("hours");
+  const c = String(code).toUpperCase();
+  if (!CODE.test(c)) return null;
+  return cleanEmbed(c, await rpc("open_shared_instrument", { p_code: c }));
+}
+
+/** Where the embed counts an open: the database's public address and key (never a secret). */
+export function publicApi(): { url: string; key: string } {
+  const pub = supabasePublic();
+  return { url: process.env.HP_SUPABASE_URL || pub.url, key: process.env.HP_SUPABASE_KEY || pub.key };
 }

@@ -15,6 +15,7 @@ import {
   makerLogoOk, sharedOpening, madeByToKeep, makerPagePath,
   makerCodeUrl, makerCodeLabel, makerViaFromSearch, parseSerials, qrCardSvg, qrSheetSvgs, qrPrintDocument, MAKER_CARD_FORMATS,
   makerImportRows, MAKER_IMPORT_EXAMPLE,
+  makerEmbedUrl, makerEmbedCode,
   MAKER_STAT_PERIODS, MAKER_VIA_LABELS, makerNum, makerStatsDays, makerDayLabel, makerCodeStatText, makerStatsByInstrument, makerStatsCsv, makerCountryName,
 } from './makers.js';
 import {
@@ -41,6 +42,7 @@ function mkState() {
     serialsSheet: null, // { text, error, busy } while adding serial numbers
     card: null,        // { title, items: [{ code, serial }], format, svg, busy } while the card sheet is open
     nfc: null,         // { code, serial } while the NFC sheet is open
+    embed: false,      // the "For your shop page" sheet is open
     imp: null,         // the import screen: { text, checked: { rows, error }, busy, done }
     played: { chords: 0, songs: 0, sentChords: false, sentSongs: false }, // this visit's counts for the opened code, not yet sent
   };
@@ -470,6 +472,7 @@ function makerSheetHtml() {
   if (mk.serialsSheet && state.view === 'maker-inst') return makerSerialsSheet();
   if (mk.card && state.view === 'maker-inst') return makerCardSheet();
   if (mk.nfc && state.view === 'maker-inst') return makerNfcSheet();
+  if (mk.embed && state.view === 'maker-inst') return makerEmbedSheet();
   return '';
 }
 
@@ -616,6 +619,8 @@ function makerClick(action, el) {
     return true;
   }
   if (action === 'maker-nfc-close') { mk.nfc = null; render(); return true; }
+  if (action === 'maker-embed-open') { mk.embed = true; render(); return true; }
+  if (action === 'maker-embed-close') { mk.embed = false; render(); return true; }
 
   // Stats
   if (action === 'maker-stats-open') { openMaker('maker-stats'); return true; }
@@ -767,6 +772,7 @@ function viewMakerInst() {
           <a class="btn btn-ghost btn-sm" href="${escHtml(url)}" target="_blank" rel="noopener">${icon('external-link')} Open</a>
         </div>
       </div>
+      <div class="list maker-embed-row">${uiRow({ lead: 'layout-grid', title: 'For your shop page', meta: 'Put this instrument on your own website, playable: visitors tap its chords before they buy', action: 'maker-embed-open', chevron: true })}</div>
       ${maker ? `<div class="list">${uiSwitchRow({ label: `Show “Made by ${maker.name}”`, help: maker.status === 'approved' ? 'Off for an instrument you share but didn’t make' : 'Shows once your maker page is approved', on: !inst.hideMaker, action: 'maker-hide-toggle', data: { id: inst.id } })}</div>` : ''}
       ${makerInstStatsHtml(inst)}
       <h2 class="list-title">Serial numbers${codes.length ? ` · ${active.length}` : ''}</h2>
@@ -927,6 +933,27 @@ function makerNfcSheet() {
     footer: `
       <button type="button" class="btn btn-ghost" data-action="maker-nfc-close">Close</button>
       <button type="button" class="btn btn-primary" data-action="maker-copy" data-text="${escHtml(url)}">${icon('link')} Copy link</button>`,
+  });
+}
+
+// The code a maker pastes into their own website to show the instrument,
+// playable (the website's /embed/s/CODE page in a frame).
+function makerEmbedSheet() {
+  const mk = mkState();
+  const inst = getInstrument(mk.instId);
+  const maker = mk.info?.maker;
+  const code = makerEmbedCode(makerOrigin(), inst.publicId, { name: inst.name, maker: maker?.status === 'approved' && !inst.hideMaker ? maker.name : '' });
+  const url = makerEmbedUrl(makerOrigin(), inst.publicId);
+  return uiSheet({
+    key: 'maker-embed', title: 'For your shop page', close: 'maker-embed-close',
+    body: `
+      <p class="sheet-text">Paste this where the instrument is described on your website. Visitors see it, tap its chords and hear them, without leaving your page.</p>
+      ${uiField({ label: 'Code for your website', id: 'maker-embed-code',
+        control: `<textarea class="input maker-text maker-import-text" id="maker-embed-code" rows="4" readonly spellcheck="false">${escHtml(code)}</textarea>` })}
+      <p class="field-help">It works in any website builder that takes HTML (often called “embed” or “custom code”). Opens from your website show in your numbers as “On your website”.${usesLayout(inst) ? '' : ' An ocarina or flute shows its picture and a button to Oakhum.'}</p>`,
+    footer: `
+      <a class="btn btn-ghost" href="${escHtml(url)}" target="_blank" rel="noopener">${icon('external-link')} See it</a>
+      <button type="button" class="btn btn-primary" data-action="maker-copy" data-text="${escHtml(code)}">${icon('link')} Copy the code</button>`,
   });
 }
 
