@@ -185,6 +185,11 @@ export function appLink(tuning: Tuning, opts: { tab?: string; chord?: string } =
   return path; // same domain: the deep link itself (next.config.ts sends it to the app)
 }
 
+/** A chart tuning's page title: "Tin whistle in D fingerings", "Alto recorder, baroque fingerings". */
+export function fingeringsTitle(name: string): string {
+  return /fingering$/.test(name) ? `${name}s` : `${name} fingerings`;
+}
+
 export function displayNotes(notes: string[]): string {
   return notes.map((n) => display(n)).join(" ");
 }
