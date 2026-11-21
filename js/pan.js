@@ -112,7 +112,8 @@ function strikeBadgesSvg(placed, strikeMarks) {
     const off = at.r + 3 + Math.max(Math.abs(ux) * w / 2, Math.abs(uy) * h / 2);
     const x = Math.max(2, Math.min(500 - w - 2, Math.round(at.x + ux * off - w / 2)));
     const y = Math.max(2, Math.min(500 - h - 2, Math.round(at.y + uy * off - h / 2)));
-    const hand = marks[0].hand === 'L' ? 'l' : 'r';
+    // Coloured by hand; a badge with no hand (a ding in a song's tab) is neutral.
+    const hand = marks[0].hand === 'L' ? 'l' : marks[0].hand === 'R' ? 'r' : 'n';
     out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
   <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
@@ -261,13 +262,15 @@ function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strike
 // rendered without them is exactly as before.
 export function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false,
-    faintNotes = [], strikeMarks = [] } = opts;
+    faintNotes = [], strikeMarks = [], places = null } = opts;
 
   const cx = 250, cy = 250;
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
   const faintSet = new Set(faintNotes);
-  const placed = []; // { x, y, r, note } of every note drawn, for strike badges
+  // { x, y, r, note } of every note drawn, for strike badges; opts.places
+  // collects them for the caller (panPlaces).
+  const placed = places ?? [];
   // A handpan whose tone fields were moved to where they are on the real one
   // (the editor's Move notes): layout.pos = { [place id]: { x, y } }.
   const moved = layout.instrument ? null : layout.pos;
@@ -402,6 +405,14 @@ export function renderPan(layout, opts = {}) {
 }
 
 // Update highlight using full note strings (with octave)
+// Where each note is drawn ({ x, y, r, note }, in the 500 × 500 drawing),
+// as renderPan places it with these options (rotation, moved tone fields).
+export function panPlaces(layout, opts = {}) {
+  const places = [];
+  renderPan(layout, { ...opts, places });
+  return places;
+}
+
 export function updatePanHighlight(noteNames, altNoteNames = []) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;

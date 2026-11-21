@@ -15,6 +15,9 @@
 //
 // notes: "C4:0.5 D4:1 r:1 …": note and length in beats (a quarter note is
 // 1), r a rest. key and time as the score gives them. tags: ['christmas'].
+// pickup: the beats before the first full bar (the score's \partial; where
+// the score has none or it doesn't fit the notes, the one that puts the
+// fewest notes across bar lines). For the tab's bar lines (songBars).
 //
 // Pure helpers, unit-tested in tests/songs.test.mjs. The screens are in
 // js/app.js (songsSectionHtml, viewSong).
@@ -38,7 +41,7 @@ export const SONGS = [
     notes: "C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 G4:1 G4:1 F4:1 F4:1 E4:1 E4:1 D4:2 C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4:2",
   },
   {
-    id: "happy-birthday", title: "Happy Birthday to You", origin: "us", key: "G major", time: "3/4",
+    id: "happy-birthday", title: "Happy Birthday to You", origin: "us", key: "G major", time: "3/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/Happy_Birthday_to_You",
     notes: "D4:0.75 D4:0.25 E4:1 D4:1 G4:1 F#4:2 D4:0.75 D4:0.25 E4:1 D4:1 A4:1 G4:2 D4:0.75 D4:0.25 D5:1 B4:1 G4:1 F#4:1 E4:1 C5:0.75 C5:0.25 B4:1 G4:1 A4:1 G4:2",
   },
@@ -48,7 +51,7 @@ export const SONGS = [
     notes: "D4:1 E4:1 F#4:1 D4:1 D4:1 E4:1 F#4:1 D4:1 F#4:1 G4:1 A4:2 F#4:1 G4:1 A4:2 A4:0.75 B4:0.25 A4:0.5 G4:0.5 F#4:1 D4:1 A4:0.75 B4:0.25 A4:0.5 G4:0.5 F#4:1 D4:1 D4:1 A3:1 D4:2 D4:1 A3:1 D4:2",
   },
   {
-    id: "amazing-grace", title: "Amazing Grace", origin: "gb-eng", key: "G major", time: "3/4",
+    id: "amazing-grace", title: "Amazing Grace", origin: "gb-eng", key: "G major", time: "3/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/Amazing_Grace",
     notes: "D4:1 G4:2 B4:0.5 G4:0.5 B4:2 A4:1 G4:2 E4:1 D4:2 D4:1 G4:2 B4:0.5 G4:0.5 B4:2 A4:1 D5:2 B4:1 D5:1.5 B4:0.5 D5:0.5 B4:0.5 G4:2 D4:1 E4:1.5 G4:0.5 G4:0.5 E4:0.5 D4:2 D4:1 G4:2 B4:0.5 G4:0.5 B4:2 A4:1 G4:3",
   },
@@ -58,17 +61,17 @@ export const SONGS = [
     notes: "A4:0.75 B4:0.25 A4:0.5 F#4:1 r:0.5 A4:0.75 B4:0.25 A4:0.5 F#4:1 r:0.5 E5:0.75 Eb5:0.25 E5:0.5 C#5:1 r:0.5 D5:0.75 C#5:0.25 D5:0.5 A4:1 r:0.5 B4:1 B4:0.5 D5:0.75 C#5:0.25 B4:0.5 A4:0.75 B4:0.25 A4:0.5 F#4:1 r:0.5 B4:1 B4:0.5 D5:0.75 C#5:0.25 B4:0.5 A4:0.75 B4:0.25 A4:0.5 F#4:1 r:0.5 C#5:0.75 C#5:0.25 C#5:0.5 E5:0.75 D5:0.25 C#5:0.5 D5:1.5 F#5:1 r:0.5 D5:0.75 A4:0.25 F#4:0.5 A4:0.75 G4:0.25 E4:0.5 D4:2.5",
   },
   {
-    id: "auld-lang-syne", title: "Auld Lang Syne", origin: "gb-sct", key: "F major", time: "4/4",
+    id: "auld-lang-syne", title: "Auld Lang Syne", origin: "gb-sct", key: "F major", time: "4/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/Auld_Lang_Syne",
     notes: "C4:1 F4:1.5 F4:0.5 F4:1 A4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 F4:0.5 A4:1 C5:1 D5:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 D4:0.5 D4:1 C4:1 F4:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 D5:1 C5:1.5 A4:0.5 A4:1 C5:1 D5:3 D5:1 C5:1.5 A4:0.5 A4:1 F4:1 G4:1.5 F4:0.5 G4:1 A4:1 F4:1.5 D4:0.5 D4:1 C4:1 F4:3",
   },
   {
-    id: "londonderry-air", title: "Londonderry Air (Danny Boy)", origin: "ie", key: "E♭ major", time: "4/4",
+    id: "londonderry-air", title: "Londonderry Air (Danny Boy)", origin: "ie", key: "E♭ major", time: "4/4", pickup: 1.5,
     source: "https://en.wikipedia.org/wiki/Londonderry_Air",
     notes: "D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:1 r:0.5 Eb4:0.5 G4:0.5 Ab4:0.5 Bb4:1.5 C5:0.5 Bb4:0.5 G4:0.5 Eb4:0.5 G4:0.5 F4:2 r:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:0.5 B3:0.5 C4:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:1.5 Ab4:0.5 G4:0.5 F4:0.5 Eb4:0.5 F4:0.5 Eb4:2 r:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:1.5 D5:0.5 D5:0.5 C5:0.5 Bb4:0.5 G4:0.5 Bb4:0.5 G4:0.5 Eb4:1 r:0.5 Bb4:0.5 C5:0.5 D5:0.5 Eb5:1.5 D5:0.5 D5:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:2 r:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 G5:1.5 F5:0.5 F5:0.5 Eb5:0.5 C5:0.5 Eb5:0.5 Bb4:0.5 G4:0.5 Eb4:1 r:0.5 D4:0.5 Eb4:0.5 F4:0.5 G4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:0.5 Eb4:0.5 C4:0.5 D4:0.5 Eb4:2.5",
   },
   {
-    id: "bella-ciao", title: "Bella ciao", origin: "it", key: "D minor", time: "4/4",
+    id: "bella-ciao", title: "Bella ciao", origin: "it", key: "D minor", time: "4/4", pickup: 1.5,
     source: "https://en.wikipedia.org/wiki/Bella_ciao",
     notes: "A3:0.5 D4:0.5 E4:0.5 F4:0.5 D4:2 A3:0.5 D4:0.5 E4:0.5 F4:0.5 D4:2 A3:0.5 D4:0.5 E4:0.5 F4:1 E4:0.5 D4:0.5 F4:1 E4:0.5 D4:0.5 A4:1 A4:1 A4:0.5 A4:0.5 G4:0.5 A4:0.5 Bb4:0.5 Bb4:2 Bb4:0.5 A4:0.5 G4:0.5 Bb4:0.5 A4:2 A4:0.5 G4:0.5 F4:0.5 E4:1 A4:1 F4:1 E4:1 D4:2",
   },
@@ -150,7 +153,7 @@ export const SONGS = [
     notes: "G4:0.5 A4:0.5 Bb4:0.5 Bb4:0.5 C5:0.5 C5:0.5 G4:0.5 A4:0.5 Bb4:1 D5:1 C5:1 Eb5:1 D5:0.5 D5:0.5 D5:0.5 D5:0.5 C5:0.5 C5:0.5 A4:0.5 G4:0.5 Bb4:1 C5:1 Bb4:0.5 A4:0.5 G4:1",
   },
   {
-    id: "la-cucaracha", title: "La Cucaracha", origin: "mx", key: "F major", time: "3/4",
+    id: "la-cucaracha", title: "La Cucaracha", origin: "mx", key: "F major", time: "3/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/La_Cucaracha",
     notes: "C4:0.5 C4:0.5 F4:0.5 F4:0.5 A4:0.5 A4:0.5 C5:1 A4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 C5:0.5 Bb4:1 G4:2 C4:0.5 C4:0.5 E4:0.5 E4:0.5 G4:0.5 G4:0.5 Bb4:1 G4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:1 F4:2 C4:0.5 C4:0.5 F4:0.5 F4:0.5 A4:0.5 A4:0.5 C5:1 A4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 C5:0.5 Bb4:1 G4:2 C4:0.5 C4:0.5 E4:0.5 E4:0.5 G4:0.5 G4:0.5 Bb4:1 G4:2 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:1 F4:2",
   },
@@ -160,17 +163,17 @@ export const SONGS = [
     notes: "A4:0.5 A4:0.25 A4:0.25 A4:0.5 A4:0.25 A4:0.25 A4:0.5 D4:0.5 F4:0.5 A4:0.5 G4:0.5 G4:0.25 G4:0.25 G4:0.5 G4:0.25 G4:0.25 G4:0.5 C4:0.5 E4:0.5 G4:0.5 A4:0.5 A4:0.25 A4:0.25 A4:0.5 A4:0.25 A4:0.25 A4:0.5 B4:0.5 C5:0.5 D5:0.5 C5:0.5 A4:0.5 G4:0.5 E4:0.5 D4:1 D4:1 A4:1 A4:0.75 A4:0.25 A4:0.5 D4:0.5 F4:0.5 A4:0.5 G4:1 G4:0.75 G4:0.25 G4:0.5 C4:0.5 E4:0.5 G4:0.5 A4:1 A4:0.75 A4:0.25 A4:0.5 B4:0.5 C5:0.5 D5:0.5 C5:0.5 A4:0.5 G4:0.5 E4:0.5 D4:1 D4:1",
   },
   {
-    id: "my-bonnie", title: "My Bonnie Lies over the Ocean", origin: "gb-sct", key: "G major", time: "3/4",
+    id: "my-bonnie", title: "My Bonnie Lies over the Ocean", origin: "gb-sct", key: "G major", time: "3/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/My_Bonnie_Lies_over_the_Ocean",
     notes: "D4:1 B4:1 A4:1 G4:1 A4:1 G4:1 E4:1 D4:1 B3:4 D4:1 B4:1 A4:1 G4:1 G4:1 F#4:1 G4:1 A4:5 D4:1 B4:1 A4:1 G4:1 A4:1 G4:1 E4:1 D4:1 B3:4 D4:1 E4:1 A4:1 G4:1 F#4:1 E4:1 F#4:1 G4:5 r:1 D4:3 G4:3 E4:3 A4:3 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 G4:2 A4:1 B4:3 D4:3 G4:3 E4:3 A4:3 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 G4:6",
   },
   {
-    id: "red-river-valley", title: "Red River Valley", origin: "us", key: "G major", time: "4/4",
+    id: "red-river-valley", title: "Red River Valley", origin: "us", key: "G major", time: "4/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/Red_River_Valley_(song)",
     notes: "D4:0.5 G4:0.5 B4:1 B4:0.5 B4:0.5 B4:1 A4:0.5 B4:0.5 A4:1 G4:2 B4:0.5 B4:0.5 B4:1 G4:0.5 B4:0.5 D5:1 C5:0.5 B4:0.5 A4:3 D5:0.5 C5:0.5 B4:1 B4:0.5 A4:0.5 G4:1 A4:0.5 B4:0.5 D5:1 C5:2 E4:0.5 E4:0.5 D4:1 F#4:0.5 G4:0.5 A4:1 B4:0.5 A4:0.5 G4:4",
   },
   {
-    id: "brahms-lullaby", title: "Brahms’ Lullaby (Guten Abend, gut’ Nacht)", origin: "de", key: "E♭ major", time: "3/4",
+    id: "brahms-lullaby", title: "Brahms’ Lullaby (Guten Abend, gut’ Nacht)", origin: "de", key: "E♭ major", time: "3/4", pickup: 1,
     source: "https://en.wikipedia.org/wiki/Brahms'_Lullaby",
     notes: "G4:0.5 G4:0.5 Bb4:1.5 G4:0.5 G4:1 Bb4:1 r:1 G4:0.5 Bb4:0.5 Eb5:1 D5:1.5 C5:0.5 C5:1 Bb4:1 F4:0.5 G4:0.5 Ab4:1 F4:1 F4:0.5 G4:0.5 Ab4:1 r:1 F4:0.5 Ab4:0.5 D5:0.5 C5:0.5 Bb4:1 D5:1 Eb5:1 r:1 Eb4:0.5 Eb4:0.5 Eb5:2 C5:0.5 Ab4:0.5 Bb4:2 G4:0.5 Eb4:0.5 Ab4:1 Bb4:1 C5:1 Bb4:2 Eb4:0.5 Eb4:0.5 Eb5:2 C5:0.5 Ab4:0.5 Bb4:2 G4:0.5 Eb4:0.5 Bb3:0.25 Ab3:0.25 G3:1 F3:1 Eb3:2",
   },
@@ -200,7 +203,7 @@ export const SONGS = [
     notes: "D4:0.75 E4:0.25 D4:0.5 G4:1 G4:0.25 G4:0.25 A4:0.75 B4:0.25 A4:0.5 D5:1.5 B4:0.75 A4:0.25 B4:0.5 E4:1 E4:0.5 D4:1.5 r:1.5 D4:0.75 E4:0.25 D4:0.5 G4:1 G4:0.5 A4:0.75 B4:0.25 A4:0.5 D5:1.5 B4:0.75 A4:0.25 B4:0.5 E4:1 E4:0.5 G4:3 B4:0.5 G4:0.5 B4:0.5 B4:1.5 A4:0.5 E4:0.5 A4:0.5 A4:1.5 G4:0.5 E4:0.5 G4:0.5 G4:1 G4:0.5 E4:3 B4:0.5 G4:0.5 B4:0.5 B4:1.5 A4:0.5 E4:0.5 A4:0.5 A4:1.5 G4:0.5 E4:0.5 G4:0.5 G4:1 G4:0.5 E4:1.5 D4:1.5",
   },
   {
-    id: "malbrough", title: "For He’s a Jolly Good Fellow (Malbrough s’en va-t-en guerre)", origin: "fr", key: "G major", time: "6/8",
+    id: "malbrough", title: "For He’s a Jolly Good Fellow (Malbrough s’en va-t-en guerre)", origin: "fr", key: "G major", time: "6/8", pickup: 0.5,
     source: "https://fr.wikipedia.org/wiki/Malbrough_s'en_va-t-en_guerre",
     notes: "D4:0.5 B4:1 B4:0.5 B4:1 A4:0.5 C5:1.5 B4:0.5 C5:0.5 B4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:1.5 G4:1 D4:0.5 B4:1 B4:0.5 B4:1 A4:0.5 C5:1.5 B4:1 D5:0.5 B4:1 G4:0.5 A4:1 A4:0.5 G4:2.5 D5:0.5 D5:1 B4:0.5 E5:1 E5:0.5 D5:1.5 D5:1.5 D5:1 B4:0.5 E5:1 E5:0.5 D5:2.5",
   },
@@ -230,7 +233,7 @@ export const SONGS = [
     notes: "A4:1 G4:0.5 F4:1 D4:0.5 E4:0.5 F4:0.5 E4:0.5 D4:1.5 A4:1 G4:0.5 F4:1 D4:0.5 E4:0.5 F4:0.5 E4:0.5 D4:1.5 F4:1 F4:0.5 G4:1 G4:0.5 A4:1 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:0.5 F4:1 E4:0.5 D4:1.5 E4:1.5 F4:1 F4:0.5 F4:1 C4:0.5 F4:1 D4:0.5 F4:1.5 F4:1 F4:0.5 F4:1 C4:0.5 F4:1 D4:0.5 F4:1.5 F4:1 F4:0.5 G4:1 A4:0.5 Bb4:1 A4:0.5 G4:1 A4:0.5 F4:1 F4:0.5 F4:1 D4:0.5 F4:1 D4:0.5 F4:1.5",
   },
   {
-    id: "o-little-town-of-bethlehem", title: "O Little Town of Bethlehem", origin: "us", key: "G major", time: "4/4", tags: ["christmas"],
+    id: "o-little-town-of-bethlehem", title: "O Little Town of Bethlehem", origin: "us", key: "G major", time: "4/4", pickup: 1, tags: ["christmas"],
     source: "https://fr.wikipedia.org/wiki/O_Little_Town_of_Bethlehem",
     notes: "B4:1 B4:1 B4:1 Bb4:1 B4:1 D5:1 C5:1 E4:1 A4:1 G4:1 F#4:0.5 G4:0.5 A4:1 D4:1 B4:3 B4:1 B4:1 B4:1 E5:1 D5:1 D5:1 C5:1 E4:1 A4:1 G4:1 F#4:0.5 G4:0.5 B4:1 A4:1 G4:3 B4:1 B4:1 B4:1 A4:1 G4:1 F#4:2 F#4:1 F#4:1 E4:1 F#4:1 G4:1 A4:1 B4:3 B4:1 B4:1 B4:1 Bb4:1 B4:1 D5:1 C5:1 E4:1 E5:1 D5:1 G4:1 B4:1.5 A4:0.5 G4:3",
   },
@@ -240,12 +243,12 @@ export const SONGS = [
     notes: "C4:1 F4:1 F4:1.5 E4:0.5 F4:1 A4:1 A4:1 G4:1 C5:1 C5:1 C5:1.5 Bb4:0.5 A4:1 G4:1 A4:2 C4:1 F4:1 F4:1.5 E4:0.5 F4:1 A4:1 A4:1 G4:1 C5:1 G4:1 G4:1.5 E4:0.5 E4:1 D4:1 C4:2 C5:1 C5:1 C5:1 F4:1 Bb4:1 A4:1 A4:1 G4:1 C5:1 C5:1 C5:1 F4:1 Bb4:1 A4:1 A4:1 G4:1 D5:1 D5:1 D5:1 C5:1 Bb4:1 A4:1 Bb4:2 G4:1 A4:0.5 Bb4:0.5 C5:1.5 F4:0.5 F4:1 G4:1 A4:2 D5:1.5 D5:0.5 D5:1 C5:1 Bb4:1 A4:1 Bb4:2 G4:1 A4:0.5 Bb4:0.5 C5:1.5 F4:0.5 F4:1 G4:1 F4:2",
   },
   {
-    id: "away-in-a-manger", title: "Away in a Manger", origin: "us", key: "F major", time: "3/4", tags: ["christmas"],
+    id: "away-in-a-manger", title: "Away in a Manger", origin: "us", key: "F major", time: "3/4", pickup: 1, tags: ["christmas"],
     source: "https://en.wikipedia.org/wiki/Away_in_a_Manger",
     notes: "C5:1 C5:1.5 Bb4:0.5 A4:1 A4:1.5 G4:0.5 F4:1 F4:1 E4:1 D4:1 C4:2 C4:1 C4:1.5 D4:0.5 C4:1 C4:1 G4:1 E4:1 D4:1 C4:1 F4:1 A4:2 C5:1 C5:1.5 Bb4:0.5 A4:1 A4:1.5 G4:0.5 F4:1 F4:1 E4:1 D4:1 C4:2 C4:1 Bb4:1.5 A4:0.5 G4:1 A4:1 G4:1 F4:1 G4:1 D4:1 E4:1 F4:2",
   },
   {
-    id: "god-rest-ye", title: "God Rest Ye Merry, Gentlemen", origin: "gb-eng", key: "E minor", time: "4/4", tags: ["christmas"],
+    id: "god-rest-ye", title: "God Rest Ye Merry, Gentlemen", origin: "gb-eng", key: "E minor", time: "4/4", pickup: 1, tags: ["christmas"],
     source: "https://en.wikipedia.org/wiki/God_Rest_Ye_Merry,_Gentlemen",
     notes: "E4:1 E4:1 B4:1 B4:1 A4:1 G4:1 F#4:1 E4:1 D4:1 E4:1 F#4:1 G4:1 A4:1 B4:3 E4:1 E4:1 B4:1 B4:1 A4:1 G4:1 F#4:1 E4:1 D4:1 E4:1 F#4:1 G4:1 A4:1 B4:3 B4:1 C5:1 A4:1 B4:1 C5:1 D5:1 E5:1 B4:1 A4:1 G4:1 E4:1 F#4:1 G4:1 A4:2 G4:1 A4:1 B4:2 C5:1 B4:1 B4:1 A4:1 G4:1 F#4:1 E4:2 G4:0.5 F#4:0.5 E4:1 A4:2 G4:1 A4:1 B4:1 C5:1 D5:1 E5:1 B4:1 A4:1 G4:1 F#4:1 E4:3",
   },
@@ -255,12 +258,12 @@ export const SONGS = [
     notes: "Bb4:1 Bb4:1 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:3 F4:1 G4:1 Bb4:1 Bb4:1 A4:1 Bb4:2 Bb4:2 Bb4:1 Bb4:1 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 F4:3 F4:1 G4:1 Bb4:1 Bb4:1 A4:1 Bb4:2 Bb4:2 F5:1.5 Eb5:0.5 D5:0.5 Eb5:0.5 F5:0.5 D5:0.5 Eb5:1.5 D5:0.5 C5:0.5 D5:0.5 Eb5:0.5 C5:0.5 D5:1.5 C5:0.5 Bb4:0.5 C5:0.5 D5:0.5 Bb4:0.5 C5:1.5 Bb4:0.5 A4:0.5 Bb4:0.5 C5:0.5 A4:0.5 Bb4:1.5 A4:0.5 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 A4:1.5 G4:0.5 F4:1 F4:1 G4:1 Bb4:1 Bb4:1 A4:1 Bb4:2 Bb4:2",
   },
   {
-    id: "in-dulci-jubilo", title: "In dulci jubilo", origin: "de", key: "F major", time: "3/4", tags: ["christmas"],
+    id: "in-dulci-jubilo", title: "In dulci jubilo", origin: "de", key: "F major", time: "3/4", pickup: 1, tags: ["christmas"],
     source: "https://fr.wikipedia.org/wiki/In_dulci_jubilo",
     notes: "F4:1 F4:2 F4:1 A4:2 Bb4:1 C5:2 D5:1 C5:3 F4:2 F4:1 A4:2 Bb4:1 C5:2 D5:1 C5:3 C5:2 D5:1 C5:2 Bb4:1 A4:1.5 Bb4:0.5 A4:0.5 G4:0.5 F4:2 F4:1 G4:2 G4:1 A4:2 G4:1 F4:2 G4:1 A4:3 C5:2 D5:1 C5:2 Bb4:1 A4:1.5 Bb4:0.5 A4:0.5 G4:0.5 F4:2 F4:1 G4:2 G4:1 A4:2 G4:1 F4:2 G4:1 A4:3 D4:2 D4:1 E4:2 E4:1 F4:0.5 E4:0.5 F4:0.5 G4:0.5 A4:0.5 Bb4:0.5 C5:3 A4:2 A4:1 G4:2 G4:1 F4:5",
   },
   {
-    id: "it-came-upon-the-midnight-clear", title: "It Came Upon the Midnight Clear", origin: "us", key: "B♭ major", time: "6/8", tags: ["christmas"],
+    id: "it-came-upon-the-midnight-clear", title: "It Came Upon the Midnight Clear", origin: "us", key: "B♭ major", time: "6/8", pickup: 0.5, tags: ["christmas"],
     source: "https://fr.wikipedia.org/wiki/It_Came_Upon_the_Midnight_Clear",
     notes: "F4:0.5 D5:1 A4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:1 G4:0.5 F4:1 F4:0.5 G4:0.5 A4:0.5 Bb4:0.5 Bb4:0.5 C5:0.5 D5:0.5 C5:2.5 F4:0.5 D5:1 A4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:1 G4:0.5 F4:1 F4:0.5 G4:1 G4:0.5 A4:0.5 G4:0.5 F4:0.5 Bb4:2.5 D5:0.5 D5:1 D4:0.5 D4:0.5 E4:0.5 F#4:0.5 G4:1 A4:0.5 Bb4:1 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:0.5 F4:2.5 F4:0.5 D5:1 A4:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:1 G4:0.5 F4:1 F4:0.5 G4:1 G4:0.5 A4:0.5 G4:0.5 F4:0.5 Bb4:2.5",
   },
@@ -285,17 +288,17 @@ export const SONGS = [
     notes: "A4:0.75 A4:0.25 A4:0.5 A4:0.5 G4:0.5 A4:0.5 C5:1 Bb4:0.5 G4:1.5 G4:0.75 G4:0.25 G4:0.5 G4:0.5 F4:0.5 G4:0.5 A4:2.5 r:0.5 C5:0.75 C5:0.25 C5:0.5 C5:0.5 A4:0.5 F4:0.5 F5:1 D5:0.5 D5:1.5 C5:0.75 D5:0.25 C5:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:2.5 r:0.5 G4:0.75 G4:0.25 Bb4:0.5 A4:0.5 A4:0.5 C5:0.5 C5:0.75 Bb4:0.25 A4:0.5 G4:1.5 G4:0.75 G4:0.25 Bb4:0.5 A4:0.5 A4:0.5 C5:0.5 C5:0.75 Bb4:0.25 A4:0.5 G4:1.5 C5:0.75 Bb4:0.25 A4:0.5 A4:0.5 G4:0.5 F4:0.5 F5:1.5 D5:1.5 C5:0.75 D5:0.25 C5:0.5 C5:0.5 Bb4:0.5 G4:0.5 F4:2.5",
   },
   {
-    id: "ihr-kinderlein-kommet", title: "Ihr Kinderlein, kommet", origin: "de", key: "D major", time: "2/4", tags: ["christmas"],
+    id: "ihr-kinderlein-kommet", title: "Ihr Kinderlein, kommet", origin: "de", key: "D major", time: "2/4", pickup: 0.5, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Ihr_Kinderlein,_kommet",
     notes: "A4:0.5 A4:1 F#4:0.5 A4:0.5 A4:1 F#4:0.5 A4:0.5 G4:1 E4:0.5 G4:0.5 F#4:1 r:0.5 A4:0.5 A4:1 F#4:0.5 A4:0.5 A4:1 F#4:0.5 A4:0.5 G4:1 E4:0.5 G4:0.5 F#4:1 r:0.5 F#4:0.5 E4:1 E4:0.5 E4:0.5 G4:1 G4:0.5 G4:0.5 F#4:1 F#4:0.5 F#4:0.5 B4:1 r:0.5 B4:0.5 A4:1 A4:0.5 A4:0.5 D5:1 A4:0.5 F#4:0.5 G4:1 E4:0.5 C#4:0.5 D4:1.5",
   },
   {
-    id: "tu-scendi-dalle-stelle", title: "Tu scendi dalle stelle", origin: "it", key: "E♭ major", time: "6/8", tags: ["christmas"],
+    id: "tu-scendi-dalle-stelle", title: "Tu scendi dalle stelle", origin: "it", key: "E♭ major", time: "6/8", pickup: 0.5, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Tu_scendi_dalle_stelle",
     notes: "Bb4:0.5 Bb4:1 C5:0.5 Bb4:1 Ab4:0.5 Ab4:0.5 G4:2 F4:0.5 G4:0.5 Ab4:0.5 Bb4:0.5 Bb4:0.5 Ab4:0.5 G4:0.5 F4:2.5 G4:0.5 F4:1 G4:0.5 Ab4:1 G4:0.5 F4:1.5 C5:1.5 Bb4:0.5 C5:0.5 Bb4:0.5 Ab4:0.5 G4:0.5 F4:0.5 G4:2.5 G4:0.5 F4:1 G4:0.5 Ab4:1 G4:0.5 F4:1.5 C5:1.5 Bb4:0.5 C5:0.5 Bb4:0.5 Ab4:0.5 G4:0.5 F4:0.5 Eb4:1.5 G4:0.5 Ab4:0.5 Bb4:0.5 Ab4:1 Ab4:0.5 F4:0.5 G4:0.5 Ab4:0.5 G4:1 G4:0.5 G4:0.5 Ab4:0.5 Bb4:0.5 Ab4:1 Ab4:0.5 F4:0.5 G4:0.5 Ab4:0.5 G4:2.5 F4:0.5 G4:0.5 Ab4:0.5 Bb4:0.5 Bb4:0.5 Ab4:0.5 G4:0.5 F4:2.5 G4:0.5 F4:1 G4:0.5 Ab4:1 G4:0.5 F4:1.5 C5:1.5 Bb4:0.5 C5:0.5 Bb4:0.5 Ab4:0.5 G4:0.5 F4:0.5 G4:2.5 G4:0.5 F4:1 G4:0.5 Ab4:1 G4:0.5 F4:1.5 C5:1.5 Bb4:0.5 C5:0.5 Bb4:0.5 Ab4:0.5 G4:0.5 F4:0.5 Eb4:3",
   },
   {
-    id: "es-ist-ein-ros-entsprungen", title: "Es ist ein Ros entsprungen", origin: "de", key: "F major", time: "4/4", tags: ["christmas"],
+    id: "es-ist-ein-ros-entsprungen", title: "Es ist ein Ros entsprungen", origin: "de", key: "F major", time: "4/4", pickup: 2, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Es_ist_ein_Ros_entsprungen",
     notes: "C5:2 C5:1 C5:1 D5:1 C5:1 C5:2 A4:2 Bb4:2 A4:1 G4:2 F4:2 E4:1 F4:2 C5:2 C5:1 C5:1 D5:1 C5:1 C5:2 A4:2 Bb4:2 A4:1 G4:2 F4:2 E4:1 F4:2 r:1 A4:1 G4:1 E4:1 F4:1 D4:1 C4:2 r:1 C5:1 C5:1 C5:1 D5:1 C5:1 C5:2 A4:2 Bb4:2 A4:1 G4:2 F4:2 E4:1 F4:2",
   },
@@ -310,7 +313,7 @@ export const SONGS = [
     notes: "G4:0.5 D4:0.5 E4:0.5 D4:0.5 E4:0.25 G4:0.25 F#4:0.25 A4:0.25 G4:0.5 D4:0.5 B4:0.5 B4:0.25 C5:0.25 D5:0.5 B4:0.5 C5:0.5 B4:0.5 A4:1 G4:0.5 D4:0.5 E4:0.5 D4:0.5 E4:0.25 G4:0.25 F#4:0.25 A4:0.25 G4:0.5 D4:0.5 B4:0.5 B4:0.25 C5:0.25 D5:0.5 B4:0.5 C5:0.5 B4:0.5 A4:1 C5:0.5 C5:0.5 E5:0.5 E5:0.5 A4:0.5 A4:0.5 D5:1 G4:0.5 G4:0.5 C5:0.5 C5:0.5 B4:0.25 A4:0.25 G4:0.25 F#4:0.25 G4:1",
   },
   {
-    id: "la-marche-des-rois", title: "La Marche des rois", origin: "fr", key: "C minor", time: "4/4", tags: ["christmas"],
+    id: "la-marche-des-rois", title: "La Marche des rois", origin: "fr", key: "C minor", time: "4/4", pickup: 2, tags: ["christmas"],
     source: "https://fr.wikipedia.org/wiki/La_Marche_des_rois",
     notes: "C4:1 G3:1 C4:1.5 r:0.25 D4:0.25 Eb4:0.5 r:0.25 D4:0.25 Eb4:0.5 r:0.25 C4:0.25 G4:1.5 r:0.25 Eb4:0.25 F4:1 G4:1 Ab4:0.5 G4:0.5 F4:0.5 Eb4:0.5 D4:1 G4:1 F4:0.5 Eb4:0.5 D4:0.5 Eb4:0.5 C4:1 G3:1 C4:1.5 r:0.25 D4:0.25 Eb4:0.5 r:0.25 D4:0.25 Eb4:0.5 r:0.25 C4:0.25 G4:1.5 r:0.25 Eb4:0.25 F4:1 G4:1 Ab4:0.5 G4:0.5 F4:0.5 Eb4:0.5 Eb4:1 D4:1 C4:1.5 r:0.25 D4:0.25 D4:1 D4:1 Eb4:1 D4:0.5 r:0.25 C4:0.25 D4:1 Eb4:1 F4:1.5 r:0.25 Eb4:0.25 F4:1 G4:1 C4:1 D4:0.5 F4:0.5 Eb4:0.5 D4:0.5 C4:0.5 C4:0.5 B3:0.5 G3:0.5 r:0.25 D4:0.25 D4:1 D4:1 Eb4:1 D4:0.5 r:0.25 C4:0.25 D4:1 Eb4:1 F4:1.5 r:0.25 Eb4:0.25 F4:1 G4:1 Ab4:0.5 G4:0.5 F4:0.5 Eb4:0.5 Eb4:1 D4:1 C4:1.5",
   },
@@ -335,17 +338,17 @@ export const SONGS = [
     notes: "C5:0.5 A4:0.5 A4:1 Bb4:0.5 G4:0.5 G4:1 F4:0.5 G4:0.5 A4:0.5 Bb4:0.5 C5:0.5 C5:0.5 C5:1 C5:0.5 A4:0.5 A4:1 Bb4:0.5 G4:0.5 G4:1 F4:0.5 A4:0.5 C5:0.5 C5:0.5 F4:1 r:1 G4:0.5 G4:0.5 G4:0.5 G4:0.5 G4:0.5 A4:0.5 Bb4:1 A4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 Bb4:0.5 C5:1 C5:0.5 A4:0.5 A4:1 Bb4:0.5 G4:0.5 G4:1 F4:0.5 A4:0.5 C5:0.5 C5:0.5 F4:2",
   },
   {
-    id: "kommt-ein-vogel-geflogen", title: "Kommt ein Vogel geflogen", origin: "de", key: "F major", time: "3/4",
+    id: "kommt-ein-vogel-geflogen", title: "Kommt ein Vogel geflogen", origin: "de", key: "F major", time: "3/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Kommt_ein_Vogel_geflogen",
     notes: "A4:0.5 Bb4:0.5 C5:1 A4:1 A4:1 A4:1 G4:1 G4:0.5 A4:0.5 Bb4:1 G4:1 G4:0.5 D5:0.5 C5:1 r:1 A4:0.5 Bb4:0.5 C5:1 A4:1 A4:1 A4:1 G4:1 G4:0.5 A4:0.5 Bb4:1 E4:1 E4:1 F4:1 r:1",
   },
   {
-    id: "die-gedanken-sind-frei", title: "Die Gedanken sind frei", origin: "de", key: "C major", time: "3/4",
+    id: "die-gedanken-sind-frei", title: "Die Gedanken sind frei", origin: "de", key: "C major", time: "3/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Die_Gedanken_sind_frei",
     notes: "G4:0.5 G4:0.5 C5:1 C5:1 E5:0.5 C5:0.5 G4:2 G4:1 F4:1 D4:1 G4:1 E4:1 C4:1 G4:1 C5:1 C5:1 E5:0.5 C5:0.5 G4:2 G4:1 F4:1 D4:1 G4:1 E4:1 C4:1 C5:1 B4:1 D5:1 D5:1 C5:1 E5:1 E5:1 B4:1 D5:1 D5:1 C5:1 E5:1 C5:1 A4:1 A4:1 C5:0.5 A4:0.5 G4:2 G4:0.5 E5:0.5 E5:0.5 D5:0.5 C5:1 B4:1 C5:2",
   },
   {
-    id: "kein-schoener-land", title: "Kein schöner Land in dieser Zeit", origin: "de", key: "A major", time: "3/4",
+    id: "kein-schoener-land", title: "Kein schöner Land in dieser Zeit", origin: "de", key: "A major", time: "3/4", pickup: 1.5,
     source: "https://de.wikipedia.org/wiki/Kein_sch%C3%B6ner_Land_in_dieser_Zeit",
     notes: "E4:0.5 E4:0.5 E4:0.5 A4:1 C#5:1 B4:0.5 A4:0.5 B4:1 r:0.5 E4:0.5 E4:0.5 E4:0.5 A4:1 C#5:1 B4:0.5 A4:0.5 B4:1 r:0.5 C#5:0.5 A4:0.5 B4:0.5 C#5:0.5 E5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 B4:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 B4:0.5 C#5:1 r:0.5 C#5:0.5 A4:0.5 B4:0.5 C#5:0.5 E5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 B4:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 Ab4:0.5 A4:1 r:0.5",
   },
@@ -355,7 +358,7 @@ export const SONGS = [
     notes: "D4:1.5 F#4:0.5 A4:1 D5:1 B4:1 D5:0.5 B4:0.5 A4:2 G4:1.5 A4:0.5 F#4:1 D4:1 E4:2 D4:1 r:1 A4:1 A4:1 G4:1 G4:1 F#4:1 A4:0.5 F#4:0.5 E4:2 A4:1 A4:1 G4:1 G4:1 F#4:1 A4:0.5 F#4:0.5 E4:2 D4:1.5 F#4:0.5 A4:1 D5:1 B4:1 D5:0.5 B4:0.5 A4:2 G4:1.5 A4:0.5 F#4:1 D4:1 E4:2 D4:1 r:1",
   },
   {
-    id: "der-kuckuck-und-der-esel", title: "Der Kuckuck und der Esel", origin: "de", key: "F major", time: "4/4",
+    id: "der-kuckuck-und-der-esel", title: "Der Kuckuck und der Esel", origin: "de", key: "F major", time: "4/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Der_Kuckuck_und_der_Esel",
     notes: "C5:1 A4:1 C5:1 A4:1 C5:1 Bb4:1 Bb4:1 r:1 Bb4:1 G4:1 Bb4:1 G4:1 Bb4:1 A4:2 r:1 C5:0.5 Bb4:0.5 A4:1 A4:1 A4:1 A4:1 Bb4:1 Bb4:1 r:1 Bb4:0.5 A4:0.5 G4:1 G4:1 G4:1 G4:1 A4:1 A4:1 r:1 F4:1 F4:1 G4:1 A4:1 Bb4:1 C5:1.5 D5:0.5 C5:1 Bb4:1 A4:1 A4:1 G4:1 G4:1 F4:2 r:1",
   },
@@ -370,7 +373,7 @@ export const SONGS = [
     notes: "D5:1 B4:1 r:1 D5:1 B4:1 r:1 A4:1 G4:1 A4:1 G4:3 A4:1 A4:1 B4:1 C5:2 A4:1 B4:1 B4:1 C5:1 D5:2 B4:1 D5:2 B4:1 D5:2 B4:1 C5:1 B4:1 A4:1 G4:3",
   },
   {
-    id: "guter-mond", title: "Guter Mond, du gehst so stille", origin: "de", key: "F major", time: "4/4",
+    id: "guter-mond", title: "Guter Mond, du gehst so stille", origin: "de", key: "F major", time: "4/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Guter_Mond,_du_gehst_so_stille",
     notes: "C5:0.75 Bb4:0.25 A4:1 A4:1 A4:0.5 Bb4:0.5 C5:0.5 D5:0.5 C5:0.75 Bb4:0.25 G4:1 r:1 C5:0.75 Bb4:0.25 A4:1.5 A4:0.5 G4:0.5 F4:0.5 G4:0.5 A4:0.5 F4:2 r:1 C5:0.75 Bb4:0.25 A4:1 A4:1 A4:0.5 Bb4:0.5 C5:0.5 D5:0.5 C5:0.75 Bb4:0.25 G4:1 r:1 C5:0.75 Bb4:0.25 A4:1.5 A4:0.5 G4:0.5 F4:0.5 G4:0.5 A4:0.5 F4:2 r:1 G4:0.75 A4:0.25 Bb4:1 G4:1 r:1 A4:0.75 Bb4:0.25 C5:1 A4:1 r:1 A4:0.5 C5:0.5 D5:1.5 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:0.5 A4:1 G4:1 r:1 C5:0.75 Bb4:0.25 A4:1 A4:1 A4:0.5 Bb4:0.5 C5:0.5 D5:0.5 C5:0.75 Bb4:0.25 G4:1 r:1 C5:0.75 Bb4:0.25 A4:1.5 A4:0.5 G4:0.5 F4:0.5 G4:0.5 A4:0.5 F4:2 r:1",
   },
@@ -385,12 +388,12 @@ export const SONGS = [
     notes: "F#4:1 F#4:0.5 A4:0.75 G4:0.25 F#4:0.5 E4:1 E4:0.5 E4:1.5 F#4:1 F#4:0.5 G4:0.5 A4:0.5 B4:0.5 B4:1.5 A4:1 r:0.5 A4:1 G4:0.5 F#4:1 F#4:0.5 F#4:1 E4:0.5 D4:1.5 D4:1 D4:0.5 D4:0.5 E4:0.5 F#4:0.5 G4:1 F#4:0.5 E4:1 r:0.5 F#4:1 F#4:0.5 A4:0.75 G4:0.25 F#4:0.5 F#4:1.5 E4:1 r:0.5 F#4:1 A4:0.5 B4:1 B4:0.5 A4:0.5 B4:0.5 C#5:0.5 D5:1.5 D5:1 B4:0.5 A4:1 F#4:0.5 E4:0.75 F#4:0.25 E4:0.5 D4:1 r:0.5",
   },
   {
-    id: "im-maerzen-der-bauer", title: "Im Märzen der Bauer", origin: "de", key: "B♭ major", time: "3/4",
+    id: "im-maerzen-der-bauer", title: "Im Märzen der Bauer", origin: "de", key: "B♭ major", time: "3/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Im_M%C3%A4rzen_der_Bauer",
     notes: "F4:1 Bb4:1 Bb4:1 D5:1 C5:1 C5:1 Eb5:1 A4:1 A4:1 C5:1 Bb4:2 F4:1 Bb4:1 Bb4:1 D5:1 C5:1 C5:1 Eb5:1 A4:1 A4:1 C5:1 Bb4:2 F5:1 C5:1 C5:1 F5:1 D5:1 D5:1 F5:1 Eb5:1 Eb5:1 F5:1 D5:2 F4:1 Bb4:1 Bb4:1 D5:1 C5:1 C5:1 Eb5:1 A4:1 A4:1 C5:1 Bb4:2",
   },
   {
-    id: "der-mai-ist-gekommen", title: "Der Mai ist gekommen", origin: "de", key: "D major", time: "3/4",
+    id: "der-mai-ist-gekommen", title: "Der Mai ist gekommen", origin: "de", key: "D major", time: "3/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Der_Mai_ist_gekommen",
     notes: "D4:0.5 E4:0.5 F#4:1 F#4:1.5 G4:0.5 B4:1 A4:1.5 F#4:0.5 A4:0.75 G4:0.25 G4:1 A4:1 F#4:2 D4:0.5 E4:0.5 F#4:1 F#4:1.5 G4:0.5 B4:1 A4:1.5 F#4:0.5 A4:0.75 G4:0.25 G4:1 A4:1 F#4:2 F#4:0.75 F#4:0.25 E4:1 A4:1.5 A4:0.5 Ab4:1 B4:1.5 B4:0.5 E5:0.75 D5:0.25 C#5:0.75 B4:0.25 A4:0.75 Ab4:0.25 A4:2 A4:0.5 G4:0.5 F#4:0.75 F#4:0.25 F#4:1.5 G4:0.5 B4:1 A4:1.5 F#4:0.5 A4:0.75 G4:0.25 G4:1 A4:1 F#4:2",
   },
@@ -400,12 +403,12 @@ export const SONGS = [
     notes: "D4:1 E4:1 F#4:1 G4:1 A4:1 A4:1 A4:1 A4:1 B4:1 G4:1 D5:1 B4:1 A4:4 B4:1 G4:1 D5:1 B4:1 A4:4 A4:1 G4:1 G4:1 G4:1 G4:1 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 E4:1 D4:1 F#4:1 A4:2 A4:1 G4:1 G4:1 G4:1 G4:1 F#4:1 F#4:1 F#4:1 F#4:1 E4:1 F#4:1 E4:1 D4:4",
   },
   {
-    id: "sur-le-pont-davignon", title: "Sur le pont d’Avignon", origin: "fr", key: "F major", time: "2/4",
+    id: "sur-le-pont-davignon", title: "Sur le pont d’Avignon", origin: "fr", key: "F major", time: "2/4", pickup: 1,
     source: "https://fr.wikipedia.org/wiki/Sur_le_pont_d'Avignon",
     notes: "F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 E4:0.5 F4:0.5 G4:0.5 C4:0.5 F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 G4:0.5 E4:0.5 F4:1 F4:0.5 F4:0.5 F4:0.5 F4:0.5 G4:1 F4:1 F4:0.5 F4:0.5 F4:0.5 F4:0.5 G4:1 F4:1 F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 E4:0.5 F4:0.5 G4:0.5 C4:0.5 F4:0.5 F4:0.5 F4:1 G4:0.5 G4:0.5 G4:1 A4:0.5 Bb4:0.5 C5:0.5 F4:0.5 G4:0.5 E4:0.5 F4:1",
   },
   {
-    id: "itsy-bitsy-spider", title: "Itsy Bitsy Spider", origin: "us", key: "G major", time: "6/8",
+    id: "itsy-bitsy-spider", title: "Itsy Bitsy Spider", origin: "us", key: "G major", time: "6/8", pickup: 0.5,
     source: "https://en.wikipedia.org/wiki/Itsy_Bitsy_Spider",
     notes: "D4:0.5 G4:1 G4:0.5 G4:1 A4:0.5 B4:1.5 B4:1 B4:0.5 A4:1 G4:0.5 A4:1 B4:0.5 G4:3 B4:1.5 B4:1 C5:0.5 D5:1.5 D5:1.5 C5:1 B4:0.5 C5:1 D5:0.5 B4:3 G4:1.5 G4:1 A4:0.5 B4:1.5 B4:1.5 A4:1 G4:0.5 A4:1 B4:0.5 G4:1.5 F#4:1 F#4:0.5 G4:1 G4:0.5 G4:1 A4:0.5 B4:1.5 B4:1 B4:0.5 A4:1 G4:0.5 A4:1 B4:0.5 G4:2.5",
   },
@@ -425,17 +428,17 @@ export const SONGS = [
     notes: "G4:1 G4:0.5 G4:0.5 A4:0.5 G4:0.5 E4:1 E4:0.5 E4:0.5 D4:0.5 E4:0.5 F4:0.75 F4:0.25 F4:0.5 G4:0.75 G4:0.25 G4:0.5 E4:2 r:0.5 r:0.5 G4:1 G4:0.5 G4:0.5 A4:0.5 G4:0.5 E4:1 E4:0.5 E4:0.5 D4:0.5 E4:0.5 F4:0.75 F4:0.25 F4:0.5 G4:0.75 G4:0.25 G4:0.5 E4:2 r:0.5 r:0.5 C5:1 C5:0.5 C5:0.5 B4:0.5 A4:0.5 A4:1 G4:0.5 G4:1 r:0.5 A4:1 A4:0.25 A4:0.25 A4:0.5 G4:0.5 F4:0.5 F4:1 E4:0.5 E4:1 r:0.5 G4:0.75 G4:0.25 G4:0.5 G4:0.5 A4:0.5 B4:0.5 C5:0.75 C5:0.25 C5:0.5 C5:0.5 B4:0.5 C5:0.5 D5:0.75 D5:0.25 D5:0.5 B4:0.5 A4:0.5 B4:0.5 C5:2",
   },
   {
-    id: "ich-geh-mit-meiner-laterne", title: "Ich geh mit meiner Laterne", origin: "de", key: "G major", time: "6/8",
+    id: "ich-geh-mit-meiner-laterne", title: "Ich geh mit meiner Laterne", origin: "de", key: "G major", time: "6/8", pickup: 0.5,
     source: "https://de.wikipedia.org/wiki/Ich_geh_mit_meiner_Laterne",
     notes: "D4:0.5 G4:1 G4:0.5 B4:0.5 G4:0.5 B4:0.5 D5:1.5 B4:1 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5 r:1 D4:0.5 G4:1 G4:0.5 B4:0.5 G4:0.5 B4:0.5 D5:1.5 B4:1 G4:0.5 A4:1 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5 r:1 B4:0.5 D5:1 B4:0.5 G4:1 B4:0.5 D5:1 B4:0.5 G4:1 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5 r:1 B4:0.5 D5:1 B4:0.5 G4:1 B4:0.5 D5:1 B4:0.5 G4:1 G4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 B4:0.5 A4:0.5 G4:1.5",
   },
   {
-    id: "die-vogelhochzeit", title: "Die Vogelhochzeit", origin: "de", key: "G major", time: "2/4",
+    id: "die-vogelhochzeit", title: "Die Vogelhochzeit", origin: "de", key: "G major", time: "2/4", pickup: 0.5,
     source: "https://de.wikipedia.org/wiki/Die_Vogelhochzeit",
     notes: "B4:0.5 D5:0.5 B4:0.5 D5:0.5 B4:0.5 C5:0.5 A4:0.5 C5:0.5 A4:0.5 B4:0.5 G4:0.5 D5:0.5 B4:0.5 A4:0.5 D5:0.5 D5:0.5 D5:0.25 B4:0.25 G4:0.5 G4:0.5 G4:0.5 D5:0.25 B4:0.25 A4:0.5 A4:0.5 A4:0.5 D5:0.25 C5:0.25 B4:0.5 G4:0.5 A4:0.5 F#4:0.5 G4:1",
   },
   {
-    id: "der-mond-ist-aufgegangen", title: "Der Mond ist aufgegangen", origin: "de", key: "F major", time: "4/4",
+    id: "der-mond-ist-aufgegangen", title: "Der Mond ist aufgegangen", origin: "de", key: "F major", time: "4/4", pickup: 1,
     source: "https://de.wikipedia.org/wiki/Abendlied_(Matthias_Claudius)",
     notes: "F4:1 G4:1 F4:1 Bb4:1 A4:1 G4:2 F4:1 A4:1 A4:1 A4:1 D5:1 C5:1 Bb4:2 A4:1 A4:1 A4:1 A4:1 Bb4:1 A4:1 G4:3 F4:1 G4:1 F4:1 Bb4:1 A4:1 G4:2 F4:1 A4:1 A4:1 A4:1 D5:1 C5:1 Bb4:2 A4:1 A4:1 A4:1 A4:1 Bb4:1 A4:1 G4:1 G4:1 F4:1",
   },
@@ -455,7 +458,7 @@ export const SONGS = [
     notes: "B4:0.5 A4:0.5 B4:0.5 C5:0.5 B4:1 B4:1 A4:2 G4:2 C5:1 B4:1 A4:1 G4:1 F#4:4 G4:0.5 F#4:0.5 G4:0.5 A4:0.5 G4:1 G4:1 E5:2 C#5:2 D5:1 E5:0.5 D5:0.5 C#5:1.5 D5:0.5 D5:4 B4:0.5 A4:0.5 B4:0.5 C5:0.5 B4:1 B4:1 A4:2 G4:2 C5:1 B4:1 A4:1 G4:1 F#4:4 G4:0.5 F#4:0.5 G4:0.5 A4:0.5 G4:1 G4:1 E5:2 C#5:2 D5:1 E5:0.5 D5:0.5 C#5:1.5 D5:0.5 D5:4",
   },
   {
-    id: "le-bon-roi-dagobert", title: "Le bon roi Dagobert", origin: "fr", key: "G major", time: "6/8",
+    id: "le-bon-roi-dagobert", title: "Le bon roi Dagobert", origin: "fr", key: "G major", time: "6/8", pickup: 0.5,
     source: "https://fr.wikipedia.org/wiki/Le_bon_roi_Dagobert",
     notes: "B4:0.5 B4:1 A4:0.5 A4:1 G4:0.5 G4:1.5 A4:1.5 B4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:1.5 r:0.5 G4:0.5 A4:0.5 B4:1 B4:0.5 B4:0.5 C5:0.5 D5:0.5 A4:1 A4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:1 B4:0.5 B4:0.5 C5:0.5 D5:0.5 A4:1 A4:0.5 A4:1 B4:0.5 B4:1 A4:0.5 A4:1 G4:0.5 G4:1.5 A4:1.5 B4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:2.5",
   },
@@ -470,7 +473,7 @@ export const SONGS = [
     notes: "F4:1 F4:0.5 E4:0.5 F4:1 C4:1 A4:1 A4:0.5 G4:0.5 A4:1 F4:1 A4:1 D5:1 C5:2 A4:1 D5:1 C5:2 C5:1 C5:0.5 D5:0.5 C5:1 A4:1 Bb4:1 Bb4:0.5 C5:0.5 Bb4:1 G4:1 A4:1 G4:1 F4:2 A4:1 G4:1 F4:2",
   },
   {
-    id: "am-weihnachtsbaum", title: "Am Weihnachtsbaum die Lichter brennen", origin: "de", key: "C major", time: "3/4", tags: ["christmas"],
+    id: "am-weihnachtsbaum", title: "Am Weihnachtsbaum die Lichter brennen", origin: "de", key: "C major", time: "3/4", pickup: 1.5, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Am_Weihnachtsbaum_die_Lichter_brennen",
     notes: "C4:0.5 C4:0.5 E4:0.5 G4:1 E4:0.5 G4:0.5 C5:0.5 A4:0.5 G4:1 E4:0.5 G4:0.5 A4:0.5 G4:0.5 F4:1 D4:1 G4:0.5 G4:0.5 E4:1 r:0.5 E4:0.5 E4:0.5 G4:0.5 F4:1 D4:0.5 F4:0.5 F4:0.5 A4:0.5 G4:1 E4:0.5 E4:0.5 E4:0.5 G4:0.5 F4:1 D4:1 G4:0.5 G4:0.5 E4:1",
   },
@@ -480,12 +483,12 @@ export const SONGS = [
     notes: "Ab4:2 C5:1 Eb5:2 C5:1 C#5:1 Eb5:1 F5:1 Eb5:1 Bb4:2 C5:1 C#5:1 Eb5:1 C#5:1 C5:1 Bb4:1 Ab4:2 F4:1 G4:1 Eb4:2 C5:2 C#5:1 Eb5:2 F5:1 Eb5:2 Bb4:1 C5:1 Ab4:2 C#5:2 C#5:1 C5:1 Bb4:1 Ab4:1 Ab4:1 F4:1 G4:1 Ab4:3",
   },
   {
-    id: "ich-steh-an-deiner-krippen", title: "Ich steh an deiner Krippen hier", origin: "de", key: "C minor", time: "4/4", tags: ["christmas"],
+    id: "ich-steh-an-deiner-krippen", title: "Ich steh an deiner Krippen hier", origin: "de", key: "C minor", time: "4/4", pickup: 1, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Ich_steh_an_deiner_Krippen_hier",
     notes: "G4:1 C5:1 D5:1 Eb5:1 C5:1 Bb4:1.5 Ab4:0.5 G4:1 Bb4:1 Eb4:1.5 D4:0.5 Eb4:1 F4:1 G4:2 G4:1 G4:1 C5:1 D5:1 Eb5:1 C5:1 Bb4:1.5 Ab4:0.5 G4:1 Bb4:1 Eb4:1.5 D4:0.5 Eb4:1 F4:1 G4:2 G4:1 Bb4:1 Eb5:1 Bb4:1 C5:1 Bb4:1 Ab4:1.5 Bb4:0.5 G4:1 Bb4:1 Eb5:1 Bb4:1 C5:1 Bb4:1 Ab4:1.5 Bb4:0.5 G4:1 G4:1 A4:1 B4:1 C5:0.5 Eb5:0.5 D5:0.5 C5:0.5 B4:2 C5:1",
   },
   {
-    id: "es-wird-scho-glei-dumpa", title: "Es wird scho glei dumpa", origin: "at", key: "A♭ major", time: "3/4", tags: ["christmas"],
+    id: "es-wird-scho-glei-dumpa", title: "Es wird scho glei dumpa", origin: "at", key: "A♭ major", time: "3/4", pickup: 1, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Es_wird_scho_glei_dumpa",
     notes: "Eb4:1 Ab4:1 Ab4:1 Bb4:1 C5:0.75 Eb5:0.25 Eb5:1.5 C#5:0.5 C5:1 C5:1 Bb4:1 Ab4:2 Eb4:1 Ab4:1 Ab4:1 Bb4:1 C5:0.75 Eb5:0.25 Eb5:1.5 C#5:0.5 C5:1 C5:1 Bb4:1 Ab4:2 C5:0.5 C#5:0.5 Eb5:1 C5:1 Eb5:1 Eb5:0.5 C#5:0.5 Bb4:1.5 C#5:0.5 C5:1 Ab4:1 C5:1 Bb4:2 Eb4:1 Ab4:1 Ab4:1 Bb4:1 C5:0.75 Eb5:0.25 Eb5:1.5 C#5:0.5 C5:1 C5:1 Bb4:1 Ab4:2 C5:0.5 Eb4:0.5 Ab4:2 C5:0.5 Eb4:0.5 Ab4:1.5 Eb4:0.5 Ab4:0.5 C5:0.5 Eb5:1 C5:0.5 Ab4:0.5 Bb4:0.5 Eb4:0.5 Ab4:2",
   },
@@ -500,22 +503,22 @@ export const SONGS = [
     notes: "E4:0.5 A4:0.5 A4:0.5 Ab4:1 B4:0.5 A4:0.5 C#5:0.5 C#5:0.5 B4:1 D5:0.5 E5:0.5 C#5:0.5 B4:0.5 A4:1 r:0.5 E5:0.5 D5:0.5 C#5:0.5 D5:0.5 B4:1 D5:0.5 C#5:0.5 B4:0.5 C#5:0.5 A4:1 A4:0.5 Ab4:0.5 A4:0.5 B4:0.5 A4:0.5 B4:0.5 E5:0.5 C#5:0.5 B4:0.5 A4:1 r:0.5 E5:0.5 C#5:0.5 B4:0.5 A4:1",
   },
   {
-    id: "zu-bethlehem-geboren", title: "Zu Bethlehem geboren", origin: "de", key: "F major", time: "4/4", tags: ["christmas"],
+    id: "zu-bethlehem-geboren", title: "Zu Bethlehem geboren", origin: "de", key: "F major", time: "4/4", pickup: 1, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Zu_Bethlehem_geboren",
     notes: "C4:1 F4:1.5 G4:0.5 A4:1 G4:1 F4:2 E4:1 F4:1 G4:1 F4:0.5 G4:0.5 A4:1 G4:1 F4:2 r:1 C5:1 C5:1 A4:1 Bb4:1 C5:1 D5:2 Bb4:1 Bb4:1 A4:1 Bb4:1 C5:1 Bb4:0.5 A4:0.5 G4:3 r:1 C5:2 G4:2 A4:2 G4:1 A4:0.5 Bb4:0.5 C5:1 F4:0.5 G4:0.5 A4:1 G4:1 F4:3",
   },
   {
-    id: "der-christbaum", title: "Der Christbaum ist der schönste Baum", origin: "de", key: "A major", time: "4/4", tags: ["christmas"],
+    id: "der-christbaum", title: "Der Christbaum ist der schönste Baum", origin: "de", key: "A major", time: "4/4", pickup: 1, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Der_Christbaum_ist_der_sch%C3%B6nste_Baum",
     notes: "E4:1 C#5:1 A4:1 D5:1 B4:1 E5:1.5 D5:0.5 C#5:1 B4:1 A4:1 E4:1 D5:1 C#5:1 C#5:1 B4:1 r:1 E5:1 E5:1 C#5:1 F#5:1.5 E5:0.5 E5:0.5 D5:0.5 D5:0.5 C#5:0.5 D5:1 D5:1 D5:1 B4:1 E5:1.5 D5:0.5 D5:0.5 C#5:0.5 C#5:0.5 B4:0.5 C#5:1 E4:1 F#4:1 Ab4:1 A4:1 B4:1 C#5:2 A4:1 Ab4:1 A4:1 B4:1 C#5:1 D5:1 E5:2 C#5:1 F#5:1 E5:2 D5:2 C#5:2",
   },
   {
-    id: "resonet-in-laudibus", title: "Resonet in laudibus", origin: "de", key: "F major", time: "6/4", tags: ["christmas"],
+    id: "resonet-in-laudibus", title: "Resonet in laudibus", origin: "de", key: "F major", time: "6/4", pickup: 4, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Resonet_in_laudibus",
     notes: "C5:1 C5:2 A4:1 F4:2 A4:1 C5:2 D5:1 C5:3 C5:2 A4:1 F4:2 A4:1 C5:2 D5:1 C5:3 Bb4:2 Bb4:1 Bb4:2 C5:1 Bb4:2 A4:1 G4:2 A4:1 C5:2 A4:1 F4:2 A4:1 G4:2 F4:1 G4:2 A4:1 F4:2 E4:1 F4:3 C5:2 A4:1 F4:2 A4:1 C5:2 D5:1 C5:3 C5:2 A4:1 F4:2 A4:1 C5:2 D5:1 C5:3 Bb4:2 Bb4:1 Bb4:2 C5:1 Bb4:2 A4:1 G4:2 A4:1 C5:2 A4:1 F4:2 A4:1 G4:2 F4:1 G4:2 A4:1 F4:2 E4:1 F4:3 C5:3 A4:3 C5:3 A4:3 F4:2 G4:1 A4:2 Bb4:2 A4:2 G4:1 A4:3 F4:2 G4:1 A4:2 Bb4:1 A4:2 G4:1 A4:2 A4:1 F4:2 E4:1 F4:3 C5:2 C5:1 C5:2 C5:1 F5:2 E5:1 D5:2 C5:1 F5:2 E5:1 D5:2 C5:1 C5:2 B4:1 C5:3 F4:2 G4:1 A4:2 Bb4:1 C5:2 Bb4:1 A4:2 G4:1 A4:2 G4:1 F4:2 E4:1 F4:4",
   },
   {
-    id: "es-ist-fuer-uns-eine-zeit", title: "Es ist für uns eine Zeit angekommen", origin: "ch", key: "F major", time: "4/4", tags: ["christmas"],
+    id: "es-ist-fuer-uns-eine-zeit", title: "Es ist für uns eine Zeit angekommen", origin: "ch", key: "F major", time: "4/4", pickup: 1.5, tags: ["christmas"],
     source: "https://de.wikipedia.org/wiki/Es_ist_f%C3%BCr_uns_eine_Zeit_angekommen",
     notes: "F4:0.5 F4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 A4:1 Bb4:1 C5:1 D5:0.5 C5:0.5 C5:1 Bb4:1 A4:2 r:0.5 F4:0.5 F4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 A4:1 Bb4:1 C5:1 D5:0.5 C5:0.5 C5:1 Bb4:1 A4:2 C5:1.5 C5:0.5 D5:1.5 C5:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 D5:0.5 C5:2 A4:1.5 C5:0.5 G4:2 A4:1.5 C5:0.5 G4:2 A4:1.5 Bb4:0.5 C5:1 D5:0.5 C5:0.5 C5:1 Bb4:1 A4:2",
   },
@@ -530,7 +533,7 @@ export const SONGS = [
     notes: "D4:1 F4:1 E4:1 D4:1 C4:1 F4:1 Bb4:1 A4:1 A4:1 A4:1 C5:1 C5:1 Bb4:1 A4:1 A4:1 G4:1 F4:1 F4:1 F4:1 A4:1 Bb4:1 G4:1 F4:1 E4:1 D4:1 C4:1 G4:1 G4:1 G4:1 Bb4:1 G4:1 F4:1 F4:1 E4:1 G4:1 C4:1 C4:1 E4:1 D4:1",
   },
   {
-    id: "maman-les-ptits-bateaux", title: "Maman les p’tits bateaux", origin: "fr", key: "G major", time: "2/4",
+    id: "maman-les-ptits-bateaux", title: "Maman les p’tits bateaux", origin: "fr", key: "G major", time: "2/4", pickup: 0.5,
     source: "https://fr.wikipedia.org/wiki/Maman_les_p'tits_bateaux",
     notes: "D4:0.5 D4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 D4:0.5 E4:0.5 G4:0.5 F#4:0.5 D4:0.5 E4:0.5 F#4:0.5 G4:1 G4:0.5 D4:0.5 D4:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 D4:0.25 D4:0.25 E4:0.5 G4:0.5 F#4:0.5 D4:0.5 E4:0.5 F#4:0.5 G4:1 r:0.5 D5:0.5 D5:0.5 B4:0.5 B4:0.5 G4:0.5 G4:1.5 B4:0.5 D5:0.5 D5:0.5 D5:0.5 D5:0.5 B4:1 G4:0.5 D5:0.5 D5:0.5 B4:0.5 B4:0.5 G4:0.5 G4:1 G4:0.5 B4:0.5 D5:0.5 D5:0.5 D5:0.5 D5:0.5 G4:1.5",
   },
@@ -540,12 +543,12 @@ export const SONGS = [
     notes: "A4:0.75 A4:0.25 A4:0.5 A4:0.5 A4:0.5 E4:0.5 A4:0.5 B4:0.5 C#5:1 B4:1 A4:1.5 A4:0.5 Ab4:0.75 F#4:0.25 Ab4:0.5 A4:0.5 B4:0.5 C#5:0.5 B4:0.5 A4:0.5 Ab4:1 F#4:1 E4:1.5 E4:0.5 B4:0.5 B4:0.5 B4:0.5 C#5:0.5 D5:1.5 D5:0.5 C#5:0.5 A4:0.5 E5:0.5 C#5:0.5 B4:1.5 B4:0.5 D5:0.5 D5:0.5 D5:0.5 D5:0.5 C#5:0.5 E5:0.5 C#5:0.5 A4:0.5 B4:1 E5:1 A4:0.5 A4:0.5 A4:0.5 Ab4:0.5 F#4:1 F#4:0.75 F#4:0.25 F#4:0.5 Ab4:0.5 A4:0.5 B4:0.5 E4:1 E4:0.75 E4:0.25 E4:1.5 E4:0.5 A4:1 C#5:1 E5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:0.5 E5:0.5 E5:0.5 E5:0.5 A4:2",
   },
   {
-    id: "nous-nirons-plus-au-bois", title: "Nous n’irons plus au bois", origin: "fr", key: "F major", time: "2/4",
+    id: "nous-nirons-plus-au-bois", title: "Nous n’irons plus au bois", origin: "fr", key: "F major", time: "2/4", pickup: 1.5,
     source: "https://fr.wikipedia.org/wiki/Nous_n'irons_plus_au_bois",
     notes: "F4:0.5 A4:0.5 Bb4:0.5 C5:1 F5:1 C5:0.75 D5:0.25 C5:0.5 Bb4:0.5 A4:1 G4:1 F4:0.5 F4:0.5 A4:0.5 Bb4:0.5 C5:1 F5:1 C5:0.75 D5:0.25 C5:0.5 Bb4:0.5 A4:1 G4:1 F4:1 r:1 F4:0.75 F4:0.25 F4:0.5 G4:0.5 F4:1 C4:1 F4:0.75 F4:0.25 F4:0.5 G4:0.5 F4:1 C4:1 C5:1 A4:1 C5:1 A4:1 G4:0.75 A4:0.25 Bb4:0.5 A4:0.5 G4:0.5 C5:0.5 F4:1",
   },
   {
-    id: "a-la-volette", title: "À la volette", origin: "fr", key: "F major", time: "2/4",
+    id: "a-la-volette", title: "À la volette", origin: "fr", key: "F major", time: "2/4", pickup: 1,
     source: "https://fr.wikipedia.org/wiki/%C3%80_la_volette",
     notes: "F4:0.5 C4:0.5 F4:1 G4:1 A4:0.5 F4:0.5 A4:0.5 C5:0.5 A4:1 G4:1 F4:1 F4:0.5 C4:0.5 F4:1 G4:1 A4:0.5 F4:0.5 A4:0.5 C5:0.5 A4:1 G4:1 F4:1 A4:0.5 Bb4:0.5 C5:0.5 r:0.5 C5:0.5 Bb4:0.25 A4:0.25 Bb4:0.5 Bb4:0.5 G4:0.5 A4:0.5 Bb4:0.5 r:0.5 Bb4:0.5 A4:0.25 G4:0.25 A4:0.5 A4:0.5 F4:0.5 A4:0.5 G4:1 C4:1 F4:1",
   },
@@ -609,4 +612,70 @@ export function songsThatGoTogether(song, playable, limit = 3) {
   const key = songKeyOn(song, here.shift);
   const score = x => (songKeyOn(x.song, x.shift) === key ? 4 : 0) + (x.song.time === song.time ? 2 : 0) + (x.song.origin === song.origin ? 1 : 0);
   return playable.filter(x => x.song.id !== song.id).sort((a, b) => score(b) - score(a)).slice(0, limit);
+}
+
+// ── Tab (the song player's Tab view on a handpan or tongue drum) ─────────
+// A grid like a handpan tab sheet: one box per bar, a column for every
+// eighth note counted "1 + 2 +" (in x/8 every eighth is a count), extra
+// columns where a note starts between them (sixteenths, triplets).
+
+const near = (a, b) => Math.abs(a - b) < 1e-6;
+
+/** The count above a column: '1', '+', or '' between counts. at: beats
+ *  (quarter notes) from the start of the bar. */
+export function songCountLabel(at, time) {
+  const den = Number(time.split('/')[1]);
+  const unit = 4 / den; // one count, in quarter notes
+  const k = at / unit;
+  if (near(k, Math.round(k))) return String(Math.round(k) + 1);
+  if (unit >= 1 && near(k % 1, 0.5)) return '+';
+  return '';
+}
+
+/** A song's bars: [{ len, from, cols: [{ at, count, i | null, hold | null }] }].
+ *  from: where the bar starts within a full bar (a pickup bar starts late);
+ *  each column: its place in the bar (at), its count, the note starting
+ *  there (i, an index into notes) or the note still sounding (hold). */
+export function songBars(song, notes = songNotes(song)) {
+  const [num, den] = song.time.split('/').map(Number);
+  const bar = (num * 4) / den;
+  const total = notes.reduce((a, n) => a + n.beats, 0);
+  const starts = [];
+  let t = 0;
+  for (const n of notes) { starts.push(t); t += n.beats; }
+  const pickup = song.pickup && song.pickup < bar ? song.pickup : 0;
+  const bars = [];
+  for (let b0 = pickup ? pickup - bar : 0; b0 < total - 1e-6; b0 += bar) {
+    const lo = Math.max(0, b0), hi = Math.min(total, b0 + bar);
+    const from = lo - b0;
+    const ats = new Set();
+    for (let a = Math.ceil((from - 1e-6) / 0.5) * 0.5; a < hi - b0 - 1e-6; a += 0.5) ats.add(+a.toFixed(4));
+    starts.forEach(s => { if (s >= lo - 1e-6 && s < hi - 1e-6) ats.add(+(s - b0).toFixed(4)); });
+    const cols = [...ats].sort((a, b) => a - b).map(at => {
+      const abs = b0 + at;
+      const i = starts.findIndex(s => near(s, abs));
+      let hold = null;
+      if (i < 0) {
+        const j = starts.findLastIndex(s => s < abs);
+        if (j >= 0 && notes[j].midi != null && starts[j] + notes[j].beats > abs + 1e-6) hold = j;
+      }
+      return { at, count: songCountLabel(at, song.time), i: i >= 0 ? i : null, hold };
+    });
+    bars.push({ len: hi - lo, from, cols });
+  }
+  return bars;
+}
+
+/** Which hand plays each note: sides[i] is -1 (left of the middle of the
+ *  drawing), 1 (right), 0 (the middle, a ding) or null (a rest). A side note
+ *  is played by that side's hand, a middle one by the hand that didn't play
+ *  the note before (the right hand to start). */
+export function songHands(sides) {
+  let last = 'L';
+  return sides.map(s => {
+    if (s == null) return null;
+    const h = s < 0 ? 'L' : s > 0 ? 'R' : last === 'R' ? 'L' : 'R';
+    last = h;
+    return h;
+  });
 }

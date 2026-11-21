@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCALES, createLayoutFromScale, getAllNotes, noteToMidi } from '../js/data.js';
 import { instrumentFromChart } from '../js/charts.js';
-import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether } from '../js/songs.js';
+import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether, songBars, songHands, songCountLabel } from '../js/songs.js';
 
 test('every song has a source, an origin, a key and notes that read', () => {
   assert.ok(SONGS.length >= 50);
@@ -105,4 +105,36 @@ test('Latvian songs from Vitols’ songbook: every bar adds up, and the openings
     const total = songNotes(s).reduce((a, n) => a + n.beats, 0);
     assert.ok(Math.abs(total / (num * 4 / den) - Math.round(total / (num * 4 / den))) < 0.01, `${s.id}: ${total}`);
   }
+});
+
+test('tab counts: 1 + 2 + in x/4, every eighth in x/8, 1 + in 2/2', () => {
+  assert.deepEqual([0, 0.5, 1, 1.5, 0.25].map(a => songCountLabel(a, '4/4')), ['1', '+', '2', '+', '']);
+  assert.deepEqual([0, 0.5, 1, 2.5].map(a => songCountLabel(a, '6/8')), ['1', '2', '3', '6']);
+  assert.deepEqual([0, 0.5, 1, 2].map(a => songCountLabel(a, '2/2')), ['1', '', '+', '2']);
+});
+
+test('tab bars: a pickup bar starts late, every note starts in a column, held notes continue', () => {
+  const hb = SONGS.find(s => s.id === 'happy-birthday');
+  assert.equal(hb.pickup, 1);
+  const bars = songBars(hb);
+  assert.equal(bars[0].from, 2);
+  // The pickup D:0.75 D:0.25 on beat 3: the dotted eighth holds over the
+  // "+", the sixteenth gets a column of its own between the counts.
+  assert.deepEqual(bars[0].cols.map(c => [c.count, c.i, c.hold]), [['3', 0, null], ['+', null, 0], ['', 1, null]]);
+  for (const s of SONGS) {
+    const notes = songNotes(s);
+    const b = songBars(s, notes);
+    const seen = b.flatMap(x => x.cols.map(c => c.i)).filter(i => i != null);
+    assert.deepEqual(seen, notes.map((_, i) => i), s.id);
+    const [n, d] = s.time.split('/').map(Number);
+    for (const x of b) assert.ok(x.from + x.len <= n * 4 / d + 1e-6, s.id);
+  }
+  // A half note in 4/4 holds through the next three eighth columns.
+  const tw = songBars(SONGS.find(s => s.id === 'twinkle-twinkle'));
+  assert.deepEqual(tw[1].cols.map(c => c.i ?? (c.hold != null ? '-' : '.')), [4, '-', 5, '-', 6, '-', '-', '-']);
+});
+
+test('tab hands: side notes by their side, a ding by the other hand', () => {
+  assert.deepEqual(songHands([1, -1, 0, 0, null, -1, 0]), ['R', 'L', 'R', 'L', null, 'L', 'R']);
+  assert.deepEqual(songHands([0, 0]), ['R', 'L']);
 });
