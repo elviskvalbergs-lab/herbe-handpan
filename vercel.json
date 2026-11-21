@@ -28,6 +28,10 @@
       "destination": "/"
     },
     {
+      "source": "/recorder/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/s/:path*",
       "destination": "/"
     }

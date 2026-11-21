@@ -8,7 +8,7 @@
 
 import { displayNote, noteToMidi } from './data.js';
 import { relativeHoleSizes, midiToHz } from './ocarina.js';
-import { midiToNoteName } from './instruments.js';
+import { midiToNoteName, isTubeFamily } from './instruments.js';
 import { usesHoleMap, holeSpot } from './builder.js';
 
 export const FINGER_NAMES = {
@@ -270,13 +270,13 @@ const FG_TUBE_CY = 40;   // tube centre line within the chamber block
 const FG_TUBE_R = 14;    // tube half-height
 
 function fgFluteStyle(inst) {
-  return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'naf';
+  return inst.family === 'recorder' ? 'recorder' : String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'naf';
 }
 
 function fgTubePositions(holes, y0, style = 'naf') {
   const top = holes.map((h, i) => ({ h, i })).filter(x => x.h.side !== 'bottom');
   // NAF: the holes end well before the foot, as on a real flute.
-  const [from, to] = style === 'whistle' ? [118, 272] : [172, 262];
+  const [from, to] = style === 'whistle' ? [118, 272] : style === 'recorder' ? [112, 252] : [172, 262];
   const xs = {};
   const gap = 12;
   const n = top.length;
@@ -291,7 +291,16 @@ function fgTubePositions(holes, y0, style = 'naf') {
 function fgFluteBody(style, y0, blown) {
   const cy = y0 + FG_TUBE_CY, r = FG_TUBE_R;
   const g = [];
-  if (style === 'whistle') {
+  if (style === 'recorder') {
+    // A recorder from above: the beak with its window (the cut edge), the
+    // head joint's ring, the body with its holes and the flared foot.
+    const L = FG_W - 6, rr = r - 2;
+    g.push(`<path class="fg-wood" d="M 8 ${cy - 4} Q 30 ${cy - rr - 2}, 58 ${cy - rr - 2} L 88 ${cy - rr - 2} L 88 ${cy - rr} L ${L - 34} ${cy - rr + 1} Q ${L - 16} ${cy - rr + 1}, ${L} ${cy - rr - 3} L ${L} ${cy + rr + 3} Q ${L - 16} ${cy + rr - 1}, ${L - 34} ${cy + rr - 1} L 88 ${cy + rr} L 88 ${cy + rr + 2} L 58 ${cy + rr + 2} Q 30 ${cy + rr + 2}, 8 ${cy + 4} Z"/>`);
+    g.push(`<path class="fg-wood-grain" d="M 96 ${cy - 4} L ${L - 30} ${cy - 4} M 104 ${cy + 4} L ${L - 36} ${cy + 4}"/>`);
+    g.push(`<path class="fg-tie-end" d="M 88 ${cy - rr - 2} L 88 ${cy + rr + 2} M ${L - 34} ${cy - rr + 1} L ${L - 34} ${cy + rr - 1}"/>`);
+    g.push(`<rect class="fg-bore" x="56" y="${cy - 5}" width="12" height="10" rx="1.5"/>`);
+    g.push(`<path class="fg-mouth-lip ${blown ? 'fg-blow' : ''}" d="M 8 ${cy - 4} L 8 ${cy + 4}"/>`);
+  } else if (style === 'whistle') {
     // Body tube, then the mouthpiece over its end: tapered to the lip,
     // with the sound window (the opening with the cut edge) on top.
     g.push(`<rect class="fg-metal" x="86" y="${cy - r + 2}" width="${FG_W - 92}" height="${r * 2 - 4}" rx="3"/>`);
@@ -362,7 +371,7 @@ export function renderFingering(inst, midi, opts = {}) {
     useFlats = false, useSolfege = false, blowBoth = null, a4 = 440, nextMidi = null, editable = false,
     noteLabel = true, closeUp = false,
   } = opts;
-  const tube = inst.family === 'flute';
+  const tube = isTubeFamily(inst.family);
   const pendant = !tube && fgIsPendant(inst);
   const chambers = inst.chambers ?? [];
   const main = fingeringFor(inst, midi);
@@ -609,7 +618,8 @@ function fgFlatParts(ctx, tube) {
       const sameFinger = ch.holes.filter(x => x.finger === h.finger && !x.sub);
       const split = !h.sub && sameFinger.length > 1;
       let x, y;
-      if (h.side === 'bottom') { x = FG_THUMB_X[h.finger] ?? FG_W / 2; y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2; }
+      // A tube's thumb hole (a recorder's) is underneath, just above the first finger hole.
+      if (h.side === 'bottom') { x = tube ? Math.min(...Object.values(tubeXY).map(p => p[0])) - 8 : FG_THUMB_X[h.finger] ?? FG_W / 2; y = y0 + geo.bodyH + 6 + (FG_STRIP_H - 6) / 2; }
       else if (tube) [x, y] = tubeXY[i];
       else { [x, y] = h.px != null ? [h.px, h.py] : geo.pos[h.finger] ?? [FG_W / 2, geo.bodyH / 2]; y += y0; }
       if (h.x != null && h.y != null) { x = h.x; y = y0 + h.y; }

@@ -7,10 +7,11 @@
 // of that type: concert pitch = the key's lowest note + offset.
 //
 //   {
-//     id, family: 'ocarina' | 'flute', name, source: [urls], notes: '…',
+//     id, family: 'ocarina' | 'flute' | 'recorder', name, source: [urls], notes: '…',
 //     sourceName: 'High Spirits Flutes booklet',   // shown to users as plain text ("Chart: …")
 //     holes: [{ id, finger, side: 'top' | 'bottom', sub? }],   // flutes: mouthpiece first
-//     keys: [{ id, name, lowest: 'D4' }],                       // lowest sounding note per key
+//     keys: [{ id, name, lowest: 'D4', instName?, slug? }],     // lowest sounding note per key; a size's own
+//                                                               // instrument name and link slug (recorders)
 //     fingerings: [{ offset, states: ['c'|'o'|'h', …], alt?: true, overblow?: true }],
 //     octaves?: [3, 4, 5],   // any-key charts: keys are every root × these octaves
 //     defaultKey?, shortName?,  // and the key picked first, and the name before " in G"
@@ -44,6 +45,29 @@ const WHISTLE_HOLES = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'].map(f => ({ id: f, fi
 const NAF6_HOLES = ['L1', 'L2', 'L3', 'R1', 'R2', 'R3'].map(f => ({ id: f, finger: f, side: 'top' }));
 const NAF5_HOLES = ['L1', 'L2', 'R1', 'R2', 'R3'].map(f => ({ id: f, finger: f, side: 'top' }));
 
+// Recorder: the thumb hole underneath, then seven finger holes. The two
+// lowest (right ring and little finger) are double holes on most recorders:
+// 'h' there means one of the pair open (half the hole on a single-hole model).
+const RECORDER_HOLES = [
+  { id: 'LT', finger: 'LT', side: 'bottom' },
+  ...['L1', 'L2', 'L3', 'R1', 'R2', 'R3', 'R4'].map(f => ({ id: f, finger: f, side: 'top' })),
+];
+const RECORDER_SOURCES = {
+  wfg: ['https://www.wfg.woodwind.org/recorder/rec_bas_1.html', 'https://www.wfg.woodwind.org/recorder/rec_bas_2.html', 'https://www.wfg.woodwind.org/recorder/rec_bas_3.html', 'https://www.wfg.woodwind.org/recorder/rec_fing.html'],
+  yamahaBaroque: 'https://www.yamaha.com/en/musical_instrument_guide/common/images/recorder/fingering_baroque.pdf',
+  yamahaGerman: 'https://www.yamaha.com/en/musical_instrument_guide/common/images/recorder/fingering_german.pdf',
+  yamahaAlto: 'https://www.yamaha.com/en/musical_instrument_guide/common/images/recorder/fingering_alto.pdf',
+  yamahaSizes: 'https://www.yamaha.com/en/musical_instrument_guide/recorder/structure/structure004.html',
+  yamahaStyles: 'https://www.yamaha.com/en/musical_instrument_guide/recorder/selection/selection002.html',
+  mollenhauerBaroque: 'https://www.mollenhauer.com/files/73/Soprano-baroque/72/Swing--Prima.pdf',
+  mollenhauerGerman: 'https://www.mollenhauer.com/files/76/Soprano-German/82/Swing--Prima.pdf',
+};
+// A recorder size: its key id, names and lowest sounding note.
+const recorderSize = (id, name, lowest, system) => ({
+  id, lowest, name: `${name} (lowest note ${lowest})`,
+  instName: `${name.replace(/ \(.*\)$/, '')} recorder, ${system} fingering`, slug: `${id}-${system.toLowerCase()}`,
+});
+
 // Octave choice where the source doesn't say which octave the flute sounds in.
 const octaves = (note, name) => [
   { id: `${note}4`, name: `${name}, lowest note ${name}4` },
@@ -66,6 +90,58 @@ const tonicKeys = (tonicOffset, octs) => octs.flatMap(o => CHART_ROOTS.map((r, p
 }));
 
 export const TRADITIONAL_CHARTS = [
+  {
+    // Recorder, baroque (English) fingering. Holes: thumb | left index,
+    // middle, ring | right index, middle, ring, little.
+    id: 'recorder-baroque',
+    family: 'recorder',
+    name: 'Recorder, baroque (English) fingering',
+    shortName: 'Recorder, baroque',
+    sourceName: 'Woodwind Fingering Guide and Yamaha',
+    source: [...RECORDER_SOURCES.wfg, RECORDER_SOURCES.yamahaBaroque, RECORDER_SOURCES.yamahaAlto, RECORDER_SOURCES.mollenhauerBaroque, RECORDER_SOURCES.yamahaSizes],
+    notes: 'Woodwind Fingering Guide, Basic Fingering Chart for Recorder (the rows marked "Basic" and "Basic for English models"), read from the pages\' text and checked note by note against Yamaha\'s soprano baroque chart, Yamaha\'s alto chart and Mollenhauer\'s soprano baroque chart: all four agree on every note but one. That one is the second-highest note (C#7 on a soprano): WFG and Mollenhauer give a fingering that needs the bell closed against the knee, which a diagram of holes can\'t show, so Yamaha\'s fingering without the bell is used (WFG lists it as an alternate). Two octaves and a tone, fully chromatic. H on the thumb is the pinched (half-open) thumb hole of the upper register; H on the right ring or little finger is one of the double holes open (half the hole on a single-hole recorder). The two alternates (B and C# in the low register, "use in combination with C/F" in WFG, "alternate fingering" on Yamaha\'s chart) are kept as alternates. Notes above the top D are not included: WFG lists them only as alternates that depend on the instrument. Sizes: WFG says "the fingerings apply to all sizes"; Yamaha\'s alto chart is the soprano chart hole for hole. Lowest sounding notes (soprano C5, alto F4, tenor C4, sopranino F5) from Yamaha\'s "Varieties of recorder" range figure and Mollenhauer\'s "Soprano recorder in c\'\'"; soprano music is written an octave lower than it sounds.',
+    holes: RECORDER_HOLES,
+    keys: [
+      recorderSize('soprano', 'Soprano (descant)', 'C5', 'baroque'),
+      recorderSize('alto', 'Alto (treble)', 'F4', 'baroque'),
+      recorderSize('tenor', 'Tenor', 'C4', 'baroque'),
+      recorderSize('sopranino', 'Sopranino', 'F5', 'baroque'),
+    ],
+    defaultKey: 'soprano',
+    fingerings: rows([
+      [0, 'X|XXX|XXXX'], [1, 'X|XXX|XXXH'], [2, 'X|XXX|XXXO'], [3, 'X|XXX|XXHO'], [4, 'X|XXX|XXOO'],
+      [5, 'X|XXX|XOXX'], [6, 'X|XXX|OXXO'], [7, 'X|XXX|OOOO'], [8, 'X|XXO|XXHO'], [9, 'X|XXO|OOOO'],
+      [10, 'X|XOX|XOOO'], [11, 'X|XOO|OOOO'], [11, 'X|OXX|OOOO', { alt: true }], [12, 'X|OXO|OOOO'],
+      [13, 'O|XXO|OOOO'], [13, 'X|OOO|OOOO', { alt: true }], [14, 'O|OXO|OOOO'], [15, 'O|OXX|XXXO'],
+      [16, 'H|XXX|XXOO'], [17, 'H|XXX|XOXO'], [18, 'H|XXX|OXOO'], [19, 'H|XXX|OOOO'], [20, 'H|XXO|XOOO'],
+      [21, 'H|XXO|OOOO'], [22, 'H|XXO|XXXO'], [23, 'H|XXO|XXOO'], [24, 'H|XOO|XXOO'], [25, 'H|XOX|XXOX'],
+      [26, 'H|XOX|XOXO'],
+    ]),
+  },
+  {
+    // Recorder, German fingering: an easier F, at the cost of other notes.
+    // Many school sopranos are German; the hole under the right index
+    // finger is smaller than the one under the right middle finger.
+    id: 'recorder-german',
+    family: 'recorder',
+    name: 'Recorder, German fingering',
+    shortName: 'Recorder, German',
+    sourceName: 'Yamaha and Mollenhauer',
+    source: [RECORDER_SOURCES.yamahaGerman, RECORDER_SOURCES.mollenhauerGerman, ...RECORDER_SOURCES.wfg, RECORDER_SOURCES.yamahaStyles],
+    notes: 'Yamaha\'s soprano recorder fingering chart, German, read from the chart\'s drawings (twice: by eye and by measuring each hole\'s fill) and checked against Mollenhauer\'s soprano German chart (Swing / Prima): they agree on every main fingering except the second-highest note (C#7), where Mollenhauer closes the bell and Yamaha\'s fingering without it is used. The Woodwind Fingering Guide marks the German F and F# in both octaves the same way ("Basic for German models"); for G# in both octaves it differs from the two makers, and the makers are followed. Alternates as printed on Yamaha\'s chart (B, C# and the upper F#). Soprano only. TODO: German fingering for alto, tenor and sopranino. No German chart for those sizes has been read yet (Mollenhauer publishes alto German charts: https://www.mollenhauer.com/en/service/fingering-charts); Yamaha notes that sizes other than the soprano are mostly made with baroque fingering. Until one is read, a German alto is set up note by note with the tuner.',
+    holes: RECORDER_HOLES,
+    keys: [recorderSize('soprano', 'Soprano (descant)', 'C5', 'German')],
+    defaultKey: 'soprano',
+    fingerings: rows([
+      [0, 'X|XXX|XXXX'], [1, 'X|XXX|XXXH'], [2, 'X|XXX|XXXO'], [3, 'X|XXX|XXHO'], [4, 'X|XXX|XXOO'],
+      [5, 'X|XXX|XOOO'], [6, 'X|XXX|OXXX'], [7, 'X|XXX|OOOO'], [8, 'X|XXO|XXHO'], [9, 'X|XXO|OOOO'],
+      [10, 'X|XOX|XOOO'], [11, 'X|XOO|OOOO'], [11, 'X|OXX|OOOO', { alt: true }], [12, 'X|OXO|OOOO'],
+      [13, 'O|XXO|OOOO'], [13, 'X|OOO|OOOO', { alt: true }], [14, 'O|OXO|OOOO'], [15, 'O|OXX|XXXO'],
+      [16, 'H|XXX|XXOO'], [17, 'H|XXX|XOOO'], [18, 'H|XXX|OXOX'], [18, 'H|XXX|OXHO', { alt: true }],
+      [19, 'H|XXX|OOOO'], [20, 'H|XXX|OXXX'], [21, 'H|XXO|OOOO'], [22, 'H|XXO|XXXO'], [23, 'H|XXO|XXOO'],
+      [24, 'H|XOO|XXOO'], [25, 'H|XOX|XOXX'], [26, 'H|XOX|XOXO'],
+    ]),
+  },
   {
     id: 'tin-whistle-d',
     family: 'flute',
@@ -293,12 +369,12 @@ export function instrumentFromChart(chartId, keyId, { name, now = new Date().toI
   }
   const notes = Object.keys(fingerings).map(Number).sort((a, b) => a - b);
   return {
-    id: (chart.family === 'flute' ? 'fl-' : 'oc-') + Math.random().toString(36).slice(2, 10),
+    id: (chart.family === 'flute' ? 'fl-' : chart.family === 'recorder' ? 'rc-' : 'oc-') + Math.random().toString(36).slice(2, 10),
     family: chart.family,
     kind: 'traditional',
     type: chart.id,
     key: key.id,
-    name: name || (chart.tonicOffset != null ? `${chart.name.replace(` in ${chart.writtenKey}`, ` in ${key.root}`)} (${key.lowest})`
+    name: name || key.instName || (chart.tonicOffset != null ? `${chart.name.replace(` in ${chart.writtenKey}`, ` in ${key.root}`)} (${key.lowest})`
       : chart.octaves ? `${chart.shortName ?? chart.name} in ${key.root} (${key.lowest})`
       : chart.keys.length > 1 ? `${chart.name} (${key.lowest})` : chart.name),
     chambers: [{ notes, holes: chart.holes.map(h => ({ ...h, x: null, y: null, sizeMm: null })), fingerings, alternates, overblow }],

@@ -161,6 +161,45 @@ const FIXES: Fix[] = [
     },
   },
   {
+    // The recorder is in the app (outside-in review, 2026-11-21): its page is
+    // created if it isn't there, and the texts that named it as "next" or
+    // listed the instruments change only while they still read as the
+    // starting content had them.
+    name: "2026-11-21-recorder-available",
+    async run() {
+      const start = seed.instruments.find((i) => i._id === "instrument-recorder")!;
+      const notes: string[] = [];
+      const tx = client.transaction();
+      const doc = await client.fetch<Record<string, unknown> | null>(`*[_id == "instrument-recorder"][0]`);
+      if (!doc) {
+        tx.createIfNotExists({ ...start, _type: "instrument", slug: { _type: "slug", current: start.slug }, faqs: (start.faqs ?? []).map((f, i) => ({ _key: `k${i}`, ...f })) });
+        notes.push("created instrument-recorder");
+      } else if (doc.status === "soon" && doc.family === "none") {
+        const set: Record<string, unknown> = { family: "recorder", status: "available" };
+        for (const key of ["tuningsLine", "title", "intro", "featuredTunings", "playAlongTitle", "playAlongText", "ctaTitle", "ctaText"] as const) {
+          const v = doc[key];
+          if (v == null || (Array.isArray(v) && !v.length)) set[key] = start[key];
+        }
+        if (!(doc.faqs as unknown[] | undefined)?.length) set.faqs = (start.faqs ?? []).map((f, i) => ({ _key: `k${i}`, ...f }));
+        tx.patch("instrument-recorder", (p) => p.set(set));
+        notes.push(`recorder page available; filled ${Object.keys(set).join(", ")}`);
+      } else notes.push("recorder page left as edited in the Studio");
+      const OLD: Record<string, string> = {
+        "feature-more": "Recorder is next. Vote for what you play.",
+        "feature-instruments": "Every handpan, tongue drum, kalimba, ocarina and flute you own, with its exact setup, one tap apart.",
+        "feature-fingerings": "Ocarina and flute fingerings for every note, from published charts.",
+      };
+      const docs = await client.fetch<{ _id: string; text?: string }[]>(`*[_id in $ids]{_id, text}`, { ids: Object.keys(OLD) });
+      for (const d of docs) {
+        if (d.text !== OLD[d._id]) continue;
+        tx.patch(d._id, (p) => p.set({ text: seed.features.find((f) => f._id === d._id)!.text }));
+        notes.push(d._id);
+      }
+      await tx.commit();
+      return notes.join("; ");
+    },
+  },
+  {
     // The makers video on /makers (owner, 2026-11-19): its title and text,
     // filled only while the fields are empty.
     name: "2026-11-19-makers-video",

@@ -6,6 +6,7 @@
 //   /handpan/custom[/chords[/a-min]]?ding=D3&top=A3,…&bottom=…&tc=8&bc=3&name=…
 //   /ocarina/alto-c-12[/notes|/chords]    a fingering chart in one key
 //   /flute/tin-whistle-d, /flute/naf-6-a4
+//   /recorder/soprano-baroque, /recorder/alto-baroque, /recorder/soprano-german
 //   /tongue-drum/d-kurd-9[/chords[/a-min]] a tongue drum from TONGUE_DRUMS
 //   /tongue-drum/custom?…                  a custom tongue drum (same query as a custom handpan)
 //   /kalimba/c-major-17, /kalimba/custom?… kalimbas (js/kalimbas.js), the same way
@@ -21,14 +22,15 @@ import { TRADITIONAL_CHARTS, getChart, instrumentFromChart } from './charts.js';
 // The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
 export const APP_NAME = 'Oakhum';
 
-export const LINK_FAMILIES = [...LAYOUT_FAMILY_IDS, 'ocarina', 'flute'];
+export const LINK_FAMILIES = [...LAYOUT_FAMILY_IDS, 'ocarina', 'flute', 'recorder'];
 export const LINK_TABS = {
   handpan: ['pan', 'chords', 'playlists', 'listen'],
   ...Object.fromEntries(LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan').map(f => [f, ['pan', 'chords', 'playlists', 'listen']])),
   ocarina: ['notes', 'chords', 'listen'],
   flute: ['notes', 'chords', 'listen'],
+  recorder: ['notes', 'chords', 'playlists', 'listen'],
 };
-const LINK_DEFAULT_TAB = { ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, 'pan'])), ocarina: 'notes', flute: 'notes' };
+const LINK_DEFAULT_TAB = { ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, 'pan'])), ocarina: 'notes', flute: 'notes', recorder: 'notes' };
 
 export function linkSlug(text) {
   return String(text).toLowerCase().replace(/#/g, 's').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -56,6 +58,7 @@ function linkKeyOctave(key) { return Number(String(key.lowest).match(/(\d+)$/)?.
 function linkKeyRoot(key) { return key.root ?? String(key.id).split('-')[0]; }
 
 function linkChartSlug(chart, key) {
+  if (key.slug) return key.slug; // a recorder's size and fingering: soprano-baroque
   const holes = LINK_VOICED_CHARTS[chart.id];
   if (holes) {
     const voice = LINK_OCARINA_VOICES[linkKeyOctave(key)];
@@ -101,6 +104,14 @@ function linkBuildTables() {
       byTarget.set(`chart:${chart.id}:${key.id}`, slug);
     }
     const def = chart.keys.find(k => k.id === chart.defaultKey) ?? chart.keys[0];
+    // A recorder by its size alone opens the baroque one; its other names too.
+    if (fam === 'recorder' && chart.id === 'recorder-baroque') {
+      for (const key of chart.keys) alias[fam].set(key.id, key.slug);
+      alias[fam].set('descant', 'soprano-baroque');
+      alias[fam].set('treble', 'alto-baroque');
+      alias[fam].set('baroque', 'soprano-baroque');
+      alias[fam].set('german', 'soprano-german');
+    }
     const short = LINK_CHART_SLUGS[chart.id];
     if (short && !canonical[fam].has(short)) alias[fam].set(short, linkChartSlug(chart, def));
     if (LINK_VOICED_CHARTS[chart.id]) {
@@ -295,7 +306,7 @@ export function linkPreview(pathname, search = '') {
   const link = parseLink(pathname, search);
   const title = linkTitle(link);
   if (!title || link.kind === 'unknown') {
-    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
+    return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas, flutes and recorders. Free, in your browser.', image: '/og/app.jpg' };
   }
   const what = link.tab === 'listen' ? 'Listen to a song and play along'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`

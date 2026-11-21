@@ -124,7 +124,7 @@ function Available({ instrument, tuning, featured, all }: { instrument: Instrume
             <>
               <h2 className="m-0 mb-2 text-[30px] font-semibold tracking-[-0.015em]">Chords you can play</h2>
               <p className="m-0 text-body">
-                {wind.length ? `${wind.length} chords of its key. ` : ""}{tuning.family === "ocarina" ? "An ocarina" : "A flute"} plays one note at a time, so a chord is played as an arpeggio: tap one to hear it and see the fingering for each note. The app has every note, all chords and practice mode for playlists.
+                {wind.length ? `${wind.length} chords of its key. ` : ""}{tuning.family === "ocarina" ? "An ocarina" : tuning.family === "recorder" ? "A recorder" : "A flute"} plays one note at a time, so a chord is played as an arpeggio: tap one to hear it and see the fingering for each note. The app has every note, all chords and practice mode for playlists.
               </p>
             </>
           )}

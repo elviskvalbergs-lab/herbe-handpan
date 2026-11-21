@@ -11,7 +11,9 @@ import { renderPan } from "@engine/pan.js";
 import { ocarinaToLayout, arpeggioOrder, renderFingering } from "@engine/ocarina-ui.js";
 import { LAYOUT_FAMILIES } from "@engine/layoutfamilies.js";
 
-export type Family = "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute";
+export type Family = "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute" | "recorder";
+/** The families that play from a published fingering chart (js/charts.js), one note at a time. */
+export type ChartFamily = "ocarina" | "flute" | "recorder";
 /** The families the app draws from a layout (js/layoutfamilies.js): handpans, tongue drums, kalimbas. Their chords play together. */
 export type PanFamily = "handpan" | "tongue-drum" | "kalimba";
 
@@ -89,8 +91,8 @@ function panScale(slug: string, family: PanFamily): Scale | undefined {
   return list.find((s: Scale) => lastSegment(linkFor({ scaleId: s.id })) === slug);
 }
 
-/** Every key of every fingering chart of an ocarina or flute. */
-export function chartTunings(family: "ocarina" | "flute"): Tuning[] {
+/** Every key of every fingering chart of an ocarina, flute or recorder. */
+export function chartTunings(family: ChartFamily): Tuning[] {
   return CHART_TUNINGS[family];
 }
 
@@ -100,7 +102,7 @@ const WIND_INSTRUMENTS = new Map<string, WindInstrument>();
 
 // Built once, when the module loads: the app's instrumentFromChart gives each
 // instrument a random id, which Next.js must not see during a page render.
-function buildChartTunings(family: "ocarina" | "flute"): Tuning[] {
+function buildChartTunings(family: ChartFamily): Tuning[] {
   return chartsForFamily(family).flatMap((chart: (typeof TRADITIONAL_CHARTS)[number]) =>
     chart.keys.map((key: { id: string }) => {
       const inst = instrumentFromChart(chart.id, key.id, { now: "2026-01-01T00:00:00.000Z" });
@@ -119,7 +121,7 @@ function buildChartTunings(family: "ocarina" | "flute"): Tuning[] {
   );
 }
 
-const CHART_TUNINGS = { ocarina: buildChartTunings("ocarina"), flute: buildChartTunings("flute") };
+const CHART_TUNINGS = { ocarina: buildChartTunings("ocarina"), flute: buildChartTunings("flute"), recorder: buildChartTunings("recorder") };
 
 export function tuningsFor(family: Family): Tuning[] {
   if (family === "handpan") return handpanTunings();
@@ -132,7 +134,7 @@ export function findTuning(family: Family, slug: string): Tuning | null {
 }
 
 /** The default key of each chart, as the app's Play screen lists them. */
-export function chartDefaults(family: "ocarina" | "flute"): Tuning[] {
+export function chartDefaults(family: ChartFamily): Tuning[] {
   return chartsForFamily(family).map((chart: (typeof TRADITIONAL_CHARTS)[number]) => {
     const key = chartDefaultKey(chart);
     return chartTunings(family).find((t) => t.path === linkFor({ chartId: chart.id, keyId: key.id }))!;
@@ -208,7 +210,8 @@ export function windChords(tuning: Tuning): WindChord[] {
   if (!w) return [];
   const all = findAllChords(ocarinaToLayout(w.inst)).filter((c: { type: { id: string } }) => c.type.id === "maj" || c.type.id === "min");
   // The key's tonic from its id: "C-A4" (an ocarina in C), "D" (a whistle), "Fs-…".
-  const tonicName = String(w.keyId).split("-")[0].replace(/\d+$/, "").replace(/s$/, "#");
+  // A recorder's key is its lowest note (a soprano is in C, an alto in F).
+  const tonicName = tuning.family === "recorder" ? tuning.notes[0].replace(/\d+$/, "") : String(w.keyId).split("-")[0].replace(/\d+$/, "").replace(/s$/, "#");
   const tonic = tonicName ? noteToMidi(tonicName + "4") % 12 : -1;
   const pc = (n: string) => noteToMidi(n) % 12;
   const degree = (c: { notes: string[]; rootNote: string }) => MAJOR_STEPS.indexOf((((pc(c.rootNote) - tonic) % 12) + 12) % 12);
@@ -239,9 +242,10 @@ export function windFingering(tuning: Tuning, midi: number, size: "large" | "med
   return w ? renderFingering(w.inst, midi, { size, useFlats: true }) : "";
 }
 
-/** The app's voice for the instrument: ocarina, tin whistle or (wooden) flute. */
-export function windVoice(tuning: Tuning): "ocarina" | "whistle" | "flute" {
+/** The app's voice for the instrument: ocarina, recorder, tin whistle or (wooden) flute. */
+export function windVoice(tuning: Tuning): "ocarina" | "whistle" | "flute" | "recorder" {
   const w = WIND_INSTRUMENTS.get(tuning.path);
+  if (tuning.family === "recorder") return "recorder";
   if (!w || tuning.family === "ocarina") return "ocarina";
   return String(w.inst.type ?? w.chartId).startsWith("tin-whistle") ? "whistle" : "flute";
 }

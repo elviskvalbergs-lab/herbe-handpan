@@ -50,7 +50,7 @@ import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomPara
 import { TONGUE_DRUMS, isTongueDrumId } from './tonguedrums.js';
 import { LAYOUT_FAMILIES, findTuning, layoutInstrument, isLayoutFamily, layoutFamilyInfo } from './layoutfamilies.js';
 import {
-  INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
+  INSTRUMENT_FAMILIES, isTubeFamily, windWord, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId, usesLayout,
   createScaleOcarina, createCustomOcarina, createCustomFlute, instrumentStatus, midiToNoteName,
   getClayBodies, saveClayBodies, getInstrumentsRaw, writeInstrumentsRaw,
@@ -472,7 +472,7 @@ function viewSettings() {
 
       <h2 class="list-title">About</h2>
       <div class="list">
-        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</span></div>
+        <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina, flute and recorder.</span></div>
         ${uiRow({ title: 'Send feedback', meta: 'Something confusing, wrong or missing? Tell us, it really helps', action: 'open-feedback', lead: 'message-square', chevron: true })}
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
       </div>
@@ -1338,7 +1338,7 @@ function refreshInstruments() {
   if (state.instruments.length > 0) setOnboarded();
 }
 
-const FAMILY_ICONS = { handpan: 'family-handpan', 'tongue-drum': 'family-tongue-drum', kalimba: 'family-kalimba', ocarina: 'family-ocarina', flute: 'family-flute' };
+const FAMILY_ICONS = { handpan: 'family-handpan', 'tongue-drum': 'family-tongue-drum', kalimba: 'family-kalimba', ocarina: 'family-ocarina', flute: 'family-flute', recorder: 'family-recorder' };
 function familyName(id) { return INSTRUMENT_FAMILIES.find(f => f.id === id)?.name ?? id; }
 
 // One instrument on Home: family glyph, name, what it is, and its ⋯ menu.
@@ -1375,6 +1375,7 @@ const SETUP_TILES = [
   { family: 'kalimba', name: 'Kalimba', hint: 'Wooden box with metal keys', picture: '/brand/instruments/kalimba.webp' },
   { family: 'ocarina', name: 'Ocarina', hint: 'Clay, with finger holes', picture: '/brand/instruments/ocarina.webp' },
   { family: 'flute', name: 'Flute or whistle', hint: 'Wooden flute, tin whistle, Native American flute', picture: '/brand/instruments/native-american-flute.webp' },
+  { family: 'recorder', name: 'Recorder', hint: 'Soprano (descant), alto (treble), tenor', picture: '/brand/instruments/recorder.webp' },
 ];
 
 function newSetup() { return { step: 'what', family: 'handpan', root: null, showAll: false, scaleId: null, history: [] }; }
@@ -1393,6 +1394,11 @@ const SETUP_WIND_WORDS = {
     word: 'flute', voice: 'flute', first: 'lowest note: every hole covered', firstShort: 'the lowest note',
     each: 'note up the scale, lifting one finger at a time', thing: 'note', firstRoot: 2,
     knowTitle: 'What key is it in?', knowSub: 'It’s usually marked on the flute: D on most tin whistles, often A or F# on a Native American flute.',
+  },
+  recorder: {
+    word: 'recorder', voice: 'recorder', first: 'lowest note: every hole covered, the thumb hole too', firstShort: 'the lowest note',
+    each: 'note up the scale, lifting one finger at a time', thing: 'note', firstRoot: 0,
+    knowTitle: 'Which size is it?', knowSub: 'A soprano (descant) and a tenor are in C, an alto (treble) and a sopranino in F. The school recorder is a soprano.',
   },
 };
 // How each kind is played and named in the setup's sentences.
@@ -1655,7 +1661,15 @@ const SETUP_WIND_TYPES = {
     { name: 'Tin whistle', hint: '6 holes, in D', group: ['tin-whistle-d'] },
     { name: 'Native American flute, 6 holes', hint: 'Any key', group: ['naf6-a', 'naf6-fs', 'naf6-penta'] },
     { name: 'Native American flute, 5 holes', hint: 'Any key', group: ['naf5-a', 'naf5-fs', 'naf5-penta'] },
-    { name: 'Another flute', hint: 'A recorder, a bansuri, one made by hand', holes: 6 },
+    { name: 'Another flute', hint: 'A bansuri, a fife, one made by hand', holes: 6 },
+  ],
+  // By fingering system: the charts differ from F up; sizes are the keys.
+  // How to tell them apart is Yamaha's ("Baroque style and German style":
+  // https://www.yamaha.com/en/musical_instrument_guide/recorder/selection/selection002.html).
+  recorder: [
+    { name: 'Baroque (English) fingering', hint: 'Most recorders, in every size. F is a forked fingering', group: ['recorder-baroque'] },
+    { name: 'German fingering', hint: 'Some school sopranos. F is the next finger after E', group: ['recorder-german'] },
+    { name: 'Another recorder', hint: 'A German alto or tenor, a bass, one in another pitch', holes: 8 },
   ],
 };
 const SETUP_WIND_STEPS = 7;
@@ -1664,7 +1678,7 @@ const SETUP_WIND_STEPS = 7;
 // each with its sizes (a low, a usual and a high flute), the usual size
 // first. A chart for that very key (a Native American flute in A) before the
 // any-key one.
-const SETUP_WIND_COMMON = { flute: ['A', 'G', 'F#', 'E', 'D', 'C'], ocarina: ['C', 'G', 'F'] };
+const SETUP_WIND_COMMON = { flute: ['A', 'G', 'F#', 'E', 'D', 'C'], ocarina: ['C', 'G', 'F'], recorder: ['C', 'F'] };
 function setupWindKeys(group) {
   const byRoot = new Map();
   const family = getChart(group[0])?.family;
@@ -1851,7 +1865,7 @@ function viewBeginnerSetup() {
     const rn = r => escHtml(displayNote(r, uf, us));
     return stepFrame({
       header, count: count(3), title: 'Do you know its key?',
-      sub: `It’s usually written on the ${escHtml(word)} or its box. ${st.family === 'flute' ? 'A, G and F♯ are the most common.' : 'C is the most common.'}`,
+      sub: `It’s usually written on the ${escHtml(word)} or its box. ${st.family === 'flute' ? 'A, G and F♯ are the most common.' : st.family === 'recorder' ? 'A soprano (descant) or tenor is in C, an alto (treble) or sopranino in F.' : 'C is the most common.'}`,
       body: `
         <div class="setup-roots setup-wind-roots">
           ${keys.map(k => `<button type="button" class="setup-root${picked === k ? ' is-first' : ''}" data-action="setup-wind-root" data-root="${escHtml(k.root)}" aria-pressed="${picked === k ? 'true' : 'false'}">${rn(k.root)}</button>`).join('')}
@@ -2094,11 +2108,13 @@ function setupAction(action, el) {
     stopListen();
     const fam = st.family;
     const w = newWizard(homeIsEmpty());
-    Object.assign(w, { families: [fam], step: fam, queue: [], history: [] });
+    // A recorder without a chart is charted like any other flute.
+    const wfam = fam === 'recorder' ? 'flute' : fam;
+    Object.assign(w, { families: [wfam], step: wfam, queue: [], history: [] });
     // From "Which ocarina?": straight to charting your own, its holes filled in.
     const holes = parseInt(el?.dataset?.holes ?? '', 10);
     if (fam === 'ocarina') Object.assign(w.oc, { path: 'have', chartId: 'custom', ...(holes ? { holeCount: holes } : {}) });
-    if (fam === 'flute' && holes) Object.assign(w.fl, { chartId: 'custom', holeCount: holes });
+    if (wfam === 'flute' && holes) Object.assign(w.fl, { chartId: 'custom', holeCount: holes });
     Object.assign(state, { wizard: w, view: 'wizard' });
     render();
     return true;
@@ -2320,6 +2336,7 @@ const PLAY_POPULAR = {
   kalimba: ['KL-C-Major-17', 'KL-C-Major-21', 'KL-C-Major-10', 'KL-C-Major-8', 'KL-G-Alto-15', 'KL-A-Minor-9'].map(scaleId => ({ scaleId })),
   ocarina: ['C-A4', 'G-E4', 'F-D4', 'C-A5', 'G-E5', 'C-A3'].map(keyId => ({ chartId: 'ocarina-12-stl-c', keyId })),
   flute: chartsForFamily('flute').map(c => ({ chartId: c.id, keyId: c.defaultKey ?? c.keys[0].id })),
+  recorder: [['recorder-baroque', 'soprano'], ['recorder-baroque', 'alto'], ['recorder-german', 'soprano'], ['recorder-baroque', 'tenor'], ['recorder-baroque', 'sopranino']].map(([chartId, keyId]) => ({ chartId, keyId })),
 };
 
 // Home has nothing on it yet: show Play instead.
@@ -2354,14 +2371,14 @@ function viewPlay() {
     : isLayoutFamily(fam)
     ? LAYOUT_FAMILIES[fam].tunings.filter(t => !popular.has(t.id)).map(t => playRowHtml({ scaleId: t.id })).join('')
       + uiRow({ lead: 'pencil', title: 'Your own notes', meta: `Set the notes of your ${LAYOUT_FAMILIES[fam].word}`, chevron: true, action: 'play-custom-handpan', data: { family: fam } })
-    : uiRow({ lead: 'plus', title: fam === 'ocarina' ? 'Other keys, or your own ocarina' : 'Other keys, or your own flute', meta: fam === 'ocarina' ? 'Every key, ocarinas you made, building one from a scale' : 'Every key, and flutes you made', chevron: true, action: 'add-instrument' });
+    : uiRow({ lead: 'plus', title: fam === 'ocarina' ? 'Other keys, or your own ocarina' : fam === 'recorder' ? 'Another recorder' : 'Other keys, or your own flute', meta: fam === 'ocarina' ? 'Every key, ocarinas you made, building one from a scale' : fam === 'recorder' ? 'Set up any recorder note by note with the tuner' : 'Every key, and flutes you made', chevron: true, action: 'add-instrument' });
   // Back goes to the start screen (My instruments, or the setup when nothing
   // is saved), not to the instrument that was being tried.
   const bar = uiAppBar({ title: 'Play something else', back: { action: 'back-home', label: 'My instruments' }, actions: [tunerAppBtn(), settingsAppBtn()] });
   return `
     ${bar}
     <div class="play">
-      ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute. Free, no sign-up to play.</span></div>` : ''}
+      ${homeIsEmpty() ? `<div class="brand-about play-brand">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina, flute and recorder. Free, no sign-up to play.</span></div>` : ''}
       ${installBannerHtml()}
       ${notice}
       ${uiSeg(INSTRUMENT_FAMILIES.map(f => ({ value: f.id, label: escHtml(f.name) })), fam, { action: 'play-family', label: 'Instrument' })}
@@ -2397,7 +2414,7 @@ function viewHome() {
         ${insts.length === 0
           ? uiEmpty({
             icon: 'family-handpan', title: 'Add the instruments you play',
-            body: 'Handpans and tongue drums by scale, ocarinas and flutes.',
+            body: 'Handpans and tongue drums by scale, ocarinas, flutes and recorders.',
             action: `<button type="button" class="btn btn-primary btn-lg" data-action="add-instrument">${icon('plus')} Add instrument</button>`,
           })
           : `<div class="list home-instruments">${insts.map(instrumentRowHtml).join('')}</div>
@@ -2523,7 +2540,7 @@ function stepFrame({ header, hero = false, notice = '', count = '', title, sub =
         <img class="brand-hero-art" src="/brand/hero-wide-800.webp" srcset="/brand/hero-wide-800.webp 800w, /brand/hero-wide.webp 1600w"
           sizes="(min-width: 640px) 640px, 100vw" width="800" height="450" alt="">
         ${brandLogo()}
-        <p class="brand-hero-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</p>
+        <p class="brand-hero-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina, flute and recorder.</p>
       </div>` : '';
   const hasBar = bar.left || bar.right || bar.help;
   return `${header}
@@ -2925,7 +2942,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
   const tabs = practice ? '' : uiTabBar(ocTabs(inst).map(([id, label, ic]) => ({ id, label, icon: ic, action: 'oc-tab', data: { tab: id } })), view);
   return `
     ${uiAppBar({
-      switcher: inst.link ? { name: inst.name, action: 'open-play', data: { family: inst.family }, title: inst.family === 'flute' ? 'Other flutes' : 'Other ocarinas' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
+      switcher: inst.link ? { name: inst.name, action: 'open-play', data: { family: inst.family }, title: `Other ${windWord(inst)}s` } : { name: inst.name, action: 'back-home', title: 'My instruments' },
       badge: inst.link ? uiBadge('Not saved') : shared ? uiBadge(inst.publicId) : '',
       actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
@@ -2993,7 +3010,7 @@ function songEasy(inst) {
 }
 function songsFor(inst, songs) { return playableSongs(songHave(inst), songs, { easy: songEasy(inst) }); }
 function songInstWord(inst) {
-  return inst ? (inst.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word;
+  return inst ? windWord(inst) : layoutFamilyInfo(layoutInstrument(state.layout)).word;
 }
 function songMeta(song, shift) {
   return `${SONG_ORIGINS[song.origin]} · ${songKeyOn(song, shift)} · ${songTimeLabel(song)}`;
@@ -3114,7 +3131,7 @@ function viewSong() {
 // Move notes, and as rotated), a middle note the other hand from the note
 // before (songHands). The picture numbers the song's notes the same way.
 function songTabFamily(inst) {
-  if (inst) return inst.family === 'flute' ? 'flute' : 'ocarina';
+  if (inst) return isTubeFamily(inst.family) ? 'flute' : 'ocarina';
   const f = layoutInstrument(state.layout);
   return f === 'handpan' || f === 'tongue-drum' || f === 'kalimba' ? f : null;
 }
@@ -3588,7 +3605,7 @@ function viewOcarinaChords(inst) {
     }).join('')}</div>`;
   const missing = model.missing.length ? `
     <details class="oc-missing" ${oc.missingOpen ? 'open' : ''}>
-      <summary data-action="oc-missing-toggle">${icon('chevron-right')} Not on this ${inst.family === 'flute' ? 'flute' : 'ocarina'} (${model.missing.length})</summary>
+      <summary data-action="oc-missing-toggle">${icon('chevron-right')} Not on this ${windWord(inst)} (${model.missing.length})</summary>
       ${model.source ? `<p class="oc-hint">Chords of ${escHtml(model.source.name)} that need a note it doesn't have.</p>` : ''}
       <div class="list">
         ${model.missing.map(({ chord, fit }) => uiRow({
@@ -3969,14 +3986,17 @@ function voiceForState() {
   if (state.view === 'song') {
     const inst = songInstrument();
     if (!inst) return state.layout ? layoutInstrument(state.layout) : 'handpan';
-    if (inst.family === 'ocarina') return 'ocarina';
-    return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'flute';
+    return windVoice(inst);
   }
   if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
   const inst = currentInstrument();
   if (!inst) return 'handpan';
   if (usesLayout(inst)) return inst.family;
-  if (inst.family === 'ocarina') return 'ocarina';
+  return windVoice(inst);
+}
+// The voice of a one-note instrument: an ocarina, a recorder, a tin whistle or a wooden flute.
+function windVoice(inst) {
+  if (inst.family === 'ocarina' || inst.family === 'recorder') return inst.family;
   return String(inst.type ?? '').startsWith('tin-whistle') ? 'whistle' : 'flute';
 }
 
@@ -4765,7 +4785,7 @@ async function readImageFile(file, max = 1600) {
 
 // Every photo of an instrument has the same shape, so pictures line up:
 // 4:3 for an ocarina or kalimba, long and thin (3:1) for a flute, square for a round drum.
-function photoRatio(inst) { return inst.family === 'flute' ? 3 : inst.family === 'handpan' || inst.family === 'tongue-drum' ? 1 : 4 / 3; }
+function photoRatio(inst) { return isTubeFamily(inst.family) ? 3 : inst.family === 'handpan' || inst.family === 'tongue-drum' ? 1 : 4 / 3; }
 
 // Crop step after picking a photo: the photo under a frame of that shape;
 // drag to move it, the slider (or a pinch / the wheel) to zoom.
@@ -4885,7 +4905,7 @@ document.addEventListener('wheel', e => {
 // or flute: one place for everything about it.
 function instFieldsHtml(inst) {
   const custom = inst.kind === 'custom' && !usesLayout(inst); // a custom handpan's notes are set on its own tab
-  const flute = inst.family === 'flute';
+  const flute = isTubeFamily(inst.family);
   const n = inst.holeCount ?? 0;
   const id = escHtml(inst.id);
   return `
@@ -4974,14 +4994,14 @@ function viewChartSetup(inst) {
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Set up</h2>
-        <p class="b-intro">Your ${inst.family === 'flute' ? 'flute' : 'ocarina'} plays from ${escHtml(chart?.sourceName ? `the ${chart.sourceName} chart` : 'a published chart')}. Make it yours: its name and photo, ${inst.family === 'ocarina' ? 'where its holes are, ' : ''}and which finger covers each hole.</p>
+        <p class="b-intro">Your ${windWord(inst)} plays from ${escHtml(chart?.sourceName ? `the ${chart.sourceName} chart` : 'a published chart')}. Make it yours: its name and photo, ${inst.family === 'ocarina' ? 'where its holes are, ' : ''}and which finger covers each hole.</p>
         ${instSetupCardHtml(inst)}
         ${inst.family === 'ocarina' ? holeMapCardHtml(inst) : ''}
         <div class="card b-card">
           <div class="b-card-head">
             <div class="b-card-head-text">
               <h3 class="b-card-title">Holes and fingers</h3>
-              <p class="b-meta">${setup.holes.length} holes${inst.family === 'flute' ? ', from the mouthpiece down' : ''}</p>
+              <p class="b-meta">${setup.holes.length} holes${isTubeFamily(inst.family) ? ', from the mouthpiece down' : ''}</p>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" data-action="s-fingers-open" aria-haspopup="dialog">${icon('pencil')} Edit</button>
           </div>
@@ -5001,7 +5021,7 @@ function viewChartSetup(inst) {
 function instSetupCardHtml(inst) {
   return `
         <div class="card b-card ie-card">
-          <h3 class="b-card-title">Your ${inst.family === 'flute' ? 'flute' : 'ocarina'}</h3>
+          <h3 class="b-card-title">Your ${windWord(inst)}</h3>
           ${instFieldsHtml(inst)}
         </div>`;
 }
@@ -5130,7 +5150,7 @@ function setupFingersSheet() {
   return uiSheet({
     key: 's-fingers', title: 'Hole fingers', close: 's-fingers-close',
     body: `
-      <p class="sheet-text">Check which finger covers each hole. ${inst.family === 'flute' ? 'Holes count from the mouthpiece down: hole 1 is nearest your mouth.' : 'Holes are listed by finger, right hand first.'}</p>
+      <p class="sheet-text">Check which finger covers each hole. ${isTubeFamily(inst.family) ? 'Holes count from the mouthpiece down: hole 1 is nearest your mouth.' : 'Holes are listed by finger, right hand first.'}</p>
       ${(() => {
         const dup = duplicateFingers(setup.holes);
         return dup.length ? `<p class="s-warn is-warning">${icon('hand')} More than one hole is on ${dup.join(', ')}. Each finger usually covers one hole: check the fingers below.</p>` : '';
@@ -5149,9 +5169,9 @@ function setupFingersSheet() {
         <button type="button" class="btn btn-secondary btn-sm s-reverse" data-action="s-fingers-reverse" data-hand="${hand}">
           ${icon('refresh')} Reverse ${hand === 'R' ? 'right' : 'left'} hand (${handSwapText(setup.holes, hand)})</button>`).join('')}
       <div class="s-fingers">
-        ${(inst.family === 'flute' ? setup.holes.map((_, i) => i) : holeDisplayOrder(setup.holes)).map((i, n) => {
+        ${(isTubeFamily(inst.family) ? setup.holes.map((_, i) => i) : holeDisplayOrder(setup.holes)).map((i, n) => {
           const h = setup.holes[i];
-          const where = inst.family !== 'flute' && holeSpot(inst, i)
+          const where = !isTubeFamily(inst.family) && holeSpot(inst, i)
             ? `<span class="s-finger-map" aria-hidden="true">${holeMapSvg(inst, { highlight: i, mini: true })}</span>` : '';
           return `<div class="s-finger-row">${where}${uiField({
             label: `Hole ${n + 1}${h.sub ? ' (sub-hole)' : ''}`, id: `s-finger-${i}`,
@@ -6282,7 +6302,7 @@ function goesWithSheet() {
   })).join('');
   return uiSheet({
     key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
-    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? (currentInstrument()?.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a progression.</p>
+    body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? windWord(currentInstrument()) : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a progression.</p>
       <div class="list gw-list">${rows}</div>`,
   });
 }
