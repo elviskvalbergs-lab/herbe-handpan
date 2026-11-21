@@ -11,6 +11,9 @@ let voice = 'handpan'; // which instrument the next notes sound like, see setVoi
 // timings exactly; slow stretches them by half again, fast shortens them.
 export const PLAYBACK_SPEEDS = { slow: 1.5, normal: 1, fast: 0.7 };
 export function setPlaybackSpeed(name) { speed = PLAYBACK_SPEEDS[name] ?? 1; }
+// Speed as a percentage of normal (50 = half speed, 150 = half again as
+// fast), the app's tempo control: every arpeggio, scale and sequence.
+export function setPlaybackTempo(pct) { speed = 100 / Math.min(200, Math.max(25, Number(pct) || 100)); }
 
 // iOS pauses the routing <audio> element whenever the microphone is used
 // (the tuner switches the audio session to recording) or after an
