@@ -1853,6 +1853,17 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .tab-note.is-current { outline: 3px solid var(--accent); outline-offset: 1px; }
 .tab-hold { position: absolute; left: -50%; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--text-3); opacity: 0.45; border-radius: 2px; }
 .song-tab-key { margin: 0; font-size: var(--fs-13); }
+/* Lyrics (songLyrics in js/songs.js): a row under the tab, a line under the
+   note on screen, a syllable under each note chip. */
+.tab-line.has-lyrics .tab-hands, .tab-line.has-lyrics .tab-bar { grid-template-rows: 18px 32px 32px 22px; }
+.tab-lyric { display: flex; align-items: center; min-width: 0; white-space: nowrap; overflow: visible; font-size: var(--fs-13); color: var(--text-1); padding-left: 2px; }
+.tab-lyric.is-current { font-weight: var(--fw-semibold); color: var(--accent); }
+.song-lyric-line { margin: 0; font-size: var(--fs-17); line-height: 1.4; color: var(--text-2); }
+.song-lyric-line mark { background: none; color: var(--accent); font-weight: var(--fw-semibold); }
+.song-lyrics-btn { flex: none; }
+.song-note.has-lyric { flex-direction: column; height: auto; min-height: 44px; padding-block: 2px; line-height: 1.15; }
+.song-note-lyric { font-size: 11px; color: var(--text-3); min-height: 13px; }
+.song-note.is-current .song-note-lyric { color: inherit; }
 .song-print-title { display: none; }
 @media print {
   body.printing-song { background: #fff; }
