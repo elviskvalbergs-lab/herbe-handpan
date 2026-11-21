@@ -554,6 +554,8 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .chip.is-spotlight[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .song-licence a { color: inherit; text-decoration: underline; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
+.ed-template { text-align: left; max-width: 60ch; }
+.editor-sidebar .ie-card { margin-bottom: var(--space-3); }
 /* Move notes: the handpan's tone fields dragged to where they are. */
 .ed-arrange { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
 .ed-pan.is-arranging svg { touch-action: none; }
@@ -1915,3 +1917,4 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 /* The playlist player's buttons: back to the first chord, then Play/Stop. */
 .prog-play-row { display: flex; gap: var(--space-2); align-items: stretch; }
 .prog-play-row .btn-block { flex: 1; }
+.ed-card[hidden] { display: none; }

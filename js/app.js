@@ -428,20 +428,6 @@ function backAppBar(title, { fallback = 'home', actions = [] } = {}) {
   return uiAppBar({ title, back: { action: 'nav-back', data: { fallback }, label: 'Back' }, actions });
 }
 
-// App bar of a handpan (Chords, Pan): the switcher shows its name. An unsaved
-// one (from Try a scale) switches back to the catalogue and says it isn't saved.
-function handpanAppBar(tabs = '') {
-  const saved = !!state.currentInstrumentId;
-  return uiAppBar({
-    switcher: saved
-      ? { name: state.layout.name, action: 'back-home', title: 'My instruments' }
-      : { name: state.layout.name, action: 'open-play', data: { family: layoutInstrument(state.layout) }, title: layoutInstrument(state.layout) === 'handpan' ? 'Other scales' : 'Other tunings' },
-    badge: saved ? '' : uiBadge('Not saved'),
-    actions: [tunerAppBtn(), menuAppBtn()],
-    tabs,
-  });
-}
-
 // Settings (#settings): everything that is set once (docs/design-system.md
 // §6.19). Every row writes an existing pref through savePrefs(), so it
 // persists and syncs as before.
@@ -2640,7 +2626,7 @@ function viewWizard() {
             title: sc.name, chevron: true, action: 'wizard-pick-handpan', data: { id: sc.id },
             meta: `${1 + sc.top.notes.length + sc.bottom.notes.length} notes · ${escHtml(displayNote(sc.top.ding, uf, us))} ding`,
           }))}
-        <p class="wizard-foot">Custom layout? Add it later from “Try another scale” → Pan → Clone &amp; Customize.</p>`,
+        <p class="wizard-foot">Custom layout? Add it later: open a scale, then Pan → Make my own copy.</p>`,
       bar: { left: w.history.length ? WIZARD_BACK : '', right: WIZARD_SKIP },
     });
   }
@@ -2949,7 +2935,13 @@ function instrumentTabs(inst) {
   const chords = { id: 'chords', label: 'Chords', icon: 'music' };
   const songs = { id: 'songs', label: 'Songs', icon: 'music-2' };
   const sets = { id: 'playlists', label: 'Playlists', icon: 'list-music' };
-  if (!inst) return [chords, songs, sets, { id: 'editor', label: layoutFamilyInfo(layoutInstrument(state.layout)).tab, icon: 'circle-dot' }];
+  // A handpan, tongue drum or kalimba: its picture and notes. Once it is in
+  // My instruments that tab is its Set up (its name and photo are there too).
+  if (!inst) {
+    return [chords, songs, sets, state.currentInstrumentId
+      ? { id: 'editor', label: 'Set up', icon: 'wrench' }
+      : { id: 'editor', label: layoutFamilyInfo(layoutInstrument(state.layout)).tab, icon: 'circle-dot' }];
+  }
   const tabs = [];
   if (playableMidis(inst).length > 0) {
     tabs.push(chords, songs);
@@ -2985,22 +2977,36 @@ function notSavedBannerHtml(action) {
       </div>`;
 }
 
-// App bar of an ocarina or flute, with its tabs (none in practice mode).
-function ocHeader(inst, view, { practice = false } = {}) {
-  const shared = inst.id === SHARED_ID;
-  const tabs = practice ? '' : instrumentTabBar(inst, view);
-  return `
-    ${uiAppBar({
-      switcher: inst.link ? { name: inst.name, action: 'open-play', data: { family: inst.family }, title: inst.family === 'flute' ? 'Other flutes' : 'Other ocarinas' } : { name: inst.name, action: 'back-home', title: 'My instruments' },
-      badge: inst.link ? uiBadge('Not saved') : shared ? uiBadge(inst.publicId) : '',
-      actions: [tunerAppBtn(), menuAppBtn()],
-      tabs,
-    })}
-    ${inst.link && !practice ? notSavedBannerHtml('shared-add') : !shared && !practice && !accountOn() ? notSavedBannerHtml('visit-save') : shared && !inst.link ? `
+// The app bar of every instrument, with its tabs (none in practice mode) and,
+// under it, the banner of one that is not kept yet. inst is an ocarina or
+// flute, or null for the handpan, tongue drum or kalimba on screen.
+//   mine          the switcher goes to My instruments; a guest's is "gone
+//                 when you close this page" until saved
+//   being tried   (a link, the catalogue, Play something else): the switcher
+//                 goes to the others of its family, the badge says Not saved
+//   shared by code  read-only, with its code and Add to My instruments
+function instrumentAppBar(inst, view, { practice = false } = {}) {
+  const family = inst ? inst.family : layoutInstrument(state.layout);
+  const name = inst ? inst.name : state.layout.name;
+  const mine = inst ? inst.id !== SHARED_ID : !!state.currentInstrumentId;
+  const byCode = !!inst && inst.id === SHARED_ID && !inst.link;
+  const others = inst ? (family === 'flute' ? 'Other flutes' : 'Other ocarinas') : family === 'handpan' ? 'Other scales' : 'Other tunings';
+  const banner = practice ? ''
+    : byCode ? `
       <div class="banner">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
         <button type="button" class="btn btn-primary btn-sm" data-action="shared-add">${icon('plus')} Add to My instruments</button>
-      </div>` : ''}`;
+      </div>`
+    : !mine ? notSavedBannerHtml(inst ? 'shared-add' : 'save-layout')
+    : !accountOn() ? notSavedBannerHtml('visit-save') : '';
+  return `
+    ${uiAppBar({
+      switcher: mine || byCode ? { name, action: 'back-home', title: 'My instruments' } : { name, action: 'open-play', data: { family }, title: others },
+      badge: byCode ? uiBadge(inst.publicId) : mine ? '' : uiBadge('Not saved'),
+      actions: [tunerAppBtn(), menuAppBtn()],
+      tabs: practice ? '' : instrumentTabBar(inst, view),
+    })}
+    ${banner}`;
 }
 
 // The Playlists tab: one kind of list (chords in order, the same one as
@@ -3528,10 +3534,10 @@ function hpCurrentLayoutId() {
 }
 
 function viewHandpanPlaylists() {
-  return `${handpanAppBar(instrumentTabBar(null, 'playlists'))}${playlistsTabHtml(null)}`;
+  return `${instrumentAppBar(null, 'playlists')}${playlistsTabHtml(null)}`;
 }
 function viewHandpanSongs() {
-  return `${handpanAppBar(instrumentTabBar(null, 'songs'))}${songsTabHtml(null)}`;
+  return `${instrumentAppBar(null, 'songs')}${songsTabHtml(null)}`;
 }
 
 // State of the ocarina / flute views; reset when switching instrument.
@@ -3717,7 +3723,7 @@ function viewOcarinaChords(inst) {
     : oc.identify ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
   const modeSeg = chordModeSegHtml(oc.listen ? 'listen' : oc.identify ? 'identify' : 'browse', 'oc-listen-mode');
-  return `${ocHeader(inst, 'chords')}${chordsScreenHtml({
+  return `${instrumentAppBar(inst, 'chords')}${chordsScreenHtml({
     cls: ` oc-chords${oc.identify ? ' is-identify' : ''}`, stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
     picture: stage.picture, card: stage.card,
     listHead: `${modeSeg}${oc.listen || oc.identify ? '' : listHead}`,
@@ -3784,8 +3790,9 @@ function ocChordStageParts(inst, a) {
     metas: [[`${a.sub} · ${a.midis.map(nn).join(' · ')}`]],
     actions: `
           <button type="button" class="btn btn-primary hp-play" data-action="oc-play-arp" data-key="${key}">${icon('play')} Chord</button>
+          ${speedBtnHtml()}
           ${chordSaveBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}
-          ${uiIconBtn('ellipsis', 'More: speed, octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}`,
+          ${uiIconBtn('ellipsis', 'More: octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
     below: `
@@ -3966,22 +3973,22 @@ function viewInstrument() {
   if (state.oc.tab === 'setup' || (inst.kind === 'custom' && midis.length === 0)) return viewSetup(inst);
 
   if (midis.length === 0) {
-    return `${ocHeader(inst, 'notes')}
+    return `${instrumentAppBar(inst, 'notes')}
       ${uiEmpty({ icon: 'family-ocarina', title: 'No fingering chart yet', body: escHtml(instrumentStatus(inst)) })}`;
   }
 
   const oc = state.oc;
   if (oc.practice) return viewOcarinaPractice(inst);
   if (oc.tab === 'chords') return viewOcarinaChords(inst);
-  if (oc.tab === 'playlists') return `${ocHeader(inst, 'playlists')}${playlistsTabHtml(inst)}`;
-  if (oc.tab === 'songs') return `${ocHeader(inst, 'songs')}${songsTabHtml(inst)}`;
+  if (oc.tab === 'playlists') return `${instrumentAppBar(inst, 'playlists')}${playlistsTabHtml(inst)}`;
+  if (oc.tab === 'songs') return `${instrumentAppBar(inst, 'songs')}${songsTabHtml(inst)}`;
   if (!midis.includes(oc.selected)) { oc.selected = midis[0]; oc.previous = null; }
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const inScale = m => !pcs || pcs.has(((m % 12) + 12) % 12);
   const opts = { useFlats: uf, useSolfege: us, showFingers: state.showFingers, showSizes: state.showSizes, closeUp: state.closeUp };
   const moves = oc.previous != null && oc.previous !== oc.selected ? fingeringMoves(inst, oc.previous, oc.selected) : null;
 
-  return `${ocHeader(inst, 'notes')}
+  return `${instrumentAppBar(inst, 'notes')}
     <div class="oc-notes">
       <div class="oc-notes-side">
         <div class="oc-context">
@@ -4657,7 +4664,7 @@ function viewBuilder(inst) {
   }
 
   const nextLabel = stage === 'final' ? 'Finish' : stage === 'done' ? '' : `Next: ${stageName(nextStage(stage))}`;
-  return `${ocHeader(inst, 'builder')}
+  return `${instrumentAppBar(inst, 'builder')}
     <div class="b-layout">
       <div class="b-main">
         ${bStepsHtml(stage)}
@@ -4705,7 +4712,7 @@ function viewSetup(inst) {
   const standard = defaultCustomHoles(setup.holes.length).every((h, i) => h.finger === setup.holes[i].finger);
   const subs = setup.holes.filter(h => h.sub).length;
   const label = p => (p === 's:f0' ? 'All holes closed' : `Only ${escHtml(holeLabel(setup.holes, holeOf(p)))} open`);
-  return `${ocHeader(inst, 'setup')}
+  return `${instrumentAppBar(inst, 'setup')}
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Set up</h2>
@@ -4793,7 +4800,7 @@ function viewFluteSetup(inst) {
   const cents = c => (c === 0 ? '0 ¢' : `${c > 0 ? '+' : '−'}${Math.abs(c)} ¢`);
   const pattern = k => fluteStepStates(n, k).map(st => (st === 'c' ? '●' : '○')).join(' ');
   const dropped = inst.calibration?.dropped ?? [];
-  return `${ocHeader(inst, 'setup')}
+  return `${instrumentAppBar(inst, 'setup')}
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Set up</h2>
@@ -5081,7 +5088,7 @@ function viewChartSetup(inst) {
   const chart = getChart(inst.type);
   const fixed = Object.keys(inst.setup?.fixed ?? {}).map(Number).sort((a, b) => a - b);
   const uf = state.useFlats, us = state.useSolfege;
-  return `${ocHeader(inst, 'setup')}
+  return `${instrumentAppBar(inst, 'setup')}
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Set up</h2>
@@ -5110,9 +5117,10 @@ function viewChartSetup(inst) {
 
 // The card at the top of Set up.
 function instSetupCardHtml(inst) {
+  const word = usesLayout(inst) ? layoutFamilyInfo(inst.family).word : inst.family === 'flute' ? 'flute' : 'ocarina';
   return `
         <div class="card b-card ie-card">
-          <h3 class="b-card-title">Your ${inst.family === 'flute' ? 'flute' : 'ocarina'}</h3>
+          <h3 class="b-card-title">Your ${word}</h3>
           ${instFieldsHtml(inst)}
         </div>`;
 }
@@ -5155,7 +5163,7 @@ function viewHoleMap(inst) {
       aria-pressed="${i === sel ? 'true' : 'false'}">${escHtml(holeLabel(setup.holes, i))}${under ? ' · under' : done ? ` ${icon('check')}` : ''}</button>`;
   }).join('');
   const selHole = sel != null ? setup.holes[sel] : null;
-  return `${ocHeader(inst, 'setup')}
+  return `${instrumentAppBar(inst, 'setup')}
     <div class="b-layout is-single">
       <div class="b-main">
         <h2 class="b-title">Where the holes are</h2>
@@ -5691,7 +5699,7 @@ function openStartView() {
 }
 
 // ── View 2: Layout Editor ────────────────────────────────────────────────────
-// Handpan Pan tab (§6.8): shells, the pan, capacities, name, Customize and Save.
+// Handpan Pan tab, Set up once it is mine (§6.8): the pan, its name and photo, shells, capacities, Make my own copy and Save.
 
 // Move notes: a custom handpan's tone fields dragged to where they are on
 // the real one (layout.pos, drawn by pan.js, kept in saves and links).
@@ -5758,11 +5766,11 @@ function hpLayoutSaved() {
   return !!saved && JSON.stringify(saved.layout) === JSON.stringify(layout);
 }
 
-// Customize (a scale's layout) and Save; once saved and unchanged, a status.
+// Make my own copy (of a scale's layout) and Save; once saved and unchanged, a status.
 function edActionsHtml() {
   const saved = hpLayoutSaved();
   return `
-    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('pencil')} Customize</button>` : ''}
+    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('copy')} Make my own copy</button>` : ''}
     ${saved
       ? `<span class="ed-status" role="status">${icon('check')} Saved</span>
          <button type="button" class="btn btn-primary" data-action="save-layout" disabled>Saved</button>`
@@ -5787,9 +5795,10 @@ function viewEditor() {
   const fam = layoutInstrument(layout);
   const fi = layoutFamilyInfo(fam);
   const drum = fam !== 'handpan'; // one row of notes, no shells
+  // Mine: its name and photo are set here too, as on an ocarina's Set up.
+  const mine = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
   return `
-    ${handpanAppBar(instrumentTabBar(null, 'editor'))}
-    ${state.currentInstrumentId ? (accountOn() ? '' : notSavedBannerHtml('visit-save')) : notSavedBannerHtml('save-layout')}
+    ${instrumentAppBar(null, 'editor')}
 
     <div class="editor-layout">
       <div class="editor-main">
@@ -5803,8 +5812,10 @@ function viewEditor() {
       </div>
 
       <div class="editor-sidebar">
-        <div class="card ed-card">
-          ${isCustom ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
+        ${mine ? instSetupCardHtml(mine) : ''}
+        ${isCustom ? '' : `<p class="ed-hint ed-template">These are the notes of the ${escHtml(layout.name)} as its makers tune it, so they stay as they are. Is yours different? Make your own copy: change a note, add one${fam === 'handpan' ? ', or move the notes to where they are on yours' : ''}.</p>`}
+        <div class="card ed-card"${isCustom ? '' : ' hidden'}>
+          ${isCustom && !mine ? uiField({ label: 'Name', id: 'custom-name-input', control: `<input class="input" id="custom-name-input" value="${escHtml(layout.name)}" placeholder="Layout name">` }) : ''}
           ${drum ? `<div class="ed-shell">
             <div class="overline">${fi.thing === 'key' ? 'Keys' : 'Tongues'}</div>
             ${uiStepper({
@@ -6548,12 +6559,11 @@ function chordFiltersSheet({ key, close, clear, roots, root, rootAction, counts,
   });
 }
 
-// ⋯ of the chord on top, the same sheet on every instrument: Speed, the
+// ⋯ of the chord on top, the same sheet on every instrument: the
 // instrument's own rows, the well-known progressions with this chord, then
 // whatever else the instrument shows (related chords, octaves, the legend).
 function chordMoreSheet({ key, variant = 'menu', title, close, rows = [], extra = '' }) {
   const all = [
-    uiRow({ lead: 'gauge', title: 'Speed', meta: `${tempoLabel()} · how fast chords and scales play`, chevron: true, action: 'speed-open' }),
     ...rows,
     goesWithHasProgressions() ? uiRow({ lead: 'list-ordered', title: 'Progressions with this chord', meta: 'Well-known ones, to hear and to save', chevron: true, action: 'gw-open' }) : '',
   ].join('');
@@ -6601,9 +6611,10 @@ function viewChords() {
     actions: `
           ${canUpdateEntry ? saveVoicingBtn('hp-wide') : ''}
           <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
+          ${speedBtnHtml()}
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
           ${chordSaveBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
-          ${uiIconBtn('ellipsis', 'More: speed, the scale, progressions', { action: 'hp-more-open', attrs: 'aria-haspopup="dialog"' })}`,
+          ${uiIconBtn('ellipsis', 'More: the scale, progressions', { action: 'hp-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     below: `${goesWithLineHtml()}<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
@@ -6679,7 +6690,7 @@ function viewChords() {
     </div>`;
 
   return `
-    ${handpanAppBar(instrumentTabBar(null, 'chords'))}${chordsScreenHtml({
+    ${instrumentAppBar(null, 'chords')}${chordsScreenHtml({
     cls: state.discoverMode ? ' is-identify' : '',
     picture: `<div class="pan-wrap hp-pan">${panRotateBtn()}${panSvg}</div>`,
     card,
@@ -10378,7 +10389,7 @@ document.addEventListener('click', e => {
       ...state.layout,
       isCustom: true,
       id: 'custom',
-      name: state.layout.name + ' (Custom)',
+      name: `My ${state.layout.name}`,
       top: {
         ...state.layout.top,
         slots: state.layout.top.slots.map(s => ({ ...s })),
