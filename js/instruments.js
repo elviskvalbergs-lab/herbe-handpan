@@ -12,7 +12,7 @@
 // nothing about layouts or playlists changes.
 
 import { NOTE_NAMES, SCALES } from './data.js';
-import { dataStore } from './datastore.js';
+import { dataStore, safeSetItem } from './datastore.js';
 import { isLayoutFamily, layoutInstrument, layoutFamilyInfo } from './layoutfamilies.js';
 import { scaleToMidis, buildScaleChambers, chambersNeeded } from './ocarina.js';
 
@@ -207,7 +207,7 @@ function getAllInstrumentsRaw() {
 }
 
 function writeInstruments(list) {
-  dataStore().setItem(INSTRUMENTS_KEY, JSON.stringify(list));
+  safeSetItem(dataStore(), INSTRUMENTS_KEY, JSON.stringify(list));
   // Lets the app schedule a cloud sync without every caller remembering to.
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-instruments-changed'));
 }
@@ -253,7 +253,7 @@ export function syncHandpanInstruments(savedLayouts) {
 }
 
 export function isOnboarded() { return localStorage.getItem(ONBOARDED_KEY) === '1'; }
-export function setOnboarded() { localStorage.setItem(ONBOARDED_KEY, '1'); }
+export function setOnboarded() { safeSetItem(localStorage, ONBOARDED_KEY, '1'); }
 
 // ── Clay bodies ──────────────────────────────────────────────────────────────
 // The named list of clays a user builds with, each carrying the shrinkage
@@ -270,7 +270,7 @@ export function getClayBodies() {
 }
 
 export function saveClayBodies(list) {
-  localStorage.setItem(CLAY_KEY, JSON.stringify(list));
+  safeSetItem(localStorage, CLAY_KEY, JSON.stringify(list));
 }
 
 // ── Sharing and sync ─────────────────────────────────────────────────────────

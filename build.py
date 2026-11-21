@@ -74,6 +74,13 @@ js_bundle = js_bundle.replace("const BUILD_HASH = 'dev';", f"const BUILD_HASH = 
 # supabase-js is pinned (and precached by sw.js, which names the same URL).
 SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js'
 assert SUPABASE_JS in read('sw.js'), 'sw.js must precache the same supabase-js as build.py'
+# Its Subresource Integrity hash: the browser refuses the file if the CDN ever
+# serves anything else. It is the SHA-384 of exactly that version (it matches
+# the SHA-256 jsDelivr publishes for the file); change both lines together
+# when the version changes:
+#   curl -s <url> | openssl dgst -sha384 -binary | openssl base64 -A
+SUPABASE_JS_SRI = 'sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT'
+assert '@2.49.4/' in SUPABASE_JS, 'supabase-js changed version: update SUPABASE_JS_SRI as well'
 
 html = f'''<!DOCTYPE html>
 <html lang="en" data-theme="auto">
@@ -122,7 +129,7 @@ html = f'''<!DOCTYPE html>
 </head>
 <body>
   <div id="app"></div>
-  <script src="{SUPABASE_JS}"></script>
+  <script src="{SUPABASE_JS}" integrity="{SUPABASE_JS_SRI}" crossorigin="anonymous"></script>
   <script>
 {js_bundle}
   </script>
