@@ -57,7 +57,8 @@ function stSession() { try { return globalThis.sessionStorage ?? null; } catch {
 export function keepPendingSave(intent) {
   const ss = stSession();
   if (!ss) return;
-  ss.setItem(PENDING_KEY, JSON.stringify({ what: intent.what, action: intent.action ?? null, data: intent.data ?? {}, entry: intent.entry ?? null, path: intent.path ?? null, at: Date.now() }));
+  // (A full device: the save still completes in this tab, just not after a redirect.)
+  try { ss.setItem(PENDING_KEY, JSON.stringify({ what: intent.what, action: intent.action ?? null, data: intent.data ?? {}, entry: intent.entry ?? null, path: intent.path ?? null, at: Date.now() })); } catch { /* not kept */ }
 }
 
 // The waiting intent, or null; older than an hour counts as abandoned.

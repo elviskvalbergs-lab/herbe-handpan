@@ -66,3 +66,20 @@ test('alsoSavedText', () => {
   assert.equal(store.alsoSavedText(['A', 'B', 'C', 'D']), 'Also saved: A, B and C and 1 more');
   assert.equal(store.alsoSavedText([]), '');
 });
+
+// ── Whose things are on this device (js/datastore.js) ───────────────────────
+import { accountMatch, safeSetItem } from '../js/datastore.js';
+
+test('a different person signing in is told apart from the account on the device', () => {
+  assert.equal(accountMatch('u1', 'u1'), 'same');
+  assert.equal(accountMatch('u1', 'u2'), 'other');
+  assert.equal(accountMatch(null, 'u2'), 'adopt', 'an account from before the id was kept');
+});
+
+test('a write that fails (full device) returns false instead of throwing', () => {
+  const full = { setItem() { throw new Error('QuotaExceededError'); } };
+  const ok = { v: null, setItem(k, v) { this.v = v; } };
+  assert.equal(safeSetItem(full, 'k', 'v'), false);
+  assert.equal(safeSetItem(ok, 'k', 'v'), true);
+  assert.equal(ok.v, 'v');
+});

@@ -50,6 +50,15 @@ function circlePositions(count, cx, cy, r, rotationOffset = 0) {
   });
 }
 
+// A note of the picture is a button: reachable with Tab, named for screen
+// readers ("D3", or "Empty place" for a free slot), and pressed with Enter
+// or Space (the page turns the key into the same click a tap gives: the
+// keydown handler in js/app.js, onKeyDown in the website's demo).
+function panNoteA11y(note, useFlats, useSolfege) {
+  const label = note ? displayNote(note, useFlats, useSolfege) : 'Empty place';
+  return ` role="button" tabindex="0" aria-label="${panEsc(label)}"`;
+}
+
 // All tone fields are circles. r controls size; lower notes get larger circles.
 function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false, useSolfege = false) {
   const isEmpty = !note;
@@ -77,7 +86,7 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
       fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>`;
   }
 
-  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}${panNoteA11y(note, useFlats, useSolfege)}>
   <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
   ${textHtml}
 </g>`;
@@ -164,7 +173,7 @@ function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfeg
     text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${panEsc(name)}</text>
 <text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>`;
   }
-  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}${panNoteA11y(note, useFlats, useSolfege)}>
   <g transform="translate(${x} ${y}) rotate(${deg})">
     <path d="${cut}" fill="none" stroke="var(--pan-groove)" stroke-width="2" stroke-linecap="round"/>
     <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
@@ -254,7 +263,7 @@ function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strike
     const name = shown.replace(/\d+$/, '');
     const oct = (shown.match(/\d+$/) ?? [''])[0];
     const fs = Math.max(8, Math.min(13, Math.round(w * 0.62)));
-    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${panEsc(k.note)}"` : ''}>
+    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${panEsc(k.note)}"` : ''}${panNoteA11y(k.note, useFlats, useSolfege)}>
   <rect x="${cx - w / 2}" y="${y1}" width="${w}" height="${y2 - y1}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
   <text x="${cx}" y="${y2 - fs * 1.3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${panEsc(name)}</text>
   ${oct ? `<text x="${cx}" y="${y2 - fs * 0.35}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.7))}" fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>` : ''}
