@@ -9,18 +9,14 @@
 // Covers: a guest's "Create your maker page" through sign-in to the request;
 // the admin approving it; the maker sharing an instrument; a buyer opening
 // the code and seeing "Made by"; reporting; suspension.
-import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
-import { join, extname, dirname } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
+import { chromium, serveApp, SUPABASE_JS } from './harness.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js';
 const ADMIN_URL = process.env.HP_TEST_DATABASE_URL;
 if (!ADMIN_URL) { console.log('Set HP_TEST_DATABASE_URL to run (see the top of this file).'); process.exit(0); }
 
@@ -77,17 +73,11 @@ const server = {
   },
 };
 
-// ── The app, served like Vercel (deep links fall back to index.html) ────────
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
-const http = createServer((req, res) => {
-  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  let file = join(ROOT, path);
-  if (!existsSync(file) || statSync(file).isDirectory()) file = join(ROOT, 'index.html');
-  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
-  res.end(readFileSync(file));
-});
-await new Promise(r => http.listen(0, '127.0.0.1', r));
-const BASE = `http://localhost:${http.address().port}`;
+// ── The app, served as the other browser tests serve it (tests/e2e/harness.mjs):
+// production's headers, with the Content-Security-Policy enforced, so a logo,
+// the QR library or a card the policy would block fails the run.
+const app = await serveApp();
+const BASE = app.base;
 
 // The page side: a tiny supabase-js with the calls the app makes.
 const FAKE_SUPABASE = `
@@ -125,6 +115,7 @@ window.supabase = { createClient() {
 } };`;
 
 const browser = await chromium.launch();
+const problems = [];
 export async function device(name, { headers = {}, viewport = { width: 390, height: 844 } } = {}) {
   const ctx = await browser.newContext({ viewport });
   await ctx.exposeFunction('__supa', (op, a) => {
@@ -138,7 +129,15 @@ export async function device(name, { headers = {}, viewport = { width: 390, heig
   await ctx.route('https://gvcfrnbnenqfhofvzgoz.supabase.co/**', r => r.fulfill({ contentType: 'application/json', body: '{"external":{"google":false,"apple":false}}' }));
   await ctx.route(/posthog|sentry-cdn|ingest/, r => r.abort());
   const page = await ctx.newPage();
-  page.on('pageerror', e => { console.log(`[${name}] page error:`, e.message); process.exitCode = 1; });
+  // As the smoke suite: an uncaught error, a console error (a policy
+  // violation is one) or a 404 for one of the app's own files fails the run.
+  page.on('pageerror', e => problems.push(`[${name}] page error: ${e.message}`));
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    if (/net::ERR_FAILED|net::ERR_BLOCKED_BY_CLIENT/.test(m.text()) && !/localhost|127\.0\.0\.1/.test(m.location()?.url ?? '')) return;
+    problems.push(`[${name}] console error: ${m.text()}`);
+  });
+  page.on('response', res => { if (res.status() >= 400 && res.url().startsWith(BASE)) problems.push(`[${name}] ${res.status()} for ${res.url()}`); });
   return { ctx, page };
 }
 export async function signIn(page, email) {
@@ -293,9 +292,10 @@ try {
   });
 
   if (typeof globalThis.makersMoreSteps === 'function') await globalThis.makersMoreSteps({ step, device, signIn, sql, lit, BASE, toast, shot, users, maker, buyer, admin, code });
+  assert.deepEqual(problems, [], 'no page errors, console errors, policy violations or missing files');
   console.log(`\n${passed} steps passed`);
 } finally {
   await browser.close();
-  http.close();
+  await app.close();
   psqlRun(ADMIN_URL, ['-c', `drop database if exists ${DB} with (force)`]);
 }

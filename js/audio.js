@@ -69,7 +69,9 @@ export function initAudio() {
   // Routing masterGain → MediaStreamDestinationNode → <audio playsinline> forces iOS to
   // use AVAudioSessionCategoryPlayback, which outputs through the main speaker.
   // Falls back to ctx.destination if the MediaStream API is unavailable.
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  // iPadOS says it is a Mac ("Macintosh") since version 13: told apart by
+  // touch, as in the app's install help (js/app.js installHelpSheet).
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   if (isIOS && ctx.createMediaStreamDestination) {
     try {
       const streamDest = ctx.createMediaStreamDestination();

@@ -10,6 +10,10 @@
 
 export const DATA_KEYS = ['hp-playlists', 'hp-layouts', 'hp-instruments', 'hp-progressions'];
 const ACCOUNT_FLAG = 'hp-account';
+// Whose things this device holds: the account's user id, kept beside the
+// flag. Saved data and the sync bases (js/localdb.js) belong to that one
+// account, never to "whoever is signed in".
+const ACCOUNT_USER = 'hp-account-user';
 
 function dsLocal() { try { return globalThis.localStorage ?? null; } catch { return null; } }
 function dsSession() { try { return globalThis.sessionStorage ?? null; } catch { return null; } }
@@ -30,14 +34,52 @@ export function hasAccountOnDevice() {
   if (!ls || ls.getItem(ACCOUNT_FLAG) === '1') return;
   for (let i = 0; i < ls.length; i++) {
     const k = ls.key(i);
-    if (k && /^sb-.*-auth-token$/.test(k)) { ls.setItem(ACCOUNT_FLAG, '1'); return; }
+    if (k && /^sb-.*-auth-token$/.test(k)) { try { ls.setItem(ACCOUNT_FLAG, '1'); } catch { /* full: stays a guest */ } return; }
   }
 })();
 
 export function setAccountOnDevice(on) {
   const ls = dsLocal();
   if (!ls) return;
-  if (on) ls.setItem(ACCOUNT_FLAG, '1'); else ls.removeItem(ACCOUNT_FLAG);
+  if (on) safeSetItem(ls, ACCOUNT_FLAG, '1'); else { ls.removeItem(ACCOUNT_FLAG); ls.removeItem(ACCOUNT_USER); }
+}
+
+// Every write to localStorage or sessionStorage goes through here. A full
+// device (QuotaExceededError), a private window or blocked storage throws on
+// setItem; uncaught, that stopped whatever the tap was doing with nothing
+// said. Returns false when the value was not stored, and tells the app
+// ('hp-storage-full', js/app.js shows the message).
+export function safeSetItem(store, key, value) {
+  try {
+    store.setItem(key, value);
+    return true;
+  } catch (err) {
+    try {
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('hp-storage-full', { detail: { key } }));
+    } catch { /* nobody to tell */ }
+    return false;
+  }
+}
+
+// The user id of the account on this device; null for a guest, and for an
+// account from before the id was kept (adopted at its next sign-in).
+export function accountUserOnDevice() {
+  return dsLocal()?.getItem(ACCOUNT_USER) || null;
+}
+export function setAccountUserOnDevice(id) {
+  const ls = dsLocal();
+  if (ls && id) safeSetItem(ls, ACCOUNT_USER, id);
+}
+
+// Who signed in, compared with whose things are here:
+//   'same'  — the account on this device (carry on)
+//   'adopt' — the device has an account but no id yet (older versions): it
+//             is taken to be this one
+//   'other' — a different person: the device must forget the previous
+//             account's things and sync bases before anything syncs
+export function accountMatch(onDevice, signedIn) {
+  if (!onDevice) return 'adopt';
+  return onDevice === signedIn ? 'same' : 'other';
 }
 
 // The storage the data keys use right now.
@@ -95,7 +137,8 @@ export function carryOverVisit() {
       try { account = JSON.parse(ls.getItem(key) || '[]') || []; } catch { account = []; }
       // A handpan layout keeps its id: its instrument id is made from it.
       const { list, moved: m } = mergeVisitList(account, visit, key === 'hp-layouts' ? id => `c-${Date.now()}-${id}` : undefined);
-      ls.setItem(key, JSON.stringify(list));
+      // Only leaves the tab once it is safely in the account's storage.
+      if (!safeSetItem(ls, key, JSON.stringify(list))) continue;
       ss.removeItem(key);
       moved[key] = m;
     }

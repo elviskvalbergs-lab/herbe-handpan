@@ -17,6 +17,7 @@ import {
 import {
   fetchMyMaker, saveMakerProfile, adminListMakers, reviewMaker, resolveMakerReport, reportMaker, openSharedCode, isLoggedIn,
 } from './auth.js';
+import { safeSetItem } from './datastore.js';
 
 const MAKER_VIEWS = { maker: '#maker', 'maker-profile': '#maker/profile', 'maker-review': '#maker/review' };
 const MAKER_ACCESS_KEY = 'hp-maker-access'; // { is_maker, is_admin, waiting, status }: what Settings shows before the server answers
@@ -40,10 +41,9 @@ function makerAccess() {
   try { return JSON.parse(localStorage.getItem(MAKER_ACCESS_KEY) || 'null') ?? {}; } catch { return {}; }
 }
 function makerKeepAccess(info) {
-  try {
-    if (!info) localStorage.removeItem(MAKER_ACCESS_KEY);
-    else localStorage.setItem(MAKER_ACCESS_KEY, JSON.stringify({ is_maker: !!info.is_maker, is_admin: !!info.is_admin, waiting: info.waiting ?? 0, status: info.maker?.status ?? null }));
-  } catch { /* shown again next time */ }
+  if (!info) { try { localStorage.removeItem(MAKER_ACCESS_KEY); } catch { /* nothing kept */ } return; }
+  // safeSetItem (js/datastore.js): a full or blocked store never stops the screen.
+  safeSetItem(localStorage, MAKER_ACCESS_KEY, JSON.stringify({ is_maker: !!info.is_maker, is_admin: !!info.is_admin, waiting: info.waiting ?? 0, status: info.maker?.status ?? null }));
 }
 
 // Reads the account's maker state again (after sign-in, on opening the
