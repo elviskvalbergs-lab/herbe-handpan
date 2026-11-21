@@ -545,6 +545,14 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .song-play { flex: 1; }
 .song-notes { flex-wrap: wrap; gap: var(--space-1); }
 .song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
+.song-practice { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.song-practice .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+.song-practice-status { margin: 0; color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); text-align: center; }
+.song-note.is-loop, .tab-name.is-loop { box-shadow: 0 -3px 0 0 var(--accent); }
+.tab-note.is-loop { box-shadow: 0 0 0 2px var(--accent-soft), 0 -4px 0 0 var(--accent); }
+.song-note.is-heard, .tab-note.is-heard { background: var(--success-soft); border-color: var(--success); color: var(--success); }
+.tab-name.is-heard { color: var(--success); }
+@media print { .song-practice, .song-practice-status { display: none; } }
 .song-note.is-gone, .tab-name.is-gone { color: var(--warning); text-decoration: line-through; }
 .song-note.is-gone { border-color: var(--warning); background: var(--warning-soft); }
 .song-gone-text { color: var(--warning); }

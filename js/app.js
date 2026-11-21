@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { songFit, songsInOrder, SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songsForFilter, SONG_COLLECTION_ORIGINS, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
+import { songFit, songsInOrder, songLoopTap, songInLoop, songNextIndex, songWaitTarget, songWaitHeard, songCoverage, SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songsForFilter, SONG_COLLECTION_ORIGINS, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { kalimbaNumbers } from './kalimbas.js';
@@ -133,7 +133,7 @@ const state = {
   autoplayOn: false,
   autoplayPlaylistId: null,
   autoplaySeconds: 4,
-  tempo: 100,                // speed of arpeggios, scales and sequences, % of normal (50–150)
+  tempo: 100,                // speed of arpeggios, scales and sequences, % of normal (25–150)
   discoverMode: false,
   hpListen: false,         // handpan Chords: the Listen segment (Browse / Identify / Listen)
   listenUi: null,          // the Listen session, see newListenUi()
@@ -208,6 +208,7 @@ trackAppHeight();
 function render() {
   guestPickerToSave();
   songOpenPending();
+  if (state.songWait && state.view !== 'song') songWaitOff();
   const app = document.getElementById('app');
   const screen = [state.view, state.wizard?.step, state.wizard?.oc?.path, state.view === 'instrument' ? state.oc.tab : '', state.currentInstrumentId].join('|');
   if (screen !== _lastScreen && !_toastFresh) hideToast();
@@ -3322,7 +3323,7 @@ function viewSong() {
       strikeMarks: T ? songTabMarks(S, T) : [],
     });
   const playing = !!state.songPlay;
-  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}${n.gone ? ' is-gone' : ''}${LY ? ' has-lyric' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}${LY ? `<span class="song-note-lyric">${escHtml(LY[i]?.text ?? '')}</span>` : ''}</button>`).join('');
+  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}${songNoteCls(i, idx)}${n.gone ? ' is-gone' : ''}${LY ? ' has-lyric' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}${LY ? `<span class="song-note-lyric">${escHtml(LY[i]?.text ?? '')}</span>` : ''}</button>`).join('');
   const after = songsThatGoTogether(song, songsFor(inst, SONGS, { near: true }).filter(x => x.missing == null || x.song.id === song.id));
   return `${backAppBar(song.title, { fallback: 'songs', actions: [uiIconBtn('share-2', 'Share this song', { action: 'song-share' })] })}
     <div class="song">
@@ -3343,12 +3344,14 @@ function viewSong() {
         ${uiIconBtn('skip-forward', 'Next note', { action: 'song-next' })}
         ${speedBtnHtml()}
       </div>
+      ${state.songPrinting ? '' : songPracticeRowHtml(S, idx)}
       ${songTabFamily(inst) || song.lyrics ? `<div class="song-view-row">
         ${songTabFamily(inst) ? uiSeg([{ value: 'tab', label: 'Tab' }, { value: 'notes', label: 'Notes' }], T ? 'tab' : 'notes', { action: 'song-view', label: 'Show the song as' }) : ''}
         ${song.lyrics ? `<button type="button" class="btn btn-secondary song-lyrics-btn" data-action="song-lyrics" aria-pressed="${state.showLyrics}">${icon(state.showLyrics ? 'check' : 'plus')} Lyrics</button>` : ''}
         ${T ? uiIconBtn('printer', 'Print the tab', { action: 'song-print' }) : ''}
       </div>` : ''}
       ${T ? songTabHtml(S, T, state.songPrinting ? -1 : idx, LY) : `<div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>`}
+      ${state.songPrinting ? '' : songOnInstrumentsHtml(S)}
       ${after.length ? `<h2 class="list-title">Goes well after it</h2>
         <div class="list">${after.map(({ song: s, shift: sh }) => uiRow({ lead: 'music', title: s.title, meta: escHtml(songMeta(s, sh)), chevron: true, action: 'song-open', data: { id: s.id, inst: inst?.id ?? '' } })).join('')}</div>` : ''}
       <p class="pl-section-hint song-licence">${song.sourceName
@@ -3461,7 +3464,7 @@ function songTabRows(S, T, idx) {
   const nameBtn = c => {
     const n = S.notes[c.i];
     const cur = c.i === idx;
-    return `<button type="button" class="tab-name${cur ? ' is-current' : ''}${n.gone ? ' is-gone' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''}>${escHtml(displayNote(midiToNoteName(n.midi), uf, us).replace(/\d+$/, ''))}</button>`;
+    return `<button type="button" class="tab-name${cur ? ' is-current' : ''}${songNoteCls(c.i, idx)}${n.gone ? ' is-gone' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''}>${escHtml(displayNote(midiToNoteName(n.midi), uf, us).replace(/\d+$/, ''))}</button>`;
   };
   const nameRow = {
     label: '', h: 22, cls: 'tab-names',
@@ -3517,7 +3520,7 @@ function songTabRows(S, T, idx) {
     }
     if (c.i != null && T.hands[c.i] === hand) {
       const cur = c.i === idx;
-      return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} ${handWord} ${num(c.i)}">${num(c.i)}</button>`;
+      return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}${songNoteCls(c.i, idx)}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} ${handWord} ${num(c.i)}">${num(c.i)}</button>`;
     }
     return c.hold != null && T.hands[c.hold] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
   };
@@ -3585,6 +3588,108 @@ function songPrint() {
   window.print();
 }
 
+// ── Practising a song: wait mode, a loop, the song on my other instruments ──
+// (docs/songs-next.md §3; the pure parts are in js/songs.js.)
+
+// A note's extra classes: inside the loop, already heard in wait mode.
+function songNoteCls(i, idx) {
+  const ctx = state.songCtx;
+  return `${songInLoop(ctx?.loop, i) ? ' is-loop' : ''}${state.songWait && i < idx && i >= (ctx?.waitFrom ?? 0) ? ' is-heard' : ''}`;
+}
+function songPracticeRowHtml(S, idx) {
+  const loop = state.songCtx.loop;
+  const nn = m => displayNote(midiToNoteName(m), state.useFlats, state.useSolfege);
+  const loopLabel = !loop ? 'Loop from here' : loop.to == null ? 'Loop to here' : 'Loop on';
+  const target = state.songWait ? songWaitTarget(S.notes, idx, loop) : null;
+  const status = state.songWait
+    ? (state.tuner.error ? escHtml(state.tuner.error)
+      : state.songWaitDone ? 'That was the last note. Back to the start to play it again.'
+      : target != null ? `Listening: play ${escHtml(nn(S.notes[target].midi))} and the song moves on.` : '')
+    : loop && loop.to == null ? `The loop starts at note ${loop.from + 1}. Go to its last note and tap “Loop to here”.`
+    : loop ? `Looping notes ${loop.from + 1} to ${loop.to + 1}.` : '';
+  return `<div class="song-practice">
+      <button type="button" class="btn btn-secondary song-wait-btn" data-action="song-wait" aria-pressed="${!!state.songWait}">${icon('mic')} Wait for me</button>
+      <button type="button" class="btn btn-secondary song-loop-btn" data-action="song-loop" aria-pressed="${!!loop}">${icon(loop && loop.to != null ? 'x' : 'repeat')} ${loopLabel}</button>
+    </div>
+    ${status ? `<p class="song-practice-status" role="status">${status}</p>` : ''}`;
+}
+
+// Wait mode: the tuner listens and the song moves on when it hears the note
+// (songWaitHeard). It turns the tuner on, and off again when it did.
+function songWaitArm() {
+  if (!state.songWait) return;
+  state.songWaitState = { at: performance.now(), low: Infinity };
+  state.songWaitDone = false;
+  if (state.songCtx) state.songCtx.waitFrom = state.songCtx.idx;
+}
+async function songWaitToggle() {
+  if (state.songWait) { songWaitOff(); render(); return; }
+  songStop();
+  state.songWait = { startedTuner: !state.tuner.on || !!state.tuner.error };
+  songWaitArm();
+  logEvent('feature', { name: 'song-wait', family: measureFamily() });
+  if (state.songWait.startedTuner) {
+    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    await toggleTuner();
+    // Refused: the switch goes back off, the tuner's own message stays on show.
+    if (state.tuner.error) { state.songWait = null; render(); return; }
+  }
+  render();
+}
+function songWaitOff() {
+  const w = state.songWait;
+  state.songWait = null;
+  state.songWaitDone = false;
+  if (w?.startedTuner && state.tuner.on && !state.tuner.error) toggleTuner();
+}
+// A tuner reading while waiting. True when it moved the song on.
+function songWaitReading(reading) {
+  if (!state.songWait || state.view !== 'song' || state.songPlay || state.songWaitDone) return false;
+  const S = songOnInstrument();
+  if (!S) return false;
+  const last = S.notes.length - 1;
+  const at = songWaitTarget(S.notes, Math.min(state.songCtx.idx, last), state.songCtx.loop);
+  if (at == null) return false;
+  if (at !== state.songCtx.idx) state.songCtx.idx = at; // stepped over a rest or a missing note
+  const res = songWaitHeard(state.songWaitState ?? { at: 0, low: Infinity }, S.notes[at].midi, reading, performance.now(), { anyOctave: !S.inst });
+  state.songWaitState = res.w;
+  if (!res.heard) return false;
+  const next = songNextIndex(at, last, state.songCtx.loop);
+  const to = next == null ? null : songWaitTarget(S.notes, next, state.songCtx.loop);
+  if (to == null) state.songWaitDone = true;
+  else {
+    // Round the loop again: the notes count as not yet heard.
+    if (to <= at) state.songCtx.waitFrom = to;
+    state.songCtx.idx = to;
+  }
+  render();
+  return true;
+}
+
+// The song on my other instruments: fits, one note missing, or not (songCoverage).
+function songOnInstrumentsHtml(S) {
+  const here = S.inst?.id ?? state.currentInstrumentId;
+  const mine = sortInstruments(getInstruments()).filter(i => i.id !== here);
+  if (!mine.length) return '';
+  const rows = songCoverage(S.song, mine.map(i => ({ id: i.id, name: i.name, have: songHaveOf(i), easy: usesLayout(i) ? null : new Set(playableMidis(i).filter(m => !fingeringFor(i, m)?.states?.includes('h'))) })));
+  return `<h2 class="list-title">On your instruments</h2>
+    <div class="list">${rows.map(r => uiRow({
+      lead: 'music', title: r.name,
+      meta: escHtml(r.fit ? `${songKeyOn(S.song, r.fit.shift)}${r.fit.missing != null ? ` · ${songMissingLabel(r.fit)}` : ''}` : 'Needs notes it doesn’t have'),
+      trail: r.fit ? (r.fit.missing == null ? uiBadge('Fits', 'success') : uiBadge('One note missing', 'warning')) : uiBadge('Doesn’t fit'),
+      chevron: !!r.fit, action: r.fit ? 'song-on' : '', data: { id: r.id },
+    })).join('')}</div>`;
+}
+function songOpenOn(instId) {
+  const id = state.songCtx?.id;
+  const inst = getInstrument(instId);
+  if (!id || !inst) return;
+  songStop();
+  if (state.songWait) songWaitOff();
+  if (!openInstrument(instId, { push: false })) return;
+  openSong(id, usesLayout(inst) ? null : instId);
+}
+
 // Playing the song: each note for its length at the chosen speed (100 bpm
 // at 100%), the picture following.
 let _songTimer = null;
@@ -3608,8 +3713,9 @@ function songTick() {
   const ms = n.beats * 600 * (100 / state.tempo);
   _songTimer = setTimeout(() => {
     if (!state.songPlay) return;
-    if (state.songCtx.idx >= S.notes.length - 1) { songStop(); render(); return; }
-    state.songCtx.idx++;
+    const next = songNextIndex(state.songCtx.idx, S.notes.length - 1, state.songCtx.loop);
+    if (next == null) { songStop(); render(); return; }
+    state.songCtx.idx = next;
     songTick();
   }, ms);
 }
@@ -3625,8 +3731,17 @@ function songAction(action, el) {
   const S = songOnInstrument();
   if (!S) return false;
   const last = S.notes.length - 1;
+  if (action === 'song-loop') {
+    state.songCtx.loop = songLoopTap(state.songCtx.loop, Math.min(state.songCtx.idx, last));
+    logEvent('feature', { name: 'song-loop', family: measureFamily() });
+    render();
+    return true;
+  }
+  if (action === 'song-wait') { songWaitToggle(); return true; }
+  if (action === 'song-on') { songOpenOn(el.dataset.id); return true; }
   if (action === 'song-play') {
     if (state.songPlay) { songStop(); render(); return true; }
+    if (state.songWait) songWaitOff();
     initAudio();
     if (state.songCtx.idx >= last) state.songCtx.idx = 0;
     state.songPlay = { at: Date.now() };
@@ -3634,7 +3749,7 @@ function songAction(action, el) {
     songTick();
     return true;
   }
-  const go = i => { songStop(); state.songCtx.idx = Math.max(0, Math.min(last, i)); initAudio(); songSound(S.notes[state.songCtx.idx].midi); render(); };
+  const go = i => { songStop(); state.songCtx.idx = Math.max(0, Math.min(last, i)); songWaitArm(); initAudio(); if (!state.songWait) songSound(S.notes[state.songCtx.idx].midi); render(); };
   if (action === 'song-step') { go(parseInt(el.dataset.i, 10)); return true; }
   if (action === 'song-view') { state.songView = el.dataset.value; render(); return true; }
   if (action === 'song-lyrics') { state.showLyrics = !state.showLyrics; savePrefs(); render(); return true; }
@@ -3642,7 +3757,7 @@ function songAction(action, el) {
   if (action === 'song-share') { songShare(); return true; }
   if (action === 'song-prev') { go(state.songCtx.idx - 1); return true; }
   // Back to the first note, stopped, so the next Play starts the song over.
-  if (action === 'song-restart') { songStop(); state.songCtx.idx = 0; render(); return true; }
+  if (action === 'song-restart') { songStop(); state.songCtx.idx = songInLoop(state.songCtx.loop, state.songCtx.idx) ? state.songCtx.loop.from : 0; songWaitArm(); render(); return true; }
   if (action === 'song-next') { go(state.songCtx.idx + 1); return true; }
   return false;
 }
@@ -5702,6 +5817,7 @@ function onTunerReading(reading) {
     if (onListenReading(reading)) return;
     updateListenLive(reading);
   }
+  if (songWaitReading(reading)) return;
   const rec = state.rec;
   if (rec.armed && reading.stable && reading.hz > 0 && (!rec.auto || reading.since > rec.armedAt)) {
     captureReading(reading.hz);
@@ -6464,11 +6580,11 @@ function chordsScreenHtml({ cls = '', stageCls = '', stageAttrs = '', picture, c
 
 // ── Speed ─────────────────────────────────────────────────────────────────
 // One speed for everything that plays (arpeggios, scales, fingerings shown
-// note by note, previews), 50–150% of normal: a slider with presets, in
+// note by note, previews), 25–150% of normal: a slider with presets, in
 // Settings and behind the "1×" button on every chord card. Remembered and
 // synced (the tempo preference).
-const TEMPO_PRESETS = [50, 75, 100, 125];
-function clampTempo(v) { return Math.min(150, Math.max(50, Math.round((Number(v) || 100) / 5) * 5)); }
+const TEMPO_PRESETS = [25, 50, 75, 100, 125];
+function clampTempo(v) { return Math.min(150, Math.max(25, Math.round((Number(v) || 100) / 5) * 5)); }
 function tempoLabel(t = state.tempo) { return `${(t / 100).toFixed(2).replace(/\.?0+$/, '')}×`; }
 let _tempoSave = null;
 function setTempo(v, { preview = false } = {}) {
@@ -6484,7 +6600,7 @@ function setTempo(v, { preview = false } = {}) {
 function tempoControlHtml() {
   return `<div class="tempo">
       <div class="tempo-row">
-        <input type="range" class="tempo-slider" min="50" max="150" step="5" value="${state.tempo}" aria-label="Speed, percent of normal">
+        <input type="range" class="tempo-slider" min="25" max="150" step="5" value="${state.tempo}" aria-label="Speed, percent of normal">
         <span class="tempo-value">${state.tempo}%</span>
       </div>
       <div class="chips tempo-presets" role="group" aria-label="Speed presets">
