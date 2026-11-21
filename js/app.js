@@ -273,6 +273,8 @@ let _sheetReturnFocus = null;
 function focusKeyOf(el) {
   if (!el || el === document.body || !el.closest?.('#app')) return null;
   if (el.id) return '#' + CSS.escape(el.id);
+  // A note of the picture keeps the focus across a re-render.
+  if (el.dataset?.noteId && el.matches('.pan-note')) return `.pan-note[data-note-id="${CSS.escape(el.dataset.noteId)}"]`;
   if (!el.dataset?.action) return null;
   const scope = el.closest('.sheet') ? '.sheet ' : el.closest('.appbar') ? '.appbar ' : '.main ';
   return scope + Object.entries(el.dataset)
@@ -4099,6 +4101,9 @@ function loadQrLib() {
   _qrLib = new Promise((resolve, reject) => {
     const sc = document.createElement('script');
     sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    // Pinned: the hash cdnjs publishes for this file of this version.
+    sc.integrity = 'sha512-ZDSPMa/JM1D+7kdg2x3BsruQ6T/JpJo3jWDWkCZsP+5yVyp1KfESqLI+7RqB5k24F7p2cV7i2YHh/890y6P6Sw==';
+    sc.crossOrigin = 'anonymous';
     sc.onload = () => resolve(window.qrcode);
     sc.onerror = () => { _qrLib = null; reject(new Error('QR library unavailable')); };
     document.head.appendChild(sc);
@@ -8462,6 +8467,7 @@ const syncLocal = {
 };
 
 let _syncTimer = null;
+const _syncRejectedTold = new Set();
 let _syncRunning = false;
 let _syncAgain = false;
 
@@ -8497,6 +8503,12 @@ async function syncNow() {
     } else if (r.copies.length) showToast(`Changed on two devices, so both are kept: ${r.copies[0]}`);
     else if (before > 0 && r.pending === 0 && r.pushed) showToast('Synced');
     if (r.pushed) pushSharedInstruments();
+    // An item over the server's size cap stays on this device: said once.
+    const big = r.rejected.find(x => !_syncRejectedTold.has(`${x.kind}:${x.id}`));
+    if (big) {
+      _syncRejectedTold.add(`${big.kind}:${big.id}`);
+      showToast(`${big.name ? `“${big.name}”` : 'One item'} is too large to sync, so it stays on this device only. A smaller photo usually fixes it.`);
+    }
   } catch (err) {
     state.syncError = navigator.onLine === false ? 'offline' : 'error';
     state.syncPending = await pendingCount();
@@ -8806,6 +8818,19 @@ initSupabase(handleLogin);
 // An account works offline before (or without) its session coming back.
 if (accountOn()) startAccount();
 measureOpen();
+
+// The Content-Security-Policy is report-only for now (vercel.json): what it
+// would have blocked is counted here, by directive and host only, so the
+// policy can be enforced once this stays quiet.
+const _cspSeen = new Set();
+document.addEventListener('securitypolicyviolation', e => {
+  let host = e.blockedURI || '';
+  try { host = new URL(host).host || host; } catch { /* 'inline', 'eval', 'data' */ }
+  const key = `${e.effectiveDirective}|${host}`;
+  if (_cspSeen.has(key) || _cspSeen.size >= 10) return;
+  _cspSeen.add(key);
+  logEvent('csp_violation', { directive: e.effectiveDirective, host: String(host).slice(0, 80), enforced: e.disposition === 'enforce' });
+});
 
 // Sync when the user brings the app back to the foreground (tab switch, PWA resume).
 document.addEventListener('visibilitychange', () => {
@@ -10850,6 +10875,13 @@ document.addEventListener('input', e => {
 document.addEventListener('keydown', e => {
   // Rows that hold buttons of their own are divs with role=button: let the
   // keyboard activate them like real buttons.
+  // A note of the pan, drum or kalimba picture (js/pan.js): Enter or Space
+  // is a tap on it.
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.pan-note[role="button"]')) {
+    e.preventDefault();
+    e.target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    return;
+  }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('[role="button"][data-action]')) {
     e.preventDefault();
     e.target.click();

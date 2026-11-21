@@ -65,6 +65,23 @@ try {
     await p.locator('[data-action="select-chord"]').nth(2).click();
     await pictureShown(p);
   });
+  await step('the picture is playable from the keyboard: notes are named buttons, Enter picks one', first, async p => {
+    const notes = p.locator('.pan-wrap .pan-note[data-note]');
+    const first = notes.first();
+    assert.equal(await first.getAttribute('role'), 'button');
+    assert.equal(await first.getAttribute('tabindex'), '0');
+    assert.match(await first.getAttribute('aria-label'), /^[A-G]/);
+    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Identify' }).click();
+    await notes.nth(1).focus();
+    await p.keyboard.press('Enter');
+    await p.keyboard.press('Tab');
+    await p.keyboard.press('Space');
+    await p.waitForTimeout(100);
+    // Identify mode marks the picked notes; the focus stayed in the picture.
+    assert.equal(await p.locator('.pan-wrap .pan-note.highlight').count(), 2, 'Enter and Space each picked a note');
+    assert.ok(await p.evaluate(() => document.activeElement?.classList?.contains('pan-note')), 'focus is still on a note');
+    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Browse' }).click();
+  });
   await step('the Playlists tab opens, with New playlist and songs', first, async p => {
     await p.click('[data-action="hp-playlists"]');
     await p.waitForURL(/\/playlists$/);

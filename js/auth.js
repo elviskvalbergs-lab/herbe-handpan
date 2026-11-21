@@ -142,6 +142,22 @@ export function deviceKind(ua = typeof navigator !== 'undefined' ? navigator.use
   return 'computer';
 }
 
+// Every row of a query, a page at a time. Supabase answers with at most
+// 1,000 rows per request (the project's "Max rows"), and says nothing when
+// there were more: a pull, the account's counts or an export would just be
+// short. build() must return a fresh query with a stable order each time.
+// Resolves to { data: rows, error: null } or { data: null, error }.
+export const READ_PAGE = 1000;
+export async function readAllRows(build, page = READ_PAGE) {
+  const rows = [];
+  for (let from = 0; ; from += page) {
+    const { data, error } = await build().range(from, from + page - 1);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < page) return { data: rows, error: null };
+  }
+}
+
 // ── Sync by item (supabase/migrations/20261116_accounts.sql) ────────────────
 // The api js/sync.js's syncRound talks to. pull() throws when the server
 // can't be reached (the round stops, nothing changes); saveItem() returns
@@ -149,11 +165,12 @@ export function deviceKind(ua = typeof navigator !== 'undefined' ? navigator.use
 export const syncApi = {
   async pull(since) {
     if (!_sb || !_session) throw new Error('signed out');
-    let q = _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at,device_kind').order('updated_at');
-    if (since) q = q.gt('updated_at', since);
-    const { data, error } = await q;
+    const { data, error } = await readAllRows(() => {
+      const q = _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at,device_kind').order('updated_at').order('kind').order('id');
+      return since ? q.gt('updated_at', since) : q;
+    });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return data;
   },
   async saveItem({ kind, id, data, baseVersion, deleted, editedAt }) {
     if (!_sb || !_session) return null;
@@ -161,6 +178,9 @@ export const syncApi = {
       p_kind: kind, p_id: id, p_data: data, p_base_version: baseVersion, p_deleted: !!deleted,
       p_edited_at: editedAt, p_device_id: deviceId(), p_device_kind: deviceKind(),
     });
+    // The server's size cap (supabase/migrations/20261121_saved_item_size.sql):
+    // trying again won't help, so sync is told to leave this item and go on.
+    if (error && /item_too_large|item_id_too_long/.test(error.message || '')) return { ok: false, rejected: 'too-large' };
     if (error) { console.warn('Sync error:', error.message); return null; }
     return res;
   },
@@ -200,10 +220,10 @@ export async function fetchAccess() {
 // shows it next to what this device holds, to see where things are.
 export async function fetchAccountCounts() {
   if (!_sb || !_session) return null;
-  const { data, error } = await _sb.from('saved_items').select('kind,deleted_at');
+  const { data, error } = await readAllRows(() => _sb.from('saved_items').select('kind,id,deleted_at').order('kind').order('id'));
   if (error) return null;
   const counts = {};
-  for (const r of data ?? []) if (!r.deleted_at) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
+  for (const r of data) if (!r.deleted_at) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
   return counts;
 }
 
@@ -211,7 +231,7 @@ export async function fetchAccountCounts() {
 export async function exportAccountRows() {
   if (!_sb || !_session) return null;
   const [items, profile] = await Promise.all([
-    _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at'),
+    readAllRows(() => _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at').order('kind').order('id')),
     _sb.from('profiles').select('created_at,privacy_version,signup_source,signup_intent,last_seen_on').maybeSingle(),
   ]);
   if (items.error) return null;

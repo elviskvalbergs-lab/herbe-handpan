@@ -24,6 +24,15 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
 // then fails the smoke suite instead of quietly getting the app's HTML.
 const APP_PATHS = /^\/(|play|(handpan|tongue-drum|kalimba|ocarina|flute|s)(\/.*)?)$/;
 
+// The response headers production sends (vercel.json), with one change: the
+// Content-Security-Policy that is report-only there is ENFORCED here, so
+// anything the tests do that the policy would block is a console error and
+// fails the run. That is how the policy is checked on every tested path
+// before it is enforced for real.
+const VERCEL_HEADERS = Object.fromEntries(JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')).headers
+  .find(h => h.source === '/(.*)').headers
+  .map(h => [h.key === 'Content-Security-Policy-Report-Only' ? 'Content-Security-Policy' : h.key, h.value]));
+
 export async function serveApp({ headers = {} } = {}) {
   if (!existsSync(join(ROOT, 'index.html'))) throw new Error('index.html is missing: run python3 build.py first');
   const app = { intercept: null };
@@ -37,8 +46,10 @@ export async function serveApp({ headers = {} } = {}) {
     if (APP_PATHS.test(path)) file = join(ROOT, 'index.html');
     else if (!existsSync(file) || statSync(file).isDirectory()) { res.writeHead(404, { 'content-type': 'text/plain' }).end('Not found'); return; }
     const isPage = file.endsWith('index.html');
-    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store', ...(isPage ? headers : {}) });
-    res.end(readFileSync(file));
+    res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store', ...VERCEL_HEADERS, ...(isPage ? headers : {}) });
+    // The tests swap supabase-js for a stand-in, which its integrity hash
+    // would (rightly) refuse: the attribute is left out of the served page.
+    res.end(isPage ? readFileSync(file, 'utf8').replace(/ integrity="sha384-[^"]+"/, '') : readFileSync(file));
   });
   await new Promise(r => http.listen(0, '127.0.0.1', r));
   Object.assign(app, { http, base: `http://localhost:${http.address().port}`, close: () => new Promise(r => { http.closeAllConnections?.(); http.close(r); }) });

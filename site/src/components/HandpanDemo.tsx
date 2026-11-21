@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type MouseEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { panSvg, type Chord, type PanFamily } from "@/lib/engine";
 import { playPanChord, playPanNote } from "@/lib/sound";
 import { btnCta, btnPrimary } from "@/lib/ui";
@@ -26,12 +26,20 @@ export function HandpanDemo({
     const note = (e.target as Element).closest<SVGGElement>(".pan-note")?.dataset.note;
     if (note) playPanNote(note, drawing, family);
   };
+  // The picture's notes are buttons (role, tabindex and a label from js/pan.js): Enter or Space plays one.
+  const keyNote = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const note = (e.target as Element).closest<SVGGElement>(".pan-note")?.dataset.note;
+    if (!note) return;
+    e.preventDefault();
+    playPanNote(note, drawing, family);
+  };
   return (
     <div className="flex w-full flex-col items-center gap-5">
-      {/* The notes are SVG shapes: a pointer extra next to the chord buttons, which are the keyboard way in. */}
       <div
         ref={drawingRef}
         onClick={tapNote}
+        onKeyDown={keyNote}
         className="pan-drawing w-full max-w-[440px] [&_.pan-note[data-note]]:cursor-pointer"
         dangerouslySetInnerHTML={{ __html: panSvg(slug, chord?.notes ?? [], family) }}
       />
