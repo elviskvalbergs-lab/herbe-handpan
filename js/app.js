@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands, songTimeLabel } from './songs.js';
+import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, panPlaces, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -87,6 +87,7 @@ const state = {
   showSizes: false,        // hole sizes in mm on ocarina diagrams
   closeUp: true,           // flute fingerings zoomed in on the holes
   chordsAll: false,        // Chords lists: every chord (true) or the main ones first (false)
+  showLyrics: true,        // a song's words under its notes and tab
   ocLegendSeen: false,     // the hole-state legend line has been dismissed
   handLegendSeen: false,   // the finger legend has been shown once
   layout: null,            // current Layout object
@@ -3057,7 +3058,8 @@ function viewSong() {
   const cur = state.songPrinting ? { midi: null } : notes[idx];
   const nextNote = state.songPrinting ? null : notes.slice(idx + 1).find(n => n.midi != null);
   const nn = m => displayNote(midiToNoteName(m), uf, us);
-  const T = songTabShown(inst) ? songTab(S) : null;
+  const LY = song.lyrics && state.showLyrics ? songLyrics(song, notes) : null;
+  const T = songTabShown(inst) ? songTab(S, { lyrics: !!LY }) : null;
   const picture = inst
     ? (cur.midi != null
       ? renderFingering(inst, cur.midi, { size: 'large', useFlats: uf, useSolfege: us, showFingers: state.showFingers, closeUp: state.closeUp, nextMidi: nextNote?.midi ?? null })
@@ -3069,7 +3071,7 @@ function viewSong() {
       strikeMarks: T ? songTabMarks(S, T) : [],
     });
   const playing = !!state.songPlay;
-  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}</button>`).join('');
+  const chips = notes.map((n, i) => `<button type="button" class="chip song-note${i === idx ? ' is-current' : ''}${LY ? ' has-lyric' : ''}" data-action="song-step" data-i="${i}"${i === idx ? ' aria-current="true"' : ''}>${n.midi == null ? '·' : escHtml(nn(n.midi))}${LY ? `<span class="song-note-lyric">${escHtml(LY[i]?.text ?? '')}</span>` : ''}</button>`).join('');
   const after = songsThatGoTogether(song, songsFor(inst));
   return `${backAppBar(song.title, { fallback: 'home' })}
     <div class="song">
@@ -3081,22 +3083,24 @@ function viewSong() {
         ${nextNote ? `<span class="song-now-next">Next ${escHtml(nn(nextNote.midi))}</span>` : '<span class="song-now-next">Last note</span>'}
         <span class="song-now-pos">${idx + 1} / ${notes.length}</span>
       </div>
+      ${LY && !state.songPrinting ? songLyricLineHtml(LY, idx) : ''}
       <div class="song-controls">
         ${uiIconBtn('skip-back', 'Back one note', { action: 'song-prev' })}
         <button type="button" class="btn btn-primary song-play" data-action="song-play">${icon(playing ? 'square' : 'play')} ${playing ? 'Stop' : idx ? 'Play on' : 'Play'}</button>
         ${uiIconBtn('skip-forward', 'Next note', { action: 'song-next' })}
         ${speedBtnHtml()}
       </div>
-      ${songTabFamily(inst) ? `<div class="song-view-row">
-        ${uiSeg([{ value: 'tab', label: 'Tab' }, { value: 'notes', label: 'Notes' }], T ? 'tab' : 'notes', { action: 'song-view', label: 'Show the song as' })}
+      ${songTabFamily(inst) || song.lyrics ? `<div class="song-view-row">
+        ${songTabFamily(inst) ? uiSeg([{ value: 'tab', label: 'Tab' }, { value: 'notes', label: 'Notes' }], T ? 'tab' : 'notes', { action: 'song-view', label: 'Show the song as' }) : ''}
+        ${song.lyrics ? `<button type="button" class="btn btn-secondary song-lyrics-btn" data-action="song-lyrics" aria-pressed="${state.showLyrics}">${icon(state.showLyrics ? 'check' : 'plus')} Lyrics</button>` : ''}
         ${T ? uiIconBtn('printer', 'Print the tab', { action: 'song-print' }) : ''}
       </div>` : ''}
-      ${T ? songTabHtml(S, T, state.songPrinting ? -1 : idx) : `<div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>`}
+      ${T ? songTabHtml(S, T, state.songPrinting ? -1 : idx, LY) : `<div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>`}
       ${after.length ? `<h2 class="list-title">Goes well after it</h2>
         <div class="list">${after.map(({ song: s, shift: sh }) => uiRow({ lead: 'music', title: s.title, meta: escHtml(songMeta(s, sh)), chevron: true, action: 'song-open', data: { id: s.id, inst: inst?.id ?? '' } })).join('')}</div>` : ''}
       <p class="pl-section-hint song-licence">${song.sourceName
-        ? `Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">${escHtml(song.sourceName)}</a>, public domain.`
-        : `The tune is traditional. Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.`}</p>
+        ? `${song.lyrics ? 'Melody and words' : 'Melody'} from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">${escHtml(song.sourceName)}</a>, public domain${song.lyrics ? '; the words in today’s spelling' : ''}.`
+        : `The tune is traditional. ${song.lyrics ? 'Melody and words' : 'Melody'} from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.`}</p>
     </div>`;
 }
 
@@ -3124,8 +3128,10 @@ function songFieldNumbers(layout) {
   order.filter(Boolean).forEach(n => { if (!nums.has(n)) nums.set(n, start + nums.size); });
   return nums;
 }
-const SONG_TAB_LINE = 16; // columns on a line of the tab
-function songTab(S) {
+// Columns on a line of the tab: fewer with lyrics, so the words fit.
+const SONG_TAB_LINE = 16, SONG_TAB_LINE_LYRICS = 12;
+function songTab(S, { lyrics = false } = {}) {
+  const lineCols = lyrics ? SONG_TAB_LINE_LYRICS : SONG_TAB_LINE;
   const nums = songFieldNumbers(state.layout);
   const places = new Map(panPlaces(state.layout, { rotated: state.ringRotated }).map(p => [p.note, p]));
   const sideOf = note => {
@@ -3140,7 +3146,7 @@ function songTab(S) {
   const lines = [];
   for (const b of bars) {
     const line = lines[lines.length - 1];
-    if (line && line.cols + b.cols.length <= SONG_TAB_LINE) { line.bars.push(b); line.cols += b.cols.length; }
+    if (line && line.cols + b.cols.length <= lineCols) { line.bars.push(b); line.cols += b.cols.length; }
     else lines.push({ bars: [b], cols: b.cols.length });
   }
   return { nums, hands: songHands(sides), sideOf, lines };
@@ -3154,7 +3160,7 @@ function songTabMarks(S, T) {
     return { note: n, marks: [{ n: T.nums.get(n), hand: side < 0 ? 'L' : side > 0 ? 'R' : '' }] };
   });
 }
-function songTabHtml(S, T, idx) {
+function songTabHtml(S, T, idx, LY = null) {
   const num = i => T.nums.get(S.name(S.notes[i].midi)) ?? '?';
   const cell = (c, hand) => {
     if (c.i != null && T.hands[c.i] === hand) {
@@ -3169,12 +3175,31 @@ function songTabHtml(S, T, idx) {
         ${b.cols.map(c => `<span class="tab-count${c.count && c.count !== '+' ? ' is-beat' : ''}">${c.count}</span>`).join('')}
         ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'R')}</span>`).join('')}
         ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'L')}</span>`).join('')}
+        ${LY ? b.cols.map(c => `<span class="tab-lyric${c.i === idx ? ' is-current' : ''}">${c.i != null && LY[c.i] ? escHtml(LY[c.i].text) : ''}</span>`).join('') : ''}
       </div>`).join('');
-    return `<div class="tab-line"><div class="tab-hands" aria-hidden="true"><span></span><span>R</span><span>L</span></div>${bars}</div>`;
+    return `<div class="tab-line${LY ? ' has-lyrics' : ''}"><div class="tab-hands" aria-hidden="true"><span></span><span>R</span><span>L</span>${LY ? '<span></span>' : ''}</div>${bars}</div>`;
   }).join('');
   const word = songTabFamily(null) === 'tongue-drum' ? 'tongue' : 'note';
   return `<div class="song-tab" role="group" aria-label="Tab: the number of each ${word}, R right hand, L left hand">${lines}</div>
     <p class="pl-section-hint song-tab-key">${songTabFamily(null) === 'handpan' ? 'Numbers: the ding is 0, then the notes from low to high, as on the picture.' : 'Numbers: the tongues from low to high, as on the picture.'} R is the right hand, L the left. A line after a number: let it ring.</p>`;
+}
+// The words around the current note, the current syllable marked: a few
+// syllables before it and the rest of the phrase after.
+function songLyricLineHtml(LY, idx) {
+  const at = LY.map((x, i) => (x ? i : -1)).filter(i => i >= 0);
+  if (!at.length) return '';
+  let k = at.findLastIndex(i => i <= idx);
+  if (k < 0) k = 0;
+  const from = Math.max(0, k - 4), to = Math.min(at.length, k + 9);
+  let html = '';
+  for (let j = from; j < to; j++) {
+    const x = LY[at[j]];
+    // Whole words: a syllable's hyphen only where the line stops mid-word.
+    const t = escHtml(j < to - 1 ? x.text.replace(/-$/, '') : x.text);
+    if (j > from && x.word) html += ' ';
+    html += j === k && at[j] <= idx ? `<mark>${t}</mark>` : t;
+  }
+  return `<p class="song-lyric-line" aria-live="off">${from > 0 ? '… ' : ''}${html}${to < at.length ? ' …' : ''}</p>`;
 }
 function songPrint() {
   songStop();
@@ -3240,6 +3265,7 @@ function songAction(action, el) {
   const go = i => { songStop(); state.songCtx.idx = Math.max(0, Math.min(last, i)); initAudio(); songSound(S.notes[state.songCtx.idx].midi); render(); };
   if (action === 'song-step') { go(parseInt(el.dataset.i, 10)); return true; }
   if (action === 'song-view') { state.songView = el.dataset.value; render(); return true; }
+  if (action === 'song-lyrics') { state.showLyrics = !state.showLyrics; savePrefs(); render(); return true; }
   if (action === 'song-print') { songPrint(); return true; }
   if (action === 'song-prev') { go(state.songCtx.idx - 1); return true; }
   if (action === 'song-next') { go(state.songCtx.idx + 1); return true; }
@@ -7855,6 +7881,7 @@ function loadPrefs() {
     if (typeof p.showSizes === 'boolean') state.showSizes = p.showSizes;
     if (typeof p.closeUp === 'boolean') state.closeUp = p.closeUp;
     if (typeof p.chordsAll === 'boolean') state.chordsAll = p.chordsAll;
+    if (typeof p.showLyrics === 'boolean') state.showLyrics = p.showLyrics;
     if (typeof p.ocLegendSeen === 'boolean') state.ocLegendSeen = p.ocLegendSeen;
     if (typeof p.handLegendSeen === 'boolean') state.handLegendSeen = p.handLegendSeen;
     if (['dark', 'light', 'auto'].includes(p.theme)) state.theme = p.theme;
@@ -7891,6 +7918,7 @@ function savePrefs() {
     showSizes: state.showSizes,
     closeUp: state.closeUp,
     chordsAll: state.chordsAll,
+    showLyrics: state.showLyrics,
     ocLegendSeen: state.ocLegendSeen,
     handLegendSeen: state.handLegendSeen,
     theme: state.theme,
@@ -8139,7 +8167,7 @@ function startAccount() {
 // The items on this device, for syncRound (js/sync.js). Handpan instruments
 // are left out: they're made from the saved layouts, which sync themselves.
 const SYNC_LISTS = { playlist: 'hp-playlists', progression: 'hp-progressions', layout: 'hp-layouts', instrument: 'hp-instruments' };
-const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'closeUp', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
+const SYNC_PREFS = ['ringRotated', 'useFlats', 'useSolfege', 'autoplaySeconds', 'tempo', 'showFingers', 'showSizes', 'chordsAll', 'showLyrics', 'closeUp', 'ocLegendSeen', 'handLegendSeen', 'theme', 'lastPath', 'updatedAt'];
 
 function syncReadList(key) {
   try { const v = JSON.parse(dataStore().getItem(key) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }

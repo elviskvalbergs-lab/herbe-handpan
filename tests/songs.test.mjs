@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCALES, createLayoutFromScale, getAllNotes, noteToMidi } from '../js/data.js';
 import { instrumentFromChart } from '../js/charts.js';
-import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether, songBars, songHands, songCountLabel, songTimeLabel } from '../js/songs.js';
+import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether, songBars, songHands, songCountLabel, songTimeLabel, songLyrics } from '../js/songs.js';
 
 test('every song has a source, an origin, a key and notes that read', () => {
   assert.ok(SONGS.length >= 50);
@@ -144,4 +144,29 @@ test('tab bars: a pickup bar starts late, every note starts in a column, held no
 test('tab hands: side notes by their side, a ding by the other hand', () => {
   assert.deepEqual(songHands([1, -1, 0, 0, null, -1, 0]), ['R', 'L', 'R', 'L', null, 'L', 'R']);
   assert.deepEqual(songHands([0, 0]), ['R', 'L']);
+});
+
+test('lyrics: one syllable per note, read from the score with its slurs', () => {
+  const withLyrics = SONGS.filter(s => s.lyrics);
+  assert.ok(withLyrics.length >= 40);
+  for (const s of withLyrics) {
+    const notes = songNotes(s);
+    assert.equal(s.lyrics.split(' ').length, notes.filter(n => n.midi != null).length, s.id);
+  }
+  const tw = SONGS.find(s => s.id === 'twinkle-twinkle');
+  const ly = songLyrics(tw);
+  assert.deepEqual(ly.slice(0, 7).map(x => x.text), ['Twin-', 'kle,', 'twin-', 'kle,', 'lit-', 'tle', 'star,']);
+  assert.deepEqual(ly.slice(0, 3).map(x => x.word), [true, false, true]);
+  // Silent Night: "Stil-" holds over two notes (a slur), then "le".
+  const sn = songLyrics(SONGS.find(s => s.id === 'silent-night'));
+  assert.deepEqual(sn.slice(0, 4).map(x => x?.text ?? null), ['Stil-', null, 'le', 'Nacht!']);
+  assert.equal(songLyrics(SONGS.find(s => s.id === 'ode-to-joy')), null);
+});
+
+test('Latvian lyrics from the Vītols scan, in today\'s spelling, line up with the notes', () => {
+  const lv = SONGS.filter(s => s.origin === 'lv');
+  assert.ok(lv.every(s => s.lyrics), 'every Latvian song has its first verse');
+  const pv = songLyrics(SONGS.find(s => s.id === 'put-vejini'));
+  // F4 Pūt, C5 vē-, A4 ji- (slurred to G4), F4 ņi,
+  assert.deepEqual(pv.slice(0, 5).map(x => x?.text ?? null), ['Pūt,', 'vē-', 'ji-', null, 'ņi,']);
 });
