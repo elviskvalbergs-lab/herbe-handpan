@@ -8,7 +8,7 @@ From the outside-in review (November 2026). CLAUDE.md says every instrument gets
 | b | `review/chart-gaps` | Charts for the types that silently fell back to the tuner, and an honest line for those still missing |
 | c | `review/recorder` | The recorder as a full instrument |
 
-They don't depend on each other and can be merged in any order. (b) and (c) both add charts to `js/charts.js` and types to the setup, in different places.
+None needs another to work, so they can be merged in any order. After the first is merged, the others need `preview` merged into them: they touch the same lists (`js/charts.js`, `js/links.js`, the setup's types in `js/app.js`, CLAUDE.md's checklist) and git can't join those lines by itself. The conflicts are small and mechanical.
 
 ## 1. Play levels on ocarina and flute
 
