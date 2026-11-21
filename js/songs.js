@@ -827,6 +827,71 @@ export function playableSongs(have, songs = SONGS, { easy = null, near = false }
   return near ? [...all.filter(x => x.missing == null), ...all.filter(x => x.missing != null)] : all;
 }
 
+// ── The player: loop, wait mode, a song across instruments ────────────────
+
+/** Loop: one tap sets where it starts, the next where it ends (either order),
+ *  a third clears it. loop: null | { from, to: null } | { from, to }. */
+export function songLoopTap(loop, idx) {
+  if (!loop) return { from: idx, to: null };
+  if (loop.to == null) return { from: Math.min(loop.from, idx), to: Math.max(loop.from, idx) };
+  return null;
+}
+/** Whether note i is inside a finished loop. */
+export function songInLoop(loop, i) { return !!loop && loop.to != null && i >= loop.from && i <= loop.to; }
+/** The note after idx: the loop's start after its end, null after the song's
+ *  last note. A loop still being set (no end yet) doesn't loop. */
+export function songNextIndex(idx, last, loop = null) {
+  if (loop && loop.to != null && idx >= loop.to) return loop.from;
+  return idx >= last ? null : idx + 1;
+}
+/** From idx on, the first note to wait for: rests and the note the
+ *  instrument lacks are stepped over (through the loop). null: none left. */
+export function songWaitTarget(notes, idx, loop = null) {
+  let i = idx;
+  for (let k = 0; k <= notes.length; k++) {
+    if (i == null) return null;
+    if (notes[i].midi != null && !notes[i].gone) return i;
+    i = songNextIndex(i, notes.length - 1, loop);
+  }
+  return null;
+}
+
+/** Wait mode: whether what the tuner hears is the note waited for, played
+ *  anew. reading: the tuner's { midi, stable, since, level } (js/tuner.js);
+ *  w: { at, low } since the last note counted (at: when; low: the quietest
+ *  the sound has been since). The pitch has to be within half a semitone
+ *  (any octave when anyOctave: a drum's overtone can be louder than its
+ *  note). "Anew": a note that began after the last one counted, or, for the
+ *  same note struck again while it still rings, the sound at least twice as
+ *  loud as it had faded to. Returns { heard, w }. */
+export function songWaitHeard(w, target, reading, now, { anyOctave = false, minGapMs = 150 } = {}) {
+  const level = reading?.level ?? 0;
+  const low = Math.min(w.low ?? Infinity, reading?.midi == null ? 0 : level);
+  const quiet = { heard: false, w: { at: w.at, low } };
+  if (!reading || reading.midi == null || !reading.stable || target == null) return quiet;
+  let d = reading.midi - target;
+  if (anyOctave) d -= 12 * Math.round(d / 12);
+  if (Math.abs(d) >= 0.5 || now - w.at < minGapMs) return quiet;
+  const fresh = reading.since > w.at || (level > 0 && level >= Math.max(low, 1e-4) * 2 && low < level);
+  if (!fresh) return quiet;
+  return { heard: true, w: { at: now, low: level } };
+}
+
+/** A song on several instruments, best first: fits, then almost fits, then
+ *  not. list: [{ id, name, have, easy }] → [{ id, name, fit }] (fit: songFit
+ *  or null). */
+export function songCoverage(song, list) {
+  const rank = f => (!f ? 2 : f.missing == null ? 0 : 1);
+  return list.map((x, i) => ({ id: x.id, name: x.name, fit: x.have ? songFit(song, x.have, { easy: x.easy ?? null }) : null, i }))
+    .sort((a, b) => rank(a.fit) - rank(b.fit) || a.i - b.i).map(({ i, ...x }) => x);
+}
+/** The songs that fit at least one of several instruments (near: or almost
+ *  fit one): [{ song, on: [{ id, name, fit }] }], for a list across all of
+ *  My instruments. */
+export function songsAcross(list, songs = SONGS, { near = false } = {}) {
+  return songs.map(song => ({ song, on: songCoverage(song, list).filter(x => x.fit && (near || x.fit.missing == null)) })).filter(x => x.on.length);
+}
+
 // The key a song is played in on the instrument: its written key moved by shift.
 const SONG_KEY_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 export function songKeyOn(song, shift) {
