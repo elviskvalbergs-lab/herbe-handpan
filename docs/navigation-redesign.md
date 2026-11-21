@@ -23,6 +23,12 @@ every one is a label, an order or a default, cheap to flip afterwards.
 | 8 | Own-made ocarinas have a fifth tab (Build or Set up) | Keep as the fifth tab, only on those instruments. | Move into the instrument's ⋯ menu. |
 | 9 | Settings rows for one instrument family | Show a family's section only when the person has, or is trying, an instrument of that family. | Always show everything, collapsed. |
 
+### Answered by the owner after the first build
+
+- **Speed stays on the chord card** (question 4). It was put wherever something plays so people can slow down to their level at once. Restored; the row in ⋯ is gone.
+- **Set up is for every instrument that is yours** (question 8), not for own-made ones only. It already was on every saved ocarina and flute (the question's wording was wrong). A saved handpan, tongue drum or kalimba now has Set up too, in place of Pan, with its name and photo there. A maker's tuning cannot be changed in place; "Make my own copy" gives one that can.
+- **The app bars are merged** (§7): `instrumentAppBar` replaces `handpanAppBar` and `ocHeader`.
+
 ## 1. The jobs
 
 A jammer opens Oakhum for one of three things:
@@ -171,7 +177,7 @@ redesign touches a pair it is merged into one shared part:
 | `hpFiltersSheet` / `ocFiltersSheet` | `chordFiltersSheet` | part 2 |
 | `hpMoreSheet` / `ocChordMoreSheet` | `chordMoreSheet` | part 2 |
 | the two Browse/Identify/Listen switches | `chordModeSegHtml` | part 2 |
-| `handpanAppBar` / `ocHeader` | left as they are: the redesign does not change the app bar | – |
+| `handpanAppBar` / `ocHeader` | `instrumentAppBar` | follow-up |
 
 ## 8. Build order
 

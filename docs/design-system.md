@@ -131,13 +131,16 @@ Every instrument has the same tabs in the same order (`instrumentTabs` in `js/ap
 
 | Family | Tabs (in order) | Opens on |
 | --- | --- | --- |
-| Handpan, tongue drum, kalimba (saved) | **Chords** · **Songs** · **Playlists** · **Pan** (Drum, Kalimba: the `editor` view) | Chords |
-| The same, unsaved (from a link or Play something else) | the same | Pan (a link without a tab lands in the editor) |
+| Handpan, tongue drum, kalimba (saved) | **Chords** · **Songs** · **Playlists** · **Set up** (the `editor` view, with the "Your handpan" card) | Chords |
+| The same, unsaved (from a link or Play something else) | Chords · Songs · Playlists · **Pan** (Drum, Kalimba) | Pan (a link without a tab lands in the editor) |
 | Ocarina/flute, traditional or calibrated | Chords · Songs · Playlists · **Notes** | Notes |
 | Ocarina, scale-built | … · Notes · **Build** | Build while `build.stage !== 'done'`, otherwise Notes |
 | Ocarina, custom | … · Notes · **Set up** | Set up until calibrated |
 | Shared by code (read-only) | Chords · Songs · Notes | Notes |
 
+- **Set up is on every instrument that is yours**, whatever it is: an ocarina or flute you saved has Notes and Set up (its name and photo, where the holes are, which finger covers which, your own fingerings); a saved handpan, tongue drum or kalimba has Set up in place of Pan (the same picture and notes, with the same "Your …" card, `instSetupCardHtml`). One you are only trying has no Set up: Save puts it in My instruments.
+- **A maker's tuning stays as it is.** The notes of a catalogue scale are not edited in place (no shell steppers, no Move notes). **Make my own copy** (`clone-layout`, was "Customize") turns it into "My D Kurd", a tuning of your own where notes can be changed, added and, on a handpan, moved to where they are on yours.
+- **One app bar** (`instrumentAppBar`, replacing `handpanAppBar` and `ocHeader`): the switcher, the Not saved badge, tuner and ⋯, the tabs, and under it the banner of an instrument that is not kept yet. The banner is on every tab of every instrument (it was only on a handpan's Pan tab).
 - Chords, Songs, Playlists and Notes only appear when `playableMidis(inst).length > 0`.
 - **Songs** (`songsTabHtml`): Songs to learn (`songsSectionHtml`), then one row, "Paste a chord sheet", for a song whose chords you have.
 - **Playlists** (`playlistsTabHtml`): the one kind of list, §6.9. It is where Practice is started (ocarina) and where a playlist starts playing (handpan). Songs are no longer under it.
@@ -609,7 +612,7 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 │           (  pan SVG  )              │ │ ⟳ = toggle-rotation, overlaid top-right
 │            ╰─────────╯               │ │
 │ ┌──────────────────────────────────┐ │ │ chord card: title 17/600, meta 13 text-3 (notes);
-│ │ C Add9            [▶ Chord] ▯  ⋯ │ │ │ ▶ Chord btn-primary; ▯ Add to a playlist
+│ │ C Add9        [▶ Chord] 1× ▯  ⋯ │ │ │ ▶ Chord btn-primary; 1× speed; ▯ Add to a playlist
 │ │ C4 · E4 · G4 · D3                │ │ │ (chordSaveBtn, a bookmark, filled when in one);
 │ │ Goes well with (F)(G)(Am)        │ │ │ ⋯ More → sheet. One line of chips under it.
 │ └──────────────────────────────────┘ │ │
@@ -627,16 +630,16 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 
 **One thing at a time** (docs/navigation-redesign.md §3). The card answers "what is this chord, and what next"; everything set once or used rarely is one tap away:
 
-- **The card has three controls**: ▶ Chord, the bookmark, ⋯. Speed is not on the card: it is in ⋯ and in Settings.
+- **The card has four controls**: ▶ Chord, the speed (1×), the bookmark, ⋯. The speed button is on every screen where something plays (chord cards, the song player, playlists), so a player can slow down to their level without leaving the screen; it is also in Settings.
 - **Add to a playlist is a bookmark, not a heart**: it opens the Add to playlist sheet, it is not a one-tap favourite. It is on the card only. A row shows a small filled bookmark (`.chord-saved`, no button) when its chord is in a playlist.
-- **⋯ is one sheet on every instrument** (`chordMoreSheet`): Speed, the instrument's rows, "Progressions with this chord" (the Goes well with sheet), then the instrument's extra content. Handpan (`hpMoreSheet`): Play the scale, Save this voicing, Copy link, related chords. Ocarina and flute (`ocChordMoreSheet`): octaves, blown-together pairs, the hole legend, Which finger is which.
+- **⋯ is one sheet on every instrument** (`chordMoreSheet`): the instrument's rows, "Progressions with this chord" (the Goes well with sheet), then the instrument's extra content. Handpan (`hpMoreSheet`): Play the scale, Save this voicing, Copy link, related chords. Ocarina and flute (`ocChordMoreSheet`): octaves, blown-together pairs, the hole legend, Which finger is which.
 - **The switch says what each way does**: All chords · Tap notes · Listen (`chordModeSegHtml`; was Browse · Identify · Listen). "Listen" keeps one meaning in the app: Oakhum names the chord of music playing around you.
 - **The list head is one line** (`chordListLineHtml`): the count and "Show all" on the left, Filters (with how many are on) on the right.
 - **Filters is one sheet on every instrument** (`chordFiltersSheet`): "Starts on" (the root chips, which used to be a row on the screen), Notes in chord, Type, then the instrument's field (handpan: Playlist; ocarina, flute: Scale). Clear all clears the root too, and the root counts in the button's number.
 
 - **Selected-chord bar** with no chord selected: "Tap a chord to see it on the pan" (15 `--text-2`) plus a `[▶ Scale]` secondary button.
 - **More sheet** (with a chord selected), as rows:
-  - Speed (opens the speed sheet), then Play the scale (`play-scale`).
+  - Play the scale (`play-scale`).
   - Save this voicing to "Favorites" (`update-playlist-entry`, only when it applies).
   - A **Related chords** section with the "Same type, other roots" and "Shares 2+ notes" chips (`select-chord`; tapping one closes the sheet and selects it).
   - Copy link to this chord.
@@ -1035,7 +1038,7 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 | Screen | Shared parts | What an instrument supplies |
 |---|---|---|
 | Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml` (▶ Chord, `chordSaveBtn`, ⋯), `chordRowHtml` (no buttons), the switch `chordModeSegHtml` (All chords · Tap notes · Listen), the list line `chordListLineHtml` (main chords / Show all, Filters), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`), the Filters sheet `chordFiltersSheet` (Starts on from `chordRootsOf`, `chordCountField`, `chordTypeField`) and the ⋯ sheet `chordMoreSheet`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows; anything below the card (ocarina/flute: notes in playing order and the move); its field in the Filters sheet (handpan: playlist; ocarina/flute: scale); its rows and extra content in the ⋯ sheet |
-| Tab bar | `instrumentTabs` / `instrumentTabBar` | its own tab (Pan, Drum, Kalimba or Notes; Build / Set up) |
+| App bar and tab bar | `instrumentAppBar` (switcher, badge, banner), `instrumentTabs` / `instrumentTabBar` | its own tab (Pan, Drum, Kalimba or Notes; Build / Set up) |
 | Playlists tab | `playlistsTabHtml` | nothing |
 | Songs tab | `songsTabHtml` | nothing |
 | Playlist page | one row per entry; tapping it opens the chord on its instrument's Chords screen | nothing |
