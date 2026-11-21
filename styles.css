@@ -1908,3 +1908,56 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 /* The playlist player's buttons: back to the first chord, then Play/Stop. */
 .prog-play-row { display: flex; gap: var(--space-2); align-items: stretch; }
 .prog-play-row .btn-block { flex: 1; }
+/* ── Makers and shops (js/makers-ui.js; docs/makers-programme.md) ─────────── */
+/* "Made by" under the app bar of an instrument opened by a maker's code. */
+.made-by {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 40px;
+  padding: var(--space-1) var(--space-2); margin-bottom: var(--space-3);
+  background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+  font: var(--fs-13)/var(--lh-13) var(--font); color: var(--text-2); text-align: left; cursor: pointer;
+}
+.made-by strong { color: var(--text-1); font-weight: var(--fw-semibold); }
+.made-by-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.made-by .ico { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-3); }
+.made-by:active { background: var(--surface-2); }
+
+.maker-logo { display: block; flex-shrink: 0; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
+.maker-logo.is-initials { display: grid; place-items: center; color: var(--text-1); font-weight: var(--fw-semibold); }
+.maker-logo-sm { width: 24px; height: 24px; border-radius: 6px; font-size: 10px; }
+.maker-logo-md { width: 40px; height: 40px; font-size: var(--fs-13); }
+.maker-logo-lg { width: 64px; height: 64px; border-radius: 14px; font-size: var(--fs-17); }
+
+.maker-pitch-title { font: var(--fw-semibold) var(--fs-20)/var(--lh-20) var(--font); color: var(--text-1); margin-bottom: var(--space-2); }
+.maker-cta { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+.maker-cta .field-help { text-align: center; }
+.maker-form-error { margin-top: var(--space-3); text-align: center; }
+
+.maker-status { padding: var(--space-3) var(--space-4); border-radius: var(--r-md); background: var(--accent-soft); margin-bottom: var(--space-4); }
+.maker-status.is-ok { background: var(--success-soft); }
+.maker-status.is-wait, .maker-status.is-warn { background: var(--warning-soft); }
+.maker-status-title { font-weight: var(--fw-semibold); color: var(--text-1); }
+.maker-status-body { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2); margin-top: 2px; }
+.maker-status-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+
+.maker-slug { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.maker-slug-pre { flex-shrink: 0; color: var(--text-3); font-size: var(--fs-13); }
+.maker-slug .input { flex: 1; min-width: 0; }
+.maker-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.maker-two > .field { min-width: 0; }
+@media (max-width: 419px) { .maker-two { grid-template-columns: 1fr; } .maker-slug { flex-direction: column; align-items: stretch; gap: var(--space-1); } }
+.maker-logo-pick { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.input.maker-text { height: auto; min-height: 72px; padding: var(--space-3); resize: vertical; line-height: 1.5; }
+
+.maker-card { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.maker-card-name { font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1); }
+.maker-card-story { white-space: pre-line; }
+.maker-card-links { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+.maker-report-link { display: block; margin: 0 auto; color: var(--text-3); }
+
+.maker-review-card { margin-bottom: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.maker-review-head { display: flex; align-items: center; gap: var(--space-3); }
+.maker-review-name { font-weight: var(--fw-semibold); color: var(--text-1); }
+.maker-review-link { color: var(--accent-text); font-size: var(--fs-13); word-break: break-all; }
+.maker-review-note { color: var(--text-1); }
+.maker-review-story { color: var(--text-2); font-size: var(--fs-13); line-height: var(--lh-13); white-space: pre-line; }
+.maker-review-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }

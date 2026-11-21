@@ -14,4 +14,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # The database tests (tests/makers-sql.test.mjs) use the runner's own
+      # Postgres for a throwaway database; without it they are skipped.
+      - name: Start Postgres for the SQL tests
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "alter user postgres password 'postgres'"
       - run: scripts/ci.sh
+        env:
+          HP_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres

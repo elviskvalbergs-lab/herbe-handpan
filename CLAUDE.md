@@ -32,8 +32,14 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - **App, the same screens as every other instrument**: the beginner setup (default "Play my notes": the app listens and works out the tuning; second "I know my scale/key"; details only behind "Show all"), Play, Chords (`chordsScreenHtml` / `chordCardHtml` / `chordRowHtml`), playlists, progressions and chord sheets, Listen, Save (through the shared save sheet, so it syncs and works offline for accounts), Share, deep links in `js/links.js` (`/<family>/<slug>[/tab[/chord]]`) and a preview image under `og/`.
 - **Sound**: a voice in `js/audio.js`. Instruments that sound one note at a time play chords as arpeggios (as the ocarina and flute do).
 - **Website, the same pages as every other instrument**: its instrument page and one page per tuning (`site/src/app/(site)/instruments/[slug]/…`), with the **playable demo**: the instrument's own picture from the app's engine, chord buttons that play the chord with the app's sound and light the notes/fingerings, exactly as the handpan demo does. Its Sanity `instrument` document (copy, FAQ, status "available"), and it appears in the home page list, the sitemap and the request form.
+- **Makers**: the family is in `MAKER_FAMILIES` (`js/makers.js`) and in the `makers.families` check of a new migration, so makers can say they make it (a test compares the list with the link families).
 - **Tests**: data round-trips (every tuning has a link, `parseLink(linkFor(x))`), chords found on at least one real tuning, the site's engine tests for the new family.
 - **Docs**: `docs/design-system.md` (anything new in the shared patterns) and this checklist if something was missing.
+
+## Makers and shops
+- The design is `docs/makers-programme.md`; read it before changing anything for makers. Makers and shops are one of the two public audiences (the other is players). The clay ocarina builder (`profiles.can_build`) is internal and is never offered to makers.
+- Who made an instrument is only ever what the server says for its code (`open_shared_instrument`). Never read a maker from shared data or from a link.
+- Scan counts are counts: no cookies, no stored identifiers, no IP addresses. Anything that would identify a buyer needs the owner's decision first.
 
 ## Data and database
 - Database changes are additive only: new tables, columns, functions or policies, never altering or dropping existing ones. Write them as new SQL files under `supabase/migrations/` (`YYYYMMDD_short_name.sql`); the build applies them automatically (`supabase/migrate.py`, see `supabase/README.md`). Never edit a migration file after it has been merged: add a new one. Never ask for, print or commit the database connection string or any Supabase secret key; it lives only in Vercel's environment variables.

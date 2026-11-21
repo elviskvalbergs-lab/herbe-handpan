@@ -203,6 +203,9 @@ function render() {
   else if (state.view === 'settings') html = viewSettings();
   else if (state.view === 'clay') html = viewClayBodies();
   else if (state.view === 'listen-debug') html = viewListenDebug();
+  else if (state.view === 'maker') html = viewMaker(); // js/makers-ui.js
+  else if (state.view === 'maker-profile') html = viewMakerProfile();
+  else if (state.view === 'maker-review') html = viewMakerReview();
   // Everything after the app bar goes into <main>, the page's content column.
   // The tab title names the instrument on screen (preview cards: middleware.js).
   const titled = state.layout?.name ?? (state.view === 'instrument' ? currentInstrument()?.name : null);
@@ -409,7 +412,7 @@ function handpanAppBar(tabs = '') {
     badge: saved ? '' : uiBadge('Not saved'),
     actions: [tunerAppBtn(), menuAppBtn()],
     tabs,
-  });
+  }) + madeByRowHtml(); // "Made by" under the bar, on every instrument (js/makers-ui.js)
 }
 
 // Settings (#settings): everything that is set once (docs/design-system.md
@@ -470,6 +473,7 @@ function viewSettings() {
         ${uiRow({ title: 'Clay bodies', meta: `${clays.length} clay bod${clays.length === 1 ? 'y' : 'ies'} · shrinkage used by the builder`, action: 'open-clay-bodies', chevron: true })}
       </div>
 ` : ''}
+      ${makerSettingsHtml()}
       <h2 class="list-title">Account</h2>
       <div class="list">${accountSettingsHtml()}</div>
 
@@ -2933,6 +2937,7 @@ function ocHeader(inst, view, { practice = false } = {}) {
       actions: [tunerAppBtn(), menuAppBtn()],
       tabs,
     })}
+    ${practice ? '' : madeByRowHtml()}
     ${inst.link && !practice ? notSavedBannerHtml('shared-add') : !shared && !practice && !accountOn() ? notSavedBannerHtml('visit-save') : shared && !inst.link ? `
       <div class="banner">
         <span>Shared instrument ${escHtml(inst.publicId)} · read-only</span>
@@ -4077,17 +4082,21 @@ function openSharedLink(code, tab = null) {
   });
   // Supabase is initialised just after the first render, so fetch next tick.
   setTimeout(async () => {
-    const data = await fetchSharedInstrument(code);
+    // With who made it, when an approved maker shared it (js/makers-ui.js).
+    const opening = await makerOpenCode(code);
+    const data = opening?.data ?? null;
     if (state.currentInstrumentId !== SHARED_ID) return;
     // A shared handpan, tongue drum or kalimba opens like any visiting one:
     // its notes on its own screens, ready to save.
     if (data && usesLayout(data) && data.layout) {
       openSharedLayout(data, tab);
+      makerMarkOpened(opening);
       render();
       return;
     }
     state.shared = data ? { ...data, id: SHARED_ID, publicId: code.toUpperCase() } : null;
     state.sharedStatus = data ? null : 'missing';
+    makerMarkOpened(opening);
     render();
   }, 0);
 }
@@ -6700,6 +6709,8 @@ function sheetHtml() {
   if (state.goesWith) return goesWithSheet();
   if (state.installHelp) return installHelpSheet();
   if (state.saveSheet) return saveSheetHtml();
+  const makerSheet = makerSheetHtml(); // js/makers-ui.js
+  if (makerSheet) return makerSheet;
   if (state.accountConfirm) return accountConfirmSheet();
   if (state.confirm) return confirmSheet();
   if (state.menu) return menuSheet();
@@ -7936,6 +7947,7 @@ function loadFromHash() {
   if (hash === '#settings') { state.view = 'settings'; return; }
   if (hash === '#settings/clay') { state.view = canBuild() ? 'clay' : 'settings'; return; }
   if (hash === '#settings/listen') { state.view = 'listen-debug'; return; }
+  if (makerOpenHash(hash)) return; // #maker… (js/makers-ui.js)
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
     if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; return; }
@@ -8330,6 +8342,7 @@ async function handleLogin(event, session) {
   startAccount();
   syncSoon(0);
   refreshAccess();
+  makerRefresh(); // the maker role and profile (js/makers-ui.js)
 }
 
 function becomeAccount(session) {
@@ -8625,6 +8638,8 @@ async function forgetAccountOnDevice() {
   _accountStarted = false;
   clearAccountData();
   localStorage.removeItem('hp-can-build');
+  makerKeepAccess(null);
+  if (state.mk) state.mk.info = null;
   await syncBases.clear();
   await offline.disable();
   Object.assign(state, { syncPending: 0, lastSynced: null, offlineReady: false, accountConfirm: null, accountError: null });
@@ -8825,6 +8840,7 @@ document.addEventListener('click', e => {
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
   if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
   if (action === 'picker-open') { openPicker(el.dataset.picker); return; }
+  if (makerClick(action, el)) return; // makers and "Made by" (js/makers-ui.js)
 
   // ── Sheets: the ⋯ menu and confirm ────────────────────────────────────────
   if (action === 'menu-open') { state.menu = true; render(); return; }
@@ -10542,6 +10558,7 @@ document.addEventListener('click', e => {
 
 // ── Change delegation (selects) ───────────────────────────────────────────────
 document.addEventListener('change', e => {
+  if (makerChange(e.target)) return; // the maker profile form (js/makers-ui.js)
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const { action } = el.dataset;
@@ -10710,6 +10727,7 @@ document.addEventListener('change', e => {
 
 // ── Input delegation ──────────────────────────────────────────────────────────
 document.addEventListener('input', e => {
+  if (makerInput(e.target)) return; // the maker profile form (js/makers-ui.js)
   if (e.target.classList?.contains('tempo-slider')) { setTempo(e.target.value); return; }
   if (e.target.classList?.contains('ld-slider')) {
     const L = listenUi();
