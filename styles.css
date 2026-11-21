@@ -542,6 +542,12 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .song-now-next { color: var(--text-2); }
 .song-now-pos { margin-left: auto; color: var(--text-3); font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
 .song-controls { display: flex; align-items: center; gap: var(--space-2); }
+/* With the tab on screen the controls are the shared bottom action bar, so
+   Play, Stop and rewind stay in reach while the tab follows the music. */
+.song-controls.actionbar { justify-content: center; }
+.song-controls.actionbar > * { flex: none; }
+.song-controls.actionbar .song-play { flex: 1; max-width: 360px; }
+@media print { body.printing-song .song-controls.actionbar { display: none; } }
 .song-play { flex: 1; }
 .song-notes { flex-wrap: wrap; gap: var(--space-1); }
 .song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
@@ -1847,6 +1853,8 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .song-view-row { display: flex; align-items: center; gap: var(--space-2); }
 .song-view-row .seg { flex: 1; }
 .song-tab { display: flex; flex-direction: column; gap: 20px; }
+/* Followed while playing (songTabFollow): the line sits just under the app bar. */
+.tab-line { scroll-margin-top: calc(var(--appbar-h) + var(--safe-top) + var(--space-3)); }
 .tab-line { display: flex; align-items: stretch; }
 .tab-hands { display: grid; grid-template-rows: 18px 32px 32px; width: 18px; flex: none; font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-3); }
 .tab-hands span { display: flex; align-items: center; }
