@@ -356,3 +356,51 @@ test('stacked voicing returns null when the chord is not on the instrument', () 
   assert.equal(stackVoicing(11, [0, 4, 7], getAllNotes(dKurd)), null); // B major
   assert.deepEqual(stackVoicing(9, [0, 7], getAllNotes(dKurd)), ['A3', 'E4']);
 });
+
+// ── Play levels on a one-note instrument (ocarina, flute, recorder) ──
+import { windPattern, windPlayLevel, WIND_PLAY_LEVELS } from '../js/chordsheet.js';
+
+test('windPattern: one note at a time, never two on the same beat', () => {
+  for (const level of ['chord', 'roots', 'arpeggio', 'groove']) {
+    for (const beatsPerBar of [3, 4, 5, 6]) {
+      const { hits } = windPattern({ notes: ['C5', 'E5', 'G5'], beatsPerBar, beats: beatsPerBar * 2, level });
+      assert.ok(hits.length > 0);
+      for (let i = 0; i < hits.length; i++) {
+        assert.equal(hits[i].notes.length, 1);
+        if (i) assert.ok(hits[i].beat >= hits[i - 1].beat + hits[i - 1].len, `${level} ${beatsPerBar}: notes overlap`);
+      }
+      const last = hits[hits.length - 1];
+      assert.ok(last.beat + last.len <= beatsPerBar * 2);
+    }
+  }
+});
+
+test('windPattern: Roots holds the root for each bar', () => {
+  const { hits } = windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 4, beats: 8, level: 'roots' });
+  assert.deepEqual(hits, [{ beat: 0, notes: ['A4'], len: 4 }, { beat: 4, notes: ['A4'], len: 4 }]);
+});
+
+test('windPattern: Arpeggio is the 1-2-3-2 bounce from the root; a Chord-level progression plays as its arpeggio', () => {
+  const arp = windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 4, level: 'arpeggio' });
+  assert.deepEqual(arp.hits.map(h => h.notes[0]), ['A4', 'C5', 'E5', 'C5']);
+  assert.deepEqual(windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 4, level: 'chord' }), arp);
+  assert.equal(windPlayLevel('chord'), 'arpeggio');
+  assert.deepEqual(WIND_PLAY_LEVELS.map(l => l.id), ['roots', 'arpeggio', 'groove']);
+});
+
+test('windPattern: Melody holds the root for half the bar, then the other notes, a different one first in the next bar', () => {
+  const { hits } = windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 3, beats: 6, level: 'groove' });
+  assert.deepEqual(hits.map(h => [h.beat, h.notes[0], h.len]), [[0, 'A4', 2], [2, 'C5', 1], [3, 'A4', 2], [5, 'E5', 1]]);
+  const four = windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 4, level: 'groove' });
+  assert.deepEqual(four.hits.map(h => [h.beat, h.notes[0], h.len]), [[0, 'A4', 2], [2, 'C5', 1], [3, 'E5', 1]]);
+});
+
+test('windPattern: a fast tempo or a short step plays fewer notes; a one-note chord is just held', () => {
+  const fast = windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 4, bpm: 140, level: 'arpeggio' });
+  assert.equal(fast.reduced, true);
+  assert.deepEqual(fast.hits.map(h => [h.beat, h.notes[0], h.len]), [[0, 'A4', 2], [2, 'C5', 2]]);
+  const short = windPattern({ notes: ['A4', 'C5', 'E5'], beatsPerBar: 4, beats: 2, level: 'groove' });
+  assert.deepEqual(short.hits.map(h => [h.beat, h.notes[0], h.len]), [[0, 'A4', 1], [1, 'C5', 1]]);
+  assert.deepEqual(windPattern({ notes: ['A4'], beatsPerBar: 4, level: 'arpeggio' }).hits, [{ beat: 0, notes: ['A4'], len: 4 }]);
+  assert.deepEqual(windPattern({ notes: [], level: 'arpeggio' }).hits, []);
+});

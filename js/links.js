@@ -339,7 +339,8 @@ export function linkPreview(pathname, search = '') {
   if (!title || link.kind === 'unknown') {
     return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
   }
-  const what = link.tab === 'listen' ? 'Listen to a song and play along'
+  // Listen is at step 1 of docs/listen-mode.md: it names one chord played nearby.
+  const what = link.tab === 'listen' ? 'Hear a chord someone plays nearby and find it'
     : link.tab === 'songs' ? 'Songs to learn, note by note'
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
     : 'Notes, chords, arpeggios and play-along';

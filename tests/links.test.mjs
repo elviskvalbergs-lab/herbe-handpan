@@ -77,6 +77,22 @@ test('Songs and Playlists tabs on every family', () => {
   assert.equal(linkPreview('/handpan/d-kurd/songs').description.startsWith('Songs to learn'), true);
 });
 
+test('every family has the same tabs in its links: playlists and listen too', () => {
+  for (const fam of LINK_FAMILIES) {
+    assert.ok(LINK_TABS[fam].includes('chords') && LINK_TABS[fam].includes('playlists') && LINK_TABS[fam].includes('listen'), fam);
+  }
+  assert.equal(linkFor({ chartId: 'ocarina-12-stl-c', keyId: 'C-A4' }, { tab: 'playlists' }), '/ocarina/alto-c-12/playlists');
+  assert.equal(parseLink('/flute/tin-whistle-d/playlists').tab, 'playlists');
+});
+
+test('the Listen preview card promises what Listen does: one chord heard nearby, not a song', () => {
+  for (const path of ['/handpan/d-kurd/listen', '/ocarina/alto-c-12/listen']) {
+    const d = linkPreview(path).description;
+    assert.match(d, /^Hear a chord someone plays nearby and find it on the /);
+    assert.doesNotMatch(d, /song|play along/i);
+  }
+});
+
 test('aliases open the canonical instrument', () => {
   const cm = parseLink('/handpan/celtic-minor');
   assert.equal(cm.scaleId, 'D-Celtic-Minor');

@@ -17,7 +17,7 @@ import {
 } from './storage.js';
 import {
   parseChordSheet, matchSheetChord, rankTranspositions, sheetCoverage, coverageBand, transposeChordSymbol,
-  stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS,
+  stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS, WIND_PLAY_LEVELS, windPlayLevel, windPattern,
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
@@ -7316,9 +7316,11 @@ function hpPlayPlaylist(pl) {
 // ── View 5: Progression ──────────────────────────────────────────────────────
 // Progression detail (#prog/<id>): chords in order with repeats, a tempo,
 // beats per bar and bars per step (docs/ocarina-mode.md, "Progressions").
-// On a handpan Play runs the steps in time and shows each one on the pan;
-// on an ocarina or flute Practice walks each step's arpeggio. Steps of other
-// instruments are listed with their instrument's name and skipped.
+// Play runs the steps in time on the instrument on screen: a handpan,
+// tongue drum or kalimba shows each one on its picture, an ocarina or flute
+// (one note at a time) shows the fingering of the note being blown, and
+// Practice still walks each step's arpeggio at your own pace. Steps of
+// other instruments are listed with their instrument's name and skipped.
 
 // A playlist as it plays here: its chords found again on the instrument on
 // screen when they were added on another one (progVoiced). Edits go by id,
@@ -7391,7 +7393,8 @@ function progHpContext(layoutId, name) {
 // instrument of its first step that still exists (load / open: that
 // handpan or ocarina is put on screen first). null when there is none.
 function progContext(prog) {
-  const cur = state.currentInstrumentId ? getInstrument(state.currentInstrumentId) : null;
+  // currentInstrument: a visiting ocarina or flute (opened from a link) counts too.
+  const cur = state.currentInstrumentId ? currentInstrument() : null;
   if (cur && !usesLayout(cur)) return progOcContext(cur);
   const layoutId = hpCurrentLayoutId();
   if (layoutId) return progHpContext(layoutId, state.layout.name);
@@ -7444,10 +7447,19 @@ function progStart(prog, fromIdx = null) {
     if (!progLoadHandpan(ctx.load)) { showToast('Scale not found'); return; }
     ctx = progContext(prog);
   }
-  if (!ctx || ctx.kind !== 'hp') return;
+  if (ctx?.open) {
+    // An ocarina or flute that isn't on screen yet: open it, stay here.
+    if (ctx.inst.id === SHARED_ID && ctx.inst.link) openChartLink(ctx.inst.link);
+    else if (!openInstrument(ctx.inst.id, { push: false })) { showToast('That instrument is no longer in My instruments'); return; }
+    state.view = 'progression';
+    prog = progFind(prog.id) ?? prog; // its chords as this instrument plays them
+    ctx = progContext(prog);
+  }
+  if (!ctx) return;
   const idx = fromIdx != null && ctx.isHere(prog.steps[fromIdx]) ? fromIdx : nextProgressionStep(prog.steps, -1, ctx.isHere);
   if (idx < 0) { showToast(`None of these chords is on ${ctx.name}`); return; }
-  if (progressionLevel(prog) !== 'chord') { progStartLevel(prog, idx); return; }
+  // One note at a time has no whole chord to strike: always a level's pattern.
+  if (ctx.kind === 'oc' || progressionLevel(prog) !== 'chord') { progStartLevel(prog, idx); return; }
   state.progPlay = { id: prog.id, stepId: prog.steps[idx].stepId, beat: 0, playing: true };
   render();
   progStrike(prog.steps[idx]);
@@ -7496,8 +7508,23 @@ function progStepVoicing(s) {
   return stackVoicing(notePC(s.rootName + '4'), type.intervals, getAllNotes(state.layout)) ?? sorted;
 }
 
+// A step's notes on an ocarina or flute, in playing order: the root first.
+function progWindNotes(s) {
+  if (!s || s.missing || !s.notes?.length) return [];
+  const rootName = s.notes.find(n => notePC(n) === notePC(s.rootName + '4')) ?? s.notes[0];
+  return arpeggioOrder(s.notes, rootName).map(midiToNoteName);
+}
+
 function progPattern(prog, idx, ctx) {
   const s = prog.steps[idx];
+  if (ctx.kind === 'oc') {
+    const windNotes = progWindNotes(s);
+    const pat = windPattern({
+      notes: windNotes, beatsPerBar: prog.beatsPerBar, beats: progressionStepBeats(s, prog.beatsPerBar),
+      bpm: prog.bpm, level: progressionLevel(prog),
+    });
+    return { ...pat, notes: windNotes, next: null };
+  }
   const notes = progStepVoicing(s);
   const ni = nextProgressionStep(prog.steps, idx, ctx.isHere);
   const next = ni >= 0 ? progStepVoicing(prog.steps[ni]) : null;
@@ -7522,6 +7549,32 @@ function progPatternText(pat, beatsPerBar) {
   return parts.join(' · ') + (pat.hits.some(h => h.ghost) ? ' · ghost taps between' : '');
 }
 
+// The same for one note at a time: "1–2 C5 · 3 E5 · 4 G5" (a held note
+// names the beats it lasts).
+function progWindPatternText(pat, beatsPerBar) {
+  const uf = state.useFlats, us = state.useSolfege;
+  return pat.hits.filter(h => h.beat < beatsPerBar).map(h => {
+    const from = h.beat + 1, to = Math.min(beatsPerBar, h.beat + h.len);
+    return `${to > from ? `${from}–${to}` : from} ${displayNote(h.notes[0], uf, us)}`;
+  }).join(' · ');
+}
+
+// The fingering of the note being blown, and (in place, between renders)
+// the change to it from the note before.
+function progWindFingering(inst, midi, previousMidi = null) {
+  return renderFingering(inst, midi, {
+    useFlats: state.useFlats, useSolfege: state.useSolfege, size: 'medium', showFingers: true, closeUp: state.closeUp, previousMidi,
+  });
+}
+function progWindShow(inst, note) {
+  const pp = state.progPlay;
+  if (!pp) return;
+  const midi = noteToMidi(note);
+  const box = document.querySelector('.prog-wind');
+  if (box) box.innerHTML = progWindFingering(inst, midi, pp.windMidi ?? null);
+  pp.windMidi = midi;
+}
+
 function progStartLevel(prog, idx) {
   state.progPlay = { id: prog.id, stepId: prog.steps[idx].stepId, beat: 0, half: 0, countIn: prog.beatsPerBar, playing: true };
   render();
@@ -7535,6 +7588,12 @@ function progLevelStrike(prog, ctx, beat) {
   if (idx < 0) return;
   const hits = progPattern(prog, idx, ctx).hits.filter(h => h.beat === beat && !h.ghost);
   if (!hits.length) return;
+  if (ctx.kind === 'oc') {
+    // A blown note lasts as long as the pattern says, with a breath before the next.
+    playNote(hits[0].notes[0], Math.max(0.15, hits[0].len * progBeatMs(prog) / 1000 * 0.9));
+    progWindShow(ctx.inst, hits[0].notes[0]);
+    return;
+  }
   const notes = hits.flatMap(h => h.notes);
   for (const n of notes) playNote(n);
   updatePanPlaying(notes);
@@ -7544,7 +7603,7 @@ function progLevelTick() {
   const pp = state.progPlay;
   const prog = pp?.playing ? progFind(pp.id) : null;
   const ctx = prog && state.view === 'progression' && state.activeProgressionId === prog.id ? progContext(prog) : null;
-  if (!ctx || ctx.kind !== 'hp' || ctx.load) { progStop(); if (state.view === 'progression') render(); return; }
+  if (!ctx || ctx.load || ctx.open) { progStop(); if (state.view === 'progression') render(); return; }
   pp.half += 1;
   if (pp.countIn > 0) {
     if (pp.half % 2) return;
@@ -7692,9 +7751,44 @@ function viewProgression() {
     player = `<div class="prog-player"><button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play">${icon('play')} Play on ${escHtml(ctx.name)}</button></div>`;
   } else if (ctx?.kind === 'oc') {
     const can = nHere > 0 && playableMidis(ctx.inst).length > 0;
-    player = `<div class="prog-player">${can
-      ? `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-practice">${icon('play')} Practice on ${escHtml(ctx.name)}</button>`
-      : `<p class="prog-now-hint">None of these chords is on ${escHtml(ctx.name)}.</p>`}</div>`;
+    const practiceBtn = `<button type="button" class="btn btn-ghost btn-block" data-action="prog-practice">Practice chord by chord</button>`;
+    if (!can) {
+      player = `<div class="prog-player"><p class="prog-now-hint">None of these chords is on ${escHtml(ctx.name)}.</p></div>`;
+    } else if (ctx.open) {
+      player = `<div class="prog-player"><button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play">${icon('play')} Play on ${escHtml(ctx.name)}</button></div>`;
+    } else {
+      // The same player as the handpan's, one note at a time: the fingering
+      // of the note being blown in place of the pan, and the levels that
+      // make sense without a whole chord (Roots, Arpeggio, Melody).
+      const level = windPlayLevel(progressionLevel(prog));
+      const shown = cur && isHere(cur);
+      const pat = shown ? progPattern(prog, curIdx, ctx) : null;
+      const pp = state.progPlay;
+      const midi = !pat?.notes.length ? null : pp?.windMidi != null && pat.notes.some(n => noteToMidi(n) === pp.windMidi) ? pp.windMidi : noteToMidi(pat.notes[0]);
+      const levelSeg = uiSeg(WIND_PLAY_LEVELS.map(l => ({ value: l.id, label: l.name })), level, { action: 'prog-level', label: 'Level' });
+      player = `
+      <div class="prog-player">
+        ${midi != null ? `<div class="prog-wind">${progWindFingering(ctx.inst, midi)}</div>` : ''}
+        <div class="prog-now" aria-live="polite">
+          ${shown ? `
+            <div class="prog-now-text">
+              <div class="prog-now-title">${escHtml(progStepTitle(cur))}</div>
+              <div class="prog-now-meta">Chord ${curIdx + 1} of ${prog.steps.length}${cur.section ? ` · ${escHtml(cur.section)}` : ''} · ${escHtml(pat.notes.map(n => displayNote(n, uf, us)).join(' · '))}</div>
+              <div class="prog-now-pattern">${escHtml(progWindPatternText(pat, prog.beatsPerBar))}</div>
+            </div>
+            ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
+          : `<div class="prog-now-hint">Play counts in one bar, then goes through the chords in time, one note at a time, with the fingering of each note. Tap a chord to hear it.</div>`}
+        </div>
+        <div class="prog-level">${levelSeg}</div>
+        <div class="prog-play-row">
+          ${uiIconBtn('rewind', 'Back to the first chord', { action: 'prog-restart', cls: 'btn-lg', disabled: !nHere || curIdx <= 0 })}
+          ${playing
+            ? `<button type="button" class="btn btn-secondary btn-lg btn-block" data-action="prog-stop">${icon('square')} Stop</button>`
+            : `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="prog-play">${icon('play')} ${curIdx > 0 ? 'Play from here' : 'Play'}</button>`}
+        </div>
+        ${playing ? '' : practiceBtn}
+      </div>`;
+    }
   }
 
   const timing = `
@@ -7735,7 +7829,7 @@ function viewProgression() {
 
   return `
     ${backAppBar(prog.name, { actions: [tunerAppBtn(), menuAppBtn()] })}
-    <div class="prog-view${player.includes('prog-pan') ? ' has-pan' : ''}">
+    <div class="prog-view${/prog-pan|prog-wind/.test(player) ? ' has-pan' : ''}">
       <div class="prog-side">${player}</div>
       <div class="prog-main">
         ${timing}
@@ -10443,9 +10537,11 @@ document.addEventListener('click', e => {
     if (s.missing) { showToast(`${s.symbol ?? 'This chord'} isn't on ${s.scaleName ?? 'this instrument'}`); return; }
     if (!ctx || !ctx.isHere(s)) { showToast(`This chord isn’t on this instrument; it was added on ${s.scaleName ?? 'another instrument'}`); return; }
     if (ctx.kind === 'oc') {
+      if (!ctx.open && state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, idx); return; }
+      // The step goes on show (when its instrument is the one on screen) and plays as its arpeggio.
+      if (!ctx.open) { state.progPlay = { id: prog.id, stepId: s.stepId, beat: 0, playing: false }; render(); }
       initAudio();
-      const rootName = s.notes.find(n => notePC(n) === notePC(s.rootName + '4')) ?? s.notes[0];
-      playSequence(arpeggioOrder(s.notes, rootName).map(midiToNoteName));
+      playSequence(progWindNotes(s), n => { if (!ctx.open && state.progPlay?.stepId === s.stepId && !state.progPlay.playing) progWindShow(ctx.inst, n); });
       return;
     }
     if (ctx.load) {
