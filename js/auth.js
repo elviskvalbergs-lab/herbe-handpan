@@ -274,3 +274,42 @@ export async function fetchSharedInstrument(publicId) {
   if (error) { console.warn('Shared instrument unavailable:', error.message); return null; }
   return data;
 }
+
+// ── Makers (docs/makers-programme.md; supabase/migrations/20261121_makers.sql) ──
+// The project's public address and key, for the parts that run outside the
+// app (the link-preview middleware). Never a secret key.
+export function supabasePublic() { return { url: _SUPA_URL, key: _SUPA_KEY }; }
+
+// A database function, failing soft: { data } or { error } (the message), and
+// { error: 'offline' } when there is no connection or no session it needs.
+async function makerRpc(name, args, { guest = false } = {}) {
+  if (!_sb || (!guest && !_session)) return { error: 'offline' };
+  try {
+    const { data, error } = await _sb.rpc(name, args);
+    if (error) { console.warn(`${name}:`, error.message); return { error: error.message || 'error', code: error.code }; }
+    return { data };
+  } catch (e) { return { error: 'offline' }; }
+}
+
+// The caller's maker state: { is_maker, is_admin, maker, waiting }, or null
+// when it can't be read (offline, signed out, or before the migration).
+export async function fetchMyMaker() { return (await makerRpc('my_maker')).data ?? null; }
+// { ok, maker } | { ok: false, error: 'slug-taken' | 'slug-reserved' } | { error }.
+export async function saveMakerProfile(profile) { const r = await makerRpc('save_maker_profile', { p: profile }); return r.data ?? r; }
+export async function adminListMakers() { return (await makerRpc('admin_list_makers')).data ?? null; }
+export async function reviewMaker(id, status, note = null) { const r = await makerRpc('review_maker', { p_maker_id: id, p_status: status, p_note: note }); return r.data ?? r; }
+export async function resolveMakerReport(id) { return (await makerRpc('resolve_maker_report', { p_report_id: id })).data === true; }
+export async function reportMaker(slug, reason, detail = null) { return (await makerRpc('report_maker', { p_slug: slug, p_reason: reason, p_detail: detail }, { guest: true })).data === true; }
+export async function fetchMaker(slug) { return (await makerRpc('get_maker', { p_slug: slug }, { guest: true })).data ?? null; }
+
+// An instrument opened by its code, with who made it: open_shared_instrument's
+// { data, code, model_code, serial, maker }. A server from before the makers
+// migration answers through get_shared_instrument, as { data }. null when
+// the code opens nothing or there is no connection.
+export async function openSharedCode(code) {
+  if (!_sb) return null;
+  const r = await makerRpc('open_shared_instrument', { p_code: code }, { guest: true });
+  if (!r.error) return r.data ?? null;
+  const data = await fetchSharedInstrument(code);
+  return data ? { data, code } : null;
+}

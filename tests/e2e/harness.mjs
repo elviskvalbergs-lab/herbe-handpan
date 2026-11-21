@@ -136,6 +136,12 @@ export async function newDevice(browser, server, name, { serviceWorkers = 'allow
     if (op === 'select') return a.table === 'saved_items' ? server.pull(a.uid, a.since) : [];
     if (op === 'save_item') return server.saveItem(a.uid, a);
     if (op === 'get_shared_instrument') return server.shared.get(String(a.p_public_id).toUpperCase()) ?? null;
+    // The same code with who made it (js/makers.js sharedOpening); no makers in this stand-in.
+    if (op === 'open_shared_instrument') {
+      const code = String(a.p_code).toUpperCase();
+      const data = server.shared.get(code);
+      return data ? { data, code, model_code: code, serial: null, maker: null } : null;
+    }
     return null;
   });
   await ctx.route(SUPABASE_JS, r => r.fulfill({ contentType: 'text/javascript', body: FAKE_SUPABASE }));
