@@ -50,3 +50,16 @@ it("lets the app post from its own addresses only", () => {
   expect(listenReportOriginAllowed("https://evil.example")).toBe(false);
   expect(listenReportOriginAllowed(null)).toBe(false);
 });
+
+it("takes one photo of the instrument next to the recordings", () => {
+  const audio = [{ size: 700_000, type: "audio/webm" }];
+  expect(checkListenFiles(audio, [{ size: 300_000, type: "image/jpeg" }])).toBeNull();
+  expect(checkListenFiles(audio, [{ size: 300_000, type: "image/jpeg" }, { size: 300_000, type: "image/jpeg" }])).toMatch(/One photo/);
+  expect(checkListenFiles(audio, [{ size: 300_000, type: "application/pdf" }])).toMatch(/photo/);
+  expect(checkListenFiles(audio, [{ size: 4_000_000, type: "image/jpeg" }])).toMatch(/too long/);
+  const c = validateListenReport({ ...meta, photo: true });
+  if (!c.ok) throw new Error("invalid");
+  expect(c.value.photo).toBe(true);
+  const f = listenReportIssueFields(c.value, { project: "OAK", issueType: "Task" }, { recordings: [], photo: "https://cdn.sanity.io/images/x.jpg" }, "t");
+  expect(JSON.stringify(f.description)).toContain("Photo of the instrument");
+});

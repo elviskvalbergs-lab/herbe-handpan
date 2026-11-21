@@ -248,7 +248,7 @@ export const pages: PageDoc[] = [
     _id: "page-privacy",
     title: "Privacy",
     slug: "privacy",
-    updated: "2026-11-19",
+    updated: "2026-11-20",
     body: [
       { style: "normal", text: "Oakhum is free to use without an account. This page explains what we keep and why, in plain words." },
       { style: "h2", text: "Who we are" },
@@ -257,7 +257,7 @@ export const pages: PageDoc[] = [
       { style: "normal", text: "We don't ask who you are. What you set up stays in your browser until you close the tab. To see which parts of the app are used, we count visits and taps without cookies and without storing an id on your device (PostHog, with data stored in the EU). We don't record your screen." },
       { style: "h2", text: "The microphone" },
       { style: "normal", text: "When Oakhum listens to your instrument, the sound is worked out on your device and isn't sent anywhere. While it listens, it also keeps a recording in your browser's memory, so that you can send it to us if it heard your instrument wrong. The recording is gone when you close the page." },
-      { style: "normal", text: "If you choose to send a listening report, we receive what you wrote, the notes Oakhum heard, the recording if you leave it switched on (it may also catch voices in the room), your email if you leave it, and your browser and device type. We use it only to fix how Oakhum listens and to tell you when it's fixed. We keep it until it's fixed, and at most a year." },
+      { style: "normal", text: "If you choose to send a listening report, we receive what you wrote, the notes Oakhum heard, the recording if you leave it switched on (it may also catch voices in the room), a photo of your instrument if you add one, your email if you leave it, and your browser and device type. We use it only to fix how Oakhum listens and to tell you when it's fixed. We keep it until it's fixed, and at most a year." },
       { style: "h2", text: "With an account" },
       { style: "normal", text: "We keep your email address and what you save: instruments, favourite chords and playlists. They are stored with Supabase in the EU, which also sends your sign-in code. You can delete your account and everything in it from the app's settings, any time." },
       { style: "h2", text: "Requests on this website" },
