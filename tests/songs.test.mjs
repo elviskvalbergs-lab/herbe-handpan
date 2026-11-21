@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCALES, createLayoutFromScale, getAllNotes, noteToMidi } from '../js/data.js';
 import { instrumentFromChart } from '../js/charts.js';
-import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether, songBars, songHands, songCountLabel } from '../js/songs.js';
+import { SONGS, SONG_ORIGINS, songNotes, songShift, playableSongs, songKeyOn, songsThatGoTogether, songBars, songHands, songCountLabel, songTimeLabel } from '../js/songs.js';
 
 test('every song has a source, an origin, a key and notes that read', () => {
   assert.ok(SONGS.length >= 50);
@@ -93,18 +93,23 @@ test('a rest written at a pitch is a rest (Silent Night)', () => {
 
 test('Latvian songs from Vitols’ songbook: every bar adds up, and the openings are as printed', () => {
   const lv = SONGS.filter(s => s.origin === 'lv');
-  assert.ok(lv.length >= 12);
+  assert.ok(lv.length >= 13);
   for (const s of lv) assert.match(s.sourceName, /Vītols, 100 Latvian Folk Songs .*No\. \d+/);
   const start = (id, n) => SONGS.find(s => s.id === id).notes.split(' ').slice(0, n).map(t => t.split(':')[0]).join(' ');
   assert.equal(start('put-vejini', 8), 'F4 C5 A4 G4 F4 Bb4 D5 D5');
   assert.equal(start('dievs-sveti-latviju', 6), 'G4 G4 G4 B4 A4 G4');
   assert.equal(start('riga-dimd', 6), 'A4 A4 C#5 A4 A4 C#5');
-  // Whole songs in whole bars (none of them starts with a pickup).
+  assert.equal(start('kur-tu-skriesi-vanadzini', 8), 'F4 A4 C5 A4 Bb4 C5 D5 Bb4');
+  // Whole songs in whole bars (none of them starts with a pickup), each bar
+  // as long as its time says (Kur tu skriesi changes between 3/4 and 4/4).
   for (const s of lv) {
-    const [num, den] = s.time.split('/').map(Number);
-    const total = songNotes(s).reduce((a, n) => a + n.beats, 0);
-    assert.ok(Math.abs(total / (num * 4 / den) - Math.round(total / (num * 4 / den))) < 0.01, `${s.id}: ${total}`);
+    const bars = songBars(s);
+    for (const b of bars) assert.ok(b.from === 0 && Math.abs(b.len - Number(b.time.split('/')[0]) * 4 / Number(b.time.split('/')[1])) < 0.01, `${s.id}: ${b.time} ${b.len}`);
   }
+  const kur = songBars(SONGS.find(s => s.id === 'kur-tu-skriesi-vanadzini'));
+  assert.deepEqual(kur.map(b => b.time), ['3/4', '3/4', '3/4', '4/4', '3/4', '4/4', '4/4', '4/4']);
+  assert.deepEqual(kur.map(b => b.change), [false, false, false, true, true, true, false, false]);
+  assert.equal(songTimeLabel(SONGS.find(s => s.id === 'kur-tu-skriesi-vanadzini')), '3/4 · 4/4');
 });
 
 test('tab counts: 1 + 2 + in x/4, every eighth in x/8, 1 + in 2/2', () => {
@@ -126,8 +131,10 @@ test('tab bars: a pickup bar starts late, every note starts in a column, held no
     const b = songBars(s, notes);
     const seen = b.flatMap(x => x.cols.map(c => c.i)).filter(i => i != null);
     assert.deepEqual(seen, notes.map((_, i) => i), s.id);
-    const [n, d] = s.time.split('/').map(Number);
-    for (const x of b) assert.ok(x.from + x.len <= n * 4 / d + 1e-6, s.id);
+    for (const x of b) {
+      const [n, d] = x.time.split('/').map(Number);
+      assert.ok(x.from + x.len <= n * 4 / d + 1e-6, s.id);
+    }
   }
   // A half note in 4/4 holds through the next three eighth columns.
   const tw = songBars(SONGS.find(s => s.id === 'twinkle-twinkle'));

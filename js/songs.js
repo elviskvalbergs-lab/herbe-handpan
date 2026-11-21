@@ -15,6 +15,8 @@
 //
 // notes: "C4:0.5 D4:1 r:1 …": note and length in beats (a quarter note is
 // 1), r a rest. key and time as the score gives them. tags: ['christmas'].
+// meters: when the time changes, each bar's time in order (the last one
+// holds for the rest of the song); time is then the first bar's.
 // pickup: the beats before the first full bar (the score's \partial; where
 // the score has none or it doesn't fit the notes, the one that puts the
 // fewest notes across bar lines). For the tab's bar lines (songBars).
@@ -91,6 +93,13 @@ export const SONGS = [
     source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
     sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 51",
     notes: "F4:1 C5:2 A4:0.5 G4:0.5 F4:2 Bb4:1 D5:2 D5:1 C5:2 G4:0.5 A4:0.5 Bb4:2 C5:1 F4:2 Bb4:0.5 A4:0.5 G4:2 F4:3",
+  },
+  {
+    id: "kur-tu-skriesi-vanadzini", title: "Kur tu skriesi, vanadziņi", origin: "lv", key: "F major", time: "3/4",
+    meters: ["3/4", "3/4", "3/4", "4/4", "3/4", "4/4"],
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 65",
+    notes: "F4:0.5 A4:0.5 C5:1.5 A4:0.5 Bb4:0.5 C5:0.5 D5:1.5 Bb4:0.5 Bb4:0.5 D5:0.5 D5:1 D5:1 D5:0.5 F5:0.5 E5:0.5 D5:0.5 C5:1.5 Bb4:0.5 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 G4:1 G4:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:1.5 G4:0.5 F5:0.5 E5:0.5 F5:0.5 D5:0.5 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:1.5 G4:0.5 F4:2",
   },
   {
     id: "riga-dimd", title: "Rīga dimd", origin: "lv", key: "A major", time: "2/4",
@@ -610,7 +619,7 @@ export function songsThatGoTogether(song, playable, limit = 3) {
   const here = playable.find(x => x.song.id === song.id);
   if (!here) return [];
   const key = songKeyOn(song, here.shift);
-  const score = x => (songKeyOn(x.song, x.shift) === key ? 4 : 0) + (x.song.time === song.time ? 2 : 0) + (x.song.origin === song.origin ? 1 : 0);
+  const score = x => (songKeyOn(x.song, x.shift) === key ? 4 : 0) + (songTimeLabel(x.song) === songTimeLabel(song) ? 2 : 0) + (x.song.origin === song.origin ? 1 : 0);
   return playable.filter(x => x.song.id !== song.id).sort((a, b) => score(b) - score(a)).slice(0, limit);
 }
 
@@ -632,20 +641,28 @@ export function songCountLabel(at, time) {
   return '';
 }
 
-/** A song's bars: [{ len, from, cols: [{ at, count, i | null, hold | null }] }].
+/** The song's time as shown: "3/4", or "3/4 · 4/4" when it changes. */
+export function songTimeLabel(song) {
+  return song.meters ? [...new Set(song.meters)].join(' · ') : song.time;
+}
+const meterLen = time => { const [num, den] = time.split('/').map(Number); return (num * 4) / den; };
+
+/** A song's bars: [{ len, from, time, cols: [{ at, count, i | null, hold | null }] }].
  *  from: where the bar starts within a full bar (a pickup bar starts late);
  *  each column: its place in the bar (at), its count, the note starting
  *  there (i, an index into notes) or the note still sounding (hold). */
 export function songBars(song, notes = songNotes(song)) {
-  const [num, den] = song.time.split('/').map(Number);
-  const bar = (num * 4) / den;
+  // Each bar's time: song.meters in order (the last holds), else song.time.
+  const timeOf = k => (song.meters ? song.meters[Math.min(k, song.meters.length - 1)] : song.time);
   const total = notes.reduce((a, n) => a + n.beats, 0);
   const starts = [];
   let t = 0;
   for (const n of notes) { starts.push(t); t += n.beats; }
-  const pickup = song.pickup && song.pickup < bar ? song.pickup : 0;
+  const first = meterLen(timeOf(0));
+  const pickup = song.pickup && song.pickup < first ? song.pickup : 0;
   const bars = [];
-  for (let b0 = pickup ? pickup - bar : 0; b0 < total - 1e-6; b0 += bar) {
+  for (let k = 0, b0 = pickup ? pickup - first : 0; b0 < total - 1e-6; k++) {
+    const time = timeOf(k), bar = meterLen(time);
     const lo = Math.max(0, b0), hi = Math.min(total, b0 + bar);
     const from = lo - b0;
     const ats = new Set();
@@ -659,9 +676,11 @@ export function songBars(song, notes = songNotes(song)) {
         const j = starts.findLastIndex(s => s < abs);
         if (j >= 0 && notes[j].midi != null && starts[j] + notes[j].beats > abs + 1e-6) hold = j;
       }
-      return { at, count: songCountLabel(at, song.time), i: i >= 0 ? i : null, hold };
+      return { at, count: songCountLabel(at, time), i: i >= 0 ? i : null, hold };
     });
-    bars.push({ len: hi - lo, from, cols });
+    // time: shown on the bar when it differs from the bar before.
+    bars.push({ len: hi - lo, from, time, change: k > 0 && time !== timeOf(k - 1), cols });
+    b0 += bar;
   }
   return bars;
 }
