@@ -208,6 +208,7 @@ function render() {
   else if (state.view === 'maker-review') html = viewMakerReview();
   else if (state.view === 'maker-inst') html = viewMakerInst();
   else if (state.view === 'maker-import') html = viewMakerImport();
+  else if (state.view === 'maker-stats') html = viewMakerStats();
   // Everything after the app bar goes into <main>, the page's content column.
   // The tab title names the instrument on screen (preview cards: middleware.js).
   const titled = state.layout?.name ?? (state.view === 'instrument' ? currentInstrument()?.name : null);

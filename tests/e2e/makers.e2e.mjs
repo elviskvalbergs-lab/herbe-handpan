@@ -435,6 +435,44 @@ try {
     assert.equal(counts(c)[0].via, 'nfc');
   });
 
+  // ── Phase 3: stats ────────────────────────────────────────────────────────
+  await step('the stats screen adds up the maker\'s codes: tiles, a bar a day, sources, instruments, CSV', async () => {
+    // A month of scans on the model code, so the chart has something to show.
+    sql(`insert into public.maker_scan_days (code, day, country, via, opens, devices, saves, chord_visits, chords)
+         select ${lit(code)}, (now() at time zone 'utc')::date - g, case when g % 3 = 0 then 'DE' else 'LV' end, case when g % 4 = 0 then 'nfc' else 'qr' end,
+                1 + (g * 7) % 9, 1 + (g * 7) % 4, (g % 6 = 0)::int, 1, 5 + g
+           from generate_series(1, 40) g;`);
+    await m.goto(`${BASE}/#maker`);
+    await m.locator('.maker-tile').first().waitFor();
+    await shot(m, '15-home-stats');
+    await m.click('[data-action="maker-stats-open"]');
+    await m.locator('.maker-bars').waitFor();
+    assert.equal(await m.locator('.maker-bar').count(), 30);
+    const expected = sql(`select sum(d.opens) from public.maker_scan_days d where d.day > (now() at time zone 'utc')::date - 30
+      and d.code in (select public_id from public.instruments union select code from public.maker_codes);`);
+    assert.equal((await m.locator('.maker-tile-value').first().innerText()).replace(/,/g, ''), expected);
+    assert.match(await m.locator('.maker-screen').innerText(), /QR code[\s\S]*NFC tag[\s\S]*Latvia[\s\S]*Germany[\s\S]*D Kurd/);
+    await m.locator('.maker-bar').nth(10).hover();
+    await shot(m, '16-stats');
+    await m.click('[data-action="maker-stats-days"][data-value="90"]');
+    await m.waitForFunction(() => document.querySelectorAll('.maker-bar').length === 90);
+    const [dl] = await Promise.all([m.waitForEvent('download'), m.click('[data-action="maker-stats-csv"]')]);
+    assert.match(dl.suggestedFilename(), /^oakhum-stats-\d{4}-\d\d-\d\d-to-\d{4}-\d\d-\d\d\.csv$/);
+    const csv = readFileSync(await dl.path(), 'utf8');
+    assert.match(csv.split('\n')[0], /^instrument,serial,code,scans/);
+    assert.ok(csv.includes(`,${code},`));
+    await m.click('[data-action="maker-inst-open"]');
+    await m.locator('.maker-code-stat').waitFor();
+    assert.match(await m.locator('.maker-code-stat').innerText(), /scans · saved/);
+    await shot(m, '17-inst-stats');
+  });
+
+  await step('a buyer\'s account sees no numbers of the maker\'s', async () => {
+    const res = server.rpc(users.get('oak@example.com'), 'maker_stats', { p_days: 90 }, {});
+    assert.equal(res.data.totals.opens, 0);
+    assert.deepEqual(res.data.by_code, []);
+  });
+
   if (typeof globalThis.makersMoreSteps === 'function') await globalThis.makersMoreSteps({ step, device, signIn, sql, lit, BASE, toast, shot, users, maker, buyer, admin, code });
   console.log(`\n${passed} steps passed`);
 } finally {

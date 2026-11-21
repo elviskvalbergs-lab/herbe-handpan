@@ -8,6 +8,7 @@ import {
   withoutMadeBy, sharedOpening, madeByToKeep, makerPagePath, makerLinkPreview,
   makerCodeUrl, makerCodeLabel, makerViaFromSearch, parseSerials, qrPath, qrCardSvg, qrSheetSvgs, qrPrintDocument, MAKER_CARD_FORMATS,
   parseCsv, makerImportRows, MAKER_IMPORT_EXAMPLE, MAKER_IMPORT_LIMITS,
+  makerNum, makerStatsDays, makerDayLabel, makerDaysAgo, makerCodeStatText, makerStatsByInstrument, makerStatsCsv, MAKER_VIA_LABELS,
 } from '../js/makers.js';
 import { LINK_FAMILIES, linkPreview, withLinkPreview, parseLink, closestLinks } from '../js/links.js';
 import { safeNoteName } from '../js/layoutfamilies.js';
@@ -271,4 +272,49 @@ test('the scan-counting SQL takes only the events and sources the app sends', ()
   for (const v of ['qr', 'nfc', 'embed']) assert.ok(sql.includes(`'${v}'`), v);
   for (const e of ['open', 'save', 'chords', 'songs']) assert.ok(sql.includes(`'${e}'`), e);
   assert.doesNotMatch(sql.replace(/--.*$/gm, ''), /\b(ip|address)\s+(text|inet)\b/i, 'no column holds an address');
+});
+
+// ── Phase 3: stats ──────────────────────────────────────────────────────────
+const STATS = {
+  days: 7, since: '2026-11-15', until: '2026-11-21',
+  totals: { opens: 15, devices: 6, saves: 1, chord_visits: 2, song_visits: 0, chords: 40, songs: 0 },
+  by_day: [{ day: '2026-11-16', opens: 3, devices: 2 }, { day: '2026-11-21', opens: 12, devices: 4 }],
+  by_via: { qr: 12, nfc: 3 },
+  by_country: [],
+  by_code: [
+    { code: 'B7XK3N', instrument_id: 'hp-1', serial: '101', retired: false, opens: 12, devices: 4, saves: 1, chord_visits: 2, song_visits: 0, chords: 40, songs: 0, last_day: '2026-11-21' },
+    { code: 'KURD22', instrument_id: 'hp-1', serial: null, retired: false, opens: 3, devices: 2, saves: 0, chord_visits: 0, song_visits: 0, chords: 0, songs: 0, last_day: '2026-11-16' },
+    { code: 'PYGMY2', instrument_id: 'hp-2', serial: null, retired: true, opens: 0, devices: 0, saves: 0, chord_visits: 0, song_visits: 0, chords: 0, songs: 0, last_day: null },
+  ],
+};
+
+test('stats: every day of the period, zeros included', () => {
+  const days = makerStatsDays(STATS);
+  assert.equal(days.length, 7);
+  assert.deepEqual(days.map(d => d.opens), [0, 3, 0, 0, 0, 0, 12]);
+  assert.equal(days[0].day, '2026-11-15');
+  assert.deepEqual(makerStatsDays(null), []);
+  assert.equal(makerStatsDays({ since: '2026-10-28', until: '2026-11-02', by_day: [] }).length, 6, 'across a month end');
+  assert.equal(makerDayLabel('2026-11-05'), '5 Nov');
+  assert.equal(makerNum(12345), '12,345');
+});
+
+test('stats: what a code\'s row says', () => {
+  assert.equal(makerCodeStatText(STATS.by_code[0], '2026-11-21'), '12 scans · saved · chords played · last scan today');
+  assert.equal(makerCodeStatText(STATS.by_code[1], '2026-11-21'), '3 scans · last scan 5 days ago');
+  assert.equal(makerCodeStatText({ opens: 1, saves: 3, last_day: '2026-11-20' }, '2026-11-21'), '1 scan · saved 3 times · last scan yesterday');
+  assert.equal(makerCodeStatText(STATS.by_code[2], '2026-11-21'), 'Not scanned yet');
+  assert.equal(makerCodeStatText(null), 'Not scanned yet');
+  assert.equal(makerDaysAgo('2026-11-22', '2026-11-21'), '', 'never a day in the future');
+});
+
+test('stats: by instrument, most scanned first, and as a CSV', () => {
+  const g = makerStatsByInstrument(STATS, { 'hp-1': 'D Kurd 9', 'hp-2': '=Pygmy, "low"' });
+  assert.deepEqual(g.map(x => [x.name, x.opens, x.saves, x.codes.length]), [['D Kurd 9', 15, 1, 2], ['=Pygmy, "low"', 0, 0, 1]]);
+  assert.equal(makerStatsByInstrument(STATS)[0].name, 'Instrument');
+  const csv = makerStatsCsv(STATS, { 'hp-1': 'D Kurd 9', 'hp-2': '=Pygmy, "low"' }).trim().split('\n');
+  assert.equal(csv.length, 4);
+  assert.equal(csv[1], 'D Kurd 9,101,B7XK3N,12,4,1,2,0,40,0,2026-11-21,');
+  assert.equal(csv[3], `"'=Pygmy, ""low""",,PYGMY2,0,0,0,0,0,0,0,,yes`, 'a name that looks like a formula is defused');
+  for (const k of ['qr', 'nfc', 'link', 'embed']) assert.ok(MAKER_VIA_LABELS[k]);
 });

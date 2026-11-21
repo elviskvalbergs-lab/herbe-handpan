@@ -1,6 +1,6 @@
 # The makers programme
 
-Version 1, 21 Nov 2026. **Status:** phases 1 and 2 are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
+Version 1, 21 Nov 2026. **Status:** phases 1 to 3 are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
 
 Until now "for makers" meant a page in the website's footer with two `mailto:` buttons. This turns it into something a maker can use alone: ask for the maker role, set up a public profile, manage instruments, print a code for each one, and see how those codes are used.
 
@@ -133,6 +133,7 @@ What is kept, in full:
 - **Limits**: a visit reports at most 500 chords and 100 songs; the log function accepts only known codes and event names.
 - **A reload or a second visit without the card's mark** counts as an open by plain link: the mark (`?via=qr`) is read once and then dropped from the address, so a link copied from the address bar never claims to be a scan.
 - **One device** counts at most 20 opens a day for one code, and can only add saves and chords for a code it opened that day or the day before.
+- **"Devices" is devices per day, added up.** The same phone on two days counts twice, because nothing is kept that could tell it is the same phone. The stats screen says so.
 - **Small numbers**: countries are shown only for a code or maker with at least 5 devices in the period, so a single buyer's country isn't singled out.
 
 **Proposed privacy notice paragraph** (the notice is website content; it needs adding there):

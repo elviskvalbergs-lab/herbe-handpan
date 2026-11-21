@@ -15,13 +15,14 @@ import {
   makerLogoOk, sharedOpening, madeByToKeep, makerPagePath,
   makerCodeUrl, makerCodeLabel, makerViaFromSearch, parseSerials, qrCardSvg, qrSheetSvgs, qrPrintDocument, MAKER_CARD_FORMATS,
   makerImportRows, MAKER_IMPORT_EXAMPLE,
+  MAKER_STAT_PERIODS, MAKER_VIA_LABELS, makerNum, makerStatsDays, makerDayLabel, makerCodeStatText, makerStatsByInstrument, makerStatsCsv, makerCountryName,
 } from './makers.js';
 import {
   fetchMyMaker, saveMakerProfile, adminListMakers, reviewMaker, resolveMakerReport, reportMaker, openSharedCode, isLoggedIn,
-  fetchMakerCodes, createMakerCodes, retireMakerCode, logMakerEvent, saveCloudInstruments,
+  fetchMakerCodes, createMakerCodes, retireMakerCode, logMakerEvent, saveCloudInstruments, fetchMakerStats,
 } from './auth.js';
 
-const MAKER_VIEWS = { maker: '#maker', 'maker-profile': '#maker/profile', 'maker-review': '#maker/review', 'maker-inst': '#maker/i', 'maker-import': '#maker/import' };
+const MAKER_VIEWS = { maker: '#maker', 'maker-profile': '#maker/profile', 'maker-review': '#maker/review', 'maker-inst': '#maker/i', 'maker-import': '#maker/import', 'maker-stats': '#maker/stats' };
 const MAKER_ACCESS_KEY = 'hp-maker-access'; // { is_maker, is_admin, waiting, status }: what Settings shows before the server answers
 
 // state.mk: everything these screens keep.
@@ -86,6 +87,7 @@ function openMaker(view = 'maker', { push = true, id = null } = {}) {
     if (view === 'maker-review') makerLoadAdmin();
   });
   if (view === 'maker' || view === 'maker-inst') makerLoadCodes();
+  if (view === 'maker' || view === 'maker-inst' || view === 'maker-stats') makerLoadStats();
   render();
 }
 
@@ -94,12 +96,14 @@ function makerOpenHash(hash) {
   if (hash !== '#maker' && !hash.startsWith('#maker/')) return false;
   const instId = hash.startsWith('#maker/i/') ? decodeURIComponent(hash.slice(9)) : null;
   const view = hash === '#maker/profile' && accountOn() ? 'maker-profile' : hash === '#maker/review' && makerAccess().is_admin ? 'maker-review'
-    : instId && accountOn() && getInstrument(instId) ? 'maker-inst' : hash === '#maker/import' && accountOn() ? 'maker-import' : 'maker';
+    : instId && accountOn() && getInstrument(instId) ? 'maker-inst' : hash === '#maker/import' && accountOn() ? 'maker-import'
+    : hash === '#maker/stats' && accountOn() ? 'maker-stats' : 'maker';
   const mk = mkState();
   state.view = view;
   if (view === 'maker-inst') mk.instId = instId;
   if (view === 'maker-import') mk.imp ??= { text: '', checked: null, busy: false, done: null };
   if (view === 'maker' || view === 'maker-inst') setTimeout(makerLoadCodes, 0);
+  if (view === 'maker' || view === 'maker-inst' || view === 'maker-stats') setTimeout(() => makerLoadStats(), 0);
   if (view === 'maker-profile') { mk.form ??= makerFormFrom(mk.info?.maker); }
   setTimeout(() => makerRefresh().then(info => {
     if (view === 'maker-profile' && info?.maker && !mk.form?.touched) { mk.form = makerFormFrom(info.maker); render(); }
@@ -189,6 +193,7 @@ function viewMaker() {
         ${uiRow({ lead: makerLogoHtml(maker), title: maker.name, meta: escHtml(makerPlaceLine(maker)), meta2: maker.website ? escHtml(makerWebsiteLabel(maker.website)) : '', action: 'maker-edit', chevron: true })}
         ${uiRow({ lead: 'eye', title: 'What a buyer sees', meta: 'The “Made by” sheet, as it opens from your instruments', action: 'maker-preview', chevron: true })}
       </div>
+      ${makerHomeStatsHtml()}
       ${makerInstrumentsHtml(maker)}
       ${makerAdminRowHtml()}
     </div>`;
@@ -612,6 +617,15 @@ function makerClick(action, el) {
   }
   if (action === 'maker-nfc-close') { mk.nfc = null; render(); return true; }
 
+  // Stats
+  if (action === 'maker-stats-open') { openMaker('maker-stats'); return true; }
+  if (action === 'maker-stats-days') { makerLoadStats(parseInt(el.dataset.value, 10)); render(); return true; }
+  if (action === 'maker-stats-csv') {
+    const s = mk.stats?.data;
+    if (s) makerDownload(`oakhum-stats-${s.since}-to-${s.until}.csv`, makerStatsCsv(s, makerInstNames()), 'text/csv');
+    return true;
+  }
+
   // Importing a list
   if (action === 'maker-import-example') { mk.imp.text = MAKER_IMPORT_EXAMPLE; mk.imp.checked = makerImportRows(mk.imp.text, { parseLink, closestLinks, safeNoteName }); render(); return true; }
   if (action === 'maker-import-check') { makerImportCheck(); return true; }
@@ -730,7 +744,7 @@ function viewMakerInst() {
   const active = codes.filter(c => !c.retired_at);
   const serialRows = codes.map(c => uiRow({
     title: `No. ${c.serial}`, cls: c.retired_at ? 'is-retired' : '',
-    meta: `${escHtml(c.code)}${c.retired_at ? ' · retired: opens nothing' : ''}`,
+    meta: `${escHtml(c.code)}${c.retired_at ? ' · retired: opens nothing' : ''}`, meta2: makerCodeStatMeta(c.code),
     trail: c.retired_at
       ? `<button type="button" class="btn btn-ghost btn-sm" data-action="maker-code-retire" data-code="${c.code}" data-retired="0">Bring back</button>`
       : `<button type="button" class="btn btn-ghost btn-sm" data-action="maker-card-open" data-code="${c.code}">Card</button>
@@ -743,6 +757,7 @@ function viewMakerInst() {
         <div class="maker-code-main">
           <div class="maker-code">${escHtml(inst.publicId)}</div>
           <div class="maker-code-url">${escHtml(makerCodeLabel(makerOrigin(), inst.publicId))}</div>
+          ${makerCodeStatMeta(inst.publicId) ? `<div class="row-meta maker-code-stat">${makerCodeStatMeta(inst.publicId)}</div>` : ''}
           <div class="row-meta">Opens this instrument for anyone, ready to play${maker?.status === 'approved' && !inst.hideMaker ? `, with “Made by ${escHtml(maker.name)}”` : ''}</div>
         </div>
         <div class="maker-code-actions">
@@ -753,7 +768,7 @@ function viewMakerInst() {
         </div>
       </div>
       ${maker ? `<div class="list">${uiSwitchRow({ label: `Show “Made by ${maker.name}”`, help: maker.status === 'approved' ? 'Off for an instrument you share but didn’t make' : 'Shows once your maker page is approved', on: !inst.hideMaker, action: 'maker-hide-toggle', data: { id: inst.id } })}</div>` : ''}
-      ${typeof makerInstStatsHtml === 'function' ? makerInstStatsHtml(inst, codes) : ''}
+      ${makerInstStatsHtml(inst)}
       <h2 class="list-title">Serial numbers${codes.length ? ` · ${active.length}` : ''}</h2>
       <div class="list">
         ${serialRows || uiRow({ lead: 'list-ordered', title: 'One code per instrument you build', meta: 'Give each serial number its own code and card. All of them open this instrument, and you see each one’s scans' })}
@@ -1064,4 +1079,126 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') makerFlushPlayed(); });
   window.addEventListener('pagehide', makerFlushPlayed);
   setInterval(makerFlushPlayed, 20000);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Phase 3: how the codes are used (#maker/stats). Counts, never people.
+// ════════════════════════════════════════════════════════════════════════════
+
+function makerLoadStats(days = null) {
+  const mk = mkState();
+  mk.stats ??= { days: 30, data: null, failed: false };
+  if (days) { mk.stats.days = days; mk.stats.data = null; }
+  if (!accountOn() || !isLoggedIn()) return Promise.resolve(null);
+  const want = mk.stats.days;
+  return fetchMakerStats(want).then(data => {
+    if (mk.stats.days !== want) return null;
+    mk.stats.data = data ?? mk.stats.data;
+    mk.stats.failed = !data;
+    if (['maker', 'maker-stats', 'maker-inst'].includes(state.view)) render();
+    return data;
+  });
+}
+function makerInstNames() { return Object.fromEntries((state.instruments ?? []).map(i => [i.id, i.name])); }
+
+// Stat tiles: [{ value, label }].
+function makerTilesHtml(tiles) {
+  return `<div class="maker-tiles">${tiles.map(t => `<div class="maker-tile"><span class="maker-tile-value">${escHtml(t.value)}</span><span class="maker-tile-label">${escHtml(t.label)}</span></div>`).join('')}</div>`;
+}
+
+// Scans per day as bars: one series, so no legend; each bar says its day and
+// number on hover or focus, and the busiest day is labelled.
+function makerBarsHtml(stats) {
+  const days = makerStatsDays(stats);
+  const max = Math.max(1, ...days.map(d => d.opens));
+  const total = days.reduce((n, d) => n + d.opens, 0);
+  const peak = days.reduce((best, d) => (d.opens > best.opens ? d : best), days[0]);
+  return `
+    <div class="maker-chart">
+      <div class="maker-chart-head"><span>Scans a day</span>${total ? `<span>Most: ${makerNum(peak.opens)} on ${escHtml(makerDayLabel(peak.day))}</span>` : ''}</div>
+      <div class="maker-bars" role="img" aria-label="Scans a day over ${days.length} days: ${makerNum(total)} in all${total ? `, most on ${escHtml(makerDayLabel(peak.day))} with ${makerNum(peak.opens)}` : ''}">
+        ${days.map(d => `<span class="maker-bar${d.opens ? '' : ' is-zero'}" tabindex="0" style="--h:${Math.round((d.opens / max) * 100)}%" data-tip="${escHtml(makerDayLabel(d.day))}: ${makerNum(d.opens)} scan${d.opens !== 1 ? 's' : ''}"><i></i></span>`).join('')}
+      </div>
+      <div class="maker-chart-axis"><span>${escHtml(makerDayLabel(days[0].day))}</span><span>${escHtml(makerDayLabel(days[days.length - 1].day))}</span></div>
+    </div>`;
+}
+
+function viewMakerStats() {
+  const mk = mkState();
+  const st = mk.stats ?? (mk.stats = { days: 30, data: null, failed: false });
+  const bar = backAppBar('Stats', { fallback: 'settings' });
+  const period = `<div class="maker-period">${uiSeg(MAKER_STAT_PERIODS, String(st.days), { action: 'maker-stats-days', label: 'Period' })}</div>`;
+  const s = st.data;
+  if (!s) {
+    return `${bar}<div class="settings maker-screen">${period}${uiEmpty(st.failed
+      ? { icon: 'cloud-off', title: 'Couldn’t load your numbers', body: 'They need a connection. Try again in a moment.' }
+      : { icon: 'refresh', title: 'Adding up…' })}</div>`;
+  }
+  const t = s.totals;
+  if (!t.opens) {
+    return `${bar}
+      <div class="settings maker-screen">${period}
+        ${uiEmpty({ icon: 'music', title: 'No scans in this period', body: 'When a buyer opens one of your codes, it shows here: how many scans, from a QR code or an NFC tag, and whether they played and saved the instrument.',
+          action: '<button type="button" class="btn btn-secondary" data-action="open-maker">Your instruments and their cards</button>' })}
+      </div>`;
+  }
+  const via = ['qr', 'nfc', 'link', 'embed'].filter(k => s.by_via[k]).map(k => uiRow({
+    title: MAKER_VIA_LABELS[k], trail: `<span class="maker-num">${makerNum(s.by_via[k])}</span>`,
+    meta: `<span class="maker-share" style="--w:${Math.round((s.by_via[k] / t.opens) * 100)}%"></span>`,
+  })).join('');
+  const countries = (s.by_country ?? []).map(c => uiRow({
+    title: c.country ? makerCountryName(c.country) : 'Unknown', trail: `<span class="maker-num">${makerNum(c.opens)}</span>`,
+    meta: `<span class="maker-share" style="--w:${Math.round((c.opens / t.opens) * 100)}%"></span>`,
+  })).join('');
+  const groups = makerStatsByInstrument(s, makerInstNames());
+  const byInst = groups.map(g => uiRow({
+    lead: FAMILY_ICONS[getInstrument(g.id)?.family] ?? 'music', title: g.name, chevron: true, action: 'maker-inst-open', data: { id: g.id },
+    meta: `${makerNum(g.opens)} scan${g.opens !== 1 ? 's' : ''}${g.saves ? ` · saved ${makerNum(g.saves)}×` : ''}${g.codes.length > 1 ? ` · ${g.codes.length} codes` : ''}`,
+  })).join('');
+  return `${bar}
+    <div class="settings maker-screen">
+      ${period}
+      ${makerTilesHtml([
+        { value: makerNum(t.opens), label: 'scans' },
+        { value: makerNum(t.devices), label: 'devices' },
+        { value: makerNum(t.saves), label: 'saved to an account' },
+        { value: makerNum(t.chord_visits), label: 'visits that played chords' },
+        { value: makerNum(t.song_visits), label: 'visits that opened a song' },
+        { value: makerNum(t.chords), label: 'chords played' },
+      ])}
+      ${makerBarsHtml(s)}
+      <h2 class="list-title">Where scans come from</h2>
+      <div class="list">${via}</div>
+      ${countries ? `<h2 class="list-title">Countries</h2><div class="list">${countries}</div>` : `<p class="field-help maker-note">Countries show from five devices in the period, so one buyer’s country is never singled out.</p>`}
+      <h2 class="list-title">By instrument</h2>
+      <div class="list">${byInst}</div>
+      <div class="maker-actions"><button type="button" class="btn btn-secondary" data-action="maker-stats-csv">${icon('download')} Export as CSV</button></div>
+      <p class="field-help maker-note">These are counts, never people: we keep no names, no addresses and nothing on your buyers’ devices. A device is counted once a day; the same phone on two days counts twice. Your own scans aren’t counted.</p>
+    </div>`;
+}
+
+// The numbers on the maker's home: three tiles and the way to the rest.
+function makerHomeStatsHtml() {
+  const s = mkState().stats?.data;
+  if (!s) return '';
+  const t = s.totals;
+  return `
+      <h2 class="list-title">Last ${s.days} days</h2>
+      ${makerTilesHtml([{ value: makerNum(t.opens), label: 'scans' }, { value: makerNum(t.devices), label: 'devices' }, { value: makerNum(t.saves), label: 'saved' }])}
+      <div class="list">${uiRow({ lead: 'list-ordered', title: 'Stats', meta: t.opens ? 'By day, by QR code or NFC tag, by instrument' : 'Nothing scanned yet: your numbers show here', action: 'maker-stats-open', chevron: true })}</div>`;
+}
+// One instrument's numbers, on its codes screen.
+function makerInstStatsHtml(inst) {
+  const s = mkState().stats?.data;
+  const g = s ? makerStatsByInstrument(s, makerInstNames()).find(x => x.id === inst.id) : null;
+  if (!g) return '';
+  return `
+      <h2 class="list-title">Last ${s.days} days</h2>
+      ${makerTilesHtml([{ value: makerNum(g.opens), label: 'scans' }, { value: makerNum(g.devices), label: 'devices' }, { value: makerNum(g.saves), label: 'saved' }])}`;
+}
+// What a code's row says about its use, or '' before the numbers are in.
+function makerCodeStatMeta(code) {
+  const s = mkState().stats?.data;
+  const row = s?.by_code?.find(r => r.code === code);
+  return row ? escHtml(makerCodeStatText(row, s.until)) : '';
 }

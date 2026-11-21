@@ -467,3 +467,72 @@ export function makerImportRows(text, tools) {
   for (const r of rows) if (r.ok) { if (names.has(r.name)) { r.ok = false; r.error = `The same name as row ${names.get(r.name)}`; } else names.set(r.name, r.line); }
   return { rows, error: serialTotal > MAKER_IMPORT_LIMITS.serials ? `At most ${MAKER_IMPORT_LIMITS.serials} serial numbers at a time (this has ${serialTotal})` : '' };
 }
+
+// ── Stats (maker_stats; supabase/migrations/20261123_maker_stats.sql) ────────
+export const MAKER_STAT_PERIODS = [{ value: '7', label: '7 days' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }];
+export const MAKER_VIA_LABELS = { qr: 'QR code', nfc: 'NFC tag', link: 'Link', embed: 'On your website' };
+
+export function makerNum(n) { return Number(n || 0).toLocaleString('en-GB'); }
+
+// Every day of the period, oldest first, with zeros where nothing happened:
+// [{ day: '2026-11-21', opens, devices }].
+export function makerStatsDays(stats) {
+  if (!stats?.since || !stats?.until) return [];
+  const by = new Map((stats.by_day ?? []).map(d => [d.day, d]));
+  const out = [];
+  const end = Date.parse(stats.until + 'T00:00:00Z');
+  for (let t = Date.parse(stats.since + 'T00:00:00Z'); t <= end && out.length < 100; t += 86400000) {
+    const day = new Date(t).toISOString().slice(0, 10);
+    out.push({ day, opens: Number(by.get(day)?.opens ?? 0), devices: Number(by.get(day)?.devices ?? 0) });
+  }
+  return out;
+}
+
+// "21 Nov": a day as a chart label.
+export function makerDayLabel(day) {
+  const d = new Date(day + 'T00:00:00Z');
+  return Number.isNaN(d.getTime()) ? '' : `${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}`;
+}
+
+// "today", "yesterday", "3 days ago" for a code's last scan.
+export function makerDaysAgo(day, today) {
+  const n = Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(day + 'T00:00:00Z')) / 86400000);
+  if (!Number.isFinite(n) || n < 0) return '';
+  return n === 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`;
+}
+
+// What one code's row says: "12 scans · saved · last scan 3 days ago".
+export function makerCodeStatText(row, today) {
+  if (!row || !row.opens) return 'Not scanned yet';
+  const parts = [`${makerNum(row.opens)} scan${row.opens !== 1 ? 's' : ''}`];
+  if (row.saves) parts.push(row.saves > 1 ? `saved ${makerNum(row.saves)} times` : 'saved');
+  if (row.chord_visits) parts.push('chords played');
+  if (row.last_day && today) parts.push(`last scan ${makerDaysAgo(row.last_day, today)}`);
+  return parts.join(' · ');
+}
+
+// The codes' rows grouped by instrument, most scanned first:
+// [{ id, name, opens, devices, saves, codes: [row…] }]. names: { id: name }.
+export function makerStatsByInstrument(stats, names = {}) {
+  const groups = new Map();
+  for (const row of stats?.by_code ?? []) {
+    const g = groups.get(row.instrument_id) ?? { id: row.instrument_id, name: names[row.instrument_id] ?? 'Instrument', opens: 0, devices: 0, saves: 0, codes: [] };
+    g.opens += Number(row.opens || 0); g.devices += Number(row.devices || 0); g.saves += Number(row.saves || 0);
+    g.codes.push(row);
+    groups.set(row.instrument_id, g);
+  }
+  return [...groups.values()].sort((a, b) => b.opens - a.opens || a.name.localeCompare(b.name));
+}
+
+// The period's numbers per code as a CSV file (for a spreadsheet).
+export function makerStatsCsv(stats, names = {}) {
+  const cell = v => { const s = String(v ?? ''); return /[",\n;]/.test(s) || /^[=+\-@]/.test(s) ? `"${(/^[=+\-@]/.test(s) ? "'" : '') + s.replace(/"/g, '""')}"` : s; };
+  const head = ['instrument', 'serial', 'code', 'scans', 'devices', 'saves', 'visits_with_chords', 'visits_with_songs', 'chords_played', 'songs_opened', 'last_scan', 'retired'];
+  const lines = [head.join(',')];
+  for (const g of makerStatsByInstrument(stats, names)) {
+    for (const r of g.codes) {
+      lines.push([g.name, r.serial ?? '', r.code, r.opens, r.devices, r.saves, r.chord_visits, r.song_visits, r.chords, r.songs, r.last_day ?? '', r.retired ? 'yes' : ''].map(cell).join(','));
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}
