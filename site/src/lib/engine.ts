@@ -8,7 +8,7 @@ import { findAllChords } from "@engine/chords.js";
 import { TRADITIONAL_CHARTS, chartsForFamily, chartDefaultKey, instrumentFromChart } from "@engine/charts.js";
 import { linkFor as appLinkFor, linkSlug, linkTitle, parseLink } from "@engine/links.js";
 import { renderPan } from "@engine/pan.js";
-import { ocarinaToLayout, arpeggioOrder, renderFingering } from "@engine/ocarina-ui.js";
+import { ocarinaToLayout, arpeggioOrder, renderFingering, playableMidis, fingeringFor } from "@engine/ocarina-ui.js";
 import { LAYOUT_FAMILIES } from "@engine/layoutfamilies.js";
 
 export type Family = "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute";
@@ -244,6 +244,18 @@ export function windVoice(tuning: Tuning): "ocarina" | "whistle" | "flute" {
   const w = WIND_INSTRUMENTS.get(tuning.path);
   if (!w || tuning.family === "ocarina") return "ocarina";
   return String(w.inst.type ?? w.chartId).startsWith("tin-whistle") ? "whistle" : "flute";
+}
+
+/**
+ * The notes a tuning has, as the app's song fit takes them (js/app.js songHave,
+ * songEasy): MIDI numbers, and for an ocarina or flute the ones played without
+ * half-covering a hole, which songs are moved to where they can be.
+ */
+export function tuningMidis(tuning: Tuning): { have: Set<number>; easy: Set<number> | null } {
+  const w = WIND_INSTRUMENTS.get(tuning.path);
+  if (!w) return { have: new Set(tuning.notes.map((n) => noteToMidi(n) as number)), easy: null };
+  const all = playableMidis(w.inst) as number[];
+  return { have: new Set(all), easy: new Set(all.filter((m) => !fingeringFor(w.inst, m)?.states?.includes("h"))) };
 }
 
 /** A MIDI note as the app names it ("Bb4"), for playing. */

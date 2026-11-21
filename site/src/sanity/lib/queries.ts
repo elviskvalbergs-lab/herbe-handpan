@@ -3,6 +3,7 @@ import { defineQuery } from "next-sanity";
 export const SETTINGS_QUERY = defineQuery(`*[_id == "siteSettings"][0]{title, description, storyTitle, story, storyVerse, storyVerseTranslation, storyVerseSource, contactEmail}`);
 export const HOME_QUERY = defineQuery(`*[_id == "homePage"][0]`);
 export const MAKERS_QUERY = defineQuery(`*[_id == "makersPage"][0]`);
+export const SONGS_PAGE_QUERY = defineQuery(`*[_id == "songsPage"][0]`);
 export const INSTRUMENTS_QUERY = defineQuery(
   `*[_type == "instrument" && defined(slug.current)] | order(order asc){..., "slug": slug.current}`,
 );

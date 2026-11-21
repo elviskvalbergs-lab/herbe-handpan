@@ -136,3 +136,18 @@ Wireframe 3. New routes only; existing pages are not touched apart from a link t
 4. **Website.** The song routes, sitemap, tests.
 
 Not in this round: sharing a playlist, a note moved by an octave, MusicXML and MIDI import, a licensed catalogue.
+
+## What was built, and what differs from the plan
+
+Built as planned: sections 1, 2 and 3, and the website's `/songs`, `/songs/<song>` and `/songs/<song>/<family>/<tuning>` pages with their sitemap entries (114 song pages and 509 song-and-tuning pages for the six well-known tunings; every other tuning's pages work and carry `noindex`).
+
+Different from the plan, or left out:
+
+- **The website shows the song as notes in bars, not as the app's tab.** The numbered tab (which field or tongue, which hand) is drawn inside `js/app.js`, which the website can't import, and copying it would break the rule that music comes from the app. The page plays the song with the app's sound, lights each note on the app's drawing (or shows its fingering), and sends people to the app for the tab. To put the tab on the website, the tab's model has to move out of `js/app.js` into a module both can use.
+- **The website's song pages use the site's default preview image.** A picture per song and tuning is not built.
+- **`/songs` has no search box**, and nothing on the existing pages links to it yet (the header, footer and instrument pages belong to the website work in progress). It is in the sitemap.
+- **Share is on the song screen only**, not yet on chord cards or the instrument screen.
+- **"Loop this line"** on the tab's edge is not built; the two-tap loop is.
+- **The list of songs across all my instruments** is not on a screen: `songsAcross` is ready for the Songs tab that the navigation redesign is adding. "On your instruments" for one song is built.
+- **Wait mode** was tested with a generated recording as the microphone, not yet with a real instrument in a room.
+
