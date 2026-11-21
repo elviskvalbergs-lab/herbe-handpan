@@ -26,8 +26,12 @@ const APP_PATHS = /^\/(|play|(handpan|tongue-drum|kalimba|ocarina|flute|s)(\/.*)
 
 export async function serveApp({ headers = {} } = {}) {
   if (!existsSync(join(ROOT, 'index.html'))) throw new Error('index.html is missing: run python3 build.py first');
+  const app = { intercept: null };
   const http = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    // A test can stand in for a bad network: app.intercept(path, res) answers
+    // (or delays) the request itself and returns true.
+    if (app.intercept?.(path, res)) return;
     let file = join(ROOT, path);
     if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
     if (APP_PATHS.test(path)) file = join(ROOT, 'index.html');
@@ -37,7 +41,8 @@ export async function serveApp({ headers = {} } = {}) {
     res.end(readFileSync(file));
   });
   await new Promise(r => http.listen(0, '127.0.0.1', r));
-  return { http, base: `http://localhost:${http.address().port}`, close: () => new Promise(r => http.close(r)) };
+  Object.assign(app, { http, base: `http://localhost:${http.address().port}`, close: () => new Promise(r => { http.closeAllConnections?.(); http.close(r); }) });
+  return app;
 }
 
 // ── Stand-in Supabase ───────────────────────────────────────────────────────
