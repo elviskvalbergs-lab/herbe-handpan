@@ -15,6 +15,9 @@ const SOLFEGE_FLAT  = ['Do','Reb','Re','Mib','Mi','Fa','Solb','Sol','Lab','La','
 // Display a note. Accepts 'G#3' or 'G#'. useFlats picks flat/sharp spelling;
 // useSolfege switches to fixed-do solfège (Do/Re/Mi…) instead of letters.
 export function displayNote(note, useFlats, useSolfege = false) {
+  // Not a note name (a midi number, null, undefined): show it as it is rather
+  // than throw in the middle of a render.
+  if (typeof note !== 'string') return note == null ? '' : String(note);
   const m = note.match(/^([A-G][#b]?)(\d*)$/);
   if (!m) return note;
   const pc = NOTE_TO_SEMI[m[1]];
