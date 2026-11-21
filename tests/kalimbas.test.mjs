@@ -90,3 +90,27 @@ test('Listen and the setup work on kalimbas', () => {
   assert.ok(setupScalesFor(KALIMBAS, 0).some(s => s.id === 'KL-C-Major-21'), 'the 21-key C kalimba (lowest F3) is a C kalimba');
   assert.equal(setupKeyNote(findTuning('KL-G-Alto-15')), 'G4');
 });
+
+test('kalimba numbers: 1–7 from the key, dots for octaves, the sold key found from the notes', async () => {
+  const { kalimbaNumbers, kalimbaKeyPc } = await import('../js/kalimbas.js');
+  const notesOf = id => { const k = KALIMBAS.find(x => x.id === id); return [k.top.ding, ...k.top.notes]; };
+  const c17 = kalimbaNumbers(notesOf('KL-C-Major-17'));
+  assert.equal(c17.get('C4'), '1');
+  assert.equal(c17.get('B4'), '7');
+  assert.equal(c17.get('C5'), '1̇');
+  assert.equal(c17.get('E6'), '3̈');
+  // A 21-key C kalimba from F3: F3 is 4 with a dot below.
+  const c21 = kalimbaNumbers(notesOf('KL-C-Major-21'));
+  assert.equal(c21.get('F3'), '4̣');
+  assert.equal(c21.get('C4'), '1');
+  // G alto from G3: G3 = 1; A minor counts from C (A3 = 6 below).
+  assert.equal(kalimbaNumbers(notesOf('KL-G-Alto-15')).get('G3'), '1');
+  assert.equal(kalimbaKeyPc(notesOf('KL-A-Minor-9')), 0);
+  assert.equal(kalimbaNumbers(notesOf('KL-A-Minor-9')).get('A3'), '6̣');
+  // C pentatonic from G4 is still counted in C: G4 sits below its first C.
+  assert.equal(kalimbaNumbers(notesOf('KL-C-Pentatonic-8')).get('G4'), '5\u0323');
+  assert.equal(kalimbaNumbers(notesOf('KL-C-Pentatonic-8')).get('C5'), '1');
+  // A custom kalimba (not in the list): the major key that holds its notes.
+  assert.equal(kalimbaKeyPc(['D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C#5', 'D5']), 2);
+  assert.equal(kalimbaNumbers(['C4', 'D4', 'F#4'], 0).get('F#4'), '#4');
+});
