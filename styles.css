@@ -1835,13 +1835,15 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
    row and an L row, numbers coloured like the pan's strike badges. */
 .song-view-row { display: flex; align-items: center; gap: var(--space-2); }
 .song-view-row .seg { flex: 1; }
-.song-tab { display: flex; flex-direction: column; gap: var(--space-3); }
+.song-tab { display: flex; flex-direction: column; gap: 20px; }
 .tab-line { display: flex; align-items: stretch; }
 .tab-hands { display: grid; grid-template-rows: 18px 32px 32px; width: 18px; flex: none; font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-3); }
 .tab-hands span { display: flex; align-items: center; }
 .tab-bar { flex: var(--cols) 1 0; min-width: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-template-rows: 18px 32px 32px; border-left: 2px solid var(--border-strong); }
 .tab-bar:last-child { border-right: 2px solid var(--border-strong); }
 .tab-bar.is-pickup { border-left-style: dashed; }
+.tab-bar { position: relative; }
+.tab-time { position: absolute; left: 3px; top: -15px; font-size: 10px; font-weight: var(--fw-semibold); color: var(--accent); line-height: 1; }
 .tab-count { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .tab-count.is-beat { color: var(--text-2); font-weight: var(--fw-semibold); }
 .tab-cell { position: relative; display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--border); min-width: 0; }

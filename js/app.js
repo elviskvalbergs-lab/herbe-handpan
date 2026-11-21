@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands } from './songs.js';
+import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songBars, songHands, songTimeLabel } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, panPlaces, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -2994,7 +2994,7 @@ function songInstWord(inst) {
   return inst ? (inst.family === 'flute' ? 'flute' : 'ocarina') : layoutFamilyInfo(layoutInstrument(state.layout)).word;
 }
 function songMeta(song, shift) {
-  return `${SONG_ORIGINS[song.origin]} · ${songKeyOn(song, shift)} · ${song.time}`;
+  return `${SONG_ORIGINS[song.origin]} · ${songKeyOn(song, shift)} · ${songTimeLabel(song)}`;
 }
 
 const SONGS_SHOWN = 8;
@@ -3165,7 +3165,7 @@ function songTabHtml(S, T, idx) {
     return held != null && T.hands[held] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
   };
   const lines = T.lines.map(line => {
-    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length}">
+    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length}">${b.change ? `<span class="tab-time" aria-label="Time changes to ${b.time}">${b.time}</span>` : ''}
         ${b.cols.map(c => `<span class="tab-count${c.count && c.count !== '+' ? ' is-beat' : ''}">${c.count}</span>`).join('')}
         ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'R')}</span>`).join('')}
         ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'L')}</span>`).join('')}
