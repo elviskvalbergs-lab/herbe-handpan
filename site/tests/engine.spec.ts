@@ -9,7 +9,7 @@ describe("the site reads the app's catalogue", () => {
     expect(hp.length).toBe(62);
     expect(new Set(hp.map((t) => t.slug)).size).toBe(hp.length);
     const oc = chartTunings("ocarina");
-    expect(oc.length).toBe(72); // 12-hole (36 keys) and 6-hole pendant (36 keys)
+    expect(oc.length).toBe(180); // 12-hole, 6-hole and 4-hole pendants, 10-hole in two systems: 36 keys each
     expect(new Set(oc.map((t) => t.slug)).size).toBe(oc.length);
     expect(oc.some((t) => t.slug === "pendant-6-c-c6")).toBe(true);
     for (const t of [...hp, ...chartTunings("ocarina"), ...chartTunings("flute")]) expect(t.path).toMatch(/^\/(handpan|ocarina|flute)\/[a-z0-9-]+$/);
