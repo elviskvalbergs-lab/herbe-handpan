@@ -6,7 +6,7 @@
 // Every claim here matches what the app does today (handpan.herbe.app,
 // docs/free-to-play.md in the repository root). "On the way" lists only work
 // that is planned in the repository's design docs.
-import type { FeatureDoc, HomePage, InstrumentDoc, MakersPage, PageDoc, SiteSettings } from "@/sanity/lib/types";
+import type { FeatureDoc, HomePage, InstrumentDoc, MakersPage, PageDoc, SiteSettings, SongsPage } from "@/sanity/lib/types";
 
 export const settings: SiteSettings = {
   title: "Oakhum",
@@ -77,6 +77,21 @@ export const home: HomePage = {
 
 // /makers: for people who make or sell instruments. Every claim matches the
 // app today; branding and embedding are only "ask us", not promised.
+export const songsPage: SongsPage = {
+  heroTitle: "Songs your instrument can play",
+  heroText:
+    "Folk, children's and Christmas songs from many countries, each one checked note by note against handpans, tongue drums, kalimbas, ocarinas and flutes. Pick a song to see which instruments have its notes, and play it here.",
+  fitTitle: "Which instruments can play it",
+  fitText:
+    "A song fits when the instrument has every one of its notes. Oakhum moves the song to the key where that is true, so the same tune lands in a different key on a different instrument.",
+  almostText: "Where one rarely used note is missing, the app still offers the song and marks that note. It is never swapped for another.",
+  demoText: "Tap Play to hear it with the app's own sound and see each note where it is on the instrument.",
+  appTitle: "Learn it in the app",
+  appText:
+    "The app shows the song as a tab for your instrument, waits for you to play each note, loops the hard bars and slows down to a quarter speed. Free, in your browser.",
+  appCta: "Open this song in the app",
+};
+
 export const makers: MakersPage = {
   heroTitle: "Help your instruments get played",
   heroText:

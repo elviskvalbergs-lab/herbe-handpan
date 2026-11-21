@@ -40,6 +40,19 @@ export type HomePage = {
   faqs?: QA[];
 };
 
+export type SongsPage = {
+  heroTitle: string;
+  heroText: string;
+  fitTitle?: string;
+  fitText?: string;
+  almostText?: string;
+  demoText?: string;
+  appTitle?: string;
+  appText?: string;
+  appCta?: string;
+  seo?: { title?: string; description?: string };
+};
+
 export type MakersPage = {
   heroTitle: string;
   heroText: string;
