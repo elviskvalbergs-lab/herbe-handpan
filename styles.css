@@ -547,7 +547,11 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
 .song-note.is-current { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .song-licence { font-size: var(--fs-13); color: var(--text-3); }
-.songs-filter { margin-bottom: var(--space-2); }
+.songs-filter { margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2); }
+.songs-filter .chip { gap: 6px; }
+.songs-filter .chip svg { width: 16px; height: 16px; }
+.chip.is-spotlight { border-color: var(--accent); color: var(--accent); }
+.chip.is-spotlight[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .song-licence a { color: inherit; text-decoration: underline; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
 /* Move notes: the handpan's tone fields dragged to where they are. */
@@ -1900,3 +1904,7 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
   body.printing-song .tab-line { break-inside: avoid; }
   body.printing-song .tab-note, body.printing-song .tab-hold, body.printing-song .tab-dot, body.printing-song .tab-hole { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* The playlist player's buttons: back to the first chord, then Play/Stop. */
+.prog-play-row { display: flex; gap: var(--space-2); align-items: stretch; }
+.prog-play-row .btn-block { flex: 1; }

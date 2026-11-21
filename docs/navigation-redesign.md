@@ -13,9 +13,9 @@ every one is a label, an order or a default, cheap to flip afterwards.
 
 | # | Question | Recommendation (built) | Alternative |
 | --- | --- | --- | --- |
-| 1 | What is the tab that holds playlists and progressions called? | **Sets**. One list, one "New set" button. A playlist and a progression stay two kinds of set (no data change, no rename of the detail screens). | Keep "Playlists"; or "Saved" (reads oddly for a guest, who keeps nothing). |
-| 2 | Tab order | **Chords · Songs · Sets · Pan/Drum/Kalimba/Notes**, the same on every instrument: the three jobs first, the instrument's own tab last. A link without a tab still opens the instrument's own tab, as today. | Instrument tab first (ocarina players have Notes first today). |
-| 3 | The ♡ opens "Add to playlist", it is not a favourite | A **bookmark** icon labelled "Save to a set", on the chord card only. List rows show a small bookmark when the chord is in a set, without a button. Same sheet as today behind it. | Make ♡ a real one-tap favourite and move "Add to a set…" into ⋯. Nicer, but changes what a tap does for existing users. |
+| 1 | Playlists and progressions: one concept? | **Decided by the owner while this was being written** (PR #80): one kind of list, called **Playlists**. An earlier draft of this document proposed "Sets"; that is dropped, and the redesign builds on Playlists as merged. | – |
+| 2 | Tab order | **Chords · Songs · Playlists · Pan/Drum/Kalimba/Notes**, the same on every instrument: the three jobs first, the instrument's own tab last. A link without a tab still opens the instrument's own tab, as today. | Instrument tab first (ocarina players have Notes first today). |
+| 3 | The ♡ opens "Add to playlist", it is not a favourite | A **bookmark** icon labelled "Add to a playlist", on the chord card only. List rows show a small bookmark when the chord is in a playlist, without a button. Same sheet as today behind it. | Make ♡ a real one-tap favourite and move "Add to a playlist…" into ⋯. Nicer, but changes what a tap does for existing users. |
 | 4 | Speed ("1×") on every chord card | Moves into the chord's ⋯ sheet (it is also in Settings). Set once, rarely touched. | Keep on the card. |
 | 5 | C# or D♭ | New default **Auto**: each tuning is spelt the way its scale is written (D Kurd shows B♭). The setting becomes Auto · C# · D♭. Someone who already chose C# or D♭ keeps it. | Keep sharps as the default. |
 | 6 | "Add to home screen" on the first screen | Not on the first-run screen. It shows on My instruments and Play something else once the visitor has heard a chord (got value), as today otherwise. | Keep on the first screen. |
@@ -29,7 +29,7 @@ A jammer opens Oakhum for one of three things:
 
 1. **"What can my instrument play?"** Pick a chord, see it on my own instrument, hear it. → **Chords**
 2. **"Teach me a song."** A melody I know, note by note, on my instrument. → **Songs**
-3. **"We are playing together."** The chords of a tune, in order, ready to play along. → **Sets**
+3. **"We are playing together."** The chords of a tune, in order, ready to play along. → **Playlists**
 
 Everything else (the layout editor, the fingering chart, the tuner, setup, settings, the builder)
 supports those three and should not compete with them for the first screenful.
@@ -38,45 +38,33 @@ supports those three and should not compete with them for the first screenful.
 
 | | Before | After |
 | --- | --- | --- |
-| Handpan, tongue drum, kalimba | Chords · Pan · Playlists | **Chords · Songs · Sets · Pan** (Drum, Kalimba) |
-| Ocarina, flute | Notes · Chords · Playlists (· Build / Set up) | **Chords · Songs · Sets · Notes** (· Build / Set up) |
+| Handpan, tongue drum, kalimba | Chords · Pan · Playlists | **Chords · Songs · Playlists · Pan** (Drum, Kalimba) |
+| Ocarina, flute | Notes · Chords · Playlists (· Build / Set up) | **Chords · Songs · Playlists · Notes** (· Build / Set up) |
 
 - One function builds both tab bars (`instrumentTabs`, replacing `handpanTabs` and `ocTabs`): labels,
   icons and order are decided once. Only the instrument's own tab differs.
 - **Songs** is its own tab: the "Songs to learn" list (unchanged, it belongs to the songs work),
-  then one row "Know the chords of a song? Paste a chord sheet", which makes a set.
-- **Sets** is one list in place of the three stacked sections of the old Playlists tab.
-  - A row is a playlist or a progression. Its second line says which and why you would use it:
-    "Playlist · 4 chords here · 9 in total", "Progression · Am – Dm – Am · 8 bars".
-  - Favorites is a playlist like any other, first in the list.
-  - One button, **New set**, opens a sheet with three choices: "Chords to pick from" (a playlist),
-    "Chords in order" (a progression), "Paste a chord sheet".
-  - Playlists and progressions keep their data, their detail screens and their names as *kinds* of
-    set. Nothing is migrated; the database is untouched.
-- My instruments (Home) keeps its side list, now also titled "Sets", built from the same rows.
+  then one row "Know the chords of a song? Paste a chord sheet", which makes a playlist.
+- **Playlists** is the owner's one kind of list (PR #80), unchanged, without the songs under it.
 
 Controls on the phone screen (buttons, links and fields, counted on D Kurd as a guest):
 
 | Screen | Before | After |
 | --- | --- | --- |
-| Playlists tab | 15 (4 concepts) | split in two: |
-| Songs tab | – | 13 (songs, and the way in for a chord sheet) |
-| Sets tab | – | 9 (1 concept) |
+| Playlists tab (playlists, then songs) | 15 at the time of the review | 9, playlists only |
+| Songs tab | – | 14 (songs, their filter, and the way in for a chord sheet) |
 
 ### Deep links
 
-`LINK_TABS` gets `songs` and `sets` on every family (ocarinas and flutes had no playlists link at all).
+`LINK_TABS` gets `songs` on every family, and `playlists` on ocarinas and flutes too (they had
+no playlists link). Nothing is renamed, so every link already shared opens what it did.
 
-| Old | Opens | Address bar becomes |
-| --- | --- | --- |
-| `/handpan/d-kurd/playlists` | the Sets tab | `/handpan/d-kurd/sets` |
-| `/handpan/d-kurd/songs` (new) | the Songs tab | – |
-| `/ocarina/alto-c-12/songs`, `/sets` (new) | the same on an ocarina | – |
-| `#i/<id>/playlists` (a saved ocarina) | its Sets tab | `#i/<id>/sets` |
-| every other link | unchanged | unchanged |
-
-`parseLink` reads `playlists` as `sets`, and its `path` is the new spelling, so `loadFromUrl`
-replaces the address the way it already does for an alias. No slug changes.
+| Link | Opens |
+| --- | --- |
+| `/handpan/d-kurd/songs` (new) | the Songs tab |
+| `/ocarina/alto-c-12/songs`, `/ocarina/alto-c-12/playlists` (new) | the same on an ocarina |
+| `#i/<id>/songs` (new) | a saved ocarina's or flute's Songs tab |
+| every other link | unchanged |
 
 ## 3. The Chords screen
 
@@ -99,7 +87,7 @@ After, top to bottom:
    chips move into the Filters sheet as "Starts on" (one sheet, `chordFiltersSheet`, replacing
    `hpFiltersSheet` and `ocFiltersSheet`; the instrument adds its own field: Playlist or Scale).
 6. **Rows.** Name and "Minor · 3 notes". No button in a row: a tap selects and plays. A chord that
-   is in a set shows a small bookmark.
+   is in a playlist shows a small bookmark.
 
 | Screen (phone, guest) | Before | After |
 | --- | --- | --- |
@@ -176,7 +164,7 @@ redesign touches a pair it is merged into one shared part:
 | Pair | Becomes | In |
 | --- | --- | --- |
 | `handpanTabs` / `ocTabs` | `instrumentTabs` | part 1 |
-| `viewHandpanPlaylists` / `viewOcarinaPlaylists` bodies | `setsTabHtml`, `songsTabHtml` | part 1 |
+| the two playlists views | `playlistsTabHtml` (as merged) and `songsTabHtml`, one each for both shells | part 1 |
 | `hpFiltersSheet` / `ocFiltersSheet` | `chordFiltersSheet` | part 2 |
 | `hpMoreSheet` / `ocChordMoreSheet` | `chordMoreSheet` | part 2 |
 | the two Browse/Identify/Listen switches | `chordModeSegHtml` | part 2 |
@@ -184,7 +172,7 @@ redesign touches a pair it is merged into one shared part:
 
 ## 8. Build order
 
-1. **Tabs, Songs, Sets** and the deep links.
+1. **Tabs and Songs** and the deep links.
 2. **The Chords screen.**
 3. **First run, Settings, microphone names, note spelling.**
 

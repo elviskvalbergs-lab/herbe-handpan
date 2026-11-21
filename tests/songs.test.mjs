@@ -170,3 +170,13 @@ test('Latvian lyrics from the Vītols scan, in today\'s spelling, line up with t
   // F4 Pūt, C5 vē-, A4 ji- (slurred to G4), F4 ņi,
   assert.deepEqual(pv.slice(0, 5).map(x => x?.text ?? null), ['Pūt,', 'vē-', 'ji-', null, 'ņi,']);
 });
+
+test('song filters: Popular leaves out the Latvian collection, a country shows its own', async () => {
+  const { songsForFilter } = await import('../js/songs.js');
+  const pop = songsForFilter('popular');
+  assert.ok(pop.length > 50 && pop.every(s => s.origin !== 'lv'));
+  assert.deepEqual(songsForFilter('all').map(s => s.id), pop.map(s => s.id));
+  const lv = songsForFilter('origin:lv');
+  assert.ok(lv.length >= 13 && lv.every(s => s.origin === 'lv'));
+  assert.ok(songsForFilter('christmas').every(s => s.tags.includes('christmas')));
+});

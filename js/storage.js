@@ -55,8 +55,42 @@ function getAllPlaylistsRaw() {
   return playlists;
 }
 
+// Playlists that haven't been moved into the one kind of list yet
+// (mergePlaylistsIntoProgressions): none, once the app has started.
 export function getPlaylists() {
-  return getAllPlaylistsRaw().filter(p => !p.deletedAt);
+  return getAllPlaylistsRaw().filter(p => !p.deletedAt && !p.mergedInto);
+}
+
+// One kind of list (the owner, 2026-11): playlists and progressions were two
+// ways to keep chords; a playlist is now what a progression was (chords in
+// order, the same one as often as you like, played in time), called a
+// playlist. Each old playlist with chords is copied once into one, same
+// name, chords and order; the old record stays, marked mergedInto, as a
+// backup (additive: nothing is deleted). The copy's ids come from the old
+// playlist's, so two devices copying the same playlist make the same list
+// and sync keeps one. Returns how many lists it made.
+export function mergePlaylistsIntoProgressions() {
+  const playlists = getAllPlaylistsRaw();
+  const progs = getProgressionsRaw();
+  let made = 0, touched = false;
+  for (const pl of playlists) {
+    if (pl.deletedAt || pl.mergedInto) continue;
+    touched = true;
+    if (!pl.chords?.length) { pl.mergedInto = '-'; pl.updatedAt = now(); continue; }
+    const id = `pr-from-${pl.id}`;
+    if (!progs.some(p => p.id === id)) {
+      progs.push(normalizeProgression({
+        bpm: PROG_DEFAULTS.bpm, beatsPerBar: PROG_DEFAULTS.beatsPerBar, id, name: pl.name, fromPlaylist: pl.id,
+        steps: pl.chords.map((c, i) => newProgressionStep(c, { stepId: `st-${pl.id}-${i}` })), updatedAt: now(),
+      }));
+      made++;
+    }
+    pl.mergedInto = id;
+    pl.updatedAt = now();
+  }
+  if (made) writeProgressionsRaw(progs);
+  if (touched) dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  return made;
 }
 
 export function addPlaylist(name) {
@@ -144,7 +178,8 @@ export function isChordInAnyPlaylist(chordFavId) {
 // unlike the exact-id match above, which the playlist picker needs to decide
 // whether to add or remove THIS specific voicing.
 export function isChordBookmarkedAnyVoicing(layoutId, chordId) {
-  return getPlaylists().some(p => p.chords.some(c => c.layoutId === layoutId && c.chordId === chordId));
+  return getPlaylists().some(p => p.chords.some(c => c.layoutId === layoutId && c.chordId === chordId))
+    || getProgressionsRaw().some(p => !p.deletedAt && p.steps?.some(s => s.layoutId === layoutId && s.chordId === chordId));
 }
 
 // Legacy compat — keep old callers working
