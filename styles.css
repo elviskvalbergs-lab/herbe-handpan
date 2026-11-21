@@ -1904,3 +1904,7 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
   body.printing-song .tab-line { break-inside: avoid; }
   body.printing-song .tab-note, body.printing-song .tab-hold, body.printing-song .tab-dot, body.printing-song .tab-hole { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* The playlist player's buttons: back to the first chord, then Play/Stop. */
+.prog-play-row { display: flex; gap: var(--space-2); align-items: stretch; }
+.prog-play-row .btn-block { flex: 1; }
