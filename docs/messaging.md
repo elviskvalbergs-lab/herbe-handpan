@@ -26,7 +26,7 @@ Three per audience, in this order. Each one is something a person can check in u
 **Jammers**
 
 1. **It starts from your instrument.** Pick it from the list, or tap "Play my notes" and play each note: Oakhum listens and works out what you have. Custom tunings and bottom notes included.
-2. **Chords and songs your notes can really play.** Every chord drawn on your own instrument, and "Songs to learn": 103 folk songs, children's songs and carols, filtered to the ones your notes can play, each with a tab in the way your instrument's players read tabs.
+2. **Chords and songs your notes can really play.** Every chord drawn on your own instrument, and the Songs tab: 103 folk songs, children's songs and carols, filtered to the ones your notes can play, each with a tab in the way your instrument's players read tabs.
 3. **You can join in.** Tap "Listen" when a friend plays guitar or piano and Oakhum shows the chord on your instrument. Or paste a song's chord sheet and get its chords in order, fitted to your notes, as a playlist.
 
 **Makers and shops**
@@ -39,15 +39,18 @@ How many songs fit depends on the instrument, and we say so. Checked on 21 Nov 2
 
 ## 4. Vocabulary
 
-One name per thing, the same as in the app. Capitalise the names of screens and buttons as the app does.
+One name per thing, the same as in the app (checked against the navigation redesign merged on 21 Nov 2026: the tabs are **Chords · Songs · Playlists** and the instrument's own, Pan, Keys, Drum or Notes). Capitalise the names of screens and buttons as the app does. For the three microphone features the word says who is making the sound: you play one note (Tuner), you play your instrument's notes (Play my notes), someone else plays (Listen).
 
 | Say | It is | Don't say |
 |---|---|---|
-| **Play my notes** | The setup that listens and works out the instrument | "set up by ear", "auto-detect", "AI tuning recognition" |
+| **Play my notes** | You play your instrument's notes; Oakhum works out which instrument, scale or key you have | "set up by ear", "auto-detect", "AI tuning recognition", "Listen" |
 | **I know my scale** / **I know my key** | The other setup path | "manual setup" |
 | **Chords** | The screen with every chord the instrument can play | "chord finder", "chord library" |
-| **Songs to learn** (short: **Songs**) | The song list with tabs | "song catalogue", "tabs library", "sheet music" |
-| **Listen** | Hears a chord played nearby and shows it on your instrument | "chord recognition", "jam mode" |
+| **Songs** (the tab; its list is headed **Songs to learn**) | The songs your notes can play, each with a tab | "song catalogue", "tabs library", "sheet music" |
+| **Listen** | Hears music around you (a friend, a song) and shows the chord on your instrument. On the Chords tab: All chords · Tap notes · Listen | "chord recognition", "jam mode"; "Listen" for anything else that uses the microphone |
+| **Tuner** | Says how sharp or flat one note is | "tuner" for setup |
+| **Keep this handpan** (kalimba, …) | The button at the end of setup that saves the instrument | "Save for next time", "register" |
+| **Add to a playlist** (the bookmark on a chord) | Puts a chord in a playlist | "favourite", "like", "star" |
 | **chord sheet** | A song's chords pasted in, fitted to your notes | "import", "ChordPro" in anything but help text |
 | **playlist** | Chords in order, the same chord as often as you like, played in time. The one kind of list (since 21 Nov 2026) | "progression", "sequence", "set list" |
 | **My instruments** | Saved instruments (accounts) | "library", "profile" |

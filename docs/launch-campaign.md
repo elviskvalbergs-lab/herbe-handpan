@@ -24,7 +24,7 @@ Communities are still approached one instrument at a time, because a post in r/k
 | # | What | Who | Status |
 |---|---|---|---|
 | 1 | The website says what Oakhum is: hero, all five instruments, "Play my notes", Songs on the home page | Site session | In progress |
-| 2 | Songs has its own tab and a link per song, so a post can link straight to a song | App session | In progress. Until then posts link to the instrument and say "Playlists tab › Songs to learn" |
+| 2 | Songs has its own tab, so a post can link straight to an instrument's songs (`oakhum.com/kalimba/c-major-17/songs`) | App session | **Done** (merged 21 Nov). A link per song does not exist yet; posts link to the Songs tab. |
 | 3 | Video A and the clip for the first instrument (F3 kalimba or F1 handpan) | Video session | Scripts ready (`docs/video-plan.md`) |
 | 4 | Site measurement (§3): Vercel Analytics on the site and the three site events | Site session | **Not there yet**: on 21 Nov the site has Sentry only. Without it, posts that link to the website can't be measured; posts that link straight into the app can. |
 | 5 | Tracked links for every post (§3) | Claude | The table is in §5; fill in at posting time |
@@ -148,7 +148,7 @@ Video: A. Link: the same page with `utm_source=facebook`.
 
 ### 5.3 r/kalimba (week 2)
 
-Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612`. When song links exist, link to Ode to Joy on the 17-key instead.
+Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17/songs?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612` (the kalimba's Songs tab).
 
 > **Title:** Free kalimba tabs that light up note by note, filtered to the songs your kalimba can actually play. Feedback wanted
 >
@@ -164,7 +164,7 @@ Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17?utm_
 >
 > Free, no sign-up to try. A free account keeps your kalimba and your songs, and works offline.
 >
-> Here's a 17-key in C: [link] (songs are under Playlists › Songs to learn)
+> Here's a 17-key in C: [link] (the link opens its Songs tab)
 >
 > I'd like to hear what's wrong: is the tab the way you read tabs? Which songs are missing? Is your kalimba in the list?
 
@@ -182,7 +182,7 @@ Video: F2 or B ("Play my notes"). Link: `oakhum.com/tongue-drum/d-kurd-9?utm_sou
 
 ### 5.5 r/ocarina and the Pure Ocarinas community (week 3)
 
-Video: F4 or the ocarina variant of C. Link: `oakhum.com/ocarina/alto-c-12?utm_source=reddit&utm_medium=post&utm_campaign=ocarina-202612`
+Video: F4 or the ocarina variant of C. Link: `oakhum.com/ocarina/alto-c-12/songs?utm_source=reddit&utm_medium=post&utm_campaign=ocarina-202612`
 
 > **Title:** A free fingering chart for 12-hole ocarinas in every key, with songs that show each fingering as they play. What did I get wrong?
 >
@@ -203,7 +203,7 @@ Video: F4 or the ocarina variant of C. Link: `oakhum.com/ocarina/alto-c-12?utm_s
 
 ### 5.6 r/tinwhistle and Chiff & Fipple (week 3)
 
-Video: F5. Link: `oakhum.com/flute/tin-whistle-d?utm_source=reddit&utm_medium=post&utm_campaign=flute-202612` (`utm_source=forum` on Chiff & Fipple). Be a member of the forum before posting, and post in the board for tools and resources.
+Video: F5. Link: `oakhum.com/flute/tin-whistle-d/songs?utm_source=reddit&utm_medium=post&utm_campaign=flute-202612` (`utm_source=forum` on Chiff & Fipple). Be a member of the forum before posting, and post in the board for tools and resources.
 
 > **Title:** Free: 100 well-known tunes for D whistle that show each fingering as they play. Looking for corrections
 >
