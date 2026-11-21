@@ -90,9 +90,9 @@ Home = My instruments                        #  (empty hash)
  ├─ Settings                                 #settings
  ├─ Playlist detail                          (existing playlist view)
  └─ Instrument ─ tabs (bottom tab bar)
-     Handpan:  Chords · Songs · Sets · Pan              /handpan/<slug>[/chords|/songs|/sets]
-     Ocarina:  Chords · Songs · Sets · Notes · Build | Set up      #i/<id>/<tab>
-         └─ Practice (full-screen focus view, entered from Sets)
+     Handpan:  Chords · Songs · Playlists · Pan         /handpan/<slug>[/chords|/songs|/playlists]
+     Ocarina:  Chords · Songs · Playlists · Notes · Build | Set up      #i/<id>/<tab>
+         └─ Practice (full-screen focus view, entered from Playlists)
 Sheets (overlays): instrument menu (⋯), Share, Add to playlist, Filters, Related chords,
                    Note picker, Which finger is which, Confirm delete, Hole fingers
 Tuner: docked strip, can be switched on from any instrument or builder screen
@@ -129,17 +129,17 @@ Every instrument has the same tabs in the same order (`instrumentTabs` in `js/ap
 
 | Family | Tabs (in order) | Opens on |
 | --- | --- | --- |
-| Handpan, tongue drum, kalimba (saved) | **Chords** · **Songs** · **Sets** · **Pan** (Drum, Kalimba: the `editor` view) | Chords |
+| Handpan, tongue drum, kalimba (saved) | **Chords** · **Songs** · **Playlists** · **Pan** (Drum, Kalimba: the `editor` view) | Chords |
 | The same, unsaved (from a link or Play something else) | the same | Pan (a link without a tab lands in the editor) |
-| Ocarina/flute, traditional or calibrated | Chords · Songs · Sets · **Notes** | Notes |
+| Ocarina/flute, traditional or calibrated | Chords · Songs · Playlists · **Notes** | Notes |
 | Ocarina, scale-built | … · Notes · **Build** | Build while `build.stage !== 'done'`, otherwise Notes |
 | Ocarina, custom | … · Notes · **Set up** | Set up until calibrated |
 | Shared by code (read-only) | Chords · Songs · Notes | Notes |
 
-- Chords, Songs, Sets and Notes only appear when `playableMidis(inst).length > 0`.
+- Chords, Songs, Playlists and Notes only appear when `playableMidis(inst).length > 0`.
 - **Songs** (`songsTabHtml`): Songs to learn (`songsSectionHtml`), then one row, "Paste a chord sheet", for a song whose chords you have.
-- **Sets** (`setsTabHtml`): playlists and progressions in one list, §6.9. It is where Practice is started (ocarina) and where a set starts playing (handpan).
-- Links: `/…/songs` and `/…/sets` on every family (`LINK_TABS`); the old `/…/playlists` and `#i/<id>/playlists` open Sets and the address bar changes to the new spelling.
+- **Playlists** (`playlistsTabHtml`): the one kind of list, §6.9. It is where Practice is started (ocarina) and where a playlist starts playing (handpan). Songs are no longer under it.
+- Links: `/…/songs` and `/…/playlists` on every family (`LINK_TABS`; ocarinas and flutes had no playlists link before).
 
 ### Current instrument and switching
 
@@ -590,7 +590,7 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 │           (  pan SVG  )              │ │ ⟳ = toggle-rotation, overlaid top-right
 │            ╰─────────╯               │ │
 │ ┌──────────────────────────────────┐ │ │ chord card: title 17/600, meta 13 text-3 (notes);
-│ │ C Add9            [▶ Chord] ▯  ⋯ │ │ │ ▶ Chord btn-primary; ▯ Save to a set
+│ │ C Add9            [▶ Chord] ▯  ⋯ │ │ │ ▶ Chord btn-primary; ▯ Add to a playlist
 │ │ C4 · E4 · G4 · D3                │ │ │ (chordSaveBtn, a bookmark, filled when in one);
 │ │ Goes well with (F)(G)(Am)        │ │ │ ⋯ More → sheet. One line of chips under it.
 │ └──────────────────────────────────┘ │ │
@@ -600,16 +600,16 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 │ ┌──────────────────────────────────┐ │
 │ │ C Dominant 9th                   │ │ chordRowHtml: name; "Dominant · 5 notes".
 │ │ Dominant · 5 notes               │ │ No buttons in a row: a tap picks and plays.
-│ │▌C Add9                         ▮ │ │ selected row: accent left bar; ▮ = in a set
+│ │▌C Add9                         ▮ │ │ selected row: accent left bar; ▮ = in a playlist
 │ │ …                                │ │
 └──────────────────────────────────────┘
-│ ♫ Chords  ♪ Songs  ≡ Sets  ◎ Pan     │ tab bar
+│ ♫ Chords  ♪ Songs  ≡ Playlists  ◎ Pan│ tab bar
 ```
 
 **One thing at a time** (docs/navigation-redesign.md §3). The card answers "what is this chord, and what next"; everything set once or used rarely is one tap away:
 
-- **The card has three controls**: ▶ Chord, Save, ⋯. Speed is not on the card: it is in ⋯ and in Settings.
-- **Save is a bookmark, not a heart**: it opens the Add to playlist / progression sheet, it is not a one-tap favourite. It is on the card only. A row shows a small filled bookmark (`.chord-saved`, no button) when its chord is in a set.
+- **The card has three controls**: ▶ Chord, the bookmark, ⋯. Speed is not on the card: it is in ⋯ and in Settings.
+- **Add to a playlist is a bookmark, not a heart**: it opens the Add to playlist sheet, it is not a one-tap favourite. It is on the card only. A row shows a small filled bookmark (`.chord-saved`, no button) when its chord is in a playlist.
 - **⋯ is one sheet on every instrument** (`chordMoreSheet`): Speed, the instrument's rows, "Progressions with this chord" (the Goes well with sheet), then the instrument's extra content. Handpan (`hpMoreSheet`): Play the scale, Save this voicing, Copy link, related chords. Ocarina and flute (`ocChordMoreSheet`): octaves, blown-together pairs, the hole legend, Which finger is which.
 - **The switch says what each way does**: All chords · Tap notes · Listen (`chordModeSegHtml`; was Browse · Identify · Listen). "Listen" keeps one meaning in the app: Oakhum names the chord of music playing around you.
 - **The list head is one line** (`chordListLineHtml`): the count and "Show all" on the left, Filters (with how many are on) on the right.
@@ -625,7 +625,7 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 - **Goes well with** (`js/harmony.js`, on every instrument's chord card): the instrument's key is its home note, major or minor from its third. The chord's role in the key (I, vi, VII…) gives the chords that usually come next, as chips that select them, and "Progressions with this chord" in the ⋯ sheet opens a sheet of well-known progressions with this chord (Pop, Fifties, Epic, Folk…, by role). It only suggests chords the instrument can play. Each progression has ▶ (its chords one after another) and Save (a new progression; the toast's Open goes to it). A chord outside the key gets no line.
 - **Filters sheet** (`chordFiltersSheet`): Starts on, as chips ("Any note", then the roots the chords have; `filter-root`); Notes in chord as count chips (2)(3)(4)(5+) (`toggle-note-count`, multi-select); Type select (`filter-category`); Playlist select (`select-playlist-filter`, with "Edit playlist" as a row link when a playlist is chosen). The footer has [Clear all] ghost and [Done] primary. The Filters button shows the number of active filters, the root included.
 - **Now playing bar** (shown instead of the Filters row when a playlist filter is active, like today's `.autoplay-bar`): `[⏸ Pause | ▶ Auto-play]` primary, a seconds select (3–10 s), "2 / 7" tabular, an "Edit" link (opens the playlist detail), and a ✕ icon button that clears the playlist filter.
-- **Identify mode:** the list area shows the hint "Tap notes on the pan to build a chord. Tap again to remove one.", the selected notes as static chips, [Clear], and the matches as `.row`s (name, category · notes, Save `discover-bookmark`, ▶ `discover-play`). The custom combination row has Save and ▶ as today. The sticky selected-chord bar hides in this mode.
+- **Identify mode:** the list area shows the hint "Tap notes on the pan to build a chord. Tap again to remove one.", the selected notes as static chips, [Clear], and the matches as `.row`s (name, category · notes, the bookmark `discover-bookmark`, ▶ `discover-play`). The custom combination row has the bookmark and ▶ as today. The sticky selected-chord bar hides in this mode.
 - The Starts on chips use the display note naming from Settings.
 - **Tablet (600–1023):** two columns, `grid-template-columns: 300px 1fr`. Left: the list section (its own sticky scroll area, `height: calc(100dvh - appbar - tabbar)`, `overflow: auto`). Right: the pan (max `min(100%, 60dvh)`), then the selected-chord card with Related chips inline (no More sheet).
 - **Desktop (≥1024):** the same two columns with a 340px list. The right column is sticky and has the pan stage on top (max-height 64dvh) and, beneath it, the chord card at full width (title 20/600 on one line, notes, ♡, ▶ Chord, ▶ Scale, save-voicing, then Related chips inline). This fixes the cramped middle column in desktop-08.
@@ -659,27 +659,22 @@ Tab bar
 - Desktop: two columns, as today: the pan left and a 320px side panel right (the Shells card and buttons).
 - The note picker (`renderNotePicker`) becomes a sheet titled "Add a note". Its octave rows of note chips (40px) are kept, with in-use notes `.is-static`.
 
-### 6.9 Sets tab and playlist detail (phone-09, desktop-09)
+### 6.9 Playlists tab (new) and playlist detail (phone-09, desktop-09)
 
-A **set** is chords kept together. There are two kinds, and they keep their own data and detail screens: a **playlist** (chords to pick from, any order, from any instrument; Favorites is one) and a **progression** (chords in order, each with a length). The Sets tab shows both in one list, on any instrument:
+Playlists tab, on any instrument:
 
 ```
-App bar: Blue D Kurd ▾            ⑂  ⋯
-SETS
+App bar: Blue D Kurd ▾            🎤  ⋯
 ┌ .list ──────────────────────────────┐
 │[≡] Favorites            [▶ Practice]│ ocarina: btn-sm primary "Practice" (oc-practice-start
-│    Playlist · 3 chords here · 7   › │ with this set); handpan: "▶ Play"
-├─────────────────────────────────────┤ disabled when no entry belongs to this
-│[№] Am – Dm – Am            [▶ Play] │ instrument (the meta says so)
-│    Progression · 3 steps here · 3 › │ the meta starts with the kind
+│    3 chords here · 7 in total     › │ with this playlist); handpan: "▶ Play"
+├─────────────────────────────────────┤ (open-playlist-chords + autoplay on)
+│[≡] Jam set                 [▶ Play] │ disabled when no entry belongs to this
+│    0 here · 4 in total            › │ instrument (meta says so)
 └─────────────────────────────────────┘
-[+ New set]                             secondary; opens the New set sheet
-A playlist is chords to pick from. A progression is chords in order, …   one hint line
+[+ New playlist]                        ghost
+Empty: "No playlists yet. Tap ♡ on any chord to start one." [Go to Chords]
 ```
-
-- **New set** sheet (`newSetSheet`, a menu sheet): "Chords to pick from" (a playlist), "Chords in order" (a progression), "Paste a chord sheet". Each opens the sheet it always had.
-- Home's side list is the same two kinds under one "Sets" heading.
-- The Songs tab is separate (§3): songs are not sets.
 
 Playlist detail (opened from a row's › or from Home):
 
@@ -1020,7 +1015,7 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 |---|---|---|
 | Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml` (▶ Chord, `chordSaveBtn`, ⋯), `chordRowHtml` (no buttons), the switch `chordModeSegHtml` (All chords · Tap notes · Listen), the list line `chordListLineHtml` (main chords / Show all, Filters), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`), the Filters sheet `chordFiltersSheet` (Starts on from `chordRootsOf`, `chordCountField`, `chordTypeField`) and the ⋯ sheet `chordMoreSheet`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows; anything below the card (ocarina/flute: notes in playing order and the move); its field in the Filters sheet (handpan: playlist; ocarina/flute: scale); its rows and extra content in the ⋯ sheet |
 | Tab bar | `instrumentTabs` / `instrumentTabBar` | its own tab (Pan, Drum, Kalimba or Notes; Build / Set up) |
-| Sets tab | `setsTabHtml` (`playlistRowsHtml`, `progressionRowsHtml`, `newSetSheet`) | nothing |
+| Playlists tab | `playlistsTabHtml` | nothing |
 | Songs tab | `songsTabHtml` | nothing |
 | Playlist page | one row per entry; tapping it opens the chord on its instrument's Chords screen | nothing |
 | Set up | the "Your …" card (`instFieldsHtml`), Holes and fingers, Where the holes are | what it needs set up (readings for a bought one) |
@@ -1070,6 +1065,9 @@ An ocarina with up to four finger holes on top is drawn as a round pendant (`fgI
 - **Move notes (handpans):** handpans are laid out in many ways, so a custom handpan's tone fields can be dragged on the drawing to where they are on the real one (the editor's "Move notes", opened by itself after setting up a handpan by ear). Places on top stay on the pan, the ones underneath round it, and two never overlap: a drop on another place lands on the nearest free spot (`settlePanPlace` in `js/pan.js`). The positions are `layout.pos`, drawn by `renderPan` on every screen, kept in saves (and so synced) and in links (`pos=ding:250:250,ring-0:120:300`). "Put them back" clears them.
 - **Close-up of flute holes:** a flute's long picture leaves its holes tiny on a phone, so wherever a fingering is shown large (Chords, Notes, practice, setup) the picture is cropped to its holes (`renderFingering(…, { closeUp })`, `fgCloseUpBox` in `js/ocarina-ui.js`), about 1.7–3 times as big, with the note name under them. The note grid's thumbnails keep the whole flute. On by default; Settings › Ocarina and flute › "Close-up of flute holes" turns it off (the synced `closeUp` preference).
 - **Speed:** one speed for everything that plays (arpeggios, scales, fingerings shown note by note, previews), 50–150% of normal (`setPlaybackTempo` in `js/audio.js`, the synced `tempo` preference). It's a slider with presets (50%, 75%, Normal, 125%) in Settings › Sound and in the Speed sheet, opened by the "1×" button next to ▶ Chord on every chord card (`speedBtnHtml`). It replaces Slow / Normal / Fast (70% / 100% / 140% when read from old settings). Progressions keep their own bpm.
+- **One kind of list: Playlists** (the owner, November 2026). Playlists and progressions were two ways to keep chords; now there is one, a **playlist**: chords in order, the same chord as often as you like, played in time with play levels, from ♡ or a pasted chord sheet (stored as a progression, kind `progression`). Each old playlist was copied once into one (`mergePlaylistsIntoProgressions` in `js/storage.js`: same name, chords and order, ids from the old playlist's so every device makes the same copy; the old record stays, marked `mergedInto`, as a backup). ♡ opens **Add to playlist**: the chord goes at the end, ✓ marks the playlists it is in. A playlist plays on **any instrument that has its chords**, by the notes, not the key (`progStepOn`: the same root and chord type found on this instrument, in its own notes or fingering); the Playlists tab shows the ones whose every chord is here and keeps the rest behind "Show N playlists with chords this instrument doesn't have". The player has a rewind button (back to the first chord) and Play from here after a chord is tapped. "Progression" stays only as the music word (well-known progressions in a key).
+- **Song filters** (`songsForFilter`): chips **Christmas** (the spotlight from 15 November to 6 January: accent outline and a sparkle, and the list opens on it), **Popular** (every song but the collections in `SONG_COLLECTION_ORIGINS`, i.e. the Latvian folk songs) and **Countries**, a sheet of every country with songs that fit, most first, a collection marked as such; a chosen country shows as a chip with × (back to Popular).
+- **Back to the start**: every player that can stop has a rewind button that goes back to the first note or chord: the song player (stopped, at the first note), a handpan playlist's auto-play (keeps playing if it was) and ocarina/flute practice.
 - **Songs to learn** (`js/songs.js`, `viewSong`): well-known traditional and public-domain songs from many countries (folk, children's, Christmas), melody only, the most familiar first, as a section of every instrument's Playlists tab (8 shown, then "Show all N songs"), with a **Christmas | All songs** switch that starts on Christmas from 15 November to 6 January (`christmasSeason`; songs tagged `christmas`). Only the songs whose notes the instrument has are listed, each moved to where it has them (`songShift`; on an ocarina or flute, to keys without half-covered holes where possible), with "N more need notes your … doesn't have". A song opens its player: the picture with the note to play lit (the next one faint) or its fingering, the note, Play / Stop at the chosen speed (100 bpm at 100%, the same Speed button), ◀ ▶ a note at a time, every note as a chip to jump to, and **Goes well after it**: songs in the same key on this instrument first, then the same time, then the same country. Data: each melody was read from the score in its Wikipedia article (de, en or fr) by a LilyPond reader (relative and absolute pitches; Dutch, German, English and solfège note names, German assumed when a score uses `h` without saying so; rests written at a pitch; repeats with endings, ties, triplets, grace notes skipped) and its opening checked; songs whose score gives only the first line, the harmony instead of the tune, or a different tune from the familiar one were left out; the file is CC BY-SA 4.0 with that attribution, shown on the list and in the player. Pentatonic instruments (a Pygmy handpan, a pentatonic Native American flute) fit none of the first songs yet.
 - **Lyrics** (`songLyrics` in `js/songs.js`; songs with `lyrics`): a **Lyrics** toggle in the song player (on by default, remembered and synced as `showLyrics`) shows the first verse: the words around the current note under the note, with the current syllable in the accent colour; a syllable under each note chip in the Notes view; and a fourth row under the tab (lines of the tab hold fewer columns so the words fit), printed with it. Data: one syllable per note with a trailing - when the word goes on, _ for a note that carries on the syllable before; read from the same score as the melody, with its slurs, and only where the score's lyrics line up note for note (46 Wikipedia songs); the 13 Latvian songs' first verses read from the Vītols scan in today's spelling. The credit line then reads "Melody and words from …".
 - **Song tab on flutes and ocarinas** (`songTabRows` in `js/app.js`): the same grid (bars, counts, the lyrics row, the current note, print), with the note's name above each note and, instead of the R and L rows, the instrument's own tab. A flute (tin whistle, Native American flute) gets Grey Larsen's staff-based tablature (https://greylarsen.com/FreeDownloads/Tablature_System_Explanation.pdf): a line per finger hole, the mouthpiece end on top (as Flutopedia's "foot-end down" NAF diagrams), a gap between the hands, a dot on a line closes that hole, half a dot half-covers it, a ring with a tail opens them all, and a + row marks the second octave (blow harder). An ocarina gets the ocarina tab's picture of the fingering (filled holes closed) on the beat each note starts on, two columns wide, a second level where notes are closer than that, drawn back from a line's end. Ocarina lines hold 8 columns. The print hides the big picture (the tab has every fingering).
