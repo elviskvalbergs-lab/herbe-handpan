@@ -10,6 +10,8 @@
 //   /tongue-drum/custom?…                  a custom tongue drum (same query as a custom handpan)
 //   /kalimba/c-major-17, /kalimba/custom?… kalimbas (js/kalimbas.js), the same way
 //   /s/7KQ2PM[/chords]                    an instrument shared by code
+//   /handpan/d-kurd/songs[/twinkle-twinkle] its songs, or one song on it (any family, custom and /s/ too)
+//   /song/twinkle-twinkle                 a song, the instrument still to be chosen
 //
 // A slug never changes or disappears once published: a rename only adds an
 // alias. Every slug is lower case; '#' is written 's' (F# Kurd → fs-kurd).
@@ -17,17 +19,30 @@
 import { SCALES } from './data.js';
 import { LAYOUT_FAMILIES, LAYOUT_FAMILY_IDS, isLayoutFamily, familyOfTuningId, findTuning, safeNoteName } from './layoutfamilies.js';
 import { TRADITIONAL_CHARTS, getChart, instrumentFromChart } from './charts.js';
+import { SONGS } from './songs.js';
 
 // The app's name, used in page titles and preview cards (build.py has its own copy in the HTML template).
 export const APP_NAME = 'Oakhum';
 
 export const LINK_FAMILIES = [...LAYOUT_FAMILY_IDS, 'ocarina', 'flute'];
 export const LINK_TABS = {
-  handpan: ['pan', 'chords', 'playlists', 'listen'],
-  ...Object.fromEntries(LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan').map(f => [f, ['pan', 'chords', 'playlists', 'listen']])),
-  ocarina: ['notes', 'chords', 'listen'],
-  flute: ['notes', 'chords', 'listen'],
+  handpan: ['pan', 'chords', 'playlists', 'listen', 'songs'],
+  ...Object.fromEntries(LAYOUT_FAMILY_IDS.filter(f => f !== 'handpan').map(f => [f, ['pan', 'chords', 'playlists', 'listen', 'songs']])),
+  ocarina: ['notes', 'chords', 'listen', 'songs'],
+  flute: ['notes', 'chords', 'listen', 'songs'],
 };
+// A shared instrument's family isn't known from its link: any tab.
+const LINK_ANY_TABS = ['pan', 'notes', 'chords', 'playlists', 'listen', 'songs'];
+
+// Songs in links go by their id in js/songs.js. An id never changes once
+// published: a rename adds the old one here ({ 'old-id': 'new-id' }).
+const LINK_SONG_ALIASES = {};
+/** The song a link's slug names (its id), or null. */
+export function linkSong(slug) {
+  const id = linkSlug(slug ?? '');
+  const real = LINK_SONG_ALIASES[id] ?? id;
+  return SONGS.some(x => x.id === real) ? real : null;
+}
 const LINK_DEFAULT_TAB = { ...Object.fromEntries(LAYOUT_FAMILY_IDS.map(f => [f, 'pan'])), ocarina: 'notes', flute: 'notes' };
 
 export function linkSlug(text) {
@@ -129,10 +144,12 @@ export function catalogueLinks() {
   return out;
 }
 
-// The path of an instrument and, optionally, a tab and chord.
+// The path of an instrument and, optionally, a tab and chord, or a song on it.
 //   target: { scaleId } | { chartId, keyId } | { custom: URLSearchParams|string } | { code }
-export function linkFor(target, { tab = null, chord = null } = {}) {
+//   or { song } alone: the song with the instrument still to be chosen.
+export function linkFor(target, { tab = null, chord = null, song = null } = {}) {
   let base, family, query = '';
+  if (target.song) return linkSong(target.song) ? `/song/${linkSong(target.song)}` : null;
   if (target.code) { base = `/s/${String(target.code).toUpperCase()}`; family = null; }
   else if (target.scaleId) {
     const slug = LINK_TABLES.byTarget.get(`scale:${target.scaleId}`);
@@ -152,7 +169,8 @@ export function linkFor(target, { tab = null, chord = null } = {}) {
     const q = String(target.custom);
     query = q ? `?${q.replace(/^\?/, '')}` : '';
   } else return null;
-  const tabs = family ? LINK_TABS[family] : ['pan', 'notes', 'chords', 'playlists', 'listen'];
+  const tabs = family ? LINK_TABS[family] : LINK_ANY_TABS;
+  if (song && linkSong(song)) return `${base}/songs/${linkSong(song)}${query}`;
   const useTab = chord ? 'chords' : tab;
   let path = base;
   if (useTab && tabs.includes(useTab) && useTab !== (family ? LINK_DEFAULT_TAB[family] : null)) path += `/${useTab}`;
@@ -166,18 +184,28 @@ export function linkFor(target, { tab = null, chord = null } = {}) {
 export function parseLink(pathname, search = '') {
   const parts = String(pathname).split('/').filter(Boolean).map(p => decodeURIComponent(p));
   if (parts.length < 2) return null;
-  const [head, rawSlug, rawTab, rawChord] = parts;
+  const [head, rawSlug, rawTab, rawItem] = parts;
+  // A song with no instrument: /song/<id>.
+  if (head.toLowerCase() === 'song') {
+    const id = linkSong(rawSlug);
+    return id ? { kind: 'song', song: id, path: `/song/${id}` } : null;
+  }
   const tabOf = (fam) => {
     const t = rawTab ? rawTab.toLowerCase() : null;
-    const ok = fam ? LINK_TABS[fam] : ['pan', 'notes', 'chords', 'playlists', 'listen'];
+    const ok = fam ? LINK_TABS[fam] : LINK_ANY_TABS;
     return t && ok.includes(t) ? t : null;
   };
+  // The part after the tab: a chord after /chords, a song after /songs (an
+  // unknown song opens the song list).
+  const onSongs = (rawTab ?? '').toLowerCase() === 'songs';
+  const rawChord = onSongs ? null : rawItem;
   const chord = rawChord ? linkSlug(rawChord) : null;
+  const song = onSongs && rawItem ? linkSong(rawItem) : null;
 
   if (head === 's') {
     const code = rawSlug.toUpperCase();
     if (!/^[A-Z0-9]{4,12}$/.test(code)) return null;
-    return { kind: 'shared', code, tab: tabOf(null), chord, path: linkFor({ code }, { tab: tabOf(null), chord }) };
+    return { kind: 'shared', code, tab: tabOf(null), chord, song, path: linkFor({ code }, { tab: tabOf(null), chord, song }) };
   }
   const family = head.toLowerCase();
   if (!LINK_FAMILIES.includes(family)) return null;
@@ -186,7 +214,7 @@ export function parseLink(pathname, search = '') {
 
   if (isLayoutFamily(family) && slug === 'custom') {
     const q = String(search).replace(/^\?/, '');
-    return { kind: 'custom', family, params: new URLSearchParams(q), tab, chord, path: linkFor({ custom: q, family }, { tab, chord }) };
+    return { kind: 'custom', family, params: new URLSearchParams(q), tab, chord, song, path: linkFor({ custom: q, family }, { tab, chord, song }) };
   }
   const canonSlug = LINK_TABLES.canonical[family].has(slug) ? slug : LINK_TABLES.alias[family].get(slug);
   const target = canonSlug && LINK_TABLES.canonical[family].get(canonSlug);
@@ -195,7 +223,7 @@ export function parseLink(pathname, search = '') {
     for (const other of LINK_FAMILIES) {
       if (other === family) continue;
       const s2 = LINK_TABLES.canonical[other].has(slug) ? slug : LINK_TABLES.alias[other].get(slug);
-      if (s2) return parseLink(`/${other}/${s2}${rawTab ? '/' + rawTab : ''}${rawChord ? '/' + rawChord : ''}`, search);
+      if (s2) return parseLink(`/${other}/${s2}${rawTab ? '/' + rawTab : ''}${rawItem ? '/' + rawItem : ''}`, search);
     }
     return { kind: 'unknown', family, slug: rawSlug, closest: closestLinks(family, slug) };
   }
@@ -205,7 +233,7 @@ export function parseLink(pathname, search = '') {
   // its lowest note in the middle, centre=0 round the edge with the others.
   const centre = family === 'tongue-drum' ? new URLSearchParams(String(search)).get('centre') : null;
   const drawn = centre === '1' || centre === '0' ? { centre: centre === '1' } : {};
-  return { kind, family, ...t, ...drawn, tab, chord, path: linkFor(t, { tab, chord }) + (drawn.centre != null ? `?centre=${centre}` : '') };
+  return { kind, family, ...t, ...drawn, tab, chord, song, path: linkFor(t, { tab, chord, song }) + (drawn.centre != null ? `?centre=${centre}` : '') };
 }
 
 // A custom handpan link's query (ding, top, bottom, tc, bc, name) as a
@@ -298,6 +326,14 @@ export function linkTitle(link) {
 // it isn't a deep link.
 export function linkPreview(pathname, search = '') {
   const link = parseLink(pathname, search);
+  // A song with the instrument still to be chosen.
+  if (link?.kind === 'song') {
+    return {
+      title: `${linkSongTitle(link.song)} · ${APP_NAME}`,
+      description: `Find out whether your handpan, tongue drum, kalimba, ocarina or flute can play ${linkSongTitle(link.song)}, and play it note by note. Free, in your browser.`,
+      image: '/og/app.jpg',
+    };
+  }
   const title = linkTitle(link);
   if (!title || link.kind === 'unknown') {
     return { title: APP_NAME, description: 'Chords, arpeggios and play-along for handpans, tongue drums, kalimbas, ocarinas and flutes. Free, in your browser.', image: '/og/app.jpg' };
@@ -306,7 +342,25 @@ export function linkPreview(pathname, search = '') {
     : link.chord ? `The ${linkChordName(link.chord)} chord and its arpeggio`
     : 'Notes, chords, arpeggios and play-along';
   const family = link.family ?? 'app';
+  // A song on this instrument. Whether it fits is the app's to say: a card can't.
+  if (link.song) {
+    const name = link.kind === 'shared' ? 'a shared instrument' : `the ${linkLower(title)}`;
+    return {
+      title: `${linkSongTitle(link.song)} on ${link.kind === 'shared' ? 'a shared instrument' : title} · ${APP_NAME}`,
+      description: `Play it note by note on ${name}: the tab, each note lit, at your own speed. Free, in your browser.`,
+      image: `/og/${family}.jpg`,
+    };
+  }
+  if (link.tab === 'songs') {
+    return { title: `Songs for the ${linkLower(title)} · ${APP_NAME}`, description: `Folk, children's and Christmas songs the ${linkLower(title)} can play, each note by note with its tab. Free, in your browser.`, image: `/og/${family}.jpg` };
+  }
   return { title: `${title} · ${APP_NAME}`, description: `${what} on the ${linkLower(title)}. Free, in your browser: open it and play.`, image: `/og/${family}.jpg` };
+}
+
+// A song's title for a card: "Ode to Joy (Freude, schöner Götterfunken)" → "Ode to Joy".
+export function linkSongTitle(id) {
+  const song = SONGS.find(x => x.id === linkSong(id));
+  return song ? song.title.replace(/\s*\(.*\)$/, '') : null;
 }
 
 // "a-min" → "A min", "cs-maj7" → "C# maj7": readable enough for a card.
