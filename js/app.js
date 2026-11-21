@@ -3114,7 +3114,7 @@ function viewSong() {
 // Move notes, and as rotated), a middle note the other hand from the note
 // before (songHands). The picture numbers the song's notes the same way.
 function songTabFamily(inst) {
-  if (inst) return null;
+  if (inst) return inst.family === 'flute' ? 'flute' : 'ocarina';
   const f = layoutInstrument(state.layout);
   return f === 'handpan' || f === 'tongue-drum' || f === 'kalimba' ? f : null;
 }
@@ -3131,10 +3131,40 @@ function songFieldNumbers(layout) {
   order.filter(Boolean).forEach(n => { if (!nums.has(n)) nums.set(n, start + nums.size); });
   return nums;
 }
-// Columns on a line of the tab: fewer with lyrics, so the words fit.
-const SONG_TAB_LINE = 16, SONG_TAB_LINE_LYRICS = 12;
+// Columns on a line of the tab: fewer with lyrics, so the words fit, and
+// fewer on an ocarina, whose fingering pictures need the room.
+const SONG_TAB_LINE = { plain: 16, lyrics: 12, ocarina: 8 };
 function songTab(S, { lyrics = false } = {}) {
-  const lineCols = lyrics ? SONG_TAB_LINE_LYRICS : SONG_TAB_LINE;
+  const family = songTabFamily(S.inst);
+  const lineCols = family === 'ocarina' ? SONG_TAB_LINE.ocarina : lyrics ? SONG_TAB_LINE.lyrics : SONG_TAB_LINE.plain;
+  const bars = songBars(S.song, S.notes);
+  const lines = [];
+  for (const b of bars) {
+    const line = lines[lines.length - 1];
+    if (line && line.cols + b.cols.length <= lineCols) { line.bars.push(b); line.cols += b.cols.length; }
+    else lines.push({ bars: [b], cols: b.cols.length });
+  }
+  if (S.inst) {
+    // An ocarina's pictures are two columns wide: a note starting in the
+    // next column goes on a second level, and one in a line's last column
+    // is drawn back over the column before (so nothing hangs off the line).
+    const fgPlace = new Map();
+    if (family === 'ocarina') {
+      for (const line of lines) {
+        let k = 0, prev = null;
+        const total = line.cols;
+        for (const b of line.bars) for (const c of b.cols) {
+          if (c.i != null && S.notes[c.i].midi != null) {
+            const lane = prev && k - prev.k < 2 && prev.lane === 0 ? 1 : 0;
+            fgPlace.set(c.i, { lane, last: k === total - 1 });
+            prev = { k, lane };
+          }
+          k++;
+        }
+      }
+    }
+    return { family, lines, fgPlace };
+  }
   const nums = songFieldNumbers(state.layout);
   const places = new Map(panPlaces(state.layout, { rotated: state.ringRotated }).map(p => [p.note, p]));
   const sideOf = note => {
@@ -3146,15 +3176,7 @@ function songTab(S, { lyrics = false } = {}) {
     return Math.abs(dx) < Math.max(p.r, 6) ? 0 : Math.sign(dx);
   };
   const sides = S.notes.map(n => (n.midi == null ? null : sideOf(S.name(n.midi))));
-  const bars = songBars(S.song, S.notes);
-  // Bars on lines of up to SONG_TAB_LINE columns.
-  const lines = [];
-  for (const b of bars) {
-    const line = lines[lines.length - 1];
-    if (line && line.cols + b.cols.length <= lineCols) { line.bars.push(b); line.cols += b.cols.length; }
-    else lines.push({ bars: [b], cols: b.cols.length });
-  }
-  return { nums, hands: songHands(sides), sideOf, lines };
+  return { family, nums, hands: songHands(sides), sideOf, lines };
 }
 // The picture's badges: each note the song uses, with its number, coloured
 // by the side it's on (no colour in the middle).
@@ -3168,34 +3190,106 @@ function songTabMarks(S, T) {
     return { note: n, marks: [{ n: T.nums.get(n), hand, label }] };
   });
 }
-function songTabHtml(S, T, idx, LY = null) {
-  const family = songTabFamily(null);
+// The tab's rows under the counts, by instrument; each { label, h (px),
+// cell(column) → html, cls }. Every instrument shares the grid (bars,
+// counts, the lyrics row, the current note, print); only these differ.
+//  · handpan, tongue drum, kalimba: an R and an L row, each note's number
+//    in the row of the hand (or thumb) that plays it.
+//  · flute (tin whistle, Native American flute): Grey Larsen's staff-based
+//    tablature (https://greylarsen.com/FreeDownloads/Tablature_System_Explanation.pdf):
+//    a line per finger hole, the mouthpiece end on top, a gap between the
+//    hands; a dot on a line closes that hole (half a dot: half-cover it),
+//    a ring with a tail opens them all, + above: the second octave (blow
+//    harder). The note's name is above, as Larsen pairs letter names.
+//  · ocarina: an ocarina tab's picture of the fingering for each note
+//    (filled holes closed), here on the beat it starts on.
+function songTabRows(S, T, idx) {
+  const family = T.family;
+  const uf = state.useFlats, us = state.useSolfege;
+  const nameBtn = c => {
+    const n = S.notes[c.i];
+    const cur = c.i === idx;
+    return `<button type="button" class="tab-name${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''}>${escHtml(displayNote(midiToNoteName(n.midi), uf, us).replace(/\d+$/, ''))}</button>`;
+  };
+  const nameRow = {
+    label: '', h: 22, cls: 'tab-names',
+    cell: c => (c.i != null && S.notes[c.i].midi != null ? nameBtn(c) : c.hold != null ? '<span class="tab-hold" aria-hidden="true"></span>' : ''),
+  };
+  if (family === 'flute') {
+    const inst = S.inst;
+    const ch = inst.chambers[0];
+    const holes = ch.holes;
+    const fg = i => fingeringFor(inst, S.notes[i].midi)?.states ?? null;
+    const rows = [nameRow];
+    const overblown = i => !!fingeringFor(inst, S.notes[i].midi)?.chamber.overblow?.includes(S.notes[i].midi);
+    if (S.notes.some((n, i) => n.midi != null && overblown(i))) {
+      rows.push({ label: '', h: 12, cls: 'tab-plus', cell: c => (c.i != null && S.notes[c.i].midi != null && overblown(c.i) ? '+' : '') });
+    }
+    holes.forEach((h, k) => {
+      if (k > 0 && h.finger[0] !== holes[k - 1].finger[0]) rows.push({ label: '', h: 8, cls: 'tab-gap', cell: () => '' });
+      rows.push({
+        label: h.finger, h: 13, cls: 'tab-hole',
+        cell: c => {
+          if (c.i == null || S.notes[c.i].midi == null) return '';
+          const st = fg(c.i);
+          if (!st) return '';
+          if (st.every(x => x === 'o')) return k === 0 ? '<span class="tab-allopen" aria-hidden="true"></span>' : '';
+          return st[k] === 'c' ? '<span class="tab-dot" aria-hidden="true"></span>' : st[k] === 'h' ? '<span class="tab-dot is-half" aria-hidden="true"></span>' : '';
+        },
+      });
+    });
+    return rows;
+  }
+  if (family === 'ocarina') {
+    // Pictures two columns wide, on two levels where notes are close
+    // (songTab's fgPlace).
+    const two = [...T.fgPlace.values()].some(p => p.lane === 1);
+    const place = i => T.fgPlace.get(i) ?? { lane: 0, last: false };
+    return [nameRow, {
+      label: '', h: two ? 112 : 58, cls: 'tab-fgs',
+      cell: c => (c.i != null && S.notes[c.i].midi != null
+        ? `<button type="button" class="tab-fg${place(c.i).lane ? ' is-lane2' : ''}${place(c.i).last ? ' is-last' : ''}" data-action="song-step" data-i="${c.i}" tabindex="-1" aria-hidden="true">${renderFingering(S.inst, S.notes[c.i].midi, { size: 'mini', noteLabel: false, useFlats: uf, useSolfege: us })}</button>`
+        : ''),
+    }];
+  }
   const handWord = family === 'kalimba' ? 'thumb' : 'hand';
   const num = i => T.nums.get(S.name(S.notes[i].midi)) ?? '?';
-  const cell = (c, hand) => {
+  const handCell = hand => c => {
     if (c.i != null && T.hands[c.i] === hand) {
       const cur = c.i === idx;
       return `<button type="button" class="tab-note tab-note-${hand.toLowerCase()}${cur ? ' is-current' : ''}" data-action="song-step" data-i="${c.i}"${cur ? ' aria-current="true"' : ''} aria-label="${hand === 'R' ? 'Right' : 'Left'} ${handWord} ${num(c.i)}">${num(c.i)}</button>`;
     }
-    const held = c.hold;
-    return held != null && T.hands[held] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
+    return c.hold != null && T.hands[c.hold] === hand ? '<span class="tab-hold" aria-hidden="true"></span>' : '';
   };
+  return [{ label: 'R', h: 32, cell: handCell('R'), cls: '' }, { label: 'L', h: 32, cell: handCell('L'), cls: '' }];
+}
+function songTabHtml(S, T, idx, LY = null) {
+  const family = T.family;
+  const rows = songTabRows(S, T, idx);
+  const heights = `18px ${rows.map(r => `${r.h}px`).join(' ')}${LY ? ' 22px' : ''}`;
+  const colCls = c => (c.i != null && c.i === idx && (family === 'flute' || family === 'ocarina') ? ' is-current-col' : '');
   const lines = T.lines.map(line => {
-    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length}">${b.change ? `<span class="tab-time" aria-label="Time changes to ${b.time}">${b.time}</span>` : ''}
+    const bars = line.bars.map(b => `<div class="tab-bar${b.from ? ' is-pickup' : ''}" style="--cols:${b.cols.length};grid-template-rows:${heights}">${b.change ? `<span class="tab-time" aria-label="Time changes to ${b.time}">${b.time}</span>` : ''}
         ${b.cols.map(c => `<span class="tab-count${c.count && c.count !== '+' ? ' is-beat' : ''}">${c.count}</span>`).join('')}
-        ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'R')}</span>`).join('')}
-        ${b.cols.map(c => `<span class="tab-cell">${cell(c, 'L')}</span>`).join('')}
+        ${rows.map(r => b.cols.map(c => `<span class="tab-cell ${r.cls}${colCls(c)}">${r.cell(c)}</span>`).join('')).join('')}
         ${LY ? b.cols.map(c => `<span class="tab-lyric${c.i === idx ? ' is-current' : ''}">${c.i != null && LY[c.i] ? escHtml(LY[c.i].text) : ''}</span>`).join('') : ''}
       </div>`).join('');
-    return `<div class="tab-line${LY ? ' has-lyrics' : ''}"><div class="tab-hands" aria-hidden="true"><span></span><span>R</span><span>L</span>${LY ? '<span></span>' : ''}</div>${bars}</div>`;
+    return `<div class="tab-line${LY ? ' has-lyrics' : ''} tab-${family}"><div class="tab-hands" aria-hidden="true" style="grid-template-rows:${heights}"><span></span>${rows.map(r => `<span class="${r.cls}">${escHtml(r.label)}</span>`).join('')}${LY ? '<span></span>' : ''}</div>${bars}</div>`;
   }).join('');
-  const word = { 'tongue-drum': 'tongue', kalimba: 'key' }[family] ?? 'note';
-  return `<div class="song-tab" role="group" aria-label="Tab: the number of each ${word}, R right ${handWord}, L left ${handWord}">${lines}</div>
-    <p class="pl-section-hint song-tab-key">${{
-      handpan: 'Numbers: the ding is 0, then the notes from low to high, as on the picture.',
-      'tongue-drum': 'Numbers: the tongues from low to high, as on the picture.',
-      kalimba: 'Numbers: kalimba notation, 1 to 7 up the scale from the key’s first note, a dot above for an octave up and below for an octave down, as on the picture.',
-    }[family]} R is the right ${handWord}, L the left. A line after a number: let it ring.</p>`;
+  const handWord = family === 'kalimba' ? 'thumb' : 'hand';
+  const label = {
+    flute: 'Tab: a line for each finger hole, a dot to close it',
+    ocarina: 'Tab: the fingering for each note',
+  }[family] ?? `Tab: the number of each ${{ 'tongue-drum': 'tongue', kalimba: 'key' }[family] ?? 'note'}, R right ${handWord}, L left ${handWord}`;
+  const key = {
+    handpan: 'Numbers: the ding is 0, then the notes from low to high, as on the picture. R is the right hand, L the left. A line after a number: let it ring.',
+    'tongue-drum': 'Numbers: the tongues from low to high, as on the picture. R is the right hand, L the left. A line after a number: let it ring.',
+    kalimba: 'Numbers: kalimba notation, 1 to 7 up the scale from the key’s first note, a dot above for an octave up and below for an octave down, as on the picture. R is the right thumb, L the left. A line after a number: let it ring.',
+    flute: 'Each line is a finger hole, the mouthpiece end on top, the left hand above the gap and the right hand below it. A dot: close the hole; half a dot: half-cover it; a ring with a tail: open them all. + : blow harder, the second octave. A line after a note: hold it.',
+    ocarina: 'Each picture is the fingering for the note that starts on that beat, filled holes closed, as on the big picture. A line after a note: hold it.',
+  }[family];
+  return `<div class="song-tab" role="group" aria-label="${label}">${lines}</div>
+    <p class="pl-section-hint song-tab-key">${key}</p>`;
 }
 // The words around the current note, the current syllable marked: a few
 // syllables before it and the rest of the phrase after.
