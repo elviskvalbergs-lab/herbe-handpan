@@ -3,6 +3,7 @@ import { draftMode } from "next/headers";
 import { stegaClean } from "next-sanity";
 import { VisualEditing } from "next-sanity/visual-editing";
 import { Suspense } from "react";
+import { Measure } from "@/components/Measure";
 import { SanityLive } from "@/sanity/lib/live";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -15,10 +16,14 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = stegaClean(settings.title) || "Oakhum";
   return {
     metadataBase: new URL(SITE_URL),
-    title: { default: `${title}: chords for handpan, ocarina and flute`, template: `%s | ${title}` },
+    title: { default: `${title}: chords and songs for the instrument you own`, template: `%s | ${title}` },
     description: stegaClean(settings.description),
     icons: { icon: "/brand/leaf_only_oak_olive.svg" },
-    openGraph: { siteName: title, type: "website", images: ["/og.jpg"] },
+    // Every page: its own address as the canonical link and og:url ("./" is
+    // the page being rendered). Pages with their own picture use pageMeta (src/lib/seo.ts).
+    alternates: { canonical: "./" },
+    openGraph: { siteName: title, type: "website", url: "./", images: [{ url: "/og.jpg", width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image" },
   };
 }
 
@@ -32,6 +37,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <SiteHeader />
       <main id="content">{children}</main>
       <SiteFooter settings={settings} />
+      <Suspense fallback={null}>
+        <Measure />
+      </Suspense>
       {hasSanity ? (
         <Suspense fallback={null}>
           <LiveAndVisualEditing />

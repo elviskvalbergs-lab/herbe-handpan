@@ -9,7 +9,7 @@ export const INSTRUMENTS_QUERY = defineQuery(
 export const INSTRUMENT_QUERY = defineQuery(`*[_type == "instrument" && slug.current == $slug][0]{..., "slug": slug.current}`);
 export const FEATURES_QUERY = defineQuery(`*[_type == "feature"] | order(order asc){_id, title, text, status, order}`);
 export const PAGE_QUERY = defineQuery(`*[_type == "page" && slug.current == $slug][0]{_id, title, "slug": slug.current, updated, body, seo}`);
-export const PAGE_SLUGS_QUERY = defineQuery(`*[_type == "page" && defined(slug.current)]{"slug": slug.current}`);
+export const PAGE_SLUGS_QUERY = defineQuery(`*[_type == "page" && defined(slug.current)]{"slug": slug.current, updated, _updatedAt}`);
 // Only what the public list needs: never the email or the details.
 export const PUBLIC_REQUESTS_QUERY = defineQuery(
   `*[_type == "request" && public == true && kind != "feedback" && status != "declined"] | order(votes desc)[0...12]{_id, kind, title, votes, status}`,

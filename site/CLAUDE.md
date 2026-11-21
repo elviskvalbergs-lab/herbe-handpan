@@ -29,6 +29,14 @@ show each fingering in turn. A new instrument only adds its picture and its engi
 functions in `src/lib/engine.ts`; the full checklist is "Adding an instrument" in the
 root CLAUDE.md.
 
+## One of each
+
+The chord buttons under a demo are `ChordButtons`; a 404 or an error is `Problem`;
+structured data is `JsonLd` + `src/lib/seo.ts`; an event is `track()` in
+`src/lib/analytics.ts` (links into the app, maker emails and videos are caught
+once in `Measure`, so a new page needs no wiring). Buttons that open the app all
+read the home page's `heroCta`; a link to a tuning or chord reads "Play … in the app".
+
 ## Before you say it is done
 
 `pnpm typecheck && pnpm lint && pnpm test && pnpm build` all pass, and the root
