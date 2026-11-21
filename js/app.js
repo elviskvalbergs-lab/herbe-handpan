@@ -56,12 +56,12 @@ import {
   getClayBodies, saveClayBodies, getInstrumentsRaw, writeInstrumentsRaw,
   newPublicId, copySharedInstrument,
 } from './instruments.js';
-import { dataStore, hasAccountOnDevice, carryOverVisit, clearAccountData, visitHasWork } from './datastore.js';
+import { dataStore, DATA_KEYS, hasAccountOnDevice, carryOverVisit, clearAccountData, visitHasWork, safeSetItem, accountUserOnDevice, setAccountUserOnDevice, accountMatch } from './datastore.js';
 import { syncRound, syncKey, pendingChanges } from './sync.js';
 import {
   initSupabase, isLoggedIn, getUserEmail, sendOtp, verifyOtp, signOut, scheduleSave, logEvent,
   getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, importLegacyData, fetchAccountCounts, exportAccountRows,
-  deleteMyAccount, saveCloudInstruments, fetchSharedInstrument, fetchAccess,
+  deleteMyAccount, saveCloudInstruments, fetchSharedInstrument, fetchAccess, getUserId, hasStoredSession,
 } from './auth.js';
 import { syncBases } from './localdb.js';
 import { offline } from './offline.js';
@@ -121,6 +121,7 @@ const state = {
   syncPending: 0,          // changes waiting for the server
   lastSynced: null,
   syncError: null,
+  sessionLost: false,      // the account's session ended by itself: Settings offers "Sign in again"
   offlineReady: false,     // the service worker is installed (accounts only)
   isOffline: false,
   guestOfflineCard: false, // "You're offline" card for a guest
@@ -7921,7 +7922,7 @@ _themeQuery?.addEventListener?.('change', applyTheme);
 function savePrefs() {
   let kept = {};
   try { const p = JSON.parse(localStorage.getItem('hp-prefs') || '{}'); if (p.lastPath) kept = { lastPath: p.lastPath }; } catch {}
-  localStorage.setItem('hp-prefs', JSON.stringify({
+  safeSetItem(localStorage, 'hp-prefs', JSON.stringify({
     ...kept,
     updatedAt: new Date().toISOString(),
     ringRotated: state.ringRotated,
@@ -7964,7 +7965,7 @@ function refreshAccess() {
   fetchAccess().then(a => {
     if (!a || !accountOn()) return; // offline or not set up: keep what we knew
     const before = canBuild();
-    if (a.canBuild) localStorage.setItem('hp-can-build', '1'); else localStorage.removeItem('hp-can-build');
+    if (a.canBuild) safeSetItem(localStorage, 'hp-can-build', '1'); else localStorage.removeItem('hp-can-build');
     if (canBuild() !== before) render();
   });
 }
@@ -7994,7 +7995,15 @@ function guestSave(intent) {
 function openSaveSheet(what) {
   state.saveSheet = { what, step: 'start', email: state.authEmail || '', error: '', busy: false, providers: null };
   logEvent('signup_shown', { what });
-  getAuthProviders().then(p => { if (state.saveSheet) { state.saveSheet.providers = p; render(); } });
+  getAuthProviders().then(p => {
+    if (!state.saveSheet) return;
+    // The sign-in methods arrive a moment after the sheet opens: what was
+    // typed meanwhile stays (the re-render would empty the field).
+    const typed = document.getElementById('save-email-input')?.value;
+    if (typed) state.saveSheet.email = typed;
+    state.saveSheet.providers = p;
+    render();
+  });
   render();
 }
 
@@ -8049,7 +8058,7 @@ function saveSheetHtml() {
 // The sheet's buttons. Returns true when it handled the action.
 function saveSheetAction(action, el) {
   const s = state.saveSheet;
-  if (action === 'open-sign-in') { openSaveSheet('signin'); return true; }
+  if (action === 'open-sign-in' || action === 'account-sign-in-again') { openSaveSheet('signin'); return true; }
   if (!s) return false;
   if (action === 'save-not-now') {
     // Nothing is lost: the screen stays as it was.
@@ -8131,13 +8140,52 @@ function completePendingSave(pending) {
 // visit moves into the account (§5), the started save completes, and the
 // account starts syncing. An account that was already here just starts.
 async function handleLogin(event, session) {
-  if (!session) { render(); return; }
-  if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
+  if (!session) {
+    // The session is gone and nobody pressed Sign out here (it expired or
+    // was revoked): everything stays on the device, and Settings offers
+    // "Sign in again". While a session is still stored it may come back by
+    // itself (offline, a token refresh), so that is not "lost".
+    if (accountOn() && !_signingOut && !hasStoredSession()) state.sessionLost = true;
+    render();
+    return;
+  }
+  const wasLost = state.sessionLost;
+  state.sessionLost = false;
+  if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') { if (wasLost) render(); return; }
+  const uid = session.user?.id ?? null;
   if (!accountOn()) becomeAccount(session);
+  else {
+    // An account is on this device already. Someone else signing in must
+    // not see its things, or sync from where it left off.
+    if (accountMatch(accountUserOnDevice(), uid) === 'other') {
+      _syncHold = true;
+      try { await switchAccountOnDevice(); } finally { _syncHold = false; }
+    }
+    if (state.saveSheet) { state.saveSheet = null; state.authCode = ''; dropPendingSave(); showToast('Signed in'); }
+    render();
+  }
+  setAccountUserOnDevice(uid);
   startAccount();
   syncSoon(0);
   refreshAccess();
 }
+
+// A different person signed in on a device that held someone else's
+// account: the previous account's saved things, its sync bases and its
+// last-pull mark go (as at sign-out), so the new account pulls everything
+// of its own from the start and nothing of the old one is pushed into it.
+async function switchAccountOnDevice() {
+  clearTimeout(_syncTimer);
+  for (const key of DATA_KEYS) { try { localStorage.removeItem(key); } catch { /* no storage */ } }
+  try { localStorage.removeItem('hp-can-build'); } catch { /* no storage */ }
+  await syncBases.clear();
+  _sharedPushed = new Map();
+  Object.assign(state, { syncPending: 0, lastSynced: null, syncError: null, accountCounts: null });
+  reloadSaved();
+  if (state.view !== 'settings') { goHome({ push: false }); navReplace('/'); }
+}
+let _signingOut = false; // Sign out or Delete account is running: the session ending is expected
+let _syncHold = false;   // nothing syncs while the device changes hands
 
 function becomeAccount(session) {
   const pending = takePendingSave();
@@ -8211,7 +8259,7 @@ const syncLocal = {
   write(kind, id, data) {
     if (kind === 'prefs') {
       const { id: _id, ...rest } = data;
-      localStorage.setItem('hp-prefs', JSON.stringify({ ...syncReadPrefs(), ...rest }));
+      safeSetItem(localStorage, 'hp-prefs', JSON.stringify({ ...syncReadPrefs(), ...rest }));
       return;
     }
     const key = SYNC_LISTS[kind];
@@ -8219,7 +8267,7 @@ const syncLocal = {
     const list = syncReadList(key);
     const i = list.findIndex(x => x.id === id);
     if (i >= 0) list[i] = data; else list.push(data);
-    dataStore().setItem(key, JSON.stringify(list));
+    safeSetItem(dataStore(), key, JSON.stringify(list));
   },
   add(kind, data) { this.write(kind, data.id, data); },
 };
@@ -8237,6 +8285,8 @@ function syncSoon(ms = 2000) {
 async function syncNow() {
   if (!accountOn()) return;
   if (!isLoggedIn()) { state.syncPending = await pendingCount(); return; }
+  // Only ever with the account this device's things belong to.
+  if (_syncHold || accountMatch(accountUserOnDevice(), getUserId()) === 'other') return;
   if (_syncRunning) { _syncAgain = true; return; }
   _syncRunning = true;
   const before = state.syncPending;
@@ -8288,6 +8338,17 @@ for (const ev of ['hp-data-changed', 'hp-instruments-changed', 'hp-progressions-
     syncSoon();
   });
 }
+
+// A write to this device's storage failed (js/datastore.js safeSetItem):
+// say so once, instead of a save that silently did nothing.
+let _storageFullAt = 0;
+window.addEventListener('hp-storage-full', () => {
+  if (Date.now() - _storageFullAt < 5000) return;
+  _storageFullAt = Date.now();
+  logEvent('storage_full');
+  // After the tap's own handler, so its "Saved" doesn't cover this.
+  setTimeout(() => showToast('This device is out of space for saved things, so that wasn’t saved. Remove an instrument photo or something you no longer use, then try again.'), 0);
+});
 
 let _syncPoll = null;
 function startSyncPoll() {
@@ -8380,13 +8441,17 @@ function accountSettingsHtml() {
   const n = state.syncPending;
   const status = state.isOffline
     ? (n ? `${n} change${n !== 1 ? 's' : ''} will sync when you're online` : 'Offline · everything is on this device')
+    : state.sessionLost ? 'Signed out on this device · your things are still here'
     : !isLoggedIn() ? 'Connecting…'
     : state.syncError === 'error' ? 'Couldn’t sync just now · tap ⟳ to try again'
     : n ? `${n} change${n !== 1 ? 's' : ''} waiting to sync`
     : state.lastSynced ? 'Everything is synced' : 'Getting your things…';
+  const lost = state.sessionLost && !isLoggedIn();
   return `
-    ${uiRow({ lead: 'user', title: getUserEmail() ?? 'Signed in', meta: escHtml(status), trail: isLoggedIn() ? uiIconBtn('refresh', 'Sync now', { action: 'account-sync' }) : '' })}
-    ${uiRow({ lead: 'cloud', title: 'In your account', meta: state.accountCounts === 'error' ? 'Couldn’t be read just now' : state.accountCounts ? escHtml(countsText(state.accountCounts)) : 'Checking…' })}
+    ${lost
+      ? uiRow({ lead: 'user', title: 'Sign in again', meta: escHtml(`${status}. Sign in to sync ${n ? `${n} change${n !== 1 ? 's' : ''}` : 'again'}; nothing is lost.`), action: 'account-sign-in-again', chevron: true })
+      : uiRow({ lead: 'user', title: getUserEmail() ?? 'Your account', meta: escHtml(status), trail: isLoggedIn() ? uiIconBtn('refresh', 'Sync now', { action: 'account-sync' }) : '' })}
+    ${lost ? '' : uiRow({ lead: 'cloud', title: 'In your account', meta: state.accountCounts === 'error' ? 'Couldn’t be read just now' : state.accountCounts ? escHtml(countsText(state.accountCounts)) : 'Checking…' })}
     ${uiRow({ lead: 'smartphone', title: 'On this device', meta: escHtml(countsText(deviceCounts())) })}
     ${uiRow({ lead: 'cloud-off', title: 'Offline', meta: state.offlineReady ? 'Ready: the app opens without a connection on this device' : 'Getting ready on this device…' })}
     ${uiRow({ lead: 'download', title: 'Export my data', meta: 'Everything in your account, as one file', action: 'account-export', chevron: true })}
@@ -8432,7 +8497,8 @@ async function forgetAccountOnDevice() {
   localStorage.removeItem('hp-can-build');
   await syncBases.clear();
   await offline.disable();
-  Object.assign(state, { syncPending: 0, lastSynced: null, offlineReady: false, accountConfirm: null, accountError: null });
+  Object.assign(state, { syncPending: 0, lastSynced: null, offlineReady: false, accountConfirm: null, accountError: null, sessionLost: false, accountCounts: null });
+  _signingOut = false;
   reloadSaved();
   goHome({ push: false });
   navReplace('/');
@@ -8478,14 +8544,16 @@ function accountAction(action) {
   if (action === 'account-confirm-cancel') { state.accountConfirm = null; state.accountError = null; render(); return true; }
   if (action === 'account-signout-ok') {
     state.accountConfirm = null;
+    _signingOut = true;
     signOut().then(forgetAccountOnDevice).then(() => showToast('Signed out'));
     return true;
   }
   if (action === 'account-delete-ok') {
     const typed = (document.getElementById('account-delete-input')?.value || '').trim().toUpperCase();
     if (typed !== 'DELETE') { state.accountError = 'Type DELETE'; render(); return true; }
+    _signingOut = true;
     deleteMyAccount().then(err => {
-      if (err) { state.accountError = `Couldn't delete it: ${err}`; render(); return; }
+      if (err) { _signingOut = false; state.accountError = `Couldn't delete it: ${err}`; render(); return; }
       forgetAccountOnDevice().then(() => showToast('Your account is deleted'));
     });
     return true;
@@ -8523,7 +8591,7 @@ function rememberLastPath() {
   const p = syncReadPrefs();
   const isPlace = state.view === 'instrument' || state.layout;
   if (!isPlace || p.lastPath === path) return;
-  localStorage.setItem('hp-prefs', JSON.stringify({ ...p, lastPath: path, updatedAt: new Date().toISOString() }));
+  safeSetItem(localStorage, 'hp-prefs', JSON.stringify({ ...p, lastPath: path, updatedAt: new Date().toISOString() }));
   syncSoon(5000);
 }
 

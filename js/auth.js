@@ -12,9 +12,25 @@ export function initSupabase(onAuthChange) {
     _session = session;
     onAuthChange(event, session);
   });
-  _sb.auth.getSession().then(({ data: { session } }) => {
+  _sb.auth.getSession().then(({ data: { session }, error }) => {
     if (session) { _session = session; onAuthChange('INITIAL_SESSION', session); }
-  });
+    // No session and nothing went wrong reading it: the app is told too, so
+    // an account whose session ended can offer "Sign in again".
+    else if (!error) onAuthChange('INITIAL_SESSION', null);
+  }).catch(() => {});
+}
+
+// Is a session still kept on this device (supabase-js stores it under
+// sb-…-auth-token)? While it is, a missing session may come back by itself
+// (offline, a token being refreshed). Once it is gone, only signing in again
+// brings one back.
+export function hasStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      if (/^sb-.*-auth-token$/.test(localStorage.key(i) || '')) return true;
+    }
+  } catch { /* no storage */ }
+  return false;
 }
 
 // ── Measurement: PostHog EU (docs/free-to-play.md §9) ───────────────────────

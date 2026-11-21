@@ -1,4 +1,4 @@
-import { dataStore } from './datastore.js';
+import { dataStore, safeSetItem } from './datastore.js';
 
 const LAYOUTS_KEY = 'hp-layouts';
 const FAVS_KEY = 'hp-favorites'; // legacy, migrated into hp-playlists on first access
@@ -26,7 +26,7 @@ export function saveLayout(entry) {
   const stamped = { ...entry, updatedAt: now() };
   if (idx >= 0) all[idx] = stamped;
   else all.unshift(stamped);
-  dataStore().setItem(LAYOUTS_KEY, JSON.stringify(all));
+  safeSetItem(dataStore(), LAYOUTS_KEY, JSON.stringify(all));
 }
 
 export function deleteLayout(id) {
@@ -36,7 +36,7 @@ export function deleteLayout(id) {
     const ts = now();
     layout.deletedAt = ts;
     layout.updatedAt = ts;
-    dataStore().setItem(LAYOUTS_KEY, JSON.stringify(all));
+    safeSetItem(dataStore(), LAYOUTS_KEY, JSON.stringify(all));
   }
 }
 
@@ -51,7 +51,7 @@ function getAllPlaylistsRaw() {
   // First run: create default Favorites playlist, migrate old favorites if any
   const old = safeParse(FAVS_KEY);
   const playlists = [{ id: 'favorites', name: 'Favorites', chords: old, updatedAt: now() }];
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return playlists;
 }
 
@@ -63,14 +63,14 @@ export function addPlaylist(name) {
   const playlists = getAllPlaylistsRaw();
   const id = 'pl-' + Date.now();
   playlists.push({ id, name, chords: [], updatedAt: now() });
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return id;
 }
 
 export function renamePlaylist(id, name) {
   const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === id);
-  if (pl) { pl.name = name; pl.updatedAt = now(); dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists)); }
+  if (pl) { pl.name = name; pl.updatedAt = now(); safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists)); }
 }
 
 export function deletePlaylist(id) {
@@ -81,7 +81,7 @@ export function deletePlaylist(id) {
     const ts = now();
     pl.deletedAt = ts;
     pl.updatedAt = ts;
-    dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+    safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   }
 }
 
@@ -91,7 +91,7 @@ export function addChordToPlaylist(playlistId, chord) {
   if (!pl || pl.chords.some(c => c.id === chord.id)) return false;
   pl.chords.unshift(chord);
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
@@ -106,7 +106,7 @@ export function updatePlaylistChordVoicing(playlistId, oldFavId, updates) {
   if (idx < 0) return false;
   pl.chords[idx] = { ...pl.chords[idx], ...updates };
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
@@ -116,7 +116,7 @@ export function removeChordFromPlaylist(playlistId, chordFavId) {
   if (!pl) return;
   pl.chords = pl.chords.filter(c => c.id !== chordFavId);
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 export function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
@@ -126,7 +126,7 @@ export function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
   const [item] = pl.chords.splice(fromIdx, 1);
   pl.chords.splice(toIdx, 0, item);
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 export function isChordInPlaylist(playlistId, chordFavId) {
@@ -263,7 +263,7 @@ export function getProgressionsRaw() {
 }
 
 export function writeProgressionsRaw(list) {
-  dataStore().setItem(PROGRESSIONS_KEY, JSON.stringify(list));
+  safeSetItem(dataStore(), PROGRESSIONS_KEY, JSON.stringify(list));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-progressions-changed'));
 }
 
