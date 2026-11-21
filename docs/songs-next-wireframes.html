@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Songs, next: wireframes</title>
+<style>
+  :root { --ink: #1d2a26; --mute: #6b7a74; --line: #c9d2cd; --bg: #f4f1ea; --card: #fffdf8; --accent: #2f7f6f; --warn: #b4571e; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 32px 0 12px; }
+  p.lead { color: var(--mute); margin: 0 0 16px; max-width: 70ch; }
+  .frames { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+  .phone { width: 320px; max-width: 100%; background: var(--card); border: 1.5px solid var(--ink); border-radius: 18px; padding: 12px; box-sizing: border-box; }
+  .wide { width: 640px; max-width: 100%; background: var(--card); border: 1.5px solid var(--ink); border-radius: 10px; padding: 16px; box-sizing: border-box; }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+  .btn { display: inline-block; border: 1.5px solid var(--ink); border-radius: 999px; padding: 4px 12px; font-size: 13px; background: #fff; white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.on { background: var(--ink); color: #fff; }
+  .meta { color: var(--mute); font-size: 13px; margin: 0 0 8px; }
+  .pic { height: 150px; border: 1.5px dashed var(--line); border-radius: 50%; width: 150px; margin: 8px auto; display: grid; place-items: center; color: var(--mute); font-size: 12px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  .note { border: 1.5px solid var(--line); border-radius: 8px; padding: 3px 7px; font-size: 13px; background: #fff; }
+  .note.cur { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .note.heard { background: #d9efe7; border-color: var(--accent); }
+  .note.gone { color: var(--warn); border-color: var(--warn); text-decoration: line-through; background: #fbeee4; }
+  .loop { border-top: 3px solid var(--accent); padding-top: 3px; }
+  .hint { font-size: 12.5px; color: var(--mute); margin: 6px 0; }
+  .hint.warn { color: var(--warn); }
+  .list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 8px 0; }
+  .item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .item:last-child { border-bottom: 0; }
+  .item small { color: var(--mute); display: block; font-size: 12px; }
+  .badge { font-size: 11.5px; border-radius: 999px; padding: 1px 8px; border: 1px solid var(--accent); color: var(--accent); align-self: center; white-space: nowrap; }
+  .badge.warn { border-color: var(--warn); color: var(--warn); }
+  .badge.off { border-color: var(--line); color: var(--mute); }
+  .cap { font-size: 12.5px; color: var(--mute); margin-top: 8px; }
+  .url { font: 12px ui-monospace, monospace; background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; overflow-wrap: anywhere; }
+  .card { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .card .img { height: 110px; background: repeating-linear-gradient(45deg, #e6e1d6, #e6e1d6 8px, #efebe2 8px, #efebe2 16px); display: grid; place-items: center; color: var(--mute); font-size: 12px; }
+  .card .txt { padding: 8px 10px; font-size: 13px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 560px) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Songs, next: wireframes</h1>
+<p class="lead">For <code>docs/songs-next.md</code>. Grey boxes are existing parts that don't change. Everything is built from the shared components (app bar, buttons, chips, list rows, sheets) in <code>docs/design-system.md</code>.</p>
+
+<h2>1. The song screen: share, wait, loop, a missing note</h2>
+<div class="frames">
+  <div class="phone">
+    <div class="bar"><span>‹ Amazing Grace</span><span class="btn">Share</span></div>
+    <p class="meta">England · F major · 3/4 · on your handpan</p>
+    <div class="pic">picture, the note lit</div>
+    <div class="row" style="justify-content:center"><b>A4</b> <span class="meta" style="margin:0">Next C5 · 12 / 35</span></div>
+    <div class="row" style="justify-content:center"><span class="btn">⏮</span><span class="btn">◀</span><span class="btn primary">▶ Play</span><span class="btn">▶|</span><span class="btn">0.5×</span></div>
+    <div class="row" style="justify-content:center"><span class="btn on">🎤 Wait for me</span><span class="btn">Loop from here</span></div>
+    <p class="hint">Listening: play A4 and the song moves on.</p>
+    <div class="row">
+      <span class="note heard">C4</span><span class="note heard">F4</span><span class="note heard">A4</span><span class="note heard">F4</span>
+      <span class="note cur">A4</span><span class="note">G4</span><span class="note">F4</span><span class="note">D4</span><span class="note">C4</span>
+    </div>
+    <p class="cap">Wait mode on. Notes already heard turn green; the current one is ringed. Speed now goes down to 0.25×.</p>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span>‹ Auld Lang Syne</span><span class="btn">Share</span></div>
+    <p class="meta">Scotland · F major · 4/4 · on your handpan · <span style="color:var(--warn)">one note missing</span></p>
+    <div class="pic">picture, nothing lit</div>
+    <p class="hint warn" style="text-align:center">D5 isn't on your handpan: leave it out or sing it.</p>
+    <div class="row" style="justify-content:center"><span class="btn">⏮</span><span class="btn">◀</span><span class="btn primary">▶ Play</span><span class="btn">▶|</span><span class="btn">1×</span></div>
+    <div class="row" style="justify-content:center"><span class="btn">🎤 Wait for me</span><span class="btn on">Loop on · clear</span></div>
+    <div class="row">
+      <span class="note">F4</span><span class="note">A4</span>
+      <span class="loop"><span class="note">C5</span> <span class="note gone cur">D5</span> <span class="note">C5</span> <span class="note">A4</span></span>
+      <span class="note">A4</span><span class="note">F4</span>
+    </div>
+    <p class="cap">A song that almost fits. The missing note is crossed out and never replaced. The bracket is the loop.</p>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span>‹ Amazing Grace</span><span class="btn">Share</span></div>
+    <div class="row"><span class="note">tab …</span></div>
+    <b style="font-size:14px">On your instruments</b>
+    <div class="list">
+      <div class="item"><span>Tin whistle in D<small>G major</small></span><span class="badge">fits</span></div>
+      <div class="item"><span>D Kurd handpan<small>F major · without D5</small></span><span class="badge warn">one note missing</span></div>
+      <div class="item"><span>C pentatonic kalimba<small>needs notes it doesn't have</small></span><span class="badge off">doesn't fit</span></div>
+    </div>
+    <b style="font-size:14px">Goes well after it</b>
+    <div class="list"><div class="item"><span>Skye Boat Song</span><span>›</span></div></div>
+    <p class="cap">Lower on the same screen, when two or more instruments are saved.</p>
+  </div>
+</div>
+
+<h2>2. Sharing and a link without an instrument</h2>
+<div class="frames">
+  <div class="phone">
+    <div class="bar"><span>Share this song</span><span>✕</span></div>
+    <p class="hint">Shown only when the phone's own share sheet and copying both aren't available.</p>
+    <div class="url">oakhum.com/handpan/d-kurd/songs/twinkle-twinkle</div>
+    <div class="row" style="justify-content:flex-end"><span class="btn primary">Copy link</span></div>
+    <p class="cap">Normally Share opens the phone's share sheet, or copies the link and says "Link copied".</p>
+  </div>
+
+  <div class="phone">
+    <div class="card">
+      <div class="img">/og/handpan.jpg</div>
+      <div class="txt"><b>Twinkle, Twinkle, Little Star on D Kurd handpan · Oakhum</b><br><span class="meta">Play it note by note on the D Kurd handpan: the tab, each note lit, at your own speed. Free, in your browser.</span></div>
+    </div>
+    <p class="cap">The preview card a messaging app shows for the link.</p>
+  </div>
+
+  <div class="phone">
+    <div class="bar"><span>Play</span><span></span></div>
+    <p class="hint" style="border:1px solid var(--accent); border-radius:8px; padding:8px; color:var(--ink)">Pick your instrument to play <b>Twinkle, Twinkle, Little Star</b>.</p>
+    <div class="row"><span class="btn">Handpan</span><span class="btn">Tongue drum</span><span class="btn">Kalimba</span><span class="btn">Ocarina</span><span class="btn">Flute</span></div>
+    <div class="list"><div class="item"><span>existing instrument picker…</span></div></div>
+    <p class="cap"><code>/song/twinkle-twinkle</code> for someone with no instruments. With saved instruments the song opens on the one it fits best.</p>
+  </div>
+</div>
+
+<h2>3. The songs list and the website's song pages</h2>
+<div class="frames">
+  <div class="phone">
+    <b>Songs to learn</b>
+    <div class="row"><span class="btn">✨ Christmas · 5</span><span class="btn on">Popular · 26</span><span class="btn">Countries</span></div>
+    <div class="list">
+      <div class="item"><span>Ode to Joy<small>Germany · F major · 4/4</small></span><span>›</span></div>
+      <div class="item"><span>Twinkle, Twinkle, Little Star<small>France · F major · 4/4</small></span><span>›</span></div>
+      <div class="item"><span>Show all 26 songs</span><span>⌄</span></div>
+    </div>
+    <b style="font-size:14px">Almost fit: one note missing</b>
+    <div class="list">
+      <div class="item"><span>Auld Lang Syne<small>Scotland · F major · without D5, 5 times</small></span><span>›</span></div>
+      <div class="item"><span>Show all 26</span><span>⌄</span></div>
+    </div>
+    <p class="cap">The list's place in the tabs is the navigation redesign's; only the second group and the order are new here.</p>
+  </div>
+
+  <div class="wide">
+    <div class="bar"><span>Oakhum › Songs › Twinkle, Twinkle, Little Star</span><span class="btn primary">Open in the app</span></div>
+    <h1 style="font-size:20px">Twinkle, Twinkle, Little Star on D Kurd handpan</h1>
+    <p class="meta">France · played in F major on this handpan · 4/4 · every note is on the instrument</p>
+    <div class="cols">
+      <div><div class="pic" style="width:180px;height:180px">the pan, notes numbered · ▶ Play</div></div>
+      <div>
+        <b style="font-size:14px">Tab</b>
+        <div class="row"><span class="note">R 3</span><span class="note">R 3</span><span class="note">L 6</span><span class="note">L 6</span><span class="note">R 7</span><span class="note">R 7</span><span class="note">L 6</span></div>
+        <p class="hint">from the app's engine, as the app prints it</p>
+        <b style="font-size:14px">Other instruments</b>
+        <div class="list">
+          <div class="item"><span>C major 17-key kalimba</span><span class="badge">fits</span></div>
+          <div class="item"><span>Tin whistle in D</span><span class="badge">fits</span></div>
+          <div class="item"><span>See all 198 tunings</span><span>›</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="meta">Melody from its Wikipedia article, CC BY-SA 4.0.</p>
+    <p class="cap"><code>/songs/twinkle-twinkle/handpan/d-kurd</code>. The song's own page, <code>/songs/twinkle-twinkle</code>, is the same without a tuning chosen and lists every instrument that can play it.</p>
+  </div>
+</div>
+</body>
+</html>
