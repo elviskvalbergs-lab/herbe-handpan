@@ -2,11 +2,13 @@
 
 Nov 11, 2026 · @Elvis
 
+**Status: built, kept as the design record** (status line added 21 Nov 2026). The eight phases in Build order are built. The last two sections were "the next project" when this was written and are **built too**: Songs to learn (`js/songs.js`, 103 songs with tabs) and playing from chord sheets with play levels. Still not built, and not to be built unless the owner asks: MusicXML/MIDI import and a large song catalogue (see CLAUDE.md, Scope). The clay ocarina builder described here is an internal tool and is not part of Oakhum's marketing (`docs/messaging.md`).
+
 ## Goal and how to use this brief
 
 Add an ocarina side to herbe-handpan that shares its scale library, chord engine, sound and sync, but has its own interface built around fingering diagrams. It also gets a builder for making a clay ocarina tuned to any handpan scale.
 
-This brief is written for a Claude Code cloud session working in `elviskvalbergs-lab/herbe-handpan` on the `preview` branch. To use it: export this doc as Markdown, start a Claude Code session on the repo, paste the text, and ask it to save the brief as `docs/ocarina-mode.md` before starting. Then work through the eight phases in the Build order section, one per pull request. The last two sections, on songs and on playing from chord sheets, describe the next project: keep them in mind for the instrument model, but don’t build them yet.
+This brief is written for a Claude Code cloud session working in `elviskvalbergs-lab/herbe-handpan` on the `preview` branch. To use it: export this doc as Markdown, start a Claude Code session on the repo, paste the text, and ask it to save the brief as `docs/ocarina-mode.md` before starting. Then work through the eight phases in the Build order section, one per pull request. The last two sections, on songs and on playing from chord sheets, described the next project when this was written; both have since been built (see the status line above).
 
 **Branches and data.** `preview` is the repo’s only branch and the one Vercel deploys to production, so it is effectively main. The Supabase project is hard-coded in `js/auth.js`, so every deployment, test builds included, shares one database. Claude Code should therefore work on one feature branch per phase and open a pull request into `preview`. Vercel builds a preview link for each pull request to try on the phone before merging. Database changes must be additive only (new tables or columns, never altering existing ones), so a test build can’t damage saved layouts and playlists. Before the sync phase, set up a second Supabase project for testing and point non-production builds at it.
 

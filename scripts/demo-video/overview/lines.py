@@ -1,24 +1,33 @@
-"""The overview video's voice-over, one line per scene (docs/video-plan.md §1).
-Used by ../voiceover.py; compose.py fits each scene to its line.
+"""The overview video ("What can your instrument play?"): the voice-over, one line per scene (docs/video-plan.md §4).
+Used by ../voiceover.py; the video's compose.py fits each scene to its line.
 
-First versions are voiced with Kokoro (free); once the owner agrees the words
-and timing, the same lines go to ElevenLabs "Liam" (eleven_v4), one take each,
+First cuts are voiced with Kokoro (free); once the owner agrees the words and
+timing, the same lines go to ElevenLabs "Liam" (eleven_v4), one take each,
 kept in takes-elevenlabs/ like the makers video's.
+
+These lines replace the first cut's (19 Nov), which opened with "It started
+with a sound". Scenes o2-o5 are phone scenes now, so scenes.js and compose.py
+in this folder still need changing to match (see the plan).
 """
 
+# One line per scene. A line is a list of phrases, so a pause is a real pause.
 # Captions on screen in brackets, so the voice can add to them, not repeat them.
 LINES = {
-    # [You fell in love with the sound]
-    'o1': ["It started with a sound.", "You heard it once… and you just had to have one."],
-    # [Nobody taught you music · So when friends start to jam, you listen]
-    'o2': ["But when your friends start to jam…", "you just listen."],
-    # [Join in. Have fun.]
-    'o3': ["Oakhum is here so you can join in.", "No lessons, no theory. Just you, and your instrument."],
-    # [It starts from your instrument]
-    'o4': ["Play its notes, and Oakhum works out exactly what you have.", "Even one you made yourself."],
-    # [Every chord, right on your instrument · A friend plays a chord? Oakhum listens]
-    'o5': ["Then it shows every chord your notes can make, right where they live.",
-           "And when a friend picks up a guitar, it listens, and shows you where to join in."],
-    # [Find the music hiding in your instrument · Free, in your browser · oakhum.com]
-    'o6': ["It's free, and it's made in Latvia, on Oak Street.", "Oakhum.", "Find the music hiding in your instrument!"],
+    # [What can your instrument play?]
+    'o1':   ['Every one of these has its own notes.',
+             'So what can yours actually play?'],
+    # [It starts from your instrument · Pick it, or play its notes]
+    'o2':   ['Tell Oakhum which one you have.',
+             'Or just play its notes, and it works it out.'],
+    # [Every chord, on your own instrument]
+    'o3':   ['Then it shows every chord your notes can make, right where they live.'],
+    # [Songs your notes can play · With the tab]
+    'o4':   ['And the songs they can play, note by note.'],
+    # [Join in · Oakhum hears the chord and shows it on yours]
+    'o5':   ['A friend picks up a guitar?',
+             'It listens, and shows you where to join in.'],
+    # [Find the music hiding in your instrument · Free. No sign-up to try. · oakhum.com]
+    'o6':   ["It's free, and there's no sign-up to try.",
+             'Oakhum.',
+             'Find the music hiding in your instrument!'],
 }

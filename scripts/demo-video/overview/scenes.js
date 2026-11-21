@@ -1,4 +1,4 @@
-// The still scenes of the overview video (docs/video-plan.md §1), 1920 x 1080,
+// The still scenes of the overview video (the first cut of 19 Nov; the current script is docs/video-plan.md §4), 1920 x 1080,
 // with the shared look (../scene-kit.js). The scene with a phone leaves room
 // for the chords recording (../record.js), which compose.py lays on top.
 const { chromium } = require('playwright');
