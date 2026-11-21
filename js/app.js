@@ -21,7 +21,7 @@ import {
 } from './chordsheet.js';
 import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
 import { instrumentKey, goesWellWith } from './harmony.js';
-import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether } from './songs.js';
+import { SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason } from './songs.js';
 import { icon } from './icons.js';
 import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
 import { renderPan, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
@@ -2998,18 +2998,24 @@ function songMeta(song, shift) {
 }
 
 const SONGS_SHOWN = 8;
+// Which songs the list shows: 'christmas' or 'all'; Christmas first in season.
+function songsFilter() { return state.songsFilter ?? (christmasSeason() ? 'christmas' : 'all'); }
 function songsSectionHtml(inst) {
-  const ok = songsFor(inst);
-  const more = SONGS.length - ok.length;
+  const filter = songsFilter();
+  const pool = filter === 'christmas' ? christmasSongs() : SONGS;
+  const ok = songsFor(inst, pool);
+  const nXmas = songsFor(inst, christmasSongs()).length;
+  const more = pool.length - ok.length;
   const word = songInstWord(inst);
   return `
     <section class="pl-section" aria-labelledby="pl-sec-songs">
       <h2 class="list-title" id="pl-sec-songs">Songs to learn</h2>
+      ${nXmas ? `<div class="songs-filter">${uiSeg([{ value: 'christmas', label: `Christmas · ${nXmas}` }, { value: 'all', label: 'All songs' }], filter, { action: 'songs-filter', label: 'Which songs' })}</div>` : ''}
       ${ok.length
         ? `<div class="list">${(state.songsAll ? ok : ok.slice(0, SONGS_SHOWN)).map(({ song, shift }) => uiRow({
             lead: 'music', title: song.title, meta: escHtml(songMeta(song, shift)), chevron: true,
             action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
-          })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} songs`, action: 'songs-all' }) : ''}</div>`
+          })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${filter === 'christmas' ? 'Christmas songs' : 'songs'}`, action: 'songs-all' }) : ''}</div>`
         : `<p class="pl-section-hint">None of these songs fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
       ${ok.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
       <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, the best known first. ${escHtml(SONG_LICENCE)}.</p>
@@ -3115,6 +3121,7 @@ function songTick() {
 function songAction(action, el) {
   if (action === 'song-open') { openSong(el.dataset.id, el.dataset.inst); return true; }
   if (action === 'songs-all') { state.songsAll = true; render(); return true; }
+  if (action === 'songs-filter') { state.songsFilter = el.dataset.value; state.songsAll = false; render(); return true; }
   if (state.view !== 'song' || !state.songCtx) return false;
   const S = songOnInstrument();
   if (!S) return false;

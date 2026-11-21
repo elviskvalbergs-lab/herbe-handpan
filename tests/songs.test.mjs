@@ -71,3 +71,22 @@ test('the best-known songs come first, and a few openings are as the scores give
   assert.equal(start('frere-jacques', 4), 'D4 E4 F#4 D4');
   assert.equal(start('amazing-grace', 3), 'D4 G4 B4', 'the pickup rests are dropped');
 });
+
+test('Christmas songs: tagged, and first in the list in season', async () => {
+  const { christmasSongs, christmasSeason } = await import('../js/songs.js');
+  const xmas = christmasSongs();
+  assert.ok(xmas.length >= 30);
+  for (const id of ['silent-night', 'o-du-froehliche', 'kling-gloeckchen', 'we-three-kings', 'in-dulci-jubilo']) assert.ok(xmas.some(s => s.id === id), id);
+  assert.ok(!xmas.some(s => s.id === 'ode-to-joy'));
+  assert.equal(christmasSeason(new Date('2026-12-10')), true);
+  assert.equal(christmasSeason(new Date('2027-01-05')), true);
+  assert.equal(christmasSeason(new Date('2026-07-01')), false);
+  const start = id => SONGS.find(s => s.id === id).notes.split(' ').slice(0, 6).map(t => t.split(':')[0]).join(' ');
+  assert.equal(start('kling-gloeckchen'), 'C5 A4 Bb4 C5 D5 C5', 'German note names read as German');
+  assert.equal(start('o-du-froehliche'), 'G4 A4 G4 F4 E4 F4');
+});
+
+test('a rest written at a pitch is a rest (Silent Night)', () => {
+  const s = SONGS.find(x => x.id === 'silent-night');
+  assert.equal(s.notes.split(' ').slice(0, 6).join(' '), 'A4:0.75 B4:0.25 A4:0.5 F#4:1 r:0.5 A4:0.75');
+});

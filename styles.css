@@ -547,6 +547,7 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
 .song-note.is-current { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .song-licence { font-size: var(--fs-13); color: var(--text-3); }
+.songs-filter { margin-bottom: var(--space-2); }
 .song-licence a { color: inherit; text-decoration: underline; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
 /* Move notes: the handpan's tone fields dragged to where they are. */
