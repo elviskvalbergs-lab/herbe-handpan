@@ -103,9 +103,9 @@ After, top to bottom:
 
 | Screen (phone, guest) | Before | After |
 | --- | --- | --- |
-| Handpan Chords, D Kurd, A minor selected | 39 | 25 |
-| Ocarina Chords, alto C | 50 | 33 |
-| Kalimba Chords, C major 17 | 32 | 22 |
+| Handpan Chords, D Kurd, A minor selected | 39 | 24 |
+| Ocarina Chords, alto C | 50 | 30 |
+| Kalimba Chords, C major 17 | 32 | 19 |
 
 ## 4. The microphone: three words, one strip
 
