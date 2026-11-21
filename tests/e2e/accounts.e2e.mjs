@@ -9,114 +9,26 @@
 // carry-over of this visit's work, a second device getting everything,
 // offline (reload with no network, the Offline pill, edits syncing when
 // back), the guest offline card, and sign-out clearing the device.
-import { createServer } from 'node:http';
-import { readFileSync, existsSync, statSync } from 'node:fs';
-import { join, extname, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
+import { chromium, serveApp, fakeServer, newDevice, toast, runner, signInWithCode } from './harness.mjs';
 
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js';
-
-// ── The app, served like Vercel (deep links fall back to index.html) ────────
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2' };
-const http = createServer((req, res) => {
-  const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  let file = join(ROOT, path);
-  if (!existsSync(file) || statSync(file).isDirectory()) file = join(ROOT, 'index.html');
-  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
-  res.end(readFileSync(file));
-});
-await new Promise(r => http.listen(0, '127.0.0.1', r));
-const BASE = `http://localhost:${http.address().port}`;
-
-// ── Stand-in Supabase ───────────────────────────────────────────────────────
-const users = new Map(); // email -> id
-const rows = new Map();  // `${uid}|${kind}|${id}` -> row
-let clock = 0;
-const server = {
-  signIn(email) { if (!users.has(email)) users.set(email, `u${users.size + 1}`); return { user: { id: users.get(email), email, created_at: new Date().toISOString() }, access_token: 't' }; },
-  pull(uid, since) {
-    return [...rows.values()].filter(r => r.owner_id === uid && (!since || r.updated_at > since)).map(({ owner_id, ...r }) => r);
-  },
-  saveItem(uid, a) {
-    const key = `${uid}|${a.p_kind}|${a.p_id}`;
-    const cur = rows.get(key);
-    if (cur && cur.version !== a.p_base_version) { const { owner_id, ...c } = cur; return { ok: false, current: c }; }
-    const ts = new Date(Date.UTC(2026, 10, 16, 12) + ++clock).toISOString();
-    const row = { owner_id: uid, kind: a.p_kind, id: a.p_id, data: a.p_data, version: (cur?.version ?? 0) + 1, updated_at: ts, deleted_at: a.p_deleted ? ts : null, device_kind: a.p_device_kind };
-    rows.set(key, row);
-    return { ok: true, version: row.version, updated_at: ts };
-  },
-};
-
-// The page side: a tiny supabase-js with the calls the app makes.
-const FAKE_SUPABASE = `
-window.supabase = { createClient() {
-  const KEY = 'sb-fake-auth-token';
-  let session = JSON.parse(localStorage.getItem(KEY) || 'null');
-  const listeners = [];
-  const emit = (ev) => listeners.forEach(cb => cb(ev, session));
-  const call = (op, args) => window.__supa(op, { uid: session?.user?.id ?? null, ...args });
-  const query = (table) => {
-    const q = { since: null, then(res, rej) {
-      if (!navigator.onLine) return Promise.resolve({ data: null, error: { message: 'offline' } }).then(res, rej);
-      return call('select', { table, since: q.since }).then(data => ({ data, error: null })).then(res, rej);
-    } };
-    q.select = () => q; q.order = () => q; q.gt = (_c, v) => { q.since = v; return q; };
-    q.maybeSingle = () => Promise.resolve({ data: table === 'profiles' ? { can_build: !!window.__canBuild } : null, error: null });
-    q.upsert = () => Promise.resolve({ error: null });
-    return q;
-  };
-  return {
-    auth: {
-      onAuthStateChange(cb) { listeners.push(cb); },
-      async getSession() { return { data: { session } }; },
-      async signInWithOtp({ email }) { return { error: navigator.onLine ? null : { message: 'offline' } }; },
-      async verifyOtp({ email, token }) {
-        if (token !== '12345678') return { error: { message: 'bad code' } };
-        session = await call('signIn', { email });
-        localStorage.setItem(KEY, JSON.stringify(session));
-        setTimeout(() => emit('SIGNED_IN'), 0);
-        return { error: null };
-      },
-      async signOut() { session = null; localStorage.removeItem(KEY); emit('SIGNED_OUT'); return { error: null }; },
-      async signInWithOAuth() { return { error: { message: 'not in tests' } }; },
-    },
-    from: query,
-    async rpc(name, args) {
-      if (!navigator.onLine) return { data: null, error: { message: 'offline' } };
-      return { data: await call(name, args), error: null };
-    },
-  };
-} };`;
-
+const app = await serveApp();
+const BASE = app.base;
+const server = fakeServer();
+const { rows } = server;
 const browser = await chromium.launch();
-async function device(name) {
-  const ctx = await browser.newContext({ serviceWorkers: 'allow' });
-  await ctx.exposeFunction('__supa', (op, a) => {
-    if (op === 'signIn') return server.signIn(a.email);
-    if (op === 'select') return a.table === 'saved_items' ? server.pull(a.uid, a.since) : [];
-    if (op === 'save_item') return server.saveItem(a.uid, a);
-    return null;
-  });
-  await ctx.route(SUPABASE_JS, r => r.fulfill({ contentType: 'text/javascript', body: FAKE_SUPABASE }));
-  await ctx.route('https://gvcfrnbnenqfhofvzgoz.supabase.co/**', r => r.fulfill({ contentType: 'application/json', body: '{"external":{"google":false,"apple":false}}' }));
-  await ctx.route(/posthog|sentry-cdn|ingest/, r => r.abort());
-  const page = await ctx.newPage();
-  page.on('pageerror', e => console.log(`[${name}] page error:`, e.message));
-  return { ctx, page };
-}
-
-const toast = page => page.locator('.toast.show .toast-msg');
-let passed = 0;
-async function step(name, fn) { await fn(); passed++; console.log(`ok - ${name}`); }
+const run = runner();
+const device = async name => {
+  const d = await newDevice(browser, server, name, { base: BASE });
+  d.page.setDefaultTimeout(15000);
+  d.page.on('pageerror', e => console.log(`[${name}] page error:`, e.message));
+  return d;
+};
+let _page = null;
+const step = (name, fn) => run.step(name, fn, _page);
 
 const phone = await device('phone');
-let p = phone.page;
+let p = _page = phone.page;
 
 await step('a guest plays a deep link with nothing in the way', async () => {
   await p.goto(`${BASE}/handpan/d-kurd/chords`);
@@ -139,9 +51,7 @@ await step('the guest builds something this visit (kept in the tab only)', async
 
 await step('sign-in completes the save, carries the visit over, and turns offline on', async () => {
   await p.locator('[data-action="show-playlist-picker"]').first().click();
-  await p.fill('#save-email-input', 'a@example.com');
-  await p.click('[data-action="save-send-code"]');
-  await p.fill('#save-code-input', '12345678');
+  await signInWithCode(p, 'a@example.com');
   await toast(p).filter({ hasText: 'Saved to Favourites' }).waitFor();
   await toast(p).filter({ hasText: 'Also saved: Clay G' }).waitFor({ timeout: 6000 });
   const fav = await p.evaluate(() => JSON.parse(localStorage.getItem('hp-playlists')).find(x => x.id === 'favorites').chords.length);
@@ -160,9 +70,7 @@ await step('a second device gets everything after signing in', async () => {
   await t.goto(`${BASE}/`);
   await t.click('[data-action="open-settings"]');
   await t.click('[data-action="open-sign-in"]');
-  await t.fill('#save-email-input', 'a@example.com');
-  await t.click('[data-action="save-send-code"]');
-  await t.fill('#save-code-input', '12345678');
+  await signInWithCode(t, 'a@example.com');
   await t.waitForFunction(() => (JSON.parse(localStorage.getItem('hp-instruments') || '[]')).some(i => i.name === 'Clay G'), null, { timeout: 8000 });
   await t.waitForFunction(() => (JSON.parse(localStorage.getItem('hp-playlists') || '[]')).find(x => x.id === 'favorites')?.chords.length === 1);
 });
@@ -224,9 +132,7 @@ await step('a guest saves a visiting ocarina: after sign-in it is in My instrume
   await p.locator('.banner [data-action="shared-add"]').click();
   assert.match(await p.locator('.sheet-title').innerText(), /Save your instrument/);
   await p.screenshot({ path: process.env.SHOT ?? '/dev/null' }).catch(() => {});
-  await p.fill('#save-email-input', 'b@example.com');
-  await p.click('[data-action="save-send-code"]');
-  await p.fill('#save-code-input', '12345678');
+  await signInWithCode(p, 'b@example.com');
   await toast(p).filter({ hasText: /added to My instruments/ }).waitFor();
   const names = await p.evaluate(() => JSON.parse(localStorage.getItem('hp-instruments')).map(i => i.family));
   assert.deepEqual(names, ['ocarina']);
@@ -243,5 +149,5 @@ await step('building is hidden unless the owner ticked can_build', async () => {
 });
 
 await browser.close();
-http.close();
-console.log(`\n${passed} passed`);
+await app.close();
+console.log(`\n${run.passed} passed`);

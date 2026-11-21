@@ -4,6 +4,11 @@
    --alt-c*, --faint-* tokens, which each side defines. */
 /* SVG pan note base styles */
 .pan-note { cursor: pointer; }
+/* Keyboard focus: a ring on the note's own shape (an outline would be a box). */
+.pan-note:focus { outline: none; }
+.pan-note:focus-visible rect, .pan-note:focus-visible circle, .pan-note:focus-visible ellipse, .pan-note:focus-visible path {
+  stroke: var(--focus, currentColor); stroke-width: 3;
+}
 .pan-note rect, .pan-note circle, .pan-note ellipse { transition: fill 0.12s, opacity 0.12s; }
 .pan-note text { pointer-events: none; transition: fill 0.12s; }
 .pan-note.dimmed { opacity: 0.2; pointer-events: none; }

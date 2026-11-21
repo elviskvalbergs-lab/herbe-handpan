@@ -47,3 +47,5 @@ Every instrument gets the same experience, in the app and on the website. A new 
 ## Tests
 - Unit tests live in `tests/*.test.mjs` and use only `node:test` and `node:assert` (no dependencies, no package.json). Run them with `node --test` from the repo root.
 - Run the tests and `python3 build.py` before every commit (the build checks the bundle; its output stays uncommitted).
+- Browser tests live in `tests/e2e/*.e2e.mjs` (Playwright, headless Chromium, a stand-in for Supabase from `tests/e2e/harness.mjs`): `smoke.e2e.mjs` opens the app the way people do (first-run setup, one deep link per instrument family, a chord, a song, Playlists, Settings, hostile links) and fails on any page error, console error or missing file; `accounts.e2e.mjs` covers sign-in, sync and offline. Run them with `scripts/e2e.sh` after a build. `js/app.js` has no unit tests, so this is its safety net: when a pull request adds a screen or a flow, add a step that opens it.
+- `scripts/ci.sh` runs everything a pull request must pass (unit tests, build, browser tests, the website's tests and build); CI runs the same script.

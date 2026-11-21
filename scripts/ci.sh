@@ -10,6 +10,9 @@ node --test
 echo "== App: build (also checks the bundle parses and has no duplicate top-level names)"
 python3 build.py
 
+echo "== App: browser tests (smoke suite, accounts)"
+scripts/e2e.sh
+
 echo "== Website: tests and build"
 cd site
 corepack enable >/dev/null 2>&1 || true

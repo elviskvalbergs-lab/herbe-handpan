@@ -407,6 +407,10 @@ Legend line `.fg-legend` (first time only): a row of three 16px glyphs with labe
 
 ---
 
+### 5.15 The pan, drum and kalimba picture (`js/pan.js`)
+
+Every note of the picture is a button: `role="button"`, `tabindex="0"` and an `aria-label` with its name ("D3"; "Empty place" for a free slot), given by `renderPan` itself, so every screen that shows the picture gets it, and the website's demo too. Enter or Space is the same as a tap (one `keydown` handler in `js/app.js` turns the key into the click; the website's demo has its own). Focus shows as a ring on the note's own shape in `--focus` (`css/pan-drawing.css`), and stays on the note across a re-render. A new picture (another instrument drawn by `pan.js`) uses `panNoteA11y` the same way.
+
 ## 6. Screen-by-screen redesign
 
 The wireframes are at 360px. `[ ]` is a button, `( )` a chip or segment, `▾` a select, `›` navigation, `⋯` a menu, and 🎤 means the `mic` icon (not the emoji).
