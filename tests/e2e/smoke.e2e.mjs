@@ -64,6 +64,8 @@ try {
     await p.click('[data-action="play-chord"]');
     await p.locator('[data-action="select-chord"]').nth(2).click();
     await pictureShown(p);
+    // The speed button is wherever something plays: on the chord card too.
+    await p.locator('.hp-card [data-action="speed-open"]').waitFor();
   });
   await step('the picture is playable from the keyboard: notes are named buttons, Enter picks one', first, async p => {
     const notes = p.locator('.pan-wrap .pan-note[data-note]');
