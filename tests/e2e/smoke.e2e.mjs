@@ -71,22 +71,27 @@ try {
     assert.equal(await first.getAttribute('role'), 'button');
     assert.equal(await first.getAttribute('tabindex'), '0');
     assert.match(await first.getAttribute('aria-label'), /^[A-G]/);
-    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Identify' }).click();
+    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Tap notes' }).click();
     await notes.nth(1).focus();
     await p.keyboard.press('Enter');
     await p.keyboard.press('Tab');
     await p.keyboard.press('Space');
     await p.waitForTimeout(100);
-    // Identify mode marks the picked notes; the focus stayed in the picture.
+    // Tap notes marks the picked notes; the focus stayed in the picture.
     assert.equal(await p.locator('.pan-wrap .pan-note.highlight').count(), 2, 'Enter and Space each picked a note');
     assert.ok(await p.evaluate(() => document.activeElement?.classList?.contains('pan-note')), 'focus is still on a note');
-    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Browse' }).click();
+    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'All chords' }).click();
   });
-  await step('the Playlists tab opens, with New playlist and songs', first, async p => {
+  await step('the Playlists tab opens, with New playlist', first, async p => {
     await p.click('[data-action="hp-playlists"]');
     await p.waitForURL(/\/playlists$/);
     await p.locator('[data-action="prog-new-open"]').waitFor();
+  });
+  await step('the Songs tab opens, with songs and the way in for a chord sheet', first, async p => {
+    await p.click('[data-action="hp-songs"]');
+    await p.waitForURL(/\/songs$/);
     await p.locator('[data-action="song-open"]').first().waitFor();
+    await p.locator('[data-action="cs-open"]').waitFor();
   });
   await step('a song opens and plays', first, async p => {
     await p.locator('[data-action="song-open"]').first().click();
@@ -95,7 +100,8 @@ try {
     await p.click('[data-action="song-play"]');
     await p.waitForTimeout(300);
     await p.click('[data-action="nav-back"]');
-    await p.locator('[data-action="prog-new-open"]').waitFor();
+    await p.waitForURL(/\/songs$/);
+    await p.locator('[data-action="song-open"]').first().waitFor();
   });
   await step('Settings opens from the menu and a setting changes', first, async p => {
     await p.click('[data-action="menu-open"]');
@@ -105,7 +111,8 @@ try {
     assert.equal(await p.evaluate(() => document.documentElement.dataset.theme), 'light');
     await p.locator('[data-action="open-sign-in"]').waitFor();
     await p.click('[data-action="nav-back"]');
-    await p.locator('[data-action="prog-new-open"]').waitFor();
+    await p.waitForURL(/\/songs$/);
+    await p.locator('[data-action="song-open"]').first().waitFor();
   });
   await first.ctx.close();
 
@@ -134,6 +141,11 @@ try {
     await step(`${family}: the Playlists tab opens`, d, async p => {
       await p.locator('[data-action="hp-playlists"], [data-action="oc-tab"][data-tab="playlists"]').first().click();
       await p.locator('[data-action="prog-new-open"]').waitFor();
+    });
+    await step(`${family}: the Songs tab opens`, d, async p => {
+      await p.locator('[data-action="hp-songs"], [data-action="oc-tab"][data-tab="songs"]').first().click();
+      await p.waitForURL(/\/songs$/);
+      await p.locator('#pl-sec-songs').waitFor();
     });
     await d.ctx.close();
   }
