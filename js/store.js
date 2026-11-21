@@ -31,7 +31,7 @@ export const SAVE_ACTIONS = {
 export const SAVE_TEXTS = {
   chord: { title: 'Keep this chord', line: 'Keep your favourite chords one tap away, on any device.' },
   playlist: { title: 'Start a playlist', line: 'Put the chords for a song together and play them on any device.' },
-  instrument: { title: 'Save your instrument', line: 'Set up your instrument once. It’s ready every time, on every device.' },
+  instrument: { title: 'Keep your instrument', line: 'Set it up once and it’s ready every time, on every device. Without a free account it’s gone when you close this page.' },
   heard: { title: 'Keep what you heard', line: 'Save this as a playlist and play along with it any time.' },
   progression: { title: 'Save this song', line: 'Keep the song’s chords and play along any time, on any device.' },
   song: { title: 'Save this song', line: 'Keep the song’s chords and play along any time, on any device.' },
@@ -57,7 +57,8 @@ function stSession() { try { return globalThis.sessionStorage ?? null; } catch {
 export function keepPendingSave(intent) {
   const ss = stSession();
   if (!ss) return;
-  ss.setItem(PENDING_KEY, JSON.stringify({ what: intent.what, action: intent.action ?? null, data: intent.data ?? {}, entry: intent.entry ?? null, path: intent.path ?? null, at: Date.now() }));
+  // (A full device: the save still completes in this tab, just not after a redirect.)
+  try { ss.setItem(PENDING_KEY, JSON.stringify({ what: intent.what, action: intent.action ?? null, data: intent.data ?? {}, entry: intent.entry ?? null, path: intent.path ?? null, at: Date.now() })); } catch { /* not kept */ }
 }
 
 // The waiting intent, or null; older than an hour counts as abandoned.
