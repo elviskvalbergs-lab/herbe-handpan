@@ -61,6 +61,9 @@ const LINK_CHART_SLUGS = {
   'naf6-fs': 'naf-6-in-fs',
   'naf5-fs': 'naf-5-in-fs',
   'ocarina-6-stl-c': 'pendant-6',
+  'ocarina-4-stl-c': 'pendant-4',
+  'ocarina-10-eu-c': 'italian-10',
+  'ocarina-10-as-c': 'asian-10',
 };
 
 // 12-hole ocarinas go by voice and key, as players and makers name them
@@ -72,6 +75,7 @@ function linkKeyOctave(key) { return Number(String(key.lowest).match(/(\d+)$/)?.
 function linkKeyRoot(key) { return key.root ?? String(key.id).split('-')[0]; }
 
 function linkChartSlug(chart, key) {
+  if (key.slug) return key.slug; // a recorder's size and fingering: soprano-baroque
   const holes = LINK_VOICED_CHARTS[chart.id];
   if (holes) {
     const voice = LINK_OCARINA_VOICES[linkKeyOctave(key)];

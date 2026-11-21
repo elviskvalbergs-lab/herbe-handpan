@@ -1673,18 +1673,20 @@ function setupGuideOnNote(midi) {
 const SETUP_WIND_TYPES = {
   ocarina: [
     { name: '12 holes', hint: 'Transverse (“sweet potato”), the most common', group: ['ocarina-12-stl-c'] },
-    { name: '4 holes', hint: 'Small pendant', holes: 4 },
+    { name: '4 holes', hint: 'Small pendant, English system', group: ['ocarina-4-stl-c'] },
     { name: '6 holes', hint: 'Pendant, English system (4 on top, 2 thumbs)', group: ['ocarina-6-stl-c'] },
-    { name: '7 holes', hint: 'Pendant', holes: 7 },
-    { name: '8 holes', hint: 'Pendant', holes: 8 },
-    { name: '10 holes', hint: 'Transverse', holes: 10 },
+    { name: '7 holes', hint: 'Pendant', holes: 7, noChart: true },
+    { name: '8 holes', hint: 'Pendant', holes: 8, noChart: true },
+    { name: '10 holes', hint: 'Transverse, Italian (European) system · a generic chart, check it with the tuner', group: ['ocarina-10-eu-c'] },
+    { name: '10 holes, Asian system', hint: 'The right thumb lifts before the left little finger · a generic chart, check it with the tuner', group: ['ocarina-10-as-c'] },
     { name: 'Another number, or made by hand', holes: 12 },
   ],
   flute: [
-    { name: 'Tin whistle', hint: '6 holes, in D', group: ['tin-whistle-d'] },
+    { name: 'Tin whistle', hint: '6 holes, in D or C', group: ['tin-whistle-d', 'tin-whistle-c'] },
+    { name: 'Tin whistle in another key', hint: 'B♭, E♭, A, low D', holes: 6, noChart: true },
     { name: 'Native American flute, 6 holes', hint: 'Any key', group: ['naf6-a', 'naf6-fs', 'naf6-penta'] },
     { name: 'Native American flute, 5 holes', hint: 'Any key', group: ['naf5-a', 'naf5-fs', 'naf5-penta'] },
-    { name: 'Another flute', hint: 'A recorder, a bansuri, one made by hand', holes: 6 },
+    { name: 'Another flute', hint: 'A recorder, a bansuri, one made by hand', holes: 6, noChart: true },
   ],
 };
 const SETUP_WIND_STEPS = 7;
@@ -1867,7 +1869,7 @@ function viewBeginnerSetup() {
   if (st.step === 'windtype') {
     return stepFrame({
       header, stage: 2, title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or play it a note.',
-      body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : t.hint ? `${t.hint} · set up note by note with the tuner` : 'Set up note by note with the tuner'), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>`,
+      body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : `${t.hint ? `${t.hint} · ` : ''}${t.noChart ? 'no published chart found yet: ' : ''}set up note by note with the tuner`.replace(/^s/, 'S')), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>${st.family === 'ocarina' ? `<p class="wizard-foot">A double or triple ocarina (several chambers)? Their charts aren’t in Oakhum yet. <a class="link-btn" href="${SETUP_REQUEST_URL}">Ask for yours</a>.</p>` : ''}`,
       bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · play my notes</button>' },
     });
   }
@@ -1879,7 +1881,7 @@ function viewBeginnerSetup() {
     const rn = r => escHtml(displayNote(r, uf, us));
     return stepFrame({
       header, stage: 3, title: 'Do you know its key?',
-      sub: `It’s usually written on the ${escHtml(word)} or its box. ${st.family === 'flute' ? 'A, G and F♯ are the most common.' : 'C is the most common.'}`,
+      sub: `It’s usually written on the ${escHtml(word)} or its box. ${keys.length <= 2 ? '' : st.family === 'flute' ? 'A, G and F♯ are the most common.' : 'C is the most common.'}`,
       body: `
         <div class="setup-roots setup-wind-roots">
           ${keys.map(k => `<button type="button" class="setup-root${picked === k ? ' is-first' : ''}" data-action="setup-wind-root" data-root="${escHtml(k.root)}" aria-pressed="${picked === k ? 'true' : 'false'}">${rn(k.root)}</button>`).join('')}

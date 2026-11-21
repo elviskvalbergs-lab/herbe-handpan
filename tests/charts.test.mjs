@@ -185,3 +185,54 @@ test('detect the key of a 12-hole ocarina from its lowest note', async () => {
   assert.equal(detectLowestKey(getChart('naf6-penta'), hz('G3')).key.id, 'G3');
   assert.equal(detectLowestKey(getChart('tin-whistle-d'), hz('D4')), null);
 });
+
+// ── Charts added for the outside-in review's gaps (docs/parity-and-recorder.md) ──
+test('4-hole pendant (STL booklet): the 6-hole chart with the thumbs closed, an octave', async () => {
+  const c = getChart('ocarina-4-stl-c');
+  assert.deepEqual(c.holes.map(h => h.finger), ['L2', 'R2', 'L1', 'R1']);
+  assert.ok(c.holes.every(h => h.side === 'top'));
+  assert.deepEqual(c.fingerings.map(f => f.offset), Array.from({ length: 13 }, (_, i) => i));
+  const six = getChart('ocarina-6-stl-c');
+  const row = (ch, o) => ch.fingerings.find(f => f.offset === o).states.join('');
+  for (let o = 0; o <= 12; o++) {
+    assert.equal(row(six, o).slice(4), 'cc', 'the 6-hole keeps both thumbs down up to here');
+    if (o !== 3) assert.equal(row(c, o), row(six, o).slice(0, 4), `offset ${o}`);
+  }
+  assert.equal(row(c, 3), 'ccch', 'D sharp as the booklet draws it');
+  const inst = instrumentFromChart('ocarina-4-stl-c', 'C-C6');
+  assert.equal(inst.chambers[0].notes.length, 13);
+});
+
+test('10-hole ocarinas (generic chart, marked so): C to F, the two systems differ only in the top notes', () => {
+  const eu = getChart('ocarina-10-eu-c'), as = getChart('ocarina-10-as-c');
+  for (const c of [eu, as]) {
+    assert.equal(c.generic, true);
+    assert.match(c.sourceName, /generic/);
+    assert.equal(c.holes.length, 10);
+    assert.deepEqual(c.holes.filter(h => h.side === 'bottom').map(h => h.finger), ['LT', 'RT']);
+    assert.deepEqual([...new Set(c.fingerings.map(f => f.offset))], Array.from({ length: 18 }, (_, i) => i));
+    for (const f of c.fingerings) assert.equal(f.states.length, 10);
+    assert.equal(c.fingerings.at(-1).states.join(''), 'oooooooooo');
+  }
+  const row = (ch, o) => ch.fingerings.find(f => f.offset === o && !f.alt).states.join('');
+  const differ = Array.from({ length: 18 }, (_, i) => i).filter(o => row(eu, o) !== row(as, o));
+  assert.deepEqual(differ, [15, 16]);
+  assert.equal(row(eu, 16), 'ooooooooo' + 'c', 'Italian: the left little finger lifts before the right thumb');
+  assert.equal(row(as, 16), 'ooocoooo' + 'oo', 'Asian: the right thumb lifts first');
+});
+
+test('tin whistle in C (Clarke): from C4, the second range blown harder; every chart has its sources', async () => {
+  const c = getChart('tin-whistle-c');
+  assert.equal(c.keys[0].lowest, 'C4');
+  const inst = instrumentFromChart('tin-whistle-c', 'C');
+  const ch = inst.chambers[0];
+  assert.equal(ch.notes[0], noteToMidi('C4'));
+  assert.equal(ch.notes.at(-1), noteToMidi('F6'));
+  assert.deepEqual(ch.notes.filter(m => m > noteToMidi('C6')), ['D6', 'E6', 'F6'].map(noteToMidi), 'the top range is C, D, E, F only');
+  assert.ok(!ch.overblow.includes(noteToMidi('B4')) && ch.overblow.includes(noteToMidi('C5')));
+  assert.equal(ch.fingerings[noteToMidi('G#4')].join(''), 'cocccc');
+  for (const chart of TRADITIONAL_CHARTS) assert.ok(chart.source.length && chart.source.every(u => /^https:\/\//.test(u)), chart.id);
+  const { CHART_GAPS } = await import('../js/charts.js');
+  assert.ok(CHART_GAPS.ocarina.some(g => /7 holes/.test(g.type)) && CHART_GAPS.flute.length >= 2);
+  for (const g of [...CHART_GAPS.ocarina, ...CHART_GAPS.flute]) assert.ok(g.why.length > 30);
+});
