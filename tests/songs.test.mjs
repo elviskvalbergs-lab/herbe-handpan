@@ -10,7 +10,7 @@ test('every song has a source, an origin, a key and notes that read', () => {
   const ids = new Set();
   for (const s of SONGS) {
     assert.ok(!ids.has(s.id), s.id); ids.add(s.id);
-    assert.match(s.source, /^https:\/\/(de|en|fr)\.wikipedia\.org\/wiki\//);
+    assert.match(s.source, s.sourceName ? /^https:\/\/imslp\.org\/wiki\// : /^https:\/\/(de|en|fr)\.wikipedia\.org\/wiki\//);
     assert.ok(SONG_ORIGINS[s.origin], s.id);
     assert.match(s.key, /^[A-G][♭♯]? (major|minor)$/);
     const notes = songNotes(s);
@@ -89,4 +89,20 @@ test('Christmas songs: tagged, and first in the list in season', async () => {
 test('a rest written at a pitch is a rest (Silent Night)', () => {
   const s = SONGS.find(x => x.id === 'silent-night');
   assert.equal(s.notes.split(' ').slice(0, 6).join(' '), 'A4:0.75 B4:0.25 A4:0.5 F#4:1 r:0.5 A4:0.75');
+});
+
+test('Latvian songs from Vitols’ songbook: every bar adds up, and the openings are as printed', () => {
+  const lv = SONGS.filter(s => s.origin === 'lv');
+  assert.ok(lv.length >= 12);
+  for (const s of lv) assert.match(s.sourceName, /Vītols, 100 Latvian Folk Songs .*No\. \d+/);
+  const start = (id, n) => SONGS.find(s => s.id === id).notes.split(' ').slice(0, n).map(t => t.split(':')[0]).join(' ');
+  assert.equal(start('put-vejini', 8), 'F4 C5 A4 G4 F4 Bb4 D5 D5');
+  assert.equal(start('dievs-sveti-latviju', 6), 'G4 G4 G4 B4 A4 G4');
+  assert.equal(start('riga-dimd', 6), 'A4 A4 C#5 A4 A4 C#5');
+  // Whole songs in whole bars (none of them starts with a pickup).
+  for (const s of lv) {
+    const [num, den] = s.time.split('/').map(Number);
+    const total = songNotes(s).reduce((a, n) => a + n.beats, 0);
+    assert.ok(Math.abs(total / (num * 4 / den) - Math.round(total / (num * 4 / den))) < 0.01, `${s.id}: ${total}`);
+  }
 });

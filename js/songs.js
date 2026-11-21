@@ -1,6 +1,10 @@
 // Songs to learn: well-known traditional and public-domain songs from many
 // countries (folk, children's, Christmas), melody only, the most familiar first.
 //
+// Latvian songs (origin 'lv', with sourceName) were read from the scan of
+// Jāzeps Vītols, 100 Latvian Folk Songs (Riga 1906, public domain, IMSLP):
+// the vocal line, note by note, each bar checked against its time.
+//
 // The tunes are traditional or long out of copyright (the owner: assume
 // public domain unless said otherwise; one known not to be, from the 1930s,
 // was left out). Each melody was read
@@ -16,10 +20,10 @@
 // js/app.js (songsSectionHtml, viewSong).
 import { noteToMidi } from './data.js';
 
-export const SONG_LICENCE = 'Melodies from Wikipedia, CC BY-SA 4.0';
+export const SONG_LICENCE = 'Melodies from Wikipedia (CC BY-SA 4.0) and public-domain songbooks';
 export const SONG_ORIGINS = {
   de: 'Germany', at: 'Austria', fr: 'France', it: 'Italy', 'gb-eng': 'England', 'gb-sct': 'Scotland', ie: 'Ireland',
-  us: 'USA', mx: 'Mexico', au: 'Australia', il: 'Israel', kr: 'Korea', hu: 'Hungary', cz: 'Czechia', ch: 'Switzerland',
+  lv: 'Latvia', us: 'USA', mx: 'Mexico', au: 'Australia', il: 'Israel', kr: 'Korea', hu: 'Hungary', cz: 'Czechia', ch: 'Switzerland',
 };
 
 export const SONGS = [
@@ -72,6 +76,78 @@ export const SONGS = [
     id: "hava-nagila", title: "Hava Nagila", origin: "il", key: "G minor", time: "4/4",
     source: "https://en.wikipedia.org/wiki/Hava_Nagila",
     notes: "D4:1 D4:1.5 F#4:0.5 Eb4:0.5 D4:0.5 F#4:1 F#4:1.5 A4:0.5 G4:0.5 F#4:0.5 G4:1 G4:1.5 Bb4:0.5 A4:0.5 G4:0.5 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 D4:1 D4:1.5 F#4:0.5 Eb4:0.5 D4:0.5 F#4:1 F#4:1.5 A4:0.5 G4:0.5 F#4:0.5 G4:1 G4:1.5 Bb4:0.5 A4:0.5 G4:0.5 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 F#4:0.5 F#4:1 Eb4:0.5 D4:0.5 D4:0.5 D4:1 Eb4:0.5 Eb4:1 D4:0.5 C4:0.5 C4:0.5 C4:1 C4:1 Eb4:0.75 D4:0.25 C4:0.5 C4:0.5 G4:1 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 F#4:0.5 F#4:1 Eb4:0.5 D4:0.5 D4:0.5 D4:1 Eb4:0.5 Eb4:1 D4:0.5 C4:0.5 C4:0.5 C4:1 C4:1 Eb4:0.75 D4:0.25 C4:0.5 C4:0.5 G4:1 F#4:1 Eb4:0.25 D4:0.25 Eb4:0.5 D4:2 G4:2 G4:2 G4:1 G4:1 G4:1 G4:1 G4:0.5 G4:0.5 Bb4:0.75 A4:0.25 G4:0.5 Bb4:0.5 A4:0.5 G4:0.5 G4:0.5 G4:0.5 Bb4:0.75 A4:0.25 G4:0.5 Bb4:0.5 A4:0.5 G4:0.5 A4:0.5 A4:0.5 C5:0.75 Bb4:0.25 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 A4:0.5 A4:0.5 C5:0.75 Bb4:0.25 A4:0.5 C5:0.5 Bb4:0.5 A4:0.5 A4:0.5 A4:0.5 D5:1 D4:0.5 D4:0.5 D5:1 r:0.5 D4:0.5 D4:0.5 D4:0.5 Bb4:0.5 A4:0.5 G4:0.5 F#4:0.5 G4:3",
+  },
+  {
+    id: "dievs-sveti-latviju", title: "Dievs, svētī Latviju", origin: "lv", key: "G major", time: "4/4",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 1",
+    notes: "G4:2 G4:1 G4:1 B4:1.5 A4:0.5 G4:2 A4:2 A4:1 A4:1 C5:1.5 B4:0.5 A4:2 B4:2 B4:1 B4:1 D5:1.5 C5:0.5 B4:1 B4:1 A4:2 B4:1 C#5:1 D5:4 G4:2 G4:1 G4:1 B4:1.5 A4:0.5 G4:2 A4:2 A4:1 A4:1 C5:1.5 B4:0.5 A4:2 B4:2 B4:1 B4:1 D5:1.5 C5:0.5 B4:1 B4:1 A4:2 B4:1 C#5:1 D5:4 A4:2 A4:1 C5:1 B4:1.5 A4:0.5 G4:2 B4:2 B4:1 D5:1 C5:1.5 B4:0.5 A4:2 C5:2 C5:1 E5:1 D5:1.5 C5:0.5 B4:1 B4:1 B4:2 A4:1 C5:1 G4:4 A4:2 A4:1 C5:1 B4:1.5 A4:0.5 G4:2 B4:2 B4:1 D5:1 C5:1.5 B4:0.5 A4:2 C5:2 C5:1 E5:1 D5:1.5 C5:0.5 B4:1 B4:1 B4:2 A4:2 G4:4",
+  },
+  {
+    id: "put-vejini", title: "Pūt, vējiņi", origin: "lv", key: "F major", time: "3/4",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 51",
+    notes: "F4:1 C5:2 A4:0.5 G4:0.5 F4:2 Bb4:1 D5:2 D5:1 C5:2 G4:0.5 A4:0.5 Bb4:2 C5:1 F4:2 Bb4:0.5 A4:0.5 G4:2 F4:3",
+  },
+  {
+    id: "riga-dimd", title: "Rīga dimd", origin: "lv", key: "A major", time: "2/4",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 63",
+    notes: "A4:0.75 A4:0.25 C#5:1 A4:0.75 A4:0.25 C#5:1 A4:0.5 E5:0.5 D5:0.5 B4:0.5 A4:0.5 F#4:0.5 E4:1 C#4:0.5 E4:0.5 E4:1 D4:0.5 F#4:0.5 F#4:1 E4:0.5 E4:0.5 D5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:1 C#4:0.5 E4:0.5 E4:1 D4:0.5 F#4:0.5 F#4:1 E4:0.5 E4:0.5 D5:0.5 D5:0.5 C#5:0.5 B4:0.5 A4:1",
+  },
+  {
+    id: "jurin-prasa-smalku-tiklu", title: "Jūriņ’ prasa smalku tīklu", origin: "lv", key: "E major", time: "6/8",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 57",
+    notes: "E4:1 G#4:0.5 B4:1 C#5:0.5 B4:1 G#4:0.5 E4:1 E4:0.5 E4:1 E5:0.5 D#5:0.5 C#5:0.5 D#5:0.5 E5:1 C#5:0.5 B4:1.5 C#5:1 C#5:0.5 C#5:1 C#5:0.5 C#5:1 F#4:0.5 F#4:1 F#4:0.5 B4:1 B4:0.5 B4:1 A4:0.5 G#4:1 F#4:0.5 E4:1.5",
+  },
+  {
+    id: "krauklitis-sez-ozola", title: "Krauklītis sēž ozolā", origin: "lv", key: "F major", time: "3/4",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 55",
+    notes: "F4:1 A4:0.5 Bb4:0.5 C5:1 D5:1 F5:0.3333 E5:0.3333 D5:0.3333 C5:1 F5:1 C5:1 C5:0.5 D5:0.5 E5:1 D5:0.3333 E5:0.3333 F5:0.3333 E5:1 F5:1 A4:1 A4:0.5 Bb4:0.5 D5:1 C5:1 G4:0.5 A4:0.5 C5:1 Bb4:1 A4:0.5 G4:0.5 A4:1 G4:1 F4:1 F5:1 A4:1 A4:0.5 Bb4:0.5 D5:1 C5:1 G4:0.5 A4:0.5 C5:1 Bb4:1 A4:0.5 G4:0.5 A4:1 G4:1 F4:1",
+  },
+  {
+    id: "nu-ar-dievu-vidzemite", title: "Nu ar Dievu, Vidzemīte", origin: "lv", key: "A major", time: "4/4",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 29",
+    notes: "A4:1.5 A4:0.5 A4:1 A4:1 E4:1.5 E4:0.5 E4:1 G#4:1 A4:1 A4:1 A4:1 C#5:1 D5:1.5 D5:0.5 D5:2 C#5:1 C#5:1 C#5:1 C#5:1 B4:1.5 B4:0.5 B4:1 B4:1 E5:1 D5:1 C#5:1.5 B4:0.5 A4:1 G#4:1 A4:2",
+  },
+  {
+    id: "aija-zuzu", title: "Aijā, žūžū, lāča bērns", origin: "lv", key: "G major", time: "2/4", tags: ["children"],
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 20",
+    notes: "G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:0.5 B4:0.5 G4:0.5 B4:0.5 D5:1 E5:1 D5:0.5 B4:0.5 G4:1 D5:0.5 D5:0.5 C5:0.5 A4:0.5 B4:0.5 B4:0.5 G4:0.5 A4:0.5 B4:1 A4:1 G4:2 D5:0.5 D5:0.5 C5:0.5 A4:0.5 B4:0.5 B4:0.5 G4:0.5 A4:0.5 B4:1 A4:1 G4:2",
+  },
+  {
+    id: "cuci-mana-ligavina", title: "Čuči, mana līgaviņa", origin: "lv", key: "F major", time: "3/4", tags: ["children"],
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 22",
+    notes: "F4:1 F4:0.5 G4:0.5 A4:0.5 F4:0.5 G4:1 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 C5:1 C5:0.5 D5:0.5 C5:0.5 Bb4:0.5 A4:1 F4:1 C5:0.5 A4:0.5 G4:1 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 F4:1 F4:0.5 G4:0.5 A4:0.5 F4:0.5 G4:1 G4:0.5 A4:0.5 Bb4:0.5 G4:0.5 F4:1 E4:1 F4:1",
+  },
+  {
+    id: "ej-saulite-driz-pie-dieva", title: "Ej, saulīte, drīz pie Dieva", origin: "lv", key: "A minor", time: "3/4",
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 4",
+    notes: "C5:1 C5:1 A4:0.5 B4:0.5 C5:1 A4:1 B4:0.5 A4:0.5 C5:1 B4:1 A4:0.5 A4:0.5 B4:1 G4:1 A4:4 C5:1 C5:1 A4:0.5 B4:0.5 C5:1 A4:1 B4:0.5 A4:0.5 C5:1 B4:1 A4:0.5 A4:0.5 B4:1 G4:1 A4:4 C5:0.3333 B4:0.3333 A4:0.3333 E5:1 D5:1 C5:0.3333 B4:0.3333 A4:0.3333 A4:2",
+  },
+  {
+    id: "kas-godiga-janu-mate", title: "Kas godīga Jāņu māte", origin: "lv", key: "E major", time: "2/4", tags: ["jani"],
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 93",
+    notes: "B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G#4:0.5 A4:0.5 B4:1 G#4:2 A4:1 B4:1 G#4:2 A4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G#4:0.5 A4:0.5 B4:1 G#4:2 A4:1 B4:1 G#4:2 A4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G#4:0.5 A4:0.5 B4:1 G#4:2 A4:1 B4:1 G#4:1 G#4:2",
+  },
+  {
+    id: "se-naksim-citu-gadu", title: "Še nāksim citu gadu", origin: "lv", key: "E minor", time: "2/4", tags: ["jani"],
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 99",
+    notes: "E4:0.5 F#4:0.5 G4:0.5 A4:0.5 B4:0.5 G4:0.5 F#4:0.5 G4:0.5 E4:1 B4:1 B4:0.5 C5:0.5 D5:1 A4:0.5 C5:0.5 B4:0.5 B4:0.5 A4:0.5 G4:0.5 F#4:0.5 G4:0.5 F#4:1 E4:1 B4:0.5 B4:0.5 B4:0.5 B4:0.5 A4:0.5 G4:0.5 F#4:0.5 G4:0.5 F#4:1 E4:1",
+  },
+  {
+    id: "pavadam-janu-dienu", title: "Pavadām Jāņu dienu", origin: "lv", key: "G minor", time: "2/4", tags: ["jani"],
+    source: "https://imslp.org/wiki/100_Latvian_Folk_Songs_(V%C4%ABtols,_J%C4%81zeps)",
+    sourceName: "Jāzeps Vītols, 100 Latvian Folk Songs (Riga: P. Neldner, 1906), No. 100",
+    notes: "G4:0.5 A4:0.5 Bb4:0.5 Bb4:0.5 C5:0.5 C5:0.5 G4:0.5 A4:0.5 Bb4:1 D5:1 C5:1 Eb5:1 D5:0.5 D5:0.5 D5:0.5 D5:0.5 C5:0.5 C5:0.5 A4:0.5 G4:0.5 Bb4:1 C5:1 Bb4:0.5 A4:0.5 G4:1",
   },
   {
     id: "la-cucaracha", title: "La Cucaracha", origin: "mx", key: "F major", time: "3/4",

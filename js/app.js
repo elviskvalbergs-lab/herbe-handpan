@@ -3018,7 +3018,7 @@ function songsSectionHtml(inst) {
           })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${filter === 'christmas' ? 'Christmas songs' : 'songs'}`, action: 'songs-all' }) : ''}</div>`
         : `<p class="pl-section-hint">None of these songs fits on your ${escHtml(word)}: each needs a note it doesn’t have.</p>`}
       ${ok.length && more ? `<p class="pl-section-hint">${more} more need notes your ${escHtml(word)} doesn’t have.</p>` : ''}
-      <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, the best known first. ${escHtml(SONG_LICENCE)}.</p>
+      <p class="pl-section-hint song-licence">Folk, children’s and Christmas songs from many countries, Latvia too, the best known first. ${escHtml(SONG_LICENCE)}.</p>
     </section>`;
 }
 
@@ -3086,7 +3086,9 @@ function viewSong() {
       <div class="chips song-notes" role="group" aria-label="Notes of the song">${chips}</div>
       ${after.length ? `<h2 class="list-title">Goes well after it</h2>
         <div class="list">${after.map(({ song: s, shift: sh }) => uiRow({ lead: 'music', title: s.title, meta: escHtml(songMeta(s, sh)), chevron: true, action: 'song-open', data: { id: s.id, inst: inst?.id ?? '' } })).join('')}</div>` : ''}
-      <p class="pl-section-hint song-licence">The tune is traditional. Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.</p>
+      <p class="pl-section-hint song-licence">${song.sourceName
+        ? `Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">${escHtml(song.sourceName)}</a>, public domain.`
+        : `The tune is traditional. Melody from <a href="${escHtml(song.source)}" target="_blank" rel="noopener">its Wikipedia article</a>, CC BY-SA 4.0.`}</p>
     </div>`;
 }
 
