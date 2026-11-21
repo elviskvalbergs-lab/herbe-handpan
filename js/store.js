@@ -32,7 +32,7 @@ export const SAVE_TEXTS = {
   chord: { title: 'Keep this chord', line: 'Keep your favourite chords one tap away, on any device.' },
   playlist: { title: 'Start a playlist', line: 'Put the chords for a song together and play them on any device.' },
   instrument: { title: 'Save your instrument', line: 'Set up your instrument once. It’s ready every time, on every device.' },
-  heard: { title: 'Keep what you heard', line: 'Save this progression and play along with it any time.' },
+  heard: { title: 'Keep what you heard', line: 'Save this as a playlist and play along with it any time.' },
   progression: { title: 'Save this song', line: 'Keep the song’s chords and play along any time, on any device.' },
   song: { title: 'Save this song', line: 'Keep the song’s chords and play along any time, on any device.' },
   share: { title: 'Share your instrument', line: 'Anyone with the link can play it. Your setup stays yours.' },

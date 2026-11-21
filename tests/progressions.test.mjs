@@ -201,3 +201,34 @@ test('a chord sheet fills an empty progression, never one with steps', () => {
   assert.equal(fillProgression(id, [newProgressionStep(Dm)]), false);
   assert.equal(getProgressions().find(x => x.id === id).steps[0].chordId, 'A-min');
 });
+
+test('playlists are copied once into the one kind of list, the same on every device', async () => {
+  const { mergePlaylistsIntoProgressions, isChordBookmarkedAnyVoicing } = await import('../js/storage.js');
+  store.clear();
+  store.set('hp-playlists', JSON.stringify([
+    { id: 'favorites', name: 'Favorites', chords: [], updatedAt: '2026-01-01' },
+    { id: 'pl-1', name: 'Song', chords: [Am, Dm, ocC], updatedAt: '2026-01-01' },
+    { id: 'pl-2', name: 'Gone', chords: [Am], deletedAt: '2026-01-02' },
+  ]));
+  assert.equal(mergePlaylistsIntoProgressions(), 1);
+  const progs = getProgressions();
+  assert.equal(progs.length, 1);
+  assert.equal(progs[0].id, 'pr-from-pl-1');
+  assert.equal(progs[0].name, 'Song');
+  assert.deepEqual(progs[0].steps.map(s => s.chordId), ['A-min', 'D-min', 'C-maj']);
+  assert.deepEqual(progs[0].steps.map(s => s.stepId), ['st-pl-1-0', 'st-pl-1-1', 'st-pl-1-2']);
+  assert.equal(progs[0].steps[2].instrumentId, 'oc-1');
+  // The old records stay, marked; the playlist lists are empty now.
+  const raw = JSON.parse(store.get('hp-playlists'));
+  assert.equal(raw.find(p => p.id === 'pl-1').mergedInto, 'pr-from-pl-1');
+  assert.equal(raw.find(p => p.id === 'pl-1').chords.length, 3);
+  assert.equal(getPlaylists().length, 0);
+  // Again (or on another device that already has the copy): nothing new.
+  assert.equal(mergePlaylistsIntoProgressions(), 0);
+  store.set('hp-playlists', JSON.stringify([{ id: 'pl-1', name: 'Song', chords: [Am], updatedAt: '2026-01-01' }]));
+  assert.equal(mergePlaylistsIntoProgressions(), 0);
+  assert.equal(getProgressions().length, 1);
+  // ♡ is filled for a chord in a (new kind of) playlist.
+  assert.equal(isChordBookmarkedAnyVoicing('D-Harmonic-Minor-10', 'A-min'), true);
+  assert.equal(isChordBookmarkedAnyVoicing('D-Harmonic-Minor-10', 'G-maj'), false);
+});
