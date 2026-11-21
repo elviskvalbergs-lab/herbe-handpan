@@ -17,7 +17,7 @@ every one is a label, an order or a default, cheap to flip afterwards.
 | 2 | Tab order | **Chords · Songs · Playlists · Pan/Drum/Kalimba/Notes**, the same on every instrument: the three jobs first, the instrument's own tab last. A link without a tab still opens the instrument's own tab, as today. | Instrument tab first (ocarina players have Notes first today). |
 | 3 | The ♡ opens "Add to playlist", it is not a favourite | A **bookmark** icon labelled "Add to a playlist", on the chord card only. List rows show a small bookmark when the chord is in a playlist, without a button. Same sheet as today behind it. | Make ♡ a real one-tap favourite and move "Add to a playlist…" into ⋯. Nicer, but changes what a tap does for existing users. |
 | 4 | Speed ("1×") on every chord card | Moves into the chord's ⋯ sheet (it is also in Settings). Set once, rarely touched. | Keep on the card. |
-| 5 | C# or D♭ | New default **Auto**: each tuning is spelt the way its scale is written (D Kurd shows B♭). The setting becomes Auto · C# · D♭. Someone who already chose C# or D♭ keeps it. | Keep sharps as the default. |
+| 5 | C# or D♭ | New default **Auto**: each tuning is spelt the way its scale is written (D Kurd shows B♭). The setting becomes Auto · C# · D♭. Someone who chose D♭ keeps it. A stored C# cannot be told from the old default, so it becomes Auto (one tap in Settings brings C# back). | Keep sharps as the default. |
 | 6 | "Add to home screen" on the first screen | Not on the first-run screen. It shows on My instruments and Play something else once the visitor has heard a chord (got value), as today otherwise. | Keep on the first screen. |
 | 7 | "Save for next time" straight to an email form | Keep the moment (the last setup step, with the result on screen: it is the best moment). Change the wording: the button says **Keep this handpan**, and the sheet first says what an account gives and that without one it is gone when the page closes, then asks for the email. | Ask only after the first chord was played. |
 | 8 | Own-made ocarinas have a fifth tab (Build or Set up) | Keep as the fifth tab, only on those instruments. | Move into the instrument's ⋯ menu. |
@@ -113,8 +113,11 @@ The rule: the word says **who is making the sound**.
   so the app bar no longer shows a microphone that is not "Listen".
 - All three show the same strip while the microphone is on, and the same sentence before it is:
   "Oakhum only listens while this is open. Nothing is recorded."
-- Listen debug is a builder's tool (PR #81 already hides it from everyone else). It is renamed
-  "Microphone readings" in that section so the word Listen keeps one meaning.
+- Listen debug is a builder's tool (PR #81 hides it from everyone else). It is renamed
+  "Microphone readings" so the word Listen keeps one meaning.
+- Built: the words, the tuner's own icon. Not built yet: showing the one privacy sentence before
+  every one of the three (setup has it; the catalogue's scale finder, the note picker and Chords ›
+  Listen each still have their own hint).
 
 ## 5. First run
 
@@ -127,7 +130,7 @@ After:
   beside the tiles. All five tiles are visible without scrolling on a 390 × 844 phone.
 - No install banner on this screen (question 6).
 - The step counter names the stage instead of repeating a number: "Step 3 of 4" on five
-  consecutive screens becomes four named stages, **Instrument · Notes · Match · Ready**, shown as
+  consecutive screens becomes four named stages, **Instrument · How · Your notes · Ready**, shown as
   four dots with the current stage's name. Several screens can belong to one stage without the
   counter looking stuck.
 - The last step's second button: "Keep this handpan" (question 7).
@@ -153,7 +156,7 @@ After, four sections:
 
 | | Before | After (guest, handpan only) |
 | --- | --- | --- |
-| Controls | 27 | 19 |
+| Controls | 27 | 20 with no instrument, 22 with a handpan |
 | Sections | 8 | 4 |
 
 ## 7. The two shells

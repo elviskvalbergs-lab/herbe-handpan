@@ -1281,6 +1281,11 @@ button.set-row[role="switch"] { cursor: pointer; }
 /* Add-instrument wizard (§6.1–6.4) */
 .wizard { max-width: var(--reading-max); margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
 .wizard-count { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); margin-bottom: calc(-1 * var(--space-3)); }
+/* The beginner setup's stage: four dots and the stage's name (stageDotsHtml). */
+.wizard-stage { display: flex; align-items: center; gap: var(--space-2); }
+.wizard-dots { display: inline-flex; gap: 6px; }
+.wizard-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }
+.wizard-dots i.is-on { background: var(--accent); }
 .wizard .wizard-title { font: var(--fw-semibold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); }
 .wizard-sub { color: var(--text-2); }
 .wizard-title + .wizard-sub { margin-top: calc(-1 * var(--space-3)); }
@@ -1737,6 +1742,15 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 }
 .brand-hero .brand-horizontal { height: 40px; }
 .brand-hero-line { color: var(--text-2); max-width: 36ch; }
+/* First run on a phone: a short brand strip, so every instrument tile is on
+   the first screen; the picture is for wider screens. */
+@media (max-width: 599px) {
+  .brand-hero { gap: var(--space-2); margin-bottom: var(--space-4); }
+  .brand-hero-art { display: none; }
+  .brand-hero .brand-horizontal { height: 32px; }
+  .setup-tiles { gap: var(--space-2); }
+  .setup-tile-pic { width: 56px; height: 56px; }
+}
 .brand-about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
 .brand-about .brand-horizontal { height: 28px; }
 .brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
