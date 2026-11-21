@@ -62,6 +62,23 @@ export type MakersPage = {
   faqTitle?: string;
   faqs?: QA[];
   seo?: { title?: string; description?: string };
+  /** Under the main button: what it costs and how long it takes. */
+  heroNote?: string;
+  /** The quieter link for someone who would rather write first. */
+  talkCta?: string;
+  /** The directory of makers on /makers. */
+  directoryTitle?: string;
+  directoryText?: string;
+  directoryJoinTitle?: string;
+  directoryJoinText?: string;
+  /** The fixed words of a maker's own page, /makers/<slug>. */
+  makerInstrumentsTitle?: string;
+  makerInstrumentsText?: string;
+  makerPlayCta?: string;
+  makerTuningLink?: string;
+  makerNoInstruments?: string;
+  makerReport?: string;
+  makerJoinText?: string;
 };
 
 export type InstrumentDoc = {

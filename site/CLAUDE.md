@@ -18,6 +18,15 @@ Scales, notes, chords, fingering charts, deep links and the pan drawing are the
 app's (`../js`), through `src/lib/engine.ts`. Never copy or re-implement them here,
 and never put tunings or fingerings into Sanity.
 
+## Makers come from the app's database
+
+A maker's name, logo, story and instruments are theirs: they edit them in the
+app, and the site reads them through the database's public functions
+(`src/lib/makers.ts`; `docs/makers-programme.md` in the repository root).
+Never put a maker into Sanity. Sanity holds only the fixed words of `/makers`
+and of a maker's page (`makersPage`). Everything read from the database is
+cleaned before it is shown, and a layout passes the engine's `safeLayout`.
+
 ## Every instrument gets the same pages
 
 Handpan, tongue drum, ocarina, flute and any instrument added later have the same

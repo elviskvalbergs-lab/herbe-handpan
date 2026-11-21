@@ -9,7 +9,7 @@ import { TRADITIONAL_CHARTS, chartsForFamily, chartDefaultKey, instrumentFromCha
 import { linkFor as appLinkFor, linkSlug, linkTitle, parseLink } from "@engine/links.js";
 import { renderPan } from "@engine/pan.js";
 import { ocarinaToLayout, arpeggioOrder, renderFingering } from "@engine/ocarina-ui.js";
-import { LAYOUT_FAMILIES } from "@engine/layoutfamilies.js";
+import { LAYOUT_FAMILIES, safeLayout } from "@engine/layoutfamilies.js";
 
 export type Family = "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute";
 /** The families the app draws from a layout (js/layoutfamilies.js): handpans, tongue drums, kalimbas. Their chords play together. */
@@ -248,3 +248,50 @@ export function windVoice(tuning: Tuning): "ocarina" | "whistle" | "flute" {
 
 /** A MIDI note as the app names it ("Bb4"), for playing. */
 export const midiNoteName = midiName;
+
+// ── A maker's own instrument (src/lib/makers.ts) ─────────────────────────────
+// A layout that came from the database (an instrument a maker shared), not
+// from the catalogue. It passes the app's safeLayout first, so only note
+// names reach the picture.
+function cleanLayout(layout: unknown, family: PanFamily) {
+  try {
+    if (!layout || typeof layout !== "object") return null;
+    const safe = safeLayout(JSON.parse(JSON.stringify(layout)));
+    if (!safe?.top?.ding || !Array.isArray(safe.top.slots) || !Array.isArray(safe.bottom?.slots)) return null;
+    if (family !== "handpan") safe.instrument = family; else delete safe.instrument;
+    return safe;
+  } catch {
+    return null;
+  }
+}
+
+/** The app's drawing of a maker's handpan, tongue drum or kalimba from its saved notes, or null. */
+export function layoutPicture(layout: unknown, family: PanFamily, name: string): string | null {
+  const safe = cleanLayout(layout, family);
+  if (!safe) return null;
+  try {
+    const label = `${name} ${panWord(family)} layout`.replace(/[^\p{L}\p{N} #.,'’()-]/gu, "");
+    return renderPan(safe, { useFlats: true }).replace('id="handpan-svg"', `role="img" aria-label="${label}"`);
+  } catch {
+    return null;
+  }
+}
+
+/** Its notes, low to high, written as the site writes notes. */
+export function layoutNotes(layout: unknown): string[] {
+  const safe = cleanLayout(layout, "handpan");
+  if (!safe) return [];
+  try {
+    return [...new Set(getAllNotes(safe) as string[])].sort((a, b) => noteToMidi(a) - noteToMidi(b));
+  } catch {
+    return [];
+  }
+}
+
+/** A catalogue tuning by the app's scale id ("D-Kurd"), with the instrument page it belongs to. */
+export function findTuningById(family: PanFamily, scaleId: string): (Tuning & { instrumentSlug: string }) | null {
+  const path = appLinkFor({ scaleId });
+  if (!path) return null;
+  const tuning = tuningsFor(family).find((t) => t.path === path);
+  return tuning ? { ...tuning, instrumentSlug: family === "tongue-drum" ? "steel-tongue-drum" : family } : null;
+}

@@ -2,7 +2,10 @@
 // unit-tested (tests/requests.spec.ts). The API route adds the Sanity write.
 // "feedback" is something confusing, wrong or missing in the app: never shown
 // in the public list, and its title is the start of what the person wrote.
-export type RequestInput = { kind: "instrument" | "feature" | "feedback"; title: string; notes?: string; details?: string; email?: string };
+// "maker" is a maker or shop who would rather write before setting up their
+// page in the app (docs/makers-programme.md): the title is their name, the
+// notes their website. Never public either.
+export type RequestInput = { kind: "instrument" | "feature" | "feedback" | "maker"; title: string; notes?: string; details?: string; email?: string };
 
 const LIMITS = { title: 120, notes: 200, details: 2000, email: 200 };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,12 +16,13 @@ export function validateRequest(body: unknown): { ok: true; value: RequestInput 
   // A field people can't see: bots fill it in, people don't.
   if (typeof b.website === "string" && b.website.trim() !== "") return { ok: false, error: "Something went wrong. Please try again." };
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-  const kind = b.kind === "feature" || b.kind === "instrument" || b.kind === "feedback" ? b.kind : null;
-  if (!kind) return { ok: false, error: "Choose an instrument, a feature or feedback." };
+  const kind = b.kind === "feature" || b.kind === "instrument" || b.kind === "feedback" || b.kind === "maker" ? b.kind : null;
+  if (!kind) return { ok: false, error: "Choose an instrument, a feature, feedback, or maker or shop." };
   const notes = str(b.notes), details = str(b.details), email = str(b.email);
   if (kind === "feedback" && !details) return { ok: false, error: "Write what happened or what's missing." };
   const title = kind === "feedback" ? (str(b.title) || feedbackTitle(details)) : str(b.title);
-  if (!title) return { ok: false, error: kind === "instrument" ? "Write which instrument you play." : "Write which feature you'd like." };
+  if (!title) return { ok: false, error: kind === "instrument" ? "Write which instrument you play." : kind === "maker" ? "Write the name of your workshop or shop." : "Write which feature you'd like." };
+  if (kind === "maker" && !email) return { ok: false, error: "Leave your email so we can write back." };
   for (const [k, v] of Object.entries({ title, notes, details, email })) {
     if (v.length > LIMITS[k as keyof typeof LIMITS]) return { ok: false, error: `That's longer than we can take: shorten the ${k === "details" ? "description" : k}.` };
   }

@@ -12,5 +12,5 @@ export const PAGE_QUERY = defineQuery(`*[_type == "page" && slug.current == $slu
 export const PAGE_SLUGS_QUERY = defineQuery(`*[_type == "page" && defined(slug.current)]{"slug": slug.current}`);
 // Only what the public list needs: never the email or the details.
 export const PUBLIC_REQUESTS_QUERY = defineQuery(
-  `*[_type == "request" && public == true && kind != "feedback" && status != "declined"] | order(votes desc)[0...12]{_id, kind, title, votes, status}`,
+  `*[_type == "request" && public == true && kind != "feedback" && kind != "maker" && status != "declined"] | order(votes desc)[0...12]{_id, kind, title, votes, status}`,
 );
