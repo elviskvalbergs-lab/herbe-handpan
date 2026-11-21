@@ -1,0 +1,20 @@
+# The same checks as .github/workflows/ci.yml (both run scripts/ci.sh), ready
+# for when the repository moves to Bitbucket.
+image: node:22
+
+definitions:
+  steps:
+    - step: &checks
+        name: Tests and builds
+        caches: [node]
+        script:
+          - apt-get update && apt-get install -y python3
+          - scripts/ci.sh
+
+pipelines:
+  pull-requests:
+    '**':
+      - step: *checks
+  branches:
+    preview:
+      - step: *checks

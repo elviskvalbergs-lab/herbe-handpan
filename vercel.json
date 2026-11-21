@@ -38,9 +38,78 @@
   ],
   "redirects": [
     {
+      "source": "/docs/:path*",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/supabase/:path*",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/tests/:path*",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/scripts/:path*",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/spikes/:path*",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/site/:path*",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/CLAUDE.md",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/build.py",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/server.sh",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
+      "source": "/bitbucket-pipelines.yml",
+      "destination": "/play",
+      "permanent": false
+    },
+    {
       "source": "/privacy",
       "destination": "https://oakhum.com/privacy",
       "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
+      ]
     }
   ]
 }
