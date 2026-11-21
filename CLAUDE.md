@@ -41,6 +41,12 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - Who made an instrument is only ever what the server says for its code (`open_shared_instrument`). Never read a maker from shared data or from a link.
 - Scan counts are counts: no cookies, no stored identifiers, no IP addresses. Anything that would identify a buyer needs the owner's decision first.
 
+## Docs
+- Every document in `docs/` has a **status line** directly under its title, one of: **current** (describes the product or the plan as it is now; keep it true), **plan** (agreed or proposed, not done yet: say what is and isn't built), **built** (a design record of something that has shipped; the code wins where they differ) or **history** (kept for the record; don't work from it). A document with mixed parts says which part is which.
+- A pull request that makes a document untrue updates that document in the same pull request: the status line, and any sentence that says a thing is "not built yet", "for later" or "for review" when it no longer is. Check `docs/messaging.md` (feature names, the free/account line, numbers), `docs/video-plan.md` (shots marked "(needs: …)" that your change makes filmable, and taps or labels your change renames), `docs/launch-campaign.md` and `docs/design-system.md`.
+- One topic, one document: merge into the existing document instead of adding a second version next to it. How Oakhum is described (names of features, what is free, tone) comes from `docs/messaging.md`; the website copy, videos and posts follow it.
+- The clay ocarina builder is an internal tool: it does not appear in marketing copy, videos or the maker kit.
+
 ## Data and database
 - Database changes are additive only: new tables, columns, functions or policies, never altering or dropping existing ones. Write them as new SQL files under `supabase/migrations/` (`YYYYMMDD_short_name.sql`); the build applies them automatically (`supabase/migrate.py`, see `supabase/README.md`). Never edit a migration file after it has been merged: add a new one. Never ask for, print or commit the database connection string or any Supabase secret key; it lives only in Vercel's environment variables.
 - Fingering charts and instrument ranges must come from a published source (maker or manufacturer chart), with the source URL noted in the data file. Never fill them in from memory. If no reliable source is found, leave a clearly marked TODO with the data structure in place.

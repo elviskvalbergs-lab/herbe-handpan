@@ -1,6 +1,6 @@
 # Listen: join in with someone playing nearby
 
-Design document for review. **No production code until the owner approves.**
+**Status: built** (status line added 21 Nov 2026). The owner approved this design ("Owner's decisions" below) and Listen is in the app: Chords › Listen, `js/listen-audio.js` and `js/listen-detect.js`, with the `listen` deep-link tab. The document is kept as the design record; "Phase 1 · What exists" describes the app before Listen, and "Open questions" may already be answered in the code. What the app does today is in `docs/design-system.md`.
 Wireframes: `docs/listen-wireframes.html` (open it in a browser). Spike: `spikes/listen/`.
 
 The feature: the app listens to someone playing nearby (guitar, piano, another handpan), works out the notes and chords, and helps me join in on the instrument I have open (handpan, ocarina, flute; later kalimba, tongue drum).

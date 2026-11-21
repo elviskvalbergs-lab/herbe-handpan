@@ -1,15 +1,15 @@
 # Free to play, sign up to save
 
-Design for review. No production code until the owner approves it.
-Wireframes: `docs/free-to-play-wireframes.html`.
+**Status: built** (status line added 21 Nov 2026). The design below was approved and Phase 4's steps are built; see "How steps 2–5 were built" at the end. **Phase 1 is history**: it describes the app as it was *before* this work (hash routing, a first-run wizard, offline for everyone) and is kept only to explain why the design is what it is. Phases 2–3 describe the app as it works now; where they and the code disagree, the code is right and this document needs fixing.
+Wireframes: `docs/free-to-play-wireframes.html` (as reviewed; not updated since).
 
 **Review round 1 is done:** the owner's answers are in "Owner's decisions" at the end, and the sections below are updated to match.
 
-Everything in the app stays free. Anyone can play every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
+Everything in the app stays free. Anyone can try every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. (One consequence, checked 21 Nov 2026: a guest can paste a chord sheet and see how it fits, but playing it means "Save playlist", which asks for the account.) Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
 
 ---
 
-## Phase 1: what the app does today
+## Phase 1 (history): what the app did before this work
 
 ### Routing
 - The app is a single page, built by `build.py` into `index.html`, and **all routing is in the URL hash** (`loadFromHash` in `js/app.js`). Navigation uses `history.pushState`.
