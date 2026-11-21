@@ -104,6 +104,7 @@ html = f'''<!DOCTYPE html>
     }};
   </script>
   <script src="https://js-de.sentry-cdn.com/61ab240ada1884d0c6ce945b07d50e33.min.js" crossorigin="anonymous"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
   <link rel="preload" href="/fonts/oakhum-text-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/oakhum-text-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>
