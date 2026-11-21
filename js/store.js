@@ -21,6 +21,7 @@ export const SAVE_ACTIONS = {
   'pl-copy-progression': 'progression',
   'cs-save': 'song',
   'share-instrument': 'share',
+  'maker-start': 'maker',
 };
 // Chords (☆ / add to playlist, Identify's bookmark) all open the playlist
 // picker; for a guest the app turns that into the save sheet, and after
@@ -38,6 +39,7 @@ export const SAVE_TEXTS = {
   share: { title: 'Share your instrument', line: 'Anyone with the link can play it. Your setup stays yours.' },
   leave: { title: 'Save your instrument?', line: 'Without a free account it’s gone when you close this page.' },
   offline: { title: 'Play offline', line: 'With a free account the app opens without a connection, with everything you saved.' },
+  maker: { title: 'Set up your maker page', line: 'Free: your profile, a code for every instrument, and how they are used.' },
   signin: { title: 'Sign in', line: 'Your instruments, chords and songs on every device, and offline.' },
 };
 

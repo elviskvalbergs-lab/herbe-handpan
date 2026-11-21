@@ -182,6 +182,7 @@ Settings opens from the gear icon on Home and from the ⋯ menu on any instrumen
 | | Show the diagram legend again | row button | resets `ocLegendSeen` and `handLegendSeen` |
 | **Tuning** | ~~A4 reference~~ | deferred by the owner's decision: no setting for now, A4 is 440 Hz everywhere | (none; see §7 step 15) |
 | | Clay bodies | row › Clay bodies page: list with name and shrinkage %, editable | `getClayBodies` / `saveClayBodies` |
+| **Makers and shops** | One row: "For makers and shops" (or "Your maker page" with its status); a count badge for admins when requests or reports wait | row › `#maker` | `makerSettingsHtml` (docs/makers-programme.md) |
 | **Account** | Guest: Sign in (opens the save sheet), Privacy notice. Signed in: email and sync status (pending changes), Offline ready, Export my data, Privacy notice, Sign out, Delete account | `accountSettingsHtml` (docs/free-to-play.md §7, §8) | |
 | **About** | Version, "Check for updates" | row | (`checkForUpdates`) |
 
@@ -1097,3 +1098,13 @@ An ocarina with up to four finger holes on top is drawn as a round pendant (`fgI
 - **Ocarinas and flutes by ear:** the guided round takes each note relative to how the lowest one sounded, within two thirds of a semitone (`SETUP_WIND_TOLERANCE`): a Native American flute blown softly, or one tuned to 432, plays a quarter tone flat.
 - **Fixing a report:** `node scripts/replay-listen.mjs <recording> --family <family>` runs the recording through exactly what the app does (`collectHeardNote` is shared), prints each note as it's taken and the best matches. Turn the measured pitches into a test, fix, then write back to the email on the report.
 
+
+### Makers and shops (docs/makers-programme.md)
+
+Makers get their own screens, but no parts of their own: everything is `uiAppBar`, `uiRow`, `uiField`, `uiSeg`, `uiSwitchRow`, `uiSheet`, `uiEmpty`, chips and the `.set-form`. The screens are in `js/makers-ui.js` (part of the bundle; it uses `app.js`'s state and shared parts), the checks and texts in `js/makers.js`.
+
+- **Made by** (`madeByRowHtml`): one slim row under the app bar of an instrument opened by an approved maker's code, the same on every family (it hangs off `handpanAppBar` and `ocHeader`): the maker's logo (or initials on a tile, `makerLogoHtml`), "Made by **Name**", a chevron. It opens the **Made by sheet** (`madeBySheet`): logo, name, "Maker · Town, Country", the story (in the maker's own language, marked with `lang`), the website, "More from this maker" (their page on the website) and "Report this profile". A saved copy keeps the row.
+- **Who made it is the server's word only.** `open_shared_instrument` says who shared a code; anything called `madeBy` inside shared data is dropped (`sharedOpening`), and a custom link never carries a maker.
+- **Settings › Makers and shops (`#maker`)**: a guest or an account without a profile sees the pitch (four rows and one primary button, which opens the save sheet with maker words for a guest). With a profile: a **status card** (`.maker-status`: waiting, live, not yet, hidden), Profile rows, Your instruments, and for admins "Requests and reports".
+- **The profile form (`#maker/profile`)**: one `.set-form` in a list card: name, the page's address (follows the name until edited; fixed once approved), Maker / Shop (segmented), what they make (chips, `aria-pressed`), town and country side by side (stacked under 420px), website, logo (a file button; the picture is shrunk to 256px on the device), story, a note for the reviewer, and a switch for the directory. Errors show under their field, and one line above the button.
+- **Requests and reports (`#maker/review`)**, admins only: a card per maker (`.maker-review-card`) with Approve, "Not now…" or "Suspend…" (both open a confirm sheet with a sentence the maker will see), and reports as rows with Done.
