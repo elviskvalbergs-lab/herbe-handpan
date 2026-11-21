@@ -48,7 +48,7 @@ import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.j
 import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
 import { parseLink, linkFor, linkSlug, linkTitle, APP_NAME, layoutFromCustomParams, panPosToParam } from './links.js';
 import { TONGUE_DRUMS, isTongueDrumId } from './tonguedrums.js';
-import { LAYOUT_FAMILIES, findTuning, layoutInstrument, isLayoutFamily, layoutFamilyInfo } from './layoutfamilies.js';
+import { LAYOUT_FAMILIES, findTuning, layoutInstrument, isLayoutFamily, layoutFamilyInfo, safeLayout } from './layoutfamilies.js';
 import {
   INSTRUMENT_FAMILIES, getInstruments, getInstrument, saveInstrument, deleteInstrument,
   touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId, usesLayout,
@@ -457,10 +457,10 @@ function viewSettings() {
         ${uiRow({ title: 'Show the diagram legend again', meta: 'The hole and finger legends show once more', action: 'reset-legends' })}
       </div>
 
-      <h2 class="list-title">Listen</h2>
+      ${canBuild() ? `<h2 class="list-title">Listen</h2>
       <div class="list">
         ${uiRow({ title: 'Listen debug', meta: 'What the microphone hears: note strengths, chord guesses, confidence, thresholds', action: 'open-listen-debug', chevron: true })}
-      </div>
+      </div>` : ''}
 
       ${canBuild() ? `<h2 class="list-title">Tuning</h2>
       <div class="list">
@@ -1804,7 +1804,7 @@ function viewBeginnerSetup() {
           <li>Then play each ${fi.each}, one by one. Any order is fine.</li>
         </ol>`,
       bar: {
-        help: 'Oakhum only listens while this screen is open. Nothing is recorded.',
+        help: 'Oakhum only listens while this screen is open. The sound stays on your phone unless you choose to send it to us.',
         left: `<button type="button" class="btn btn-secondary" data-action="setup-know">${fi.knowBtn}</button>`,
         right: `<button type="button" class="btn btn-primary" data-action="setup-listen">${icon('mic')} Play my notes</button>`,
       },
@@ -6016,7 +6016,7 @@ function viewListenDebug() {
       <input type="range" class="ld-slider" data-key="${key}" min="${min}" max="${max}" step="${step}" value="${t[key]}"></label>`;
   return `${backAppBar('Listen debug', { fallback: 'settings' })}
     <div class="settings listen-debug">
-      <p class="settings-intro">For tuning detection with real instruments. Nothing is recorded.</p>
+      <p class="settings-intro">For tuning detection with real instruments. The sound stays on this device unless you send a report.</p>
       <div class="row-btns">${L.on
         ? `<button type="button" class="btn btn-secondary" data-action="hear-stop">${icon('square')} Stop</button>`
         : `<button type="button" class="btn btn-primary" data-action="hear-start">${icon('mic')} Start listening</button>`}</div>
@@ -7668,8 +7668,9 @@ function openChartLink({ chartId, keyId }) {
 // notes open as a visiting instrument, as a deep link would. A catalogue
 // scale keeps its id; anything else opens as custom notes under its name.
 function openSharedLayout(data, tab) {
-  const layout = JSON.parse(JSON.stringify(data.layout));
-  layout.name = data.name || layout.name;
+  // Someone else's data: only note names and small numbers reach the picture.
+  const layout = safeLayout(JSON.parse(JSON.stringify(data.layout)));
+  layout.name = String(data.name || layout.name).slice(0, 80);
   if (layout.isCustom || !findTuning(layout.id)) { layout.isCustom = true; delete layout.savedId; layout.id = 'custom'; }
   Object.assign(state, {
     layout, currentInstrumentId: null, shared: null, sharedStatus: null, selectedChord: null,
