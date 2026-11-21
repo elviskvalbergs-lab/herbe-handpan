@@ -588,41 +588,49 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 
 ```
 ┌──────────────────────────────────────┐
-│ D Kurd ▾                    🎤   ⋯   │ app bar (⋯: Copy link to this chord, Settings, …)
+│ D Kurd ▾                    ⑂   ⋯    │ app bar (⋯: Copy link to this chord, Settings, …)
 ├──────────────────────────────────────┤ ┐
 │            ╭─────────╮           [⟳] │ │ sticky block, top: app bar
-│           (  pan SVG  )              │ │ pan height: min(100vw − 32px, 36dvh)
-│            ╰─────────╯               │ │ ⟳ = toggle-rotation, 44px tonal icon-btn
-│ ┌──────────────────────────────────┐ │ │ overlaid top-right of the pan stage
-│ │ C Add9                 ♡  [▶ Chord]│ │ selected-chord bar: card, 64px, title 17/600,
-│ │ C4 · E4 · G4 · D3        ⋯ More   │ │ │ meta 13 text-3 (notes); ♡ show-playlist-picker;
-│ └──────────────────────────────────┘ │ │ ▶ Chord btn-primary; More → sheet
+│           (  pan SVG  )              │ │ ⟳ = toggle-rotation, overlaid top-right
+│            ╰─────────╯               │ │
+│ ┌──────────────────────────────────┐ │ │ chord card: title 17/600, meta 13 text-3 (notes);
+│ │ C Add9            [▶ Chord] ▯  ⋯ │ │ │ ▶ Chord btn-primary; ▯ Add to a playlist
+│ │ C4 · E4 · G4 · D3                │ │ │ (chordSaveBtn, a bookmark, filled when in one);
+│ │ Goes well with (F)(G)(Am)        │ │ │ ⋯ More → sheet. One line of chips under it.
+│ └──────────────────────────────────┘ │ │
 ├──────────────────────────────────────┤ ┘
-│ ( Browse | Identify )                │ seg (toggle-discover-mode)
-│ [⚙ Filters · 2]  (All)(C)(D)(E)(F)(G)…│ Filters = btn-secondary with count of active
-│                                      │ filters; root chips = chips-scroll
-│ 61 chords                            │ 13 text-3
+│ ( All chords | Tap notes | Listen )  │ chordModeSegHtml
+│ 6 main chords · Show all 61 [Filters·2]│ chordListLineHtml: count, scope, Filters
 │ ┌──────────────────────────────────┐ │
-│ │ C Dominant 9th            ♡   5  │ │ .row 56px; meta = category; trailing ♡ + count;
-│ │ Dominant                         │ │ save-voicing icon when canUpdateEntry (unchanged)
-│ │▌C Add9                    ♡   4  │ │ selected row: accent left bar
+│ │ C Dominant 9th                   │ │ chordRowHtml: name; "Dominant · 5 notes".
+│ │ Dominant · 5 notes               │ │ No buttons in a row: a tap picks and plays.
+│ │▌C Add9                         ▮ │ │ selected row: accent left bar; ▮ = in a playlist
 │ │ …                                │ │
 └──────────────────────────────────────┘
-│ ♫ Chords   ◎ Pan   ≡ Playlists       │ tab bar
+│ ♫ Chords  ♪ Songs  ≡ Playlists  ◎ Pan│ tab bar
 ```
+
+**One thing at a time** (docs/navigation-redesign.md §3). The card answers "what is this chord, and what next"; everything set once or used rarely is one tap away:
+
+- **The card has three controls**: ▶ Chord, the bookmark, ⋯. Speed is not on the card: it is in ⋯ and in Settings.
+- **Add to a playlist is a bookmark, not a heart**: it opens the Add to playlist sheet, it is not a one-tap favourite. It is on the card only. A row shows a small filled bookmark (`.chord-saved`, no button) when its chord is in a playlist.
+- **⋯ is one sheet on every instrument** (`chordMoreSheet`): Speed, the instrument's rows, "Progressions with this chord" (the Goes well with sheet), then the instrument's extra content. Handpan (`hpMoreSheet`): Play the scale, Save this voicing, Copy link, related chords. Ocarina and flute (`ocChordMoreSheet`): octaves, blown-together pairs, the hole legend, Which finger is which.
+- **The switch says what each way does**: All chords · Tap notes · Listen (`chordModeSegHtml`; was Browse · Identify · Listen). "Listen" keeps one meaning in the app: Oakhum names the chord of music playing around you.
+- **The list head is one line** (`chordListLineHtml`): the count and "Show all" on the left, Filters (with how many are on) on the right.
+- **Filters is one sheet on every instrument** (`chordFiltersSheet`): "Starts on" (the root chips, which used to be a row on the screen), Notes in chord, Type, then the instrument's field (handpan: Playlist; ocarina, flute: Scale). Clear all clears the root too, and the root counts in the button's number.
 
 - **Selected-chord bar** with no chord selected: "Tap a chord to see it on the pan" (15 `--text-2`) plus a `[▶ Scale]` secondary button.
 - **More sheet** (with a chord selected), as rows:
-  - Play scale (`play-scale`).
+  - Speed (opens the speed sheet), then Play the scale (`play-scale`).
   - Save this voicing to "Favorites" (`update-playlist-entry`, only when it applies).
   - A **Related chords** section with the "Same type, other roots" and "Shares 2+ notes" chips (`select-chord`; tapping one closes the sheet and selects it).
   - Copy link to this chord.
 - **Main chords first**: every Chords list opens on the instrument's main chords, the plain major and minor chords (`mainChordsInKey` in `js/chords.js`), from its home note up (a handpan's ding, an ocarina's or whistle's key note). An instrument with every semitone (more than 7 pitch classes) shows the six of the major key on its home note. The count line says "6 main chords · Show all 61"; "Main chords only" goes back (`chords-scope`, the `chordsAll` preference, synced). A filter, a root chip or a playlist shows every chord they match.
-- **Goes well with** (`js/harmony.js`, on every instrument's chord card): the instrument's key is its home note, major or minor from its third. The chord's role in the key (I, vi, VII…) gives the chords that usually come next, as chips that select them, and "Progressions ›" opens a sheet of well-known progressions with this chord (Pop, Fifties, Epic, Folk…, by role). It only suggests chords the instrument can play. Each progression has ▶ (its chords one after another) and Save (a new progression; the toast's Open goes to it). A chord outside the key gets no line.
-- **Filters sheet**: Notes in chord as count chips (2)(3)(4)(5+) (`toggle-note-count`, multi-select); Type select (`filter-category`); Playlist select (`select-playlist-filter`, with "Edit playlist" as a row link when a playlist is chosen). The footer has [Clear all] ghost and [Done] primary. The Filters button shows the number of active filters except root.
+- **Goes well with** (`js/harmony.js`, on every instrument's chord card): the instrument's key is its home note, major or minor from its third. The chord's role in the key (I, vi, VII…) gives the chords that usually come next, as chips that select them, and "Progressions with this chord" in the ⋯ sheet opens a sheet of well-known progressions with this chord (Pop, Fifties, Epic, Folk…, by role). It only suggests chords the instrument can play. Each progression has ▶ (its chords one after another) and Save (a new progression; the toast's Open goes to it). A chord outside the key gets no line.
+- **Filters sheet** (`chordFiltersSheet`): Starts on, as chips ("Any note", then the roots the chords have; `filter-root`); Notes in chord as count chips (2)(3)(4)(5+) (`toggle-note-count`, multi-select); Type select (`filter-category`); Playlist select (`select-playlist-filter`, with "Edit playlist" as a row link when a playlist is chosen). The footer has [Clear all] ghost and [Done] primary. The Filters button shows the number of active filters, the root included.
 - **Now playing bar** (shown instead of the Filters row when a playlist filter is active, like today's `.autoplay-bar`): `[⏸ Pause | ▶ Auto-play]` primary, a seconds select (3–10 s), "2 / 7" tabular, an "Edit" link (opens the playlist detail), and a ✕ icon button that clears the playlist filter.
-- **Identify mode:** the list area shows the hint "Tap notes on the pan to build a chord. Tap again to remove one.", the selected notes as static chips, [Clear], and the matches as `.row`s (name, category · notes, ♡ `discover-bookmark`, ▶ `discover-play`). The custom combination row has ♡ and ▶ as today. The sticky selected-chord bar hides in this mode.
-- Root chips use the display note naming from Settings.
+- **Identify mode:** the list area shows the hint "Tap notes on the pan to build a chord. Tap again to remove one.", the selected notes as static chips, [Clear], and the matches as `.row`s (name, category · notes, the bookmark `discover-bookmark`, ▶ `discover-play`). The custom combination row has the bookmark and ▶ as today. The sticky selected-chord bar hides in this mode.
+- The Starts on chips use the display note naming from Settings.
 - **Tablet (600–1023):** two columns, `grid-template-columns: 300px 1fr`. Left: the list section (its own sticky scroll area, `height: calc(100dvh - appbar - tabbar)`, `overflow: auto`). Right: the pan (max `min(100%, 60dvh)`), then the selected-chord card with Related chips inline (no More sheet).
 - **Desktop (≥1024):** the same two columns with a 340px list. The right column is sticky and has the pan stage on top (max-height 64dvh) and, beneath it, the chord card at full width (title 20/600 on one line, notes, ♡, ▶ Chord, ▶ Scale, save-voicing, then Related chips inline). This fixes the cramped middle column in desktop-08.
 - **Short landscape:** keep the existing 3-column rule.
@@ -1009,7 +1017,7 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 
 | Screen | Shared parts | What an instrument supplies |
 |---|---|---|
-| Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml`, `chordRowHtml`, the filter row `chordFilterRowHtml` (Filters + root chips, `chordRootsOf`), the count line `chordCountLineHtml` (main chords / Show all), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`) and the Filters sheet fields `chordCountField` / `chordTypeField`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows and card actions; anything below the card (ocarina/flute: notes in playing order and the move); extra filters in its sheet (handpan: playlist; ocarina/flute: scale) |
+| Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml` (▶ Chord, `chordSaveBtn`, ⋯), `chordRowHtml` (no buttons), the switch `chordModeSegHtml` (All chords · Tap notes · Listen), the list line `chordListLineHtml` (main chords / Show all, Filters), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`), the Filters sheet `chordFiltersSheet` (Starts on from `chordRootsOf`, `chordCountField`, `chordTypeField`) and the ⋯ sheet `chordMoreSheet`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows; anything below the card (ocarina/flute: notes in playing order and the move); its field in the Filters sheet (handpan: playlist; ocarina/flute: scale); its rows and extra content in the ⋯ sheet |
 | Tab bar | `instrumentTabs` / `instrumentTabBar` | its own tab (Pan, Drum, Kalimba or Notes; Build / Set up) |
 | Playlists tab | `playlistsTabHtml` | nothing |
 | Songs tab | `songsTabHtml` | nothing |
@@ -1019,7 +1027,7 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 
 A change to a screen's pattern goes into the shared part, so every instrument gets it, and any older copy is deleted.
 
-**Chords on a phone (≤599px).** Goal: at least three chords in view with the filters visible. The picture is capped (pan 25dvh, ocarina 23dvh, flute 15dvh) with no frame, the chord card is tighter (40px controls, 15px title, the notes in playing order on one scrolling line), the list head (filters, count) sticks right under the sticky stage (its height is kept in `--chords-stage-h` by `watchChordsStage`), chord rows are 50px, and the tab bar is 54px on phones.
+**Chords on a phone (≤599px).** Goal: at least three chords in view with the filters visible. The picture is capped (pan 25dvh, ocarina 23dvh, flute 15dvh) with no frame, the chord card is tighter (40px controls, 15px title, the notes in playing order on one scrolling line), the list head (the switch, then the count and Filters on one line) sticks right under the sticky stage (its height is kept in `--chords-stage-h` by `watchChordsStage`), chord rows are 50px, and the tab bar is 54px on phones.
 
 **Holes are listed by finger.** A bought ocarina's holes are stored in opening order (the right little finger first; fingering choices rely on it), but every screen lists and names them by finger: R1–R4, L1–L4, thumbs, each sub-hole after its finger (`holeDisplayOrder`, `holeLabel`): "Only R1 open", chips "R1 ✓", Hole fingers rows with a small map of the hole when it is marked.
 

@@ -1364,12 +1364,10 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 .hp-card-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
 .hp-play { padding: 0 var(--space-3); }
 /* Goes well with (goesWithLineHtml / goesWithSheet in js/app.js). */
-.gw-line { margin-top: var(--space-2); }
-.gw-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-1); }
-.gw-label { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
-.gw-more { display: inline-flex; align-items: center; gap: 2px; font-size: var(--fs-13); white-space: nowrap; }
-.gw-more svg { width: 14px; height: 14px; }
-.gw-chips { display: flex; gap: var(--space-1); overflow-x: auto; scrollbar-width: none; }
+.gw-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+@media (min-width: 600px) { .gw-line { margin-top: var(--space-2); } }
+.gw-label { flex: none; font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.gw-chips { display: flex; gap: var(--space-1); min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .gw-chips::-webkit-scrollbar { display: none; }
 .gw-chip { flex: none; min-height: 32px; height: 32px; padding: 0 var(--space-3); }
 .gw-list .row-trail { gap: var(--space-2); }
@@ -1378,13 +1376,17 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 .hp-card .hp-related { margin-top: var(--space-2); }
 .hp-related .overline:first-child { margin-top: 0; }
 .sheet .hp-related { padding: var(--space-4) 0 var(--space-2); }
-.hp-heart.is-on { color: var(--accent-text); }
-.hp-heart.is-on .ico { fill: currentColor; }
+.chord-save.is-on { color: var(--accent-text); }
+.chord-save.is-on .ico { fill: currentColor; }
+/* A chord in the list that is in a playlist: a small filled bookmark, no button. */
+.chord-saved { display: inline-flex; padding: 0 var(--space-2); color: var(--accent-text); }
+.chord-saved .ico { width: 16px; height: 16px; fill: currentColor; }
 .hp-list { min-width: 0; }
 .hp-list-head { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-3); }
-.hp-filter-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+/* The list head's one line: the count (and Show all) with Filters at its end. */
+.hp-list-line { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
 .hp-filter-btn { flex-shrink: 0; padding: 0 var(--space-3); }
-.hp-roots { flex: 1; min-width: 0; margin-left: 0; padding-left: 0; }
+.oc-more-octaves { padding-top: var(--space-4); }
 .hp-count, .hp-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
 .hp-hint { color: var(--text-2); }
 .hp-identify { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -1421,9 +1423,6 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
     max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
   }
   .hp-list-head { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: var(--space-3); margin-bottom: 0; }
-  .hp-filter-row { flex-direction: column; align-items: stretch; }
-  .hp-filter-btn { align-self: flex-start; }
-  .hp-roots { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
   .hp-stage {
     grid-column: 2; grid-row: 1; top: var(--hp-top); z-index: 1;
     margin: 0; padding: 0; border: 0; background: none; gap: var(--space-4);
@@ -1459,8 +1458,6 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .hp-card-title { font-size: var(--fs-17); line-height: var(--lh-17); }
   /* The list head scrolls away with the list, roots on one scrolling line. */
   .hp-list-head { position: static; gap: var(--space-2); }
-  .hp-filter-row { flex-direction: row; align-items: center; }
-  .hp-roots { flex-wrap: nowrap; overflow-x: auto; }
 }
 @media (max-width: 599px) {
   /* Keyboard focus and in-page scrolling keep list rows clear of the sticky stage and the tab bar. */
@@ -1625,10 +1622,6 @@ html { touch-action: manipulation; }
   .hp-list-head .seg { height: 36px; }
   .hp-list-head .seg button, .hp-list-head .seg [role="radio"] { min-height: 30px; }
   .hp-list-head .btn, .hp-list-head .chip, .hp-list-head .select { height: 38px; min-height: 38px; }
-  .hp-count { font-size: 12px; line-height: 14px; margin-top: -2px; }
-  .oc-chords .hp-list-head { flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .oc-chords .oc-filters { flex: 1; min-width: 0; }
-  .oc-chords .hp-count { flex-basis: 100%; }
 
   .chord-row { min-height: 50px; padding-top: 4px; padding-bottom: 4px; }
   .chord-row .row-title { font-size: var(--fs-15); line-height: 20px; }

@@ -2964,9 +2964,6 @@ function ocHeader(inst, view, { practice = false } = {}) {
       </div>` : ''}`;
 }
 
-// The Playlists tab: the user's playlists, with how many of each one's
-// chords belong to this instrument. A row opens the playlist; on a handpan
-// Play opens it in Chords and auto-plays it, on an ocarina Practice starts.
 // The Playlists tab: one kind of list (chords in order, the same one as
 // often as you like, played in time; stored as progressions). Songs have
 // their own tab (songsTabHtml).
@@ -2976,7 +2973,7 @@ function playlistsTabHtml(inst) {
       <h2 class="list-title" id="pl-sec-playlists">Playlists</h2>
       ${state.progressions.length
         ? `<div class="list">${progressionRowsHtml(inst)}</div>`
-        : '<p class="pl-section-hint">Chords in order, the same chord as often as you like (Am – Dm – Am), played in time. Tap ♡ on any chord to start one, or paste a chord sheet.</p>'}
+        : '<p class="pl-section-hint">Chords in order, the same chord as often as you like (Am – Dm – Am), played in time. Tap the bookmark on any chord to start one, or paste a chord sheet.</p>'}
       <div class="pl-new-row">
         <button type="button" class="btn btn-ghost pl-new" data-action="prog-new-open">${icon('plus')} New playlist</button>
         <button type="button" class="btn btn-ghost pl-new" data-action="cs-open">${icon('clipboard-paste')} Paste a chord sheet</button>
@@ -3449,7 +3446,7 @@ function playlistsListHtml(inst) {
   const newBtn = `<button type="button" class="btn btn-ghost pl-new" data-action="pl-new-open">${icon('plus')} New playlist</button>`;
   if (state.playlists.length === 0) {
     return uiEmpty({
-      icon: 'list-music', title: 'No playlists yet', body: 'Tap ♡ on any chord to start one.',
+      icon: 'list-music', title: 'No playlists yet', body: 'Tap the bookmark on any chord to start one.',
       action: `<button class="btn btn-secondary" data-action="${inst ? 'oc-tab' : 'go-chords'}" data-tab="chords">Go to Chords</button>`,
     }) + newBtn;
   }
@@ -3660,9 +3657,8 @@ function viewOcarinaChords(inst) {
       const parts = ocChordParts(inst, a);
       return chordRowHtml({
         title: a.title, titleHtml: true,
-        meta: `${parts.pairs.length ? uiBadge('Together', 'accent') + ' ' : ''}${a.sub}`,
-        action: 'oc-chord-select', data: { key: a.key }, current: x === selected,
-        trail: `${hpHeartBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}<span class="chord-count">${x.midis.length}</span>`,
+        meta: `${parts.pairs.length ? uiBadge('Together', 'accent') + ' ' : ''}${a.sub} · ${chordNotesWord(x.midis.length)}`,
+        action: 'oc-chord-select', data: { key: a.key }, current: x === selected, saved: parts.inAny,
       });
     }).join('')}</div>`;
   const missing = model.missing.length ? `
@@ -3676,15 +3672,12 @@ function viewOcarinaChords(inst) {
         })).join('')}
       </div>
     </details>` : '';
-  const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0);
-  const listHead = `
-    ${chordFilterRowHtml({ open: 'oc-filters-open', count: nFilters, roots: chordRootsOf(model.chords), root: oc.root ?? 'All', rootAction: 'oc-filter-root' })}
-    ${chordCountLineHtml({ shown: model.items.length, all: model.all, main: model.main })}`;
+  const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0) + (oc.root && oc.root !== 'All' ? 1 : 0);
+  const listHead = chordListLineHtml({ shown: model.items.length, all: model.all, main: model.main, open: 'oc-filters-open', count: nFilters });
   const stage = oc.listen ? listenOcStageParts(inst)
     : oc.identify ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
-  const modeSeg = uiSeg([{ value: 'browse', label: 'Browse' }, { value: 'identify', label: 'Identify' }, { value: 'listen', label: 'Listen' }],
-    oc.listen ? 'listen' : oc.identify ? 'identify' : 'browse', { action: 'oc-listen-mode', label: 'Find chords by' });
+  const modeSeg = chordModeSegHtml(oc.listen ? 'listen' : oc.identify ? 'identify' : 'browse', 'oc-listen-mode');
   return `${ocHeader(inst, 'chords')}${chordsScreenHtml({
     cls: ` oc-chords${oc.identify ? ' is-identify' : ''}`, stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
     picture: stage.picture, card: stage.card,
@@ -3751,10 +3744,9 @@ function ocChordStageParts(inst, a) {
     title: a.title,
     metas: [[`${a.sub} · ${a.midis.map(nn).join(' · ')}`]],
     actions: `
-          ${hpHeartBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}
           <button type="button" class="btn btn-primary hp-play" data-action="oc-play-arp" data-key="${key}">${icon('play')} Chord</button>
-          ${speedBtnHtml()}
-          ${uiIconBtn('ellipsis', 'More: octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}`,
+          ${chordSaveBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}
+          ${uiIconBtn('ellipsis', 'More: speed, octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
     below: `
@@ -3771,25 +3763,20 @@ function ocChordStageParts(inst, a) {
   return { picture, card, key };
 }
 
-// Filters of ocarina / flute Chords: the same sheet as the handpan's, with
-// the handpan-scale filter in place of the playlist.
+// An ocarina's or flute's Filters: the shared sheet, with the handpan-scale
+// filter in place of the playlist.
 function ocFiltersSheet() {
   const oc = state.oc;
-  return uiSheet({
-    key: 'oc-filters', title: 'Filters', close: 'oc-filters-close',
-    body: `
-    <div class="hp-sheet-form">
-      ${chordCountField(new Set(oc.counts ?? []), 'oc-toggle-count')}
-      ${chordTypeField(oc.category, 'oc-category')}
-      ${uiField({ label: 'Scale', id: 'oc-scale-filter', control: ocScaleSelect('Only chords made of this scale\'s notes'), help: 'Only chords made of the scale\'s notes.' })}
-    </div>`,
-    footer: `
-      <button type="button" class="btn btn-ghost" data-action="oc-filters-clear">Clear all</button>
-      <button type="button" class="btn btn-primary" data-action="oc-filters-close">Done</button>`,
+  const inst = currentInstrument();
+  return chordFiltersSheet({
+    key: 'oc-filters', close: 'oc-filters-close', clear: 'oc-filters-clear',
+    roots: chordRootsOf(inst ? ocChordModel(inst).chords : []), root: oc.root ?? 'All', rootAction: 'oc-filter-root',
+    counts: new Set(oc.counts ?? []), countAction: 'oc-toggle-count', category: oc.category, categoryAction: 'oc-category',
+    extra: uiField({ label: 'Scale', id: 'oc-scale-filter', control: ocScaleSelect('Only chords made of this scale\'s notes'), help: 'Only chords made of the scale\'s notes.' }),
   });
 }
 
-// ⋯ of the chord on top: its octaves, the two-note pairs of a
+// An ocarina's or flute's chord ⋯: the shared sheet, with its octaves, the two-note pairs of a
 // multi-chamber ocarina, and what the hole pictures mean.
 function ocChordMoreSheet() {
   const inst = currentInstrument();
@@ -3801,10 +3788,10 @@ function ocChordMoreSheet() {
   const nn = m => displayNote(midiToNoteName(m), uf, us);
   const pairs = inst.chambers.length > 1 ? playablePairs(inst.chambers, card.midis) : [];
   const hasHalf = card.midis.some(m => fingeringFor(inst, m)?.states?.includes('h'));
-  return uiSheet({
-    key: 'oc-more', variant: 'menu', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
-    body: `
-      <div class="field">
+  return chordMoreSheet({
+    key: 'oc-more', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
+    extra: `
+      <div class="field oc-more-octaves">
         <span class="field-label">Octaves</span>
         <div class="chips">${card.midis.map(m => `<button type="button" class="chip" data-action="oc-voicing" data-key="${escHtml(key)}" data-midi="${m}"
           aria-label="Move ${nn(m)} to another octave">${nn(m)}</button>`).join('')}</div>
@@ -5996,7 +5983,7 @@ function hpSourceEntry() {
 // Filters set in the Filters sheet (the root chips don't count).
 function hpFilterCount() {
   const f = state.chordFilter;
-  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.playlist !== 'All' ? 1 : 0);
+  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.playlist !== 'All' ? 1 : 0) + (f.root !== 'All' ? 1 : 0);
 }
 
 function hpChordName(c) {
@@ -6006,10 +5993,11 @@ function hpNotesText(notes) {
   return notes.map(n => displayNote(n, state.useFlats, state.useSolfege)).join(' · ');
 }
 
-// ♡ of a chord: opens the Add to playlist sheet; filled when the chord is
-// in any playlist (in any voicing).
-function hpHeartBtn(on, opts) {
-  return uiIconBtn('heart', 'Add to playlist', { ...opts, cls: `hp-heart${on ? ' is-on' : ''}` });
+// Add to a playlist: opens the Add to playlist sheet. A
+// bookmark, filled when the chord is in one; not a heart, it is no one-tap
+// favourite.
+function chordSaveBtn(on, opts) {
+  return uiIconBtn('bookmark', on ? 'In a playlist. Add to another' : 'Add to a playlist', { ...opts, cls: `chord-save${on ? ' is-on' : ''}` });
 }
 
 // "Same type, other roots" and "Shares 2+ notes" chips for a chord.
@@ -6342,13 +6330,16 @@ function goesWithLineHtml() {
     const p = ctx.pick(c);
     return `<button type="button" class="chip gw-chip" data-action="${p.action}"${uiData(p.data)}>${escHtml(gwChordName(c))}</button>`;
   }).join('');
+  if (!chips) return '';
   return `<div class="gw-line">
-      <div class="gw-head">
-        <span class="gw-label">Goes well with</span>
-        ${g.progressions.length ? `<button type="button" class="link-btn gw-more" data-action="gw-open">Progressions ${icon('chevron-right')}</button>` : ''}
-      </div>
+      <span class="gw-label">Goes well with</span>
       <div class="gw-chips">${chips}</div>
     </div>`;
+}
+// Are there well-known progressions with the chord on show (the ⋯ sheet's row)?
+function goesWithHasProgressions() {
+  const ctx = goesWithContext();
+  return !!(ctx && goesWithFor(ctx).g?.progressions.length);
 }
 
 // The sheet: the progressions with this chord, each with ▶ and Save.
@@ -6385,7 +6376,7 @@ function playGoesWith(chords) {
 }
 
 function goesWithAction(action, el) {
-  if (action === 'gw-open') { state.goesWith = true; render(); return true; }
+  if (action === 'gw-open') { state.goesWith = true; state.hpMore = false; state.oc.chordMore = false; render(); return true; }
   if (!state.goesWith) return false;
   if (action === 'gw-close') { state.goesWith = null; render(); return true; }
   const ctx = goesWithContext();
@@ -6424,28 +6415,22 @@ function chordCardHtml({ title, metas = [], actions, below = '' }) {
     </div>`;
 }
 
-// One chord in the list: name, type, ♡ (and any other buttons) and its
-// number of notes; the current one marked.
-function chordRowHtml({ title, titleHtml = false, meta, action, data, current, trail }) {
+// One chord in the list: its name, then its type and number of notes; the
+// current one marked. No buttons: a tap picks and plays it, and everything
+// done with a chord is on its card. One that is in a playlist shows a bookmark.
+function chordRowHtml({ title, titleHtml = false, meta, action, data, current, saved = false }) {
   return uiRow({
     title, titleHtml, meta, action, data, cls: `chord-row${current ? ' is-current' : ''}`,
-    trail,
+    trail: saved ? `<span class="chord-saved" title="In a playlist">${icon('bookmark')}<span class="sr-only">In a playlist</span></span>` : '',
   });
 }
+function chordNotesWord(n) { return `${n} note${n !== 1 ? 's' : ''}`; }
 
-// The list head's filter row: Filters (opens the instrument's filter
-// sheet, with how many are on) and the root-note chips.
-function chordFilterRowHtml({ open, count, roots, root, rootAction }) {
-  const uf = state.useFlats, us = state.useSolfege;
-  return `<div class="hp-filter-row">
-      <button type="button" class="btn btn-secondary hp-filter-btn" data-action="${open}" aria-haspopup="dialog">
-        ${icon('sliders-horizontal')} Filters${count ? ` · ${count}` : ''}
-      </button>
-      <div class="chips-scroll hp-roots" role="group" aria-label="Root note">
-        ${roots.map(r => `<button type="button" class="chip" aria-pressed="${root === r ? 'true' : 'false'}"
-          data-action="${rootAction}" data-root="${r}">${r === 'All' ? 'All' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
-      </div>
-    </div>`;
+// All chords · Tap notes · Listen: the three ways to find a chord, the same
+// switch on every instrument.
+function chordModeSegHtml(mode, action) {
+  return uiSeg([{ value: 'browse', label: 'All chords' }, { value: 'identify', label: 'Tap notes' }, { value: 'listen', label: 'Listen' }],
+    mode, { action, label: 'Find a chord' });
 }
 
 // Main chords (chords.js mainChordsInKey): every Chords list shows the plain
@@ -6457,12 +6442,19 @@ function chordsMainOn(chords, narrowed) {
 }
 function layoutPitchClasses(layout) { return new Set(getAllNotes(layout).map(notePC)); }
 // The count under the filters, with the switch between main chords and all.
-function chordCountLineHtml({ shown, all, main }) {
+// With Filters (how many are on) at the end of the same line: the list head
+// is this one line under the switch.
+function chordListLineHtml({ shown, all, main, open, count }) {
   const n = (k, w) => `${k} ${w}${k !== 1 ? 's' : ''}`;
   const sw = main
     ? `<button type="button" class="link-btn" data-action="chords-scope">Show all ${all}</button>`
     : all > shown || !state.chordsAll ? '' : `<button type="button" class="link-btn" data-action="chords-scope">Main chords only</button>`;
-  return `<div class="hp-count">${main ? n(shown, 'main chord') : n(shown, 'chord')}${sw ? ` · ${sw}` : ''}</div>`;
+  return `<div class="hp-list-line">
+      <div class="hp-count">${main ? n(shown, 'main chord') : n(shown, 'chord')}${sw ? ` · ${sw}` : ''}</div>
+      <button type="button" class="btn btn-secondary btn-sm hp-filter-btn" data-action="${open}" aria-haspopup="dialog">
+        ${icon('sliders-horizontal')} Filters${count ? ` · ${count}` : ''}
+      </button>
+    </div>`;
 }
 
 // Root chips: All, then the roots the chords have, in pitch order.
@@ -6490,6 +6482,44 @@ function chordTypeField(value, action) {
         </select>` });
 }
 function chordCountKey(n) { return n >= 5 ? '5+' : String(n); }
+
+// The Filters sheet of every instrument's Chords: the note the chord starts
+// on, how many notes, the type, then the instrument's own field (a
+// handpan's playlist, an ocarina's or flute's scale).
+function chordFiltersSheet({ key, close, clear, roots, root, rootAction, counts, countAction, category, categoryAction, extra = '' }) {
+  const uf = state.useFlats, us = state.useSolfege;
+  return uiSheet({
+    key, title: 'Filters', close,
+    body: `
+    <div class="hp-sheet-form">
+      <div class="field">
+        <span class="field-label">Starts on</span>
+        <div class="chips" role="group" aria-label="The note the chord starts on">
+          ${roots.map(r => `<button type="button" class="chip" aria-pressed="${root === r ? 'true' : 'false'}"
+            data-action="${rootAction}" data-root="${r}">${r === 'All' ? 'Any note' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
+        </div>
+      </div>
+      ${chordCountField(counts, countAction)}
+      ${chordTypeField(category, categoryAction)}
+      ${extra}
+    </div>`,
+    footer: `
+      <button type="button" class="btn btn-ghost" data-action="${clear}" data-all="1">Clear all</button>
+      <button type="button" class="btn btn-primary" data-action="${close}">Done</button>`,
+  });
+}
+
+// ⋯ of the chord on top, the same sheet on every instrument: Speed, the
+// instrument's own rows, the well-known progressions with this chord, then
+// whatever else the instrument shows (related chords, octaves, the legend).
+function chordMoreSheet({ key, variant = 'menu', title, close, rows = [], extra = '' }) {
+  const all = [
+    uiRow({ lead: 'gauge', title: 'Speed', meta: `${tempoLabel()} · how fast chords and scales play`, chevron: true, action: 'speed-open' }),
+    ...rows,
+    goesWithHasProgressions() ? uiRow({ lead: 'list-ordered', title: 'Progressions with this chord', meta: 'Well-known ones, to hear and to save', chevron: true, action: 'gw-open' }) : '',
+  ].join('');
+  return uiSheet({ key, variant, title, close, body: `<div class="list">${all}</div>${extra}` });
+}
 
 function viewChords() {
   const { chords, chordFilter, selectedChord, layout } = state;
@@ -6528,14 +6558,13 @@ function viewChords() {
   // with every action and the related chords from 600px.
   const card = state.hpListen ? listenCardHtml(heard) : state.discoverMode ? '' : selectedChord ? chordCardHtml({
     title: escHtml(hpChordName(selectedChord)),
-    metas: [[escHtml(hpNotesText(selectedChord.notes))], [`${escHtml(selectedChord.type.category)} · ${selectedChord.noteCount} notes`, 'hp-wide']],
+    metas: [[escHtml(hpNotesText(selectedChord.notes))], [`${escHtml(selectedChord.type.category)} · ${chordNotesWord(selectedChord.noteCount)}`, 'hp-wide']],
     actions: `
-          ${hpHeartBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
           ${canUpdateEntry ? saveVoicingBtn('hp-wide') : ''}
           <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
-          ${speedBtnHtml()}
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
-          ${uiIconBtn('ellipsis', 'More', { action: 'hp-more-open', cls: 'hp-narrow', attrs: 'aria-haspopup="dialog"' })}`,
+          ${chordSaveBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
+          ${uiIconBtn('ellipsis', 'More: speed, the scale, progressions', { action: 'hp-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     below: `${goesWithLineHtml()}<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
@@ -6566,8 +6595,7 @@ function viewChords() {
   const nFilters = hpFilterCount();
   const browseHead = `
     ${nowPlaying}
-    ${chordFilterRowHtml({ open: 'hp-filters-open', count: nFilters, roots, root: chordFilter.root, rootAction: 'filter-root' })}
-    ${chordCountLineHtml({ shown: filtered.length, all, main })}`;
+    ${chordListLineHtml({ shown: filtered.length, all, main, open: 'hp-filters-open', count: nFilters })}`;
 
   const rows = filtered.length === 0
     ? uiEmpty({
@@ -6575,16 +6603,10 @@ function viewChords() {
       action: '<button type="button" class="btn btn-secondary" data-action="hp-filters-clear" data-all="1">Clear filters</button>',
     })
     : `<div class="list chord-rows">${filtered.map(c => {
-      const favId = `${layoutId}-${c.id}`;
-      const inAny = isChordBookmarkedAnyVoicing(layoutId, c.id);
-      const isSel = selectedChord?.id === c.id;
       return chordRowHtml({
-        title: hpChordName(c), meta: escHtml(c.type.category),
-        action: 'select-chord', data: { id: c.id }, current: isSel,
-        trail: `
-          ${hpHeartBtn(inAny, { action: 'show-playlist-picker', data: { 'chord-id': c.id, 'chord-fav-id': favId } })}
-          ${canUpdateEntry && isSel ? saveVoicingBtn('') : ''}
-          <span class="chord-count">${c.noteCount}</span>`,
+        title: hpChordName(c), meta: `${escHtml(c.type.category)} · ${chordNotesWord(c.noteCount)}`,
+        action: 'select-chord', data: { id: c.id }, current: selectedChord?.id === c.id,
+        saved: isChordBookmarkedAnyVoicing(layoutId, c.id),
       });
     }).join('')}</div>`;
 
@@ -6597,13 +6619,13 @@ function viewChords() {
     matches = `<div class="list">${uiRow({
       title: 'Custom combination',
       meta: `Not a recognized chord type · ${dn.length} notes: ${escHtml(dn.map(n => displayNote(n, uf, us)).join(', '))}`,
-      trail: `${hpHeartBtn(false, { action: 'discover-bookmark-custom' })}${uiIconBtn('play', 'Play chord', { action: 'discover-play-custom' })}`,
+      trail: `${chordSaveBtn(false, { action: 'discover-bookmark-custom' })}${uiIconBtn('play', 'Play chord', { action: 'discover-play-custom' })}`,
     })}</div>`;
   } else {
     matches = `<div class="list">${discoverMatches.map((m, idx) => uiRow({
       title: hpChordName(m),
       meta: `${escHtml(m.type.category)} · ${m.noteCount} notes: ${escHtml(m.notes.map(n => displayNote(n, uf, us)).join(', '))}`,
-      trail: `${hpHeartBtn(isChordBookmarkedAnyVoicing(layoutId, m.id), { action: 'discover-bookmark', data: { 'match-idx': idx } })}${uiIconBtn('play', 'Play chord', { action: 'discover-play', data: { 'match-idx': idx } })}`,
+      trail: `${chordSaveBtn(isChordBookmarkedAnyVoicing(layoutId, m.id), { action: 'discover-bookmark', data: { 'match-idx': idx } })}${uiIconBtn('play', 'Play chord', { action: 'discover-play', data: { 'match-idx': idx } })}`,
     })).join('')}</div>`;
   }
   const identify = `
@@ -6622,47 +6644,41 @@ function viewChords() {
     cls: state.discoverMode ? ' is-identify' : '',
     picture: `<div class="pan-wrap hp-pan">${panRotateBtn()}${panSvg}</div>`,
     card,
-    listHead: `${uiSeg([{ value: 'browse', label: 'Browse' }, { value: 'identify', label: 'Identify' }, { value: 'listen', label: 'Listen' }],
-            state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse', { action: 'toggle-discover-mode', label: 'Find chords by' })}
+    listHead: `${chordModeSegHtml(state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse', 'toggle-discover-mode')}
           ${state.discoverMode || state.hpListen ? '' : browseHead}`,
     list: state.hpListen ? listenHistoryHtml() : state.discoverMode ? identify : rows,
   })}`;
 }
 
-// Filters sheet: note counts, chord type and playlist (§6.7).
+// A handpan's Filters: the shared sheet, with its playlist.
 function hpFiltersSheet() {
   const f = state.chordFilter;
   const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
-  const body = `
-    <div class="hp-sheet-form">
-      ${chordCountField(state.chordCountSet, 'toggle-note-count')}
-      ${chordTypeField(f.category, 'filter-category')}
-      ${!state.playlists.length ? '' : uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
+  return chordFiltersSheet({
+    key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
+    roots: chordRootsOf(state.chords), root: f.root, rootAction: 'filter-root',
+    counts: state.chordCountSet, countAction: 'toggle-note-count', category: f.category, categoryAction: 'filter-category',
+    extra: `${!state.playlists.length ? '' : uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
         id: 'hp-playlist-filter', value: f.playlist, label: 'Playlist', action: 'select-playlist-filter',
         options: [{ value: 'All', label: 'All chords' }, ...state.playlists.map(p => ({ value: p.id, label: p.name, meta: `${p.chords.length} chord${p.chords.length !== 1 ? 's' : ''}` }))],
       }) })}
-      ${pl ? `<div class="list">${uiRow({ lead: 'pencil', title: 'Edit playlist', meta: escHtml(pl.name), chevron: true, action: 'hp-edit-playlist' })}</div>` : ''}
-    </div>`;
-  return uiSheet({
-    key: 'hp-filters', title: 'Filters', close: 'hp-filters-close', body,
-    footer: `
-      <button type="button" class="btn btn-ghost" data-action="hp-filters-clear">Clear all</button>
-      <button type="button" class="btn btn-primary" data-action="hp-filters-close">Done</button>`,
+      ${pl ? `<div class="list">${uiRow({ lead: 'pencil', title: 'Edit playlist', meta: escHtml(pl.name), chevron: true, action: 'hp-edit-playlist' })}</div>` : ''}`,
   });
 }
 
-// More sheet of the selected chord on phones: what the desktop card shows inline.
+// A handpan chord's ⋯: the shared sheet, with the scale, the link and the
+// related chords.
 function hpMoreSheet() {
   const chord = state.selectedChord;
   const { pl, canUpdate } = hpSourceEntry();
-  const rows = [
-    uiRow({ lead: 'play', title: 'Play scale', action: 'play-scale' }),
-    canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',
-    uiRow({ lead: 'link', title: 'Copy link to this chord', action: 'copy-url' }),
-  ].join('');
-  return uiSheet({
+  return chordMoreSheet({
     key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
-    body: `<div class="list">${rows}</div><div class="hp-related">${hpRelatedHtml(chord)}</div>`,
+    rows: [
+      uiRow({ lead: 'play', title: 'Play the scale', meta: 'Every note, from the lowest up', action: 'play-scale' }),
+      canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',
+      uiRow({ lead: 'link', title: 'Copy link to this chord', action: 'copy-url' }),
+    ],
+    extra: `<div class="hp-related">${hpRelatedHtml(chord)}</div>`,
   });
 }
 
@@ -6874,7 +6890,7 @@ function viewPlaylist() {
   let entries;
   if (pl.chords.length === 0) {
     entries = uiEmpty({
-      icon: 'heart', title: 'No chords yet', body: 'Tap ♡ on any chord to add it here.',
+      icon: 'bookmark', title: 'No chords yet', body: 'Tap the bookmark on any chord to add it here.',
       action: here ? '<button type="button" class="btn btn-secondary" data-action="pl-go-chords">Go to Chords</button>' : '',
     });
   } else if (order) {
@@ -7361,7 +7377,7 @@ function viewProgression() {
   if (prog.steps.length === 0) {
     steps = uiEmpty({
       icon: 'list-ordered', title: 'No chords yet',
-      body: 'Tap ♡ on any chord and pick this playlist. The same chord can go in more than once. Or paste a chord sheet.',
+      body: 'Tap the bookmark on any chord and pick this playlist. The same chord can go in more than once. Or paste a chord sheet.',
       action: `<div class="empty-actions">
         <button type="button" class="btn btn-secondary" data-action="cs-open" data-prog-id="${escHtml(prog.id)}">${icon('clipboard-paste')} Paste a chord sheet</button>
         ${ctx && !ctx.load && !ctx.open ? '<button type="button" class="btn btn-ghost" data-action="pl-go-chords">Go to Chords</button>' : ''}
@@ -10233,7 +10249,7 @@ document.addEventListener('click', e => {
   if (action === 'set-flats') { state.useFlats = el.dataset.value === 'flats'; savePrefs(); render(); return; }
   if (action === 'set-solfege') { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; }
   if (action === 'tempo-set') { setTempo(parseInt(el.dataset.value, 10), { preview: true }); render(); return; }
-  if (action === 'speed-open') { state.speedSheet = true; render(); return; }
+  if (action === 'speed-open') { state.speedSheet = true; state.hpMore = false; state.oc.chordMore = false; render(); return; }
   if (action === 'speed-close') { state.speedSheet = false; render(); return; }
 
   if (action === 'set-rotation') { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; }
