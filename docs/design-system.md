@@ -1,6 +1,8 @@
 # Oakhum design system and redesign spec
 
-Nov 11, 2026 · design review of the current build (screenshots `phone-01…17`, `desktop-01…17`) and the spec for the redesign.
+**Status: current.** The living description of the app's shared patterns: a pull request that changes a pattern updates this file (CLAUDE.md, Design consistency and Docs). Parts written as a redesign spec in November 2026 have been built.
+
+Nov 11, 2026 · design review of the then-current build (screenshots `phone-01…17`, `desktop-01…17`) and the spec for the redesign.
 
 This document is for the engineer who implements it. It covers the problems, the rules, the navigation model, tokens, components, every screen, and the order to build it in. Where it says "keep", the behaviour of the existing code stays as it is and only the presentation changes. Handpan behaviour (chord finding, filters, autoplay, discover, voicings, playlists, layouts, URL hashes) must not change.
 

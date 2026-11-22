@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Puts the overview video together (docs/video-plan.md §1), 1920 x 1080.
+"""Puts the overview video together (the first cut of 19 Nov; the current script is docs/video-plan.md §4), 1920 x 1080.
 
   node ../record.js          # the phone: D Kurd chords, with sound (shared with the makers video)
   node scenes.js             # the still scenes

@@ -36,6 +36,12 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - **Tests**: data round-trips (every tuning has a link, `parseLink(linkFor(x))`), chords found on at least one real tuning, the site's engine tests for the new family.
 - **Docs**: `docs/design-system.md` (anything new in the shared patterns) and this checklist if something was missing.
 
+## Docs
+- Every document in `docs/` has a **status line** directly under its title, one of: **current** (describes the product or the plan as it is now; keep it true), **plan** (agreed or proposed, not done yet: say what is and isn't built), **built** (a design record of something that has shipped; the code wins where they differ) or **history** (kept for the record; don't work from it). A document with mixed parts says which part is which.
+- A pull request that makes a document untrue updates that document in the same pull request: the status line, and any sentence that says a thing is "not built yet", "for later" or "for review" when it no longer is. Check `docs/messaging.md` (feature names, the free/account line, numbers), `docs/video-plan.md` (shots marked "(needs: …)" that your change makes filmable, and taps or labels your change renames), `docs/launch-campaign.md` and `docs/design-system.md`.
+- One topic, one document: merge into the existing document instead of adding a second version next to it. How Oakhum is described (names of features, what is free, tone) comes from `docs/messaging.md`; the website copy, videos and posts follow it.
+- The clay ocarina builder is an internal tool: it does not appear in marketing copy, videos or the maker kit.
+
 ## Makers and shops
 - The design is `docs/makers-programme.md`; read it before changing anything for makers. Makers and shops are one of the two public audiences (the other is players). The clay ocarina builder (`profiles.can_build`) is internal and is never offered to makers.
 - Who made an instrument is only ever what the server says for its code (`open_shared_instrument`). Never read a maker from shared data or from a link.

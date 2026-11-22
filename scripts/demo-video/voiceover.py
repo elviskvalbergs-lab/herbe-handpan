@@ -18,7 +18,7 @@ in with --from, so a video can be rebuilt without spending credits.
 
 The captions already say what's on screen, so the voice doesn't read them: it
 tells the story around them and adds what the captions leave out.
-No music-theory words (docs/video-script.md).
+No music-theory words (docs/video-plan.md §1).
 
 Kokoro is an open model (Apache 2.0) run locally: no account, no API key. Its
 model files (~350 MB) are downloaded once to ~/.cache/oakhum-tts. OpenAI's

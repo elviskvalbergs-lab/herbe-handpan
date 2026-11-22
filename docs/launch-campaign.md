@@ -1,134 +1,311 @@
-# Oakhum launch campaign: a feedback round
+# Oakhum launch campaign
 
-Written 17 Nov 2026. The budget is €0 and you have about 2–3 hours a week, so the plan has six weeks.
+**Status: plan** (rewritten 21 Nov 2026 for the product as it is now; replaces the six-week "feedback round" plan of 17 Nov). Nothing here has been posted or sent yet. Words come from `docs/messaging.md`, videos from `docs/video-plan.md`, everything for makers from `docs/maker-kit.md`.
 
-**What this launch is for:** feedback from real players, not reach. The aim is roughly **30–50 useful pieces of feedback** and an honest read on which audience comes back. It is not a big launch day. Communities that have to deal with self-promotion react much better to *"I made a free tool for this instrument, please tell me what's wrong with it"* than to an announcement.
+**What changed since the first plan:** there are two audiences, not six; Songs exist (103 songs with tabs) and lead the posts for kalimba, ocarina and whistle; the app has a feedback button (Settings › Send feedback); "works offline" is only ever said with "free account"; the makers pitch is one promise; and "what worked" is now a number.
 
-**Starting point:** PostHog shows 14 visitors and 15 sessions in the last 30 days, which is mostly you. Every number after launch can therefore be credited to a channel, as long as every link carries a `utm_source` tag.
+The budget is still €0 and about 2–3 hours of the owner's time a week. The aim is still feedback and an honest read on who comes back, not a launch day.
 
 ---
 
-## 1. Who the audiences are
+## 1. Two audiences
 
-They are listed in the order to approach them: best fit and most finished part of the product first.
+| | Jammers | Makers and shops |
+|---|---|---|
+| Who | Adults who own a handpan, tongue drum, kalimba, ocarina or flute, want to join in with friends and want to play songs | People and workshops who make or sell them |
+| What we ask them to do | Open the link for their instrument and play something | Save one instrument and put its code in the case |
+| Where they are | Instrument subreddits and Facebook groups, forums, teachers' channels, search | Their own sites and published business addresses |
+| The video | A (overview), then the clip for their instrument | Makers v2 (cut 1b until it exists) |
 
-| # | Audience | Why Oakhum fits | Where they are |
+Communities are still approached one instrument at a time, because a post in r/kalimba has to be about kalimbas. But it is one audience with one message, said in that instrument's words. Sound healers, yoga teachers, school teachers and the clay ocarina builder are not audiences of this campaign.
+
+## 2. Before the first post (week 0)
+
+| # | What | Who | Status |
 |---|---|---|---|
-| 1 | **Handpan owners**, mostly self-taught adults with a €1.5–4k instrument | "What can I play on *my* scale?" is the classic beginner question. Your strongest features answer it: scale-specific chords, playing along with a guitarist, and setting up by ear. | r/handpan, large Facebook groups (general, regional, swap and sale), Instagram/YouTube teachers, makers, gatherings and meetups |
-| 2 | **Handpan makers and shops** (a channel to reach owners, not users themselves) | Every new owner gets the scale on a certificate. A link like "see what your D Kurd can play" is a free after-sale extra for the maker. | Their websites and public business email addresses |
-| 3 | **Steel tongue drum and kalimba owners**: a much bigger, cheaper, beginner-heavy market, often given as gifts | Owners have no idea what to play, and the "play my notes" setup suits them. | r/kalimba, tongue drum Facebook groups, kalimba tab sites and teachers (e.g. Kalimba Magic), brand communities |
-| 4 | **Ocarina players** | 12-hole charts in every key, plus support for ocarinas people made themselves | r/ocarina, Pure Ocarinas community/forum, ocarina Facebook groups |
-| 5 | **Tin whistle and Native American flute players** | Fingering charts, chords as arpeggios | r/tinwhistle, Chiff & Fipple forum (whistle and NAF boards), Flutopedia's list of NAF groups, NAF Facebook groups |
-| 6 | **Multipliers**: sound healers, yoga and meditation teachers, music therapists, school music teachers (kalimba, ocarina, and recorder when it arrives) | Each one reaches many players | Later, through what waves 1–5 teach you |
+| 1 | The website says what Oakhum is: hero, all five instruments, "Play my notes", Songs on the home page | Site session | In progress |
+| 2 | Songs has its own tab, so a post can link straight to an instrument's songs (`oakhum.com/kalimba/c-major-17/songs`) | App session | **Done** (merged 21 Nov). A link per song does not exist yet; posts link to the Songs tab. |
+| 3 | Video A and the clip for the first instrument (F3 kalimba or F1 handpan) | Video session | Scripts ready (`docs/video-plan.md`) |
+| 4 | Site measurement (§3): Vercel Analytics on the site and the three site events | Site session | **Not there yet**: on 21 Nov the site has Sentry only. Without it, posts that link to the website can't be measured; posts that link straight into the app can. |
+| 5 | Tracked links for every post (§3) | Claude | The table is in §5; fill in at posting time |
+| 6 | Free alerts: an [F5Bot](https://f5bot.com) alert and a Google Alert for "oakhum" | Owner, 5 min | To do |
+| 7 | Google Search Console and Bing Webmaster Tools: submit `oakhum.com/sitemap.xml` | Owner, 15 min | To do |
+| 8 | The email setup for maker outreach (§7) | Owner | To decide |
 
-**Naming instruments:** never list them all. Say "handpans, kalimbas, flutes and more", swapping in the one you're talking to. The list keeps growing, and posts and videos shouldn't go out of date.
+Items 1, 3 and 4 gate week 1. Item 2 does not.
 
-**Your story is part of the pitch.** A one-person project made in Latvia, on Oak Street, free with no sign-up, built from published fingering charts. Say it plainly in every post.
+## 3. Measurement
 
-## 2. Channels, costs and expected return
+### What is measured where
 
-All of these cost €0. The real cost is your time.
-
-| Channel | Your time | Expected return | Notes |
+| Where | Tool | What it gives | Limits |
 |---|---|---|---|
-| **Reddit**: one honest post per instrument subreddit | about 1 h per post, including replies on day 1 | Best feedback per hour, typically tens to a few hundred visits per post | Read each sub's rules first, and message the mods if the rules are strict about self-promotion. Post from your own account, written in the first person. Reply to every comment on the first day. |
-| **Facebook groups** | 15 min per post, plus replies | The biggest handpan audience is here | Join the group a few days before posting. Many groups require admin approval for links, so ask the admin. Meta shut down its Groups API in 2024, so this can only be done by hand. |
-| **Makers, shops and brands**: cold email | 5 min per batch for you to review and send (I prepare it) | Low reply rate (expect 10–20%), but one maker who says yes keeps sending new owners every month | The only channel that compounds. Details in §4. |
-| **Teachers and creators** (YouTube/Instagram, mid-size) | Same as above | A single mention from a teacher can beat every post you make | Write to their *published business email* only. Offer them something useful for their students: a deep link to each scale they teach. |
-| **Forums** (Chiff & Fipple, Pure Ocarinas) | 20 min | Small but high-trust | Be a member first, and say clearly that you made the tool. |
-| **Search**: per-tuning pages such as "D Kurd handpan chords" | 15 min once | Slow, but free forever | Submit the sitemap to Google Search Console and Bing Webmaster Tools. This is the long-term channel. |
-| **Show HN** (Hacker News) | 30 min | Developers, not players. You get feedback on the technology and UX, plus maybe a spike. | An optional week-5 post about the technical side: in-browser pitch detection, works offline, no build step. |
-| Product Hunt | – | **Skip.** The median launch gets a handful of upvotes, and the audience doesn't fit. | |
-| Paid ads | – | **Skip** (no budget) | |
+| **App** (`oakhum.com/play`, every `/<family>/<tuning>` and `/s/<code>` link) | PostHog EU, cookieless (`logEvent` in `js/auth.js`) | The events below, with `utm_source`, `utm_medium` and `utm_campaign` on `open`; taps for heatmaps | No guest is recognised on a second visit (nothing is stored on the device, on purpose). Returning is counted for accounts only. |
+| **Website** (home, instrument and tuning pages, `/makers`, `/help`) | Vercel Analytics *(needs: site analytics)* | Page views, referrers and UTM per page, without cookies | Page views, not people. Use it for "which post brought traffic to which page". |
+| **Website to app** | PostHog events on the site *(needs: site analytics)*: `site_cta` (which button, which page), `site_demo_play` (a chord tapped in a page's playable demo), `site_video` (video, 25/50/100 %) | Whether a page sends people on into the app, and whether the videos are watched | The site must pass the UTM tags on in its links to the app, or the app sees every visitor as coming from `oakhum.com`. |
+| **Accounts** | Supabase: `profiles.last_seen_on` | Exact return counts for people with an account | — |
+| **Makers** | A hand-kept list (who was written to, who replied, who said no), then scan statistics *(needs: makers phase 3)* | Replies, makers with a shared instrument, scans per code | Until scan statistics exist, a maker's scans are `open` events on `/s/<code>` paths in PostHog. |
 
-## 3. Six-week plan (~2–3 h a week)
+**App events that exist today:** `open` (path, referrer, utm) · `setup` (the setup steps and which path: listen or know) · `first_play` (family, seconds from landing) · `feature` (name: chords, arpeggio, listen, tuner, chord-sheet, song-play, song-print, …) · `save_tap` · `signup_shown` · `signup_method` · `signup_done` · `save_completed` · `install` · `offline_session` · `guest_offline` · `listen_check`.
 
-**Week 0: preparation (~3 h, mostly by you)**
-1. **A way to give feedback inside the app.** The app has no feedback button yet, only the request page. Add a "Send feedback" link (a mailto link to oakhummusic@gmail.com, or a 2-question PostHog survey). *I can build this as a small PR.*
-2. **A demo video** (script for review in `docs/video-script.md`: why, then how, then what). Until it's ready, a quick phone clip works: a handpan being played, with the app recognising the scale and lighting up the chords. Make a second one later for kalimba or tongue drum. On Reddit and Facebook a video does much better than a link.
-3. **Tracked links:** each post gets its own link, such as `oakhum.com/?utm_source=reddit&utm_campaign=handpan`, so PostHog shows which post brought whom. I make the list.
-4. **Free alerts:** create an [F5Bot](https://f5bot.com) alert for "oakhum" (emails when Reddit or HN mention it) and a Google Alert. The alert emails go to Gmail, where I can read them.
-5. Google Search Console and Bing Webmaster Tools: submit `oakhum.com/sitemap.xml`.
-6. Choose the email setup (§4).
+### Tracked links
 
-**Week 1: handpan, people.** r/handpan, then 2–3 big handpan Facebook groups spread over the week. Collect the feedback, then fix the top 2–3 problems.
-**Week 2: handpan, makers and teachers.** First cold batch: about 20 makers and shops, and 10 teachers. Reply to the people from week 1 and say what you changed. That reply earns trust.
-**Week 3: kalimba and tongue drum.** r/kalimba, tongue drum Facebook groups, kalimba teachers and tab sites, and a batch of smaller brands and shops.
-**Week 4: ocarina and flutes.** r/ocarina, Pure Ocarinas, r/tinwhistle, Chiff & Fipple, NAF groups.
-**Week 5:** follow-ups (one polite follow-up to people who didn't answer, then stop), an optional Show HN, and the local Riga handpan community.
-**Week 6: review.** Visitors → first play → came back within 7 days, broken down by channel. Put the effort of the next two months where people come back, not just where they click.
+Every link in a post or an email carries three tags. Keep them lower case, with these values only:
 
-**Rough targets.** These are guesses to check against reality, not promises: 500–1,500 visitors, 30–50 feedback messages, 3–5 makers or teachers linking to Oakhum.
+```
+?utm_source=<reddit|facebook|forum|email|youtube|instagram|hn>
+&utm_medium=<post|comment|maker-email|teacher-email|video|bio>
+&utm_campaign=<handpan|tongue-drum|kalimba|ocarina|flute|makers>-<yyyymm>
+```
 
-## 4. What I can automate, and what I can't
+Example: `oakhum.com/kalimba/c-major-17?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612`
 
-You want as little automation as possible, and only where it pays off. Here is what I recommend.
+Link to the app's page for the instrument (`/kalimba/c-major-17`), not to the home page: the reader lands on a playing instrument, and PostHog measures it today.
 
-### Email (worth automating, with you approving every send)
-- **What I do:** find makers, shops and teachers. For each one I note what they sell or teach and which Oakhum deep links match their scales or keys, then write a short personal email for each. I put the emails in Gmail as **drafts**. You read them and press send, about 5 minutes per batch of 10.
-- **Monitoring:** a scheduled task twice a week reads the replies and the F5Bot/Google alerts, labels them, drafts answers for you to approve, and sends you a summary of about 5 lines.
-- **I never send anything on my own.** A wrong cold email from a brand-new account harms the brand and the account's deliverability.
-- **The catch:** the Gmail connector in this session is connected to your **personal** Gmail, not oakhummusic@gmail.com. There are two ways to fix it:
-  - **a)** In oakhummusic@gmail.com, set up forwarding to your personal Gmail, and add oakhummusic as "Send mail as" there. I then draft from your personal inbox with oakhummusic as the sender.
-  - **b)** Connect oakhummusic@gmail.com as the Gmail connector in claude.ai settings. This is cleaner, but the sessions then lose your personal Gmail.
-- **Keep it safe and legal (EU/GDPR):**
-  - Write only to *business* addresses that are published on their site (info@, the contact page).
-  - Send ≤ 20 a day from the new account, as plain text with one link and no tracking pixels.
-  - Every email says who you are, why you're writing, and "reply 'no' and I won't write again".
-  - Keep a simple list of whom you contacted and who opted out. Never write again to anyone who said no.
-  - This is the usual "legitimate interest" basis for B2B outreach. Latvian law on this has nuances, so stick to companies, not private people.
+### What "worked" means
 
-### Reddit (I can't automate it, and shouldn't)
-- **Posting isn't possible:** Reddit now requires a reviewed application for API access (the *Responsible Builder Policy*). According to reports, it stopped accepting new applications on 31 Oct 2026. Requests to Reddit from this cloud environment are also blocked (HTTP 403).
-- **Automated posting is also a bad idea:** small instrument subreddits ban accounts for it quickly.
-- **What I do instead:**
-  - draft each post to match that sub's rules and tone, which you paste in
-  - you get reply notifications in the Reddit app
-  - F5Bot emails catch mentions anywhere on Reddit
-  - I fold those into the twice-weekly summary and suggest replies
+Per post, read 7 days after posting. A post "worked" if it clears the **bar**; "good" is what to copy.
 
-### Facebook, Instagram, YouTube
-These can only be done by hand: Meta has no API for posting in groups. I can draft the posts and the DMs to teachers.
+| Step | How it's counted | Bar | Good |
+|---|---|---|---|
+| Came | `open` with the post's UTM | 100 | 300+ |
+| Played | `first_play` ÷ `open` | 40 % | 60 % |
+| Went deeper | visits with a `feature` event (a song played, Listen, a chord sheet) ÷ `open` | 15 % | 30 % |
+| Wanted to keep it | `save_tap` ÷ `first_play` | 8 % | 15 % |
+| Signed up | `signup_done` ÷ `save_tap` | 35 % | 50 % |
+| Told us something | Feedback messages and useful comments | 5 per post | 15 |
 
-### Analytics (worth automating, read-only)
-- A weekly PostHog digest: visitors by `utm_source`, first plays, return visits and new accounts, with the post that drove them.
-- I can also set up the feedback survey in PostHog, with your OK.
+Read it as a funnel: the first step that misses its bar is the thing to fix before the next post. If people come but don't play, the landing is wrong. If they play but nobody taps Save, they got what they wanted in one visit or found nothing worth keeping; read the comments to tell which.
 
-### Your time budget with all of this in place
-About **1 hour of posting and replying per wave, plus 10 minutes twice a week** to read my summary, approve drafts and press send.
+**For the whole four weeks:**
 
-## 5. Drafts to start from
+| Number | Target | Why this one |
+|---|---|---|
+| Visitors from posts and emails | 1,000–2,000 | Enough to read the funnel per instrument |
+| First plays | 500+ | The product got used, not just seen |
+| New accounts | 40+ | The only return signal we can count |
+| Accounts seen again within 7 days | 30 % of new accounts | People came back |
+| Pieces of useful feedback | 40+ | The point of the campaign |
+| Makers who replied | 6 of 40 written to (15 %) | The usual range for honest cold email is 10–20 % |
+| Makers with a saved, shared instrument | 3 | The promise was tried for real |
 
-**r/handpan (week 1).** Check the sub's rules first, and attach the video.
+These are first guesses. After week 1, replace them with what week 1 showed and say so in this document.
 
-> **Title:** I made a free app that shows every chord your handpan scale can play, would love your honest feedback
+**Which instrument to put the next two months into** is decided by "accounts seen again within 7 days" per `utm_campaign`, not by visitors.
+
+## 4. Channels
+
+| Channel | Owner's time | What to expect | How |
+|---|---|---|---|
+| **Reddit**, one post per instrument subreddit | 1 h per post, including replies on day 1 | The best feedback per hour; tens to a few hundred visits per post | Read the sub's rules first; message the mods where self-promotion is restricted. Post from the owner's own account, in the first person, with the video uploaded natively and the link in the text. Reply to every comment on day 1. |
+| **Facebook groups** | 15 min per post, plus replies | The largest handpan and tongue drum audiences | Join a few days before posting. Ask the admin first where links need approval. By hand only: Meta has no API for groups. |
+| **Makers and shops**, cold email | 5 min per batch of 10 to read and send | 10–20 % reply; one maker who joins keeps sending new owners | `docs/maker-kit.md`. The only channel that compounds. |
+| **Teachers and creators** (mid-size YouTube and Instagram) | 5 min per batch | One mention can beat every post | Published business addresses only. Offer the links to the scales and songs they teach. |
+| **Forums** (Chiff & Fipple, Pure Ocarinas) | 20 min each | Small, high trust | Be a member first; say plainly that you made it. |
+| **Short video** (Instagram Reels, YouTube Shorts, TikTok) | 10 min per upload | Slow to start; the per-instrument clips are made for it | One clip per instrument per week, the same day as that instrument's post. |
+| **Search** | 15 min once | Slow and free: a page per tuning ("D Kurd handpan chords") | Sitemap submitted in week 0. |
+| **Show HN** | 30 min | Developers, not players: comments on the technology | Optional, after week 4. The honest angle: pitch detection in the browser, and an app that is fully usable signed out. Don't say "no build step" (there is one) or "works offline" without "for accounts". |
+| Product Hunt, paid ads | — | **Skip.** Wrong audience; no budget. | |
+
+What Claude can and can't do here: draft every post, email and reply; prepare maker emails as drafts for the owner to send; read PostHog and write the weekly review. Claude never posts or sends on its own, and posting to Reddit or Facebook groups by API is neither possible nor wise.
+
+## 5. The posts, written out
+
+Rules for all of them: first person, from the owner; the instrument's name in the title; one link, tagged; the free line in full; ask for what's wrong; no emoji; the video uploaded to the platform, not linked. Change a sentence or two per group so the posts are not identical.
+
+### 5.1 r/handpan (week 1)
+
+Video: F1 (handpan clip), or A. Link: `oakhum.com/handpan/d-kurd?utm_source=reddit&utm_medium=post&utm_campaign=handpan-202612`
+
+> **Title:** I made a free tool that shows what your handpan's scale can play: chords, songs and playing along with a guitar. Tell me what's wrong with it
 >
-> Hi all, I'm Elvis from Latvia. After getting my handpan I kept wondering what I could actually play on *my* scale, and how to jam with friends who play guitar. So I built Oakhum: pick your scale (62 of them, or enter your own notes, bottom notes included; it can also listen and work out your scale), and it shows every chord drawn on your own layout, plays arpeggios, and tells a guitarist which chords stay in tune with you.
+> Hi all. I'm Elvis, from Latvia. When I got my handpan I could play the scale up and down within a week, and then I was stuck: what can I actually play on these nine notes, and how do I join in when a friend plays guitar?
 >
-> It's free and runs in the browser, with no sign-up. Here's D Kurd: oakhum.com/handpan/d-kurd?utm_source=reddit&utm_campaign=handpan
+> So I built Oakhum. You pick your scale (62 so far), or enter your own notes, bottom notes included, or tap "Play my notes" and play each note so it works out what you have. Then it shows:
 >
-> I'm one person building this in my spare time, so I'd really value hearing what's confusing, what's wrong or what's missing. Brutal honesty welcome.
+> - every chord your scale can make, drawn on your own layout
+> - the songs your notes can play, with a tab (a D Kurd gets about twenty; nine notes are nine notes)
+> - a song's chords in order, as a playlist, if you paste its chord sheet
+> - and with "Listen" it hears a chord someone plays nearby and shows it on your pan
+>
+> It runs in the browser on your phone. Free, no sign-up to try. A free account keeps your instrument, works offline and syncs between your devices.
+>
+> Here it is on D Kurd: [link]
+>
+> I'm one person doing this in my spare time, and I'd rather hear what's confusing, wrong or missing now than later. If your scale isn't there, tell me its notes and I'll add it.
 
-**Email to a maker (week 2).** Plain text. I personalise each one.
+### 5.2 Handpan Facebook groups (week 1, two or three groups across the week)
 
-> **Subject:** A free "what can I play?" page for your [Scale] owners
+Video: A. Link: the same page with `utm_source=facebook`.
+
+> I've been playing handpan for a while without any music background, and the question I kept having was "what can I actually play on my scale?" So I made a free tool for it, and I'd like your honest opinion before I show it more widely.
+>
+> You pick your scale, or just play your notes to your phone and it works out what you have. It then shows every chord on a picture of your own pan, the songs your notes can play, and it can listen to a guitar and show you where to join in.
+>
+> It opens in the browser, free, no sign-up to try (a free account keeps your instrument and makes it work offline). This link opens a D Kurd: [link]
+>
+> What's missing? What's confusing? Is your scale there? (Admins: I asked before posting. Happy to remove it if it doesn't fit.)
+
+### 5.3 r/kalimba (week 2)
+
+Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17/songs?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612` (the kalimba's Songs tab).
+
+> **Title:** Free kalimba tabs that light up note by note, filtered to the songs your kalimba can actually play. Feedback wanted
+>
+> Hi. I'm Elvis, from Latvia. I make a free web app called Oakhum, and it now does kalimbas, so I'd like to know what kalimba players think of it.
+>
+> Tell it which kalimba you have (17 or 21 keys in C, Hugh Tracey, Sansula and others, or your own tuning; if you don't know, tap "Play my notes" and pluck each key). Then you get:
+>
+> - songs your keys can play: about ninety folk songs, children's songs and carols on a 17-key in C, each as a kalimba tab with numbers, octave dots and which thumb, lit note by note as it plays, at any speed
+> - every chord your kalimba can make, shown on the keys
+> - a tuner
+>
+> The melodies come from published scores (Wikipedia and public-domain songbooks), with the source noted for each.
+>
+> Free, no sign-up to try. A free account keeps your kalimba and your songs, and works offline.
+>
+> Here's a 17-key in C: [link] (the link opens its Songs tab)
+>
+> I'd like to hear what's wrong: is the tab the way you read tabs? Which songs are missing? Is your kalimba in the list?
+
+### 5.4 Tongue drum Facebook groups (week 2)
+
+Video: F2 or B ("Play my notes"). Link: `oakhum.com/tongue-drum/d-kurd-9?utm_source=facebook&utm_medium=post&utm_campaign=tongue-drum-202612`, or better `oakhum.com/play?…` so they start with "Play my notes".
+
+> A question for people whose tongue drum came with a pair of mallets and no instructions: do you know what notes it has?
+>
+> I made a free tool that finds out. You put your phone next to the drum and play each tongue once; it listens and works out your drum. Then it shows the chords those notes can make and the songs they can play, with a simple numbered tab.
+>
+> It opens in the browser. Free, no sign-up to try; a free account keeps your drum and works offline. [link]
+>
+> I'm one person making this, and I'd like to know whether it heard your drum correctly. If it didn't, there's a "Send feedback" button in Settings, or tell me here which drum you have.
+
+### 5.5 r/ocarina and the Pure Ocarinas community (week 3)
+
+Video: F4 or the ocarina variant of C. Link: `oakhum.com/ocarina/alto-c-12/songs?utm_source=reddit&utm_medium=post&utm_campaign=ocarina-202612`
+
+> **Title:** A free fingering chart for 12-hole ocarinas in every key, with songs that show each fingering as they play. What did I get wrong?
+>
+> Hi. I'm Elvis, from Latvia, and I make a free web app called Oakhum. It started with handpans and now covers 12-hole ocarinas (alto, soprano and bass, in every key).
+>
+> What it does for an ocarina:
+>
+> - the fingering for every note, from a published 12-hole chart (the source is named in the app; nothing is filled in from memory)
+> - about a hundred folk songs, children's songs and carols, moved into your ocarina's key, showing each note and its fingering as the song plays, at any speed
+> - chords played one note at a time, with each fingering, for playing along with a guitar
+> - a tuner
+>
+> Free, no sign-up to try. A free account keeps your ocarina and songs, and works offline.
+>
+> Alto C: [link]
+>
+> Ocarina players know fingerings far better than I do, so: are any wrong or unusual for your instrument? Are the songs in sensible keys?
+
+### 5.6 r/tinwhistle and Chiff & Fipple (week 3)
+
+Video: F5. Link: `oakhum.com/flute/tin-whistle-d/songs?utm_source=reddit&utm_medium=post&utm_campaign=flute-202612` (`utm_source=forum` on Chiff & Fipple). Be a member of the forum before posting, and post in the board for tools and resources.
+
+> **Title:** Free: 100 well-known tunes for D whistle that show each fingering as they play. Looking for corrections
+>
+> Hello. I'm Elvis, from Latvia. I make a free web app called Oakhum for people who play instruments with a fixed set of notes, and it now does the D whistle and Native American flutes.
+>
+> For the whistle: a fingering chart from a published source, and about a hundred folk tunes, children's songs and carols set for a D whistle. Each one plays at whatever speed you like and shows the note and its fingering as it goes. These are simple, well-known melodies, not session tunes with ornaments; it's for people starting out, or for playing a carol with the family.
+>
+> Free, no sign-up to try. A free account keeps your whistle and songs, and works offline.
+>
+> [link]
+>
+> I'd value corrections from people who actually play: fingerings, the second octave, keys. Native American flute players: 5 and 6-hole charts are there too, and I'd like the same from you.
+
+### 5.7 Native American flute groups (week 3)
+
+Use 5.6 with the first two paragraphs about the NAF: "5 and 6-hole flutes in every key, the fingering for every note from a published chart, and the songs your flute's notes can play". Link: `oakhum.com/flute/naf-6-a4?utm_source=facebook&utm_medium=post&utm_campaign=flute-202612`. Check on the day how many songs a NAF in A gets (a pentatonic flute plays far fewer than a whistle) and say that number, not "a hundred".
+
+### 5.8 Short video captions (each instrument's week)
+
+One per clip, the same text on Reels, Shorts and TikTok:
+
+- **Handpan (F1):** What can your handpan play? Every chord your scale can make and the songs that fit it. Free, no sign-up to try: oakhum.com
+- **Tongue drum (F2):** Play each tongue once and Oakhum works out your drum, then shows what it can play. Free: oakhum.com
+- **Kalimba (F3):** Songs your kalimba can play, in kalimba tab, lit note by note. Free, no sign-up to try: oakhum.com
+- **Ocarina (F4):** Every fingering, and songs that show each one as they play. Free: oakhum.com
+- **Tin whistle (F5):** A hundred well-known tunes for D whistle, with every fingering. Free: oakhum.com
+- **Play my notes (B):** Don't know your tuning? Play each note once. oakhum.com
+- **Songs (C):** The songs your instrument's notes can play, with the tab. oakhum.com
+
+Hashtags, three at most, the instrument's own: #handpan #handpanmusic · #kalimba #kalimbatabs · #tonguedrum · #ocarina · #tinwhistle. The profile link carries `utm_source=instagram&utm_medium=bio` (or `youtube`, `tiktok`).
+
+### 5.9 Email to a teacher or creator (weeks 2 and 3)
+
+Plain text, to a published business address, one link, personalised by Claude and sent by the owner.
+
+> **Subject:** A free page for each scale you teach
 >
 > Hi [Name],
 >
-> I'm Elvis, a handpan player from Latvia. I built Oakhum, a free browser app that shows every chord a given scale can play, drawn on the instrument's own layout, with arpeggios and play-along help for guitarists.
+> I'm Elvis, a handpan player from Latvia. I watched your [lesson / video on …] and it's the reason I'm writing to you in particular.
 >
-> Your [Scale] already has its own page: [deep link]. New owners often ask "what do I play now?", so it might be a useful link for your product page or your after-sale email. It's free, with no sign-up or ads.
+> I make Oakhum, a free web app that shows what a given instrument can play: every chord on its own layout, and the songs its notes can play, with tabs. Each scale has its own link, so for the [Scale] in your lessons it's [link].
 >
-> If a scale you build is missing, or anything is wrong, I'd love to hear it. That feedback is the main reason I'm writing.
+> If it's useful to your students, link to it wherever you like; there's nothing to sign and nothing to pay. And if you see something that's wrong or taught differently, I'd like to hear it. That's the main reason I'm writing.
 >
 > Best,
-> Elvis, Oakhum (oakhum.com)
-> P.S. If this isn't for you, just reply "no" and I won't write again.
+> Elvis · oakhum.com
+> P.S. If this isn't for you, reply "no" and I won't write again.
 
-## 6. What I couldn't check
+### 5.10 The reply that earns trust
 
-- I couldn't verify subreddit member counts or each sub's current rules, because Reddit blocks requests from this environment. Read the sidebar before each post.
-- The Reddit API dates come from news reports, not from Reddit's own help page.
-- I didn't verify whether PostHog surveys work with the app's cookieless setup. I'll check before setting one up.
+A week after each post, answer in the same thread:
 
-Sources: [Reddit Responsible Builder Policy announcement](https://r.datuan.dev/r/redditdev/comments/1oug31u/introducing_the_responsible_builder_policy_new/nobt04v) · [Reddit API changes (Unite.AI)](https://www.unite.ai/?p=478946) · [Product Hunt median launch (Indie Hackers)](https://www.indiehackers.com/post/the-median-indie-launch-last-week-got-3-upvotes-d1c2406a1f) · [GDPR and B2B cold email](https://prospeo.io/s/gdpr-cold-email-b2b) · [Pure Ocarinas community](https://pureocarinas.com/community) · [Flutopedia: NAF groups](https://flutopedia.com/roster_social.htm) · [Chiff & Fipple](https://forums.chiffandfipple.com/viewtopic.php?p=1244569)
+> Thank you for all of this. From what you told me I've changed: [1], [2], [3]. Still on the list: [4]. If you tried it last week and it got something wrong, it would help to know whether it's better now.
+
+This is the feedback loop made visible, and it is worth more than a second post.
+
+## 6. Four-week calendar
+
+About 2–3 hours of the owner's time a week. Posts go out Tuesday to Thursday; replies the same day.
+
+| Week | Mon | Tue–Thu | Fri | Ends with |
+|---|---|---|---|---|
+| **0 · Get ready** | Check §2's list. | Videos A and F1 reviewed. Tracked links made. Join the Facebook groups and forums. | Alerts and Search Console set up. | Everything in §2 that gates week 1 is done. |
+| **1 · Handpan** | Post 5.1 to r/handpan (after reading its rules). | One handpan Facebook group a day (5.2). Upload F1 as a Reel, Short and TikTok. Reply to every comment. | First read of the funnel. Fix the top two or three problems. | The week-1 numbers written into §3 in place of the guesses. |
+| **2 · Kalimba and tongue drum** | Reply 5.10 in the week-1 threads. | r/kalimba (5.3); tongue drum groups (5.4); clips F3 and F2. First batch of 10 teacher emails (5.9). | Weekly review. | A decision: do Songs or chords lead the kalimba pitch? (Read `feature: song-play` against chords.) |
+| **3 · Ocarina, whistle, flute. Makers batch 1** | Reply 5.10 in the week-2 threads. | r/ocarina and Pure Ocarinas (5.5); r/tinwhistle and Chiff & Fipple (5.6); NAF groups (5.7); clips F4 and F5. **Makers: 20 cold emails** (`docs/maker-kit.md`), 10 on Tuesday and 10 on Thursday. | Weekly review. | Maker replies answered within a day. |
+| **4 · Follow up and decide** | Reply 5.10 in the week-3 threads. | One follow-up to every maker and teacher who didn't answer, then stop. **Makers batch 2: 20 more.** The local Riga handpan community, in person. | The four-week review (§8). | A written decision on where the next two months go. |
+
+Makers are written to in week 3 and not before, for two reasons: by then the site and the makers video say the one promise, and the first weeks' fixes are in. Maker profiles and "Made by" are live (makers phase 1, merged 21 Nov), so the email offers them; codes on a printable card and scan statistics are offered only once phases 2 and 3 are merged.
+
+## 7. Email: how it's done
+
+- **What Claude does:** finds makers, shops and teachers; notes what each sells or teaches and which Oakhum links match; writes a short personal email for each; puts them in Gmail as **drafts**. The owner reads and sends, about 5 minutes per batch of 10.
+- **Claude never sends.** A wrong cold email from a new address harms the brand and the address.
+- **The address:** the Gmail connector in these sessions is the owner's personal Gmail, not oakhummusic@gmail.com. Either (a) forward oakhummusic to the personal Gmail and add it there as "Send mail as", so drafts go out as oakhummusic; or (b) connect oakhummusic as the Gmail connector. To decide in week 0.
+- **Safe and legal (EU):** business addresses published on the company's own site only; at most 20 a day; plain text, one link, no tracking pixels; every email says who is writing and why, and "reply 'no' and I won't write again"; a list of who was written to and who said no, and nobody who said no is written to again; companies only, not private people.
+
+## 8. The feedback loop
+
+**Where feedback comes in**
+
+| From | How it arrives | Where it goes |
+|---|---|---|
+| The app | Settings › Send feedback; the "it heard my instrument wrong" listening report | The feedback list in Jira |
+| The website | The request form (an instrument, a tuning, a feature) | Sanity, then Jira |
+| Posts | Comments and DMs | The owner copies the useful ones into Jira, with the post's link |
+| Email | Replies from makers and teachers | The outreach list (reply, yes, no), and Jira for anything to fix |
+| Mentions elsewhere | F5Bot and Google Alert emails | The weekly review |
+
+**Every week (Friday, 20 minutes of the owner's time):** Claude writes a review of about ten lines: the funnel per post against the bars in §3, the feedback grouped by what it's about, the three things most worth fixing, and drafts of the 5.10 replies. The owner picks what gets fixed.
+
+**What gets fixed first:** anything that stopped a first play (wrong notes heard, a tuning missing, a screen nobody understood), then anything two or more people said, then the rest.
+
+**Close the loop in public:** the reply in 5.10, a week after each post. People who see their comment acted on come back, and say so.
+
+**At four weeks, decide in writing** (add it to the end of this document): which instrument's owners came back most; whether Songs or chords led for each; whether makers replied to the promise; and what the next two months are for.
+
+## 9. What is not verified
+
+- Subreddit and group rules and sizes: Reddit blocks requests from Claude's environment. Read each sidebar before posting.
+- Whether a NAF in a given key gets enough songs to mention (5.7): check in the app on the day.
+- The site measurement in §3 does not exist yet. Until it does, only links that go straight into the app are measured.
+- The targets in §3 are guesses until week 1 replaces them.
+- Song counts in the posts were read from the app on 21 Nov 2026 (D Kurd handpan 21, 17-key kalimba in C 90, alto C ocarina 102, D whistle 103). Check them again on the day of the post.
