@@ -12,7 +12,7 @@ export const request = defineType({
     defineField({
       name: "kind",
       type: "string",
-      options: { list: [{ title: "Instrument or tuning", value: "instrument" }, { title: "Feature", value: "feature" }, { title: "Feedback (never public)", value: "feedback" }], layout: "radio" },
+      options: { list: [{ title: "Instrument or tuning", value: "instrument" }, { title: "Feature", value: "feature" }, { title: "Feedback (never public)", value: "feedback" }, { title: "Maker or shop (never public)", value: "maker" }], layout: "radio" },
       validation: (r) => r.required(),
     }),
     defineField({ name: "title", type: "string", validation: (r) => r.required().max(120) }),

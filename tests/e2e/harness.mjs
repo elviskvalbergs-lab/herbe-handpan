@@ -11,6 +11,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { LINK_FAMILIES } from '../../js/links.js';
 
 const require = createRequire(import.meta.url);
 export const { chromium } = require('playwright');
@@ -22,7 +23,8 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
 // Paths the app answers on Vercel (vercel.json rewrites). Anything else that
 // isn't a file is a 404, as it is in production: a missing picture or font
 // then fails the smoke suite instead of quietly getting the app's HTML.
-const APP_PATHS = /^\/(|play|(handpan|tongue-drum|kalimba|ocarina|flute|s)(\/.*)?)$/;
+// The families come from the app's own list, so a new instrument's links work here too.
+const APP_PATHS = new RegExp(`^/(|play|(${[...LINK_FAMILIES, 's'].join('|')})(/.*)?)$`);
 
 // The response headers production sends (vercel.json), with one change: the
 // Content-Security-Policy that is report-only there is ENFORCED here, so
@@ -41,6 +43,8 @@ export async function serveApp({ headers = {} } = {}) {
     // A test can stand in for a bad network: app.intercept(path, res) answers
     // (or delays) the request itself and returns true.
     if (app.intercept?.(path, res)) return;
+    // Vercel serves its Web Analytics script itself (build.py adds the tag): here it is an empty script.
+    if (path === '/_vercel/insights/script.js') { res.writeHead(200, { 'content-type': 'text/javascript' }).end(''); return; }
     let file = join(ROOT, path);
     if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
     if (APP_PATHS.test(path)) file = join(ROOT, 'index.html');

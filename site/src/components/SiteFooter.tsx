@@ -27,6 +27,7 @@ export function SiteFooter({ settings }: { settings: SiteSettings }) {
             <li><Link href="/#instruments">Instruments</Link></li>
             <li><Link href="/#how">How it works</Link></li>
             <li><Link href="/#faq">Questions</Link></li>
+            <li><Link href="/help">Help</Link></li>
             <li><a href={APP_URL}>Open the app</a></li>
           </ul>
           <ul className="m-0 flex list-none flex-col gap-3 p-0">

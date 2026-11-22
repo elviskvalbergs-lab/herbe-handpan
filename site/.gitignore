@@ -43,3 +43,4 @@ next-env.d.ts
 # copied from ../fonts and ../brand by scripts/sync-assets.mjs
 /public/fonts
 /public/brand
+/public/help

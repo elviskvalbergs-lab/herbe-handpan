@@ -1,6 +1,8 @@
 // Where the site and the app live. Both are plain environment variables so a
 // domain change (oakhum.com, app.oakhum.com) is a setting, not a code change.
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://oakhum-site.vercel.app").replace(/\/$/, "");
+// The fallback is the live domain, so a build without the variable still
+// writes correct canonical links, sitemap entries and Studio links.
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://oakhum.com").replace(/\/$/, "");
 /**
  * One domain (docs/free-to-play.md): the app is served on the site's own
  * domain, at /play, and its deep links (/handpan/…, /ocarina/…, /flute/…,

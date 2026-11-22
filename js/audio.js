@@ -120,11 +120,13 @@ function whenRunning(fn) {
 
 const START_OFFSET = 0.05;
 
-// Wind voices: ocarina, wooden (Native American style) flute, tin whistle.
+// Wind voices: ocarina, wooden (Native American style) flute, tin whistle,
+// recorder (a clear, steady tone: an even-harmonic-poor spectrum with a strong
+// third harmonic, a quick chiff, hardly any vibrato).
 // Each is a sustained tone with a soft breathy attack, built from a few
 // harmonics (one PeriodicWave), a little breath noise and a slow vibrato
 // that comes in after the attack. Handpan keeps its own struck sound.
-export const VOICES = ['handpan', 'tongue-drum', 'kalimba', 'ocarina', 'flute', 'whistle'];
+export const VOICES = ['handpan', 'tongue-drum', 'kalimba', 'ocarina', 'flute', 'whistle', 'recorder'];
 export function setVoice(name) { voice = VOICES.includes(name) ? name : 'handpan'; }
 
 const WIND = {
@@ -132,6 +134,7 @@ const WIND = {
   ocarina: { h: [1, 0.06, 0.035, 0.01],        a: 0.045, n: 0.05, nf: 2.2, nq: 1.2, vd: 4, vr: 5.0, g: 0.34 },
   flute:   { h: [1, 0.22, 0.12, 0.05, 0.02],   a: 0.07,  n: 0.11, nf: 1.6, nq: 0.9, vd: 6, vr: 4.6, g: 0.33 },
   whistle: { h: [1, 0.42, 0.24, 0.13, 0.07, 0.04], a: 0.025, n: 0.07, nf: 3.0, nq: 1.4, vd: 7, vr: 5.6, g: 0.3 },
+  recorder: { h: [1, 0.12, 0.26, 0.05, 0.08, 0.02], a: 0.03, n: 0.06, nf: 2.6, nq: 1.3, vd: 2, vr: 5.0, g: 0.32 },
 };
 const windWaves = {};
 let noiseBuf = null;
@@ -255,9 +258,10 @@ function playFreq(freq, startTime, dur = 0.9) {
   });
 }
 
-export function playNote(noteName) {
+// dur (seconds): how long a blown note is held; struck voices ring as they do.
+export function playNote(noteName, dur) {
   initAudio();
-  whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET));
+  whenRunning(() => playFreq(noteToFreq(noteName), ctx.currentTime + START_OFFSET, dur));
 }
 
 export function playChord(noteNames, onArp, onTogether) {

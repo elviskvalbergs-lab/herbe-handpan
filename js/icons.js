@@ -17,6 +17,7 @@ const ICON_PATHS = {
   minus: '<path d="M5 12h14"/>',
   // Lucide 0.460 (ISC licence), design-system icon set (docs/design-system.md §5.1)
   camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
   mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
@@ -69,6 +70,7 @@ const ICON_PATHS = {
   'family-kalimba': '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="12" cy="15.5" r="1.6"/><path d="M5 9h14"/><path d="M8 9V5.5"/><path d="M10.7 9V4.6"/><path d="M13.3 9V4.6"/><path d="M16 9V5.5"/>',
   'family-handpan': '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3.5"/><circle cx="19" cy="12" r=".6"/><circle cx="15.5" cy="18.06" r=".6"/><circle cx="8.5" cy="18.06" r=".6"/><circle cx="5" cy="12" r=".6"/><circle cx="8.5" cy="5.94" r=".6"/><circle cx="15.5" cy="5.94" r=".6"/>',
   'family-ocarina': '<path d="M3 13c0-4 3.6-7 8-7 4.2 0 7.5 2.6 7.9 6.2"/><path d="M18.9 12.2H22v3h-3.4c-1.3 2.4-4.3 3.8-7.6 3.8-4.4 0-8-2.3-8-6"/><circle cx="8" cy="11" r=".6"/><circle cx="12" cy="10.5" r=".6"/><circle cx="9" cy="15" r=".6"/><circle cx="13" cy="15" r=".6"/>',
+  'family-recorder': '<path d="M1.5 10.5h3l1.5-1.5h13l3 1.5v3l-3 1.5h-13l-1.5-1.5h-3z"/><path d="M7.5 10.2v1.6"/><circle cx="10.5" cy="12" r=".75"/><circle cx="12.7" cy="12" r=".75"/><circle cx="14.9" cy="12" r=".75"/><circle cx="17.1" cy="12" r=".75"/>',
   'family-flute': '<rect x="1.5" y="8" width="21" height="8" rx="4"/><circle cx="6" cy="12" r=".75"/><circle cx="8.6" cy="12" r=".75"/><circle cx="11.2" cy="12" r=".75"/><circle cx="13.8" cy="12" r=".75"/><circle cx="16.4" cy="12" r=".75"/><circle cx="19" cy="12" r=".75"/>',
 };
 

@@ -29,14 +29,19 @@
 // the score has none or it doesn't fit the notes, the one that puts the
 // fewest notes across bar lines). For the tab's bar lines (songBars).
 //
-// Pure helpers, unit-tested in tests/songs.test.mjs. The screens are in
+// The songs on few notes at the end of the list (pentatonic, or four or five
+// notes) were read the same way by scripts/song-from-score.mjs, which is the
+// reader to use for every new song; each one's bars were counted against its
+// time. Order on screen is songsInOrder, not the order here alone.
+//
+// Pure helpers, unit-tested in tests/songs.test.mjs and tests/songfit.test.mjs. The screens are in
 // js/app.js (songsSectionHtml, viewSong).
 import { noteToMidi } from './data.js';
 
 export const SONG_LICENCE = 'Melodies from Wikipedia (CC BY-SA 4.0) and public-domain songbooks';
 export const SONG_ORIGINS = {
   de: 'Germany', at: 'Austria', fr: 'France', it: 'Italy', 'gb-eng': 'England', 'gb-sct': 'Scotland', ie: 'Ireland',
-  lv: 'Latvia', us: 'USA', mx: 'Mexico', au: 'Australia', il: 'Israel', kr: 'Korea', hu: 'Hungary', cz: 'Czechia', ch: 'Switzerland',
+  lv: 'Latvia', us: 'USA', 'gb-wls': 'Wales', jp: 'Japan', cn: 'China', mx: 'Mexico', au: 'Australia', il: 'Israel', kr: 'Korea', hu: 'Hungary', cz: 'Czechia', ch: 'Switzerland',
 };
 
 export const SONGS = [
@@ -628,6 +633,64 @@ export const SONGS = [
     source: "https://fr.wikipedia.org/wiki/%C3%80_la_volette",
     notes: "F4:0.5 C4:0.5 F4:1 G4:1 A4:0.5 F4:0.5 A4:0.5 C5:0.5 A4:1 G4:1 F4:1 F4:0.5 C4:0.5 F4:1 G4:1 A4:0.5 F4:0.5 A4:0.5 C5:0.5 A4:1 G4:1 F4:1 A4:0.5 Bb4:0.5 C5:0.5 r:0.5 C5:0.5 Bb4:0.25 A4:0.25 Bb4:0.5 Bb4:0.5 G4:0.5 A4:0.5 Bb4:0.5 r:0.5 Bb4:0.5 A4:0.25 G4:0.25 A4:0.5 A4:0.5 F4:0.5 A4:0.5 G4:1 C4:1 F4:1",
   },
+  // Melodies on few notes (pentatonic, or four or five notes within an
+  // octave), so pentatonic drums, kalimbas and flutes have songs too. Read
+  // from each article's score with scripts/song-from-score.mjs.
+  {
+    id: "hot-cross-buns", title: "Hot Cross Buns", origin: "gb-eng", key: "C major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Hot_Cross_Buns_(song)",
+    notes: "G4:1 D4:1 G4:2 G4:1 D4:1 G4:2 D5:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:1 D4:1 G4:2 B4:0.5 B4:0.5 B4:0.5 B4:0.5 B4:1 A4:1 G4:0.5 A4:0.5 B4:0.5 C5:0.5 A4:2 D5:0.5 C5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.5 C5:0.5 D5:1 D4:1 G4:2",
+  },
+  {
+    id: "rain-rain-go-away", title: "Rain, Rain, Go Away", origin: "gb-eng", key: "C major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Rain_Rain_Go_Away",
+    notes: "G4:1 E4:1 G4:0.5 G4:0.5 E4:1 G4:0.5 G4:0.5 E4:0.5 A4:0.5 G4:0.5 G4:0.5 E4:1 F4:0.5 F4:0.5 D4:0.5 D4:0.5 F4:0.5 F4:0.5 D4:1 G4:0.5 F4:0.5 E4:0.5 D4:0.5 E4:0.5 C4:0.5 C4:1",
+  },
+  {
+    id: "michael-row-the-boat-ashore", title: "Michael, Row the Boat Ashore", origin: "us", key: "C major", time: "4/4", pickup: 2,
+    source: "https://en.wikipedia.org/wiki/Michael,_Row_the_Boat_Ashore",
+    notes: "C4:1 E4:1 G4:1.5 E4:0.5 G4:1 A4:1 G4:2 E4:1 G4:1 A4:4 G4:2 E4:1 G4:1 G4:1.5 E4:0.5 F4:1 E4:1 D4:2 C4:1 D4:1 E4:2 D4:2 C4:2",
+  },
+  {
+    id: "ye-banks-and-braes", title: "Ye Banks and Braes (The Banks o’ Doon)", origin: "gb-sct", key: "G major", time: "6/8", pickup: 0.5,
+    source: "https://en.wikipedia.org/wiki/The_Banks_o'_Doon",
+    notes: "D4:0.5 G4:1 G4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.5 D5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.75 A4:0.25 G4:0.5 G4:0.5 E4:0.5 D4:0.5 D4:0.5 E4:0.5 G4:0.5 A4:1 B4:0.25 A4:0.25 G4:1 G4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.5 D5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.75 A4:0.25 G4:0.5 G4:0.5 E4:0.5 D4:0.5 D4:0.5 E4:0.5 G4:0.5 G4:1 B4:0.5 D5:1 E5:0.5 D5:0.5 B4:0.5 G4:0.5 D5:1 E5:0.5 D5:0.5 B4:0.5 G4:0.5 D5:0.5 B4:0.5 G4:0.5 D5:0.5 B4:0.5 G4:0.5 E5:0.5 D5:0.5 B4:0.5 A4:1 B4:0.25 A4:0.25 G4:1 G4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.5 D5:0.5 B4:0.5 A4:0.5 G4:0.5 A4:0.5 B4:0.75 A4:0.25 G4:0.5 G4:0.5 E4:0.5 D4:0.5 D4:0.5 E4:0.5 G4:0.5 G4:1",
+  },
+  {
+    id: "suo-gan", title: "Suo Gân", origin: "gb-wls", key: "D major", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Suo_G%C3%A2n",
+    notes: "D4:1.5 E4:0.5 F#4:0.5 A4:1.5 E4:1.5 D4:0.5 F#4:0.5 E4:1.5 D4:1.5 E4:0.5 F#4:0.5 A4:1.5 E4:1 F#4:1 D4:2 D4:1.5 E4:0.5 F#4:0.5 A4:1.5 E4:1.5 D4:0.5 F#4:0.5 E4:1.5 D4:1.5 E4:0.5 F#4:0.5 A4:1.5 E4:1 F#4:1 D4:2 F#4:1.5 G4:0.5 A4:0.5 F#4:1.5 B4:1.5 G4:0.5 A4:0.5 F#4:1.5 F#4:1.5 G4:0.5 A4:0.5 F#4:1.5 D5:1.5 B4:0.5 A4:2 D4:1.5 E4:0.5 F#4:0.5 A4:1.5 E4:1.5 D4:0.5 F#4:0.5 E4:1.5 D4:1.5 E4:0.5 F#4:0.5 A4:1.5 E4:1 F#4:1 D4:2",
+  },
+  {
+    id: "a-la-claire-fontaine", title: "À la claire fontaine", origin: "fr", key: "F major", time: "2/4",
+    source: "https://de.wikipedia.org/wiki/%C3%80_la_claire_fontaine",
+    notes: "F4:1 F4:0.5 A4:0.5 A4:0.5 G4:0.5 A4:0.5 G4:0.5 F4:1 F4:0.5 A4:0.5 A4:0.5 G4:0.5 A4:1 A4:1 A4:0.5 G4:0.5 F4:0.5 A4:0.5 C5:0.5 A4:0.5 C5:1 C5:0.5 A4:0.5 F4:0.5 A4:0.5 G4:1 F4:1 F4:0.5 A4:0.5 A4:0.5 G4:0.25 F4:0.25 A4:0.5 F4:0.5 A4:1 A4:0.5 G4:0.25 F4:0.25 A4:0.5 G4:0.5 F4:1",
+  },
+  {
+    id: "zum-gali-gali", title: "Zum Gali Gali", origin: "il", key: "G minor", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Zum_Gali_Gali",
+    notes: "G4:1 G4:0.5 A4:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 A4:0.5 G4:1 G4:0.5 G4:0.5 D4:1 G4:1 G4:1 G4:0.5 A4:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 A4:0.5 G4:1 G4:0.5 G4:0.5 D4:1 G4:1 G4:0.5 Bb4:0.5 D5:1 D5:1 C5:1 Bb4:0.5 C5:0.5 D5:2 r:1 A4:0.5 Bb4:0.5 D5:1 D5:1 C5:1 Bb4:0.5 A4:0.5 G4:2 r:1 G4:0.5 Bb4:0.5 D5:1 D5:1 C5:1 Bb4:0.5 C5:0.5 D5:2 r:1 A4:0.5 Bb4:0.5 D5:1 D5:1 C5:1 Bb4:0.5 A4:0.5 G4:2 r:1 G4:1 G4:0.5 A4:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 A4:0.5 G4:1 G4:0.5 G4:0.5 D4:1 G4:1",
+  },
+  {
+    id: "mo-li-hua", title: "Mo Li Hua (Jasmine Flower)", origin: "cn", key: "C major", time: "2/2",
+    source: "https://en.wikipedia.org/wiki/Mo_Li_Hua",
+    notes: "E4:1 E4:0.5 G4:0.5 A4:0.5 C5:0.5 C5:0.5 A4:0.5 G4:1 G4:0.5 A4:0.5 G4:1 r:1 E4:1 E4:0.5 G4:0.5 A4:0.5 C5:0.5 C5:0.5 A4:0.5 G4:1 G4:0.5 A4:0.5 G4:1 r:1 G4:1 G4:1 G4:1 E4:0.5 G4:0.5 A4:1 A4:1 G4:2 E4:1 D4:0.5 E4:0.5 G4:1 E4:0.5 D4:0.5 C4:1 C4:0.5 D4:0.5 C4:2 E4:0.5 D4:0.5 C4:0.5 E4:0.5 D4:1.5 E4:0.5 G4:1 A4:0.5 C5:0.5 G4:2 D4:1 E4:0.5 G4:0.5 D4:0.5 E4:0.5 C4:0.5 A3:0.5 G3:2 A3:1 C4:1 D4:1.5 E4:0.5 C4:0.5 D4:0.5 C4:0.5 A3:0.5 G3:2",
+  },
+  {
+    id: "kagome-kagome", title: "Kagome Kagome", origin: "jp", key: "A minor", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/Kagome_Kagome",
+    notes: "A4:2 A4:1 B4:1 A4:1 A4:1 A4:1 r:1 A4:1 A4:0.5 A4:0.5 A4:1 G4:0.5 G4:0.5 A4:1 A4:0.5 G4:0.5 E4:1 r:1 A4:1 G4:1 A4:1 G4:1 A4:1 A4:0.5 G4:0.5 E4:1 r:1 A4:1 A4:1 A4:1 B4:1 A4:1 A4:1 A4:1 r:1 A4:1 G4:0.5 G4:0.5 A4:1 G4:0.5 G4:0.5 A4:1 A4:1 E4:1 r:1 A4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:1 B4:1 A4:1.5 G4:0.5 A4:1",
+  },
+  {
+    id: "toryanse", title: "Tōryanse", origin: "jp", key: "D minor", time: "4/4",
+    source: "https://en.wikipedia.org/wiki/T%C5%8Dryanse",
+    notes: "A4:2 A4:1 G4:1 A4:1 A4:0.5 G4:0.5 E4:1 r:1 Bb4:1 Bb4:0.5 Bb4:0.5 D5:1 Bb4:0.5 A4:0.5 Bb4:0.5 A4:0.5 G4:0.5 G4:0.5 A4:1 r:1 Bb4:1 Bb4:1.5 D5:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 A4:0.5 G4:0.5 G4:0.5 A4:1 r:1 F4:1.5 F4:0.5 A4:1 F4:0.5 E4:0.5 F4:0.5 E4:0.5 D4:0.5 D4:0.5 E4:1 r:1 F4:0.5 F4:1 F4:0.5 A4:0.5 A4:0.5 F4:0.5 E4:0.5 F4:0.5 E4:0.5 D4:0.5 D4:0.5 E4:1 r:1 Bb4:0.5 Bb4:0.5 Bb4:0.5 Bb4:0.5 D5:0.5 D5:0.5 Bb4:0.5 A4:0.5 Bb4:0.5 A4:0.5 G4:0.5 G4:0.5 A4:1.5 r:0.5 F4:0.5 F4:0.5 F4:0.5 F4:0.5 F4:0.5 A4:0.5 F4:0.5 E4:0.5 F4:0.5 E4:0.5 D4:0.5 D4:0.5 E4:2 r:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 A4:0.5 G4:0.5 A4:0.5 A4:0.5 A4:0.5 G4:0.5 D4:0.5 D4:0.5 E4:1 r:0.5 D4:0.5 E4:0.5 F4:0.5 G4:0.5 A4:0.5 Bb4:0.5 A4:0.5 Bb4:1 D5:1 E5:0.5 D5:0.5 Bb4:1 A4:1 A4:0.5 G4:0.5 A4:2",
+  },
+  {
+    id: "edo-komoriuta", title: "Edo Komoriuta (Edo Lullaby)", origin: "jp", key: "C major", time: "4/4",
+    source: "https://de.wikipedia.org/wiki/Edo_Komoriuta",
+    notes: "F4:2 F4:1 E4:1.5 F4:0.5 A4:1 F4:1 E4:1 r:0.5 C4:0.5 E4:0.5 F4:0.5 A4:1 F4:0.5 A4:0.5 E4:3 r:1 A3:2 B3:1 A3:0.5 B3:1 C4:0.5 E4:1 F4:1 E4:1 r:0.5 A3:0.5 B3:1 C4:1 A3:1 B3:3",
+  },
 ];
 
 // Song lists: everything, or the Christmas songs (first in the list from
@@ -638,11 +701,36 @@ export const SONG_COLLECTION_ORIGINS = ['lv'];
 
 /** The songs a filter shows: 'christmas', 'popular' (everything but the
  *  collections above; the old 'all' means the same), or 'origin:<code>'. */
-export function songsForFilter(filter, songs = SONGS) {
+export function songsForFilter(filter, songs = SONGS, { languages = [] } = {}) {
   if (filter === 'christmas') return christmasSongs(songs);
   const m = /^origin:(.+)$/.exec(filter ?? '');
   if (m) return songs.filter(s => s.origin === m[1]);
-  return songs.filter(s => !SONG_COLLECTION_ORIGINS.includes(s.origin));
+  // A collection is part of Popular where its language is spoken.
+  const home = new Set(songHomeOrigins(languages));
+  return songs.filter(s => !SONG_COLLECTION_ORIGINS.includes(s.origin) || home.has(s.origin));
+}
+
+// Order by audience (docs/songs-next.md): songs known everywhere first, then
+// the songs of the visitor's own language area, then the rest, each group in
+// the catalogue's order (the best known first).
+export const SONG_WORLD = [
+  'ode-to-joy', 'twinkle-twinkle', 'happy-birthday', 'frere-jacques', 'amazing-grace', 'silent-night',
+  'auld-lang-syne', 'londonderry-air', 'bella-ciao', 'hava-nagila', 'la-cucaracha', 'brahms-lullaby', 'joy-to-the-world',
+];
+// The countries whose songs someone who reads a language grew up with.
+export const SONG_LANGUAGE_ORIGINS = {
+  en: ['gb-eng', 'gb-sct', 'gb-wls', 'ie', 'us', 'au'], de: ['de', 'at', 'ch'], fr: ['fr'], it: ['it'], lv: ['lv'],
+  es: ['mx'], he: ['il'], ko: ['kr'], hu: ['hu'], cs: ['cz'], ja: ['jp'], zh: ['cn'],
+};
+/** The origins at home in these languages (navigator.languages: "en-GB", "lv"). */
+export function songHomeOrigins(languages = []) {
+  return [...new Set((languages ?? []).flatMap(l => SONG_LANGUAGE_ORIGINS[String(l).toLowerCase().split('-')[0]] ?? []))];
+}
+/** Songs in the order to show them to someone who reads these languages. */
+export function songsInOrder(songs = SONGS, languages = []) {
+  const world = new Set(SONG_WORLD), home = new Set(songHomeOrigins(languages));
+  const tier = s => (world.has(s.id) ? 0 : home.has(s.origin) ? 1 : 2);
+  return songs.map((s, i) => ({ s, i })).sort((a, b) => tier(a.s) - tier(b.s) || a.i - b.i).map(x => x.s);
 }
 
 export function christmasSongs(songs = SONGS) { return songs.filter(s => s.tags?.includes('christmas')); }
@@ -676,6 +764,10 @@ export function songLyrics(song, notes = songNotes(song)) {
   });
 }
 
+// The furthest a song is moved: three octaves, so the smallest pendant
+// ocarinas (two octaves above an alto) get the songs an alto plays.
+const SONG_MAX_SHIFT = 36;
+
 /** How far to move a song (semitones) so every note is one the instrument
  *  has (have: Set of MIDI numbers), or null when it can't be played. Of the
  *  moves that fit, the one with the fewest notes outside `easy` (an ocarina's
@@ -685,7 +777,7 @@ export function songShift(song, have, { easy = null } = {}) {
   const midis = songNotes(song).map(n => n.midi).filter(m => m != null);
   const uniq = [...new Set(midis)];
   let best = null;
-  for (let d = 0; d <= 24; d++) {
+  for (let d = 0; d <= SONG_MAX_SHIFT; d++) {
     for (const s of d ? [d, -d] : [0]) {
       if (!uniq.every(m => have.has(m + s))) continue;
       const hard = easy ? midis.filter(m => !easy.has(m + s)).length : 0;
@@ -696,9 +788,108 @@ export function songShift(song, have, { easy = null } = {}) {
   return best ? best.s : null;
 }
 
-/** The songs an instrument can play, each with its move: [{ song, shift }]. */
-export function playableSongs(have, songs = SONGS, { easy = null } = {}) {
-  return songs.map(song => ({ song, shift: songShift(song, have, { easy }) })).filter(x => x.shift != null);
+// Almost fits: the song moved to where the instrument has every note but one,
+// when that note comes up rarely (at most a tenth of the song's notes) and is
+// neither the first note nor the last (a tune that can't start or end isn't
+// that tune). The note is never swapped for another: the player marks it
+// "not on your instrument" and leaves the choice to the player.
+export const SONG_NEAR_SHARE = 0.1;
+
+/** A song on an instrument: { shift, missing: null } when every note is
+ *  there, { shift, missing, times } when one is not (missing: its MIDI
+ *  number after the move; times: how often it comes up), or null. Of the
+ *  near moves, the one that leaves out the fewest notes, then the smallest. */
+export function songFit(song, have, { easy = null, near = true } = {}) {
+  const shift = songShift(song, have, { easy });
+  if (shift != null) return { shift, missing: null };
+  if (!near) return null;
+  const midis = songNotes(song).map(n => n.midi).filter(m => m != null);
+  const uniq = [...new Set(midis)];
+  const first = midis[0], last = midis[midis.length - 1];
+  let best = null;
+  for (let d = 0; d <= SONG_MAX_SHIFT; d++) {
+    for (const s of d ? [d, -d] : [0]) {
+      const gone = uniq.filter(m => !have.has(m + s));
+      if (gone.length !== 1 || gone[0] === first || gone[0] === last) continue;
+      const times = midis.filter(m => m === gone[0]).length;
+      if (times > midis.length * SONG_NEAR_SHARE) continue;
+      if (!best || times < best.times) best = { shift: s, missing: gone[0] + s, times };
+    }
+  }
+  return best;
+}
+
+/** The songs an instrument can play, each with its move: [{ song, shift,
+ *  missing }]. With near: the ones that almost fit too (songFit), after the
+ *  ones that fit. */
+export function playableSongs(have, songs = SONGS, { easy = null, near = false } = {}) {
+  const all = songs.map(song => ({ song, ...(songFit(song, have, { easy, near }) ?? { shift: null }) })).filter(x => x.shift != null);
+  return near ? [...all.filter(x => x.missing == null), ...all.filter(x => x.missing != null)] : all;
+}
+
+// ── The player: loop, wait mode, a song across instruments ────────────────
+
+/** Loop: one tap sets where it starts, the next where it ends (either order),
+ *  a third clears it. loop: null | { from, to: null } | { from, to }. */
+export function songLoopTap(loop, idx) {
+  if (!loop) return { from: idx, to: null };
+  if (loop.to == null) return { from: Math.min(loop.from, idx), to: Math.max(loop.from, idx) };
+  return null;
+}
+/** Whether note i is inside a finished loop. */
+export function songInLoop(loop, i) { return !!loop && loop.to != null && i >= loop.from && i <= loop.to; }
+/** The note after idx: the loop's start after its end, null after the song's
+ *  last note. A loop still being set (no end yet) doesn't loop. */
+export function songNextIndex(idx, last, loop = null) {
+  if (loop && loop.to != null && idx >= loop.to) return loop.from;
+  return idx >= last ? null : idx + 1;
+}
+/** From idx on, the first note to wait for: rests and the note the
+ *  instrument lacks are stepped over (through the loop). null: none left. */
+export function songWaitTarget(notes, idx, loop = null) {
+  let i = idx;
+  for (let k = 0; k <= notes.length; k++) {
+    if (i == null) return null;
+    if (notes[i].midi != null && !notes[i].gone) return i;
+    i = songNextIndex(i, notes.length - 1, loop);
+  }
+  return null;
+}
+
+/** Wait mode: whether what the tuner hears is the note waited for, played
+ *  anew. reading: the tuner's { midi, stable, since, level } (js/tuner.js);
+ *  w: { at, low } since the last note counted (at: when; low: the quietest
+ *  the sound has been since). The pitch has to be within half a semitone
+ *  (any octave when anyOctave: a drum's overtone can be louder than its
+ *  note). "Anew": a note that began after the last one counted, or, for the
+ *  same note struck again while it still rings, the sound at least twice as
+ *  loud as it had faded to. Returns { heard, w }. */
+export function songWaitHeard(w, target, reading, now, { anyOctave = false, minGapMs = 150 } = {}) {
+  const level = reading?.level ?? 0;
+  const low = Math.min(w.low ?? Infinity, reading?.midi == null ? 0 : level);
+  const quiet = { heard: false, w: { at: w.at, low } };
+  if (!reading || reading.midi == null || !reading.stable || target == null) return quiet;
+  let d = reading.midi - target;
+  if (anyOctave) d -= 12 * Math.round(d / 12);
+  if (Math.abs(d) >= 0.5 || now - w.at < minGapMs) return quiet;
+  const fresh = reading.since > w.at || (level > 0 && level >= Math.max(low, 1e-4) * 2 && low < level);
+  if (!fresh) return quiet;
+  return { heard: true, w: { at: now, low: level } };
+}
+
+/** A song on several instruments, best first: fits, then almost fits, then
+ *  not. list: [{ id, name, have, easy }] → [{ id, name, fit }] (fit: songFit
+ *  or null). */
+export function songCoverage(song, list) {
+  const rank = f => (!f ? 2 : f.missing == null ? 0 : 1);
+  return list.map((x, i) => ({ id: x.id, name: x.name, fit: x.have ? songFit(song, x.have, { easy: x.easy ?? null }) : null, i }))
+    .sort((a, b) => rank(a.fit) - rank(b.fit) || a.i - b.i).map(({ i, ...x }) => x);
+}
+/** The songs that fit at least one of several instruments (near: or almost
+ *  fit one): [{ song, on: [{ id, name, fit }] }], for a list across all of
+ *  My instruments. */
+export function songsAcross(list, songs = SONGS, { near = false } = {}) {
+  return songs.map(song => ({ song, on: songCoverage(song, list).filter(x => x.fit && (near || x.fit.missing == null)) })).filter(x => x.on.length);
 }
 
 // The key a song is played in on the instrument: its written key moved by shift.

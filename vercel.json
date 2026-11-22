@@ -28,7 +28,15 @@
       "destination": "/"
     },
     {
+      "source": "/recorder/:path*",
+      "destination": "/"
+    },
+    {
       "source": "/s/:path*",
+      "destination": "/"
+    },
+    {
+      "source": "/song/:path*",
       "destination": "/"
     }
   ],

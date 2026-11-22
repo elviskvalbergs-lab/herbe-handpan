@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { checkListenFiles, listenReportIssueFields, listenReportOriginAllowed, listenReportTitle, validateListenReport } from "@/lib/listenReport";
+import { clientIp, createRateLimiter, NOT_FROM_HERE, originAllowed, TOO_MANY } from "@/lib/guard";
+import { SITE_URL } from "@/lib/site";
+import { checkListenFiles, LISTEN_REPORT_LIMITS, listenReportIssueFields, listenReportOriginAllowed, listenReportTitle, validateListenReport } from "@/lib/listenReport";
 import { attachToJiraIssue, createJiraIssue, jiraOn, jiraSettings } from "@/lib/jiraSend";
 import { writeClient } from "@/sanity/lib/writeClient";
 
@@ -8,7 +10,10 @@ import { writeClient } from "@/sanity/lib/writeClient";
 // with its recordings and the photo of the instrument, if any, and opened as a Jira issue when Jira is set up. The app
 // on oakhum.com/play posts here on the same origin; its own Vercel addresses
 // and a local build post across origins, so they get CORS headers.
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://oakhum.com";
+// A report is sent by hand after a failed setup: five in ten minutes is generous.
+const limiter = createRateLimiter(5, 10 * 60_000);
+// The files' limit plus room for the form's own framing and the meta JSON.
+const MAX_BODY = LISTEN_REPORT_LIMITS.bytes + 100_000;
 
 function cors(origin: string | null): Record<string, string> {
   return listenReportOriginAllowed(origin)
@@ -23,6 +28,13 @@ export function OPTIONS(req: Request) {
 export async function POST(req: Request) {
   const headers = cors(req.headers.get("origin"));
   const fail = (error: string, status: number) => NextResponse.json({ error }, { status, headers });
+  // Only from Oakhum's own pages (the app on this domain, its Vercel addresses, a local build).
+  if (!originAllowed(req.headers.get("origin"), req.headers.get("host"))) return fail(NOT_FROM_HERE, 403);
+  const rate = limiter.hit(clientIp(req.headers));
+  if (!rate.ok) return NextResponse.json({ error: TOO_MANY }, { status: 429, headers: { ...headers, "retry-after": String(rate.retryAfter) } });
+  // Refused before the upload is read into memory.
+  const length = Number(req.headers.get("content-length") ?? "");
+  if (Number.isFinite(length) && length > MAX_BODY) return fail("The recording is too long to send. Try again with a shorter one.", 413);
   let form: FormData;
   try { form = await req.formData(); } catch { return fail("Something went wrong reading the report. Please try again.", 400); }
   let meta: unknown = null;
@@ -60,7 +72,7 @@ export async function POST(req: Request) {
   // Jira is the to-do list; the report is already safe in Sanity if this fails.
   if (jiraOn) {
     try {
-      const studio = `${SITE}/studio/structure/listenReports;${id}`;
+      const studio = `${SITE_URL}/studio/structure/listenReports;${id}`;
       const key = await createJiraIssue(listenReportIssueFields(r, jiraSettings, { studio, recordings: assets.map((a) => a.url), photo: photoAsset?.url }, createdAt));
       await writeClient.patch(id).set({ jiraKey: key }).commit();
       await attachToJiraIssue(key, photo ? [...data, photo] : data).catch((e) => console.error("Listening report: attaching the recording to Jira failed", e));

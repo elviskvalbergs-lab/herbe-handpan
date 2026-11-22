@@ -1,6 +1,6 @@
 # The makers programme
 
-Version 1, 21 Nov 2026. **Status:** design, being built in phases (see "Build order"). Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
+Version 1, 21 Nov 2026. **Status:** all five phases are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
 
 Until now "for makers" meant a page in the website's footer with two `mailto:` buttons. This turns it into something a maker can use alone: ask for the maker role, set up a public profile, manage instruments, print a code for each one, and see how those codes are used.
 
@@ -131,6 +131,9 @@ What is kept, in full:
 - **Nothing is written on the buyer's device.** No cookie, no local storage, no identifier. Within one visit the app remembers in memory that the code was counted.
 - **The maker's own scans don't count** (the maker is signed in; the function skips the code's owner), so testing a card doesn't inflate the numbers.
 - **Limits**: a visit reports at most 500 chords and 100 songs; the log function accepts only known codes and event names.
+- **A reload or a second visit without the card's mark** counts as an open by plain link: the mark (`?via=qr`) is read once and then dropped from the address, so a link copied from the address bar never claims to be a scan.
+- **One device** counts at most 20 opens a day for one code, and can only add saves and chords for a code it opened that day or the day before.
+- **"Devices" is devices per day, added up.** The same phone on two days counts twice, because nothing is kept that could tell it is the same phone. The stats screen says so.
 - **Small numbers**: countries are shown only for a code or maker with at least 5 devices in the period, so a single buyer's country isn't singled out.
 
 **Proposed privacy notice paragraph** (the notice is website content; it needs adding there):
@@ -151,10 +154,22 @@ It is built from the app's shared parts (`uiAppBar`, `uiRow`, `uiField`, `uiShee
 - **`/makers`** rebuilt: the message, the steps, the video, the real call to action (to `/play#maker`), the directory, and the FAQ. Linked from the header, not only the footer.
 - **`/makers/<slug>`**: a maker's page: logo, name, place, story, website, and their instruments, each with the playable demo link. In the sitemap.
 - **The request form** gets the kind "Maker or shop" for people who want to talk first.
+- A maker's page shows each instrument as the app draws it (from its saved notes), with "Play it" (the code's link) and, for one of the catalogue's scales, a link to that scale's page. The pages are refreshed about hourly, so an approval or an edit shows within the hour.
+- "Report this page" opens the request form on Feedback with the page named. (In the app, the Made by sheet reports straight to the review list.)
 - Copy lives in Sanity as the site's rules require; makers' own data comes from the database (they edit it in the app), never from Sanity.
 
 ### Embed (phase 5)
-A maker's product page can show the playable picture: `<iframe src="https://oakhum.com/embed/s/7KQ2PM">` (or `/embed/handpan/d-kurd` for a catalogue scale). The embed is the site's existing demo component without the site chrome, with "Made by … · Open in Oakhum" under it. It counts as a source of its own (`via=embed`).
+A maker's product page can show the instrument, playable: the maker copies one line from the instrument's screen in the app ("For your shop page") and pastes it into their website.
+
+```
+<iframe src="https://oakhum.com/embed/s/7KQ2PM" title="D Kurd 9 by Ilze Pans, playable" width="100%" height="740" style="border:0;max-width:520px" loading="lazy"></iframe>
+```
+
+- `/embed/s/CODE` is one of the maker's instruments, drawn from its saved notes with the chords the app finds on it. `/embed/handpan/d-kurd` (any family and catalogue tuning) is for a shop that sells a standard scale and has no account.
+- It is the website's own demo (`HandpanDemo`, `WindDemo`) without the site around it: the name, "Made by …", the picture, chord buttons that play and light up, "Play it in Oakhum" (a new tab), and one line saying where it comes from.
+- An ocarina or flute shared by code shows its picture and the button; its fingerings play in the app. (Catalogue ocarinas and flutes are fully playable at `/embed/ocarina/…`.)
+- Only `/embed/…` may be framed by other sites (`frame-ancestors *` on those paths only), and the embed pages are kept out of search engines.
+- An open from an embed is counted as its own source, "On your website", the same way as any other open: a count, nothing about the visitor.
 
 ### Bulk import
 Paste, or a `.csv` file. One row per model:
@@ -169,6 +184,7 @@ Low Pygmy special,handpan,,F3,"G3 Ab3 C4 Eb4 F4 G4 Ab4 C5","C3 Eb3",111
 - `serials` is optional: a list or ranges.
 - The preview shows each row as it will be created and marks what's wrong ("no such scale: d-kurdd, did you mean d-kurd?", "G3# is not a note"). Nothing is created until every kept row is valid; bad rows can be skipped.
 - Limit: 200 rows and 2,000 serial numbers per import.
+- Each row becomes an instrument of its own under the name given, even when two rows use the same scale. Ocarinas and flutes are imported by chart (`alto-c-12`, `tin-whistle-d`), not by notes.
 
 ---
 

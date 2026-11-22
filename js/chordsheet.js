@@ -525,6 +525,65 @@ export function strikePattern({ notes, root = null, beatsPerBar = 4, beats = nul
   return { hits, reduced };
 }
 
+// The same levels on an instrument that sounds one note at a time (ocarina,
+// flute, recorder). There is no "whole chord" to strike, so a progression
+// saved at the Chord level plays as its arpeggio, and Groove's two-hand
+// pattern becomes Melody: a long root, then the other chord notes.
+export const WIND_PLAY_LEVELS = [
+  { id: 'roots', name: 'Roots' },
+  { id: 'arpeggio', name: 'Arpeggio' },
+  { id: 'groove', name: 'Melody' },
+];
+export function windPlayLevel(level) {
+  return WIND_PLAY_LEVELS.some(l => l.id === level) ? level : 'arpeggio';
+}
+
+// What to blow for one step, at a level, one note at a time:
+//   notes        the chord's notes on the instrument in playing order, the
+//                root first (ocarina-ui.js arpeggioOrder)
+//   beatsPerBar, beats (the step's length in beats), bpm
+//   level        'roots' | 'arpeggio' | 'groove' (Melody); 'chord' plays as 'arpeggio'
+// Returns { hits: [{ beat, notes: [note], len }], reduced }: beats counted
+// from 0 at the step's start, len the note's length in beats (a wind note
+// is held, not struck). Roots holds the root for each bar. Arpeggio is one
+// note a beat, the 1-2-3-2 bounce of the handpan's. Melody holds the root
+// for the first half of the bar, then steps through the other notes, a
+// different one first in each bar. More than one chord per bar or a fast
+// tempo plays fewer notes (reduced): the root, then one other note.
+export function windPattern({ notes, beatsPerBar = 4, beats = null, bpm = 80, level = 'arpeggio' }) {
+  const v = [...new Set(notes)];
+  const len = beats ?? beatsPerBar;
+  if (!v.length || len <= 0) return { hits: [], reduced: false };
+  const lvl = windPlayLevel(level);
+  const rootNote = v[0];
+  const others = v.slice(1);
+  const reduced = lvl !== 'roots' && (bpm >= FAST_BPM || len < beatsPerBar);
+  const hits = [];
+  const blow = (beat, note, l) => hits.push({ beat, notes: [note], len: l });
+  const barCount = Math.ceil(len / beatsPerBar);
+  let turn = 0; // which of the other notes Melody takes next
+  for (let b = 0; b < barCount; b++) {
+    const start = b * beatsPerBar;
+    const inBar = Math.min(beatsPerBar, len - start);
+    if (lvl === 'roots' || !others.length) { blow(start, rootNote, inBar); continue; }
+    if (reduced) {
+      const half = inBar >= 2 ? Math.floor(inBar / 2) : inBar;
+      blow(start, rootNote, half);
+      if (inBar >= 2) blow(start + half, others[turn++ % others.length], inBar - half);
+      continue;
+    }
+    if (lvl === 'groove') {
+      const hold = Math.ceil(inBar / 2);
+      blow(start, rootNote, hold);
+      for (let i = hold; i < inBar; i++) blow(start + i, others[turn++ % others.length], 1);
+      continue;
+    }
+    const order = csBounce(v.length, inBar);
+    for (let i = 0; i < inBar; i++) blow(start + i, v[order[i]], 1);
+  }
+  return { hits, reduced };
+}
+
 // Strike numbers for the pan, from the first bar of a pattern: each note
 // with the strike numbers (1, 2, … in time order; notes struck together
 // share a number) and hands that hit it. Ghost taps aren't numbered.

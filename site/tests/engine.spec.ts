@@ -9,7 +9,7 @@ describe("the site reads the app's catalogue", () => {
     expect(hp.length).toBe(62);
     expect(new Set(hp.map((t) => t.slug)).size).toBe(hp.length);
     const oc = chartTunings("ocarina");
-    expect(oc.length).toBe(72); // 12-hole (36 keys) and 6-hole pendant (36 keys)
+    expect(oc.length).toBe(180); // 12-hole, 6-hole and 4-hole pendants, 10-hole in two systems: 36 keys each
     expect(new Set(oc.map((t) => t.slug)).size).toBe(oc.length);
     expect(oc.some((t) => t.slug === "pendant-6-c-c6")).toBe(true);
     for (const t of [...hp, ...chartTunings("ocarina"), ...chartTunings("flute")]) expect(t.path).toMatch(/^\/(handpan|ocarina|flute)\/[a-z0-9-]+$/);
@@ -76,6 +76,25 @@ it("ocarinas and flutes get a playable demo: the chords of their key, as arpeggi
     expect(["flute", "whistle"]).toContain(windVoice(t));
   }
   expect(windVoice(chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!)).toBe("whistle");
+});
+
+it("recorders come from the app: every size, its chords in its own key, its fingerings and its voice", () => {
+  const rec = tuningsFor("recorder");
+  expect(rec.map((t) => t.slug)).toEqual(["soprano-baroque", "alto-baroque", "tenor-baroque", "sopranino-baroque", "soprano-german"]);
+  for (const t of rec) {
+    expect(t.path).toBe(`/recorder/${t.slug}`);
+    expect(windVoice(t)).toBe("recorder");
+    expect(windChords(t).length, t.slug).toBe(6);
+  }
+  const soprano = findTuning("recorder", "soprano-baroque")!;
+  expect(soprano.name).toBe("Soprano recorder, baroque fingering");
+  expect(soprano.notes[0]).toBe("C5");
+  expect(windChords(soprano).map((c) => c.short)).toEqual(["C", "Dm", "Em", "F", "G", "Am"]);
+  const alto = findTuning("recorder", "alto-baroque")!;
+  expect(alto.notes[0]).toBe("F4");
+  expect(windChords(alto).map((c) => c.short)).toEqual(["F", "Gm", "Am", "B♭", "C", "Dm"]);
+  const f = windChords(alto)[0];
+  expect(windFingering(alto, f.arpeggio[0])).toMatch(/class="fingering[^"]* is-flute/);
 });
 
 it("a wind instrument's chords are spelled as its key: F#m on a D whistle", () => {

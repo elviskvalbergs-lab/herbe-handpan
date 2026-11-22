@@ -25,7 +25,16 @@ export const INSTRUMENT_FAMILIES = [
   { id: 'kalimba', name: 'Kalimba' },
   { id: 'ocarina', name: 'Ocarina' },
   { id: 'flute', name: 'Flute' }, // offered when js/charts.js has a sourced flute chart
+  { id: 'recorder', name: 'Recorder' },
 ];
+
+// Flutes and recorders are tubes: drawn as one, holes counted from the
+// mouthpiece down. An ocarina is a vessel.
+export function isTubeFamily(family) { return family === 'flute' || family === 'recorder'; }
+// What to call a one-note instrument in a sentence.
+export function windWord(inst) {
+  return inst?.family === 'recorder' ? 'recorder' : inst?.family === 'flute' ? 'flute' : 'ocarina';
+}
 
 export const BUILD_STAGES = [
   { id: 'design', name: 'Design' },

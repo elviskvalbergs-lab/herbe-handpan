@@ -1,7 +1,19 @@
 # Listen: join in with someone playing nearby
 
-**Status: built** (status line added 21 Nov 2026). The owner approved this design ("Owner's decisions" below) and Listen is in the app: Chords › Listen, `js/listen-audio.js` and `js/listen-detect.js`, with the `listen` deep-link tab. The document is kept as the design record; "Phase 1 · What exists" describes the app before Listen, and "Open questions" may already be answered in the code. What the app does today is in `docs/design-system.md`.
+**Status: step 1 of 7 is built; steps 2–7 are parked.** This is the design document the owner reviewed (decisions in "Owner's decisions" below). Step 1 is in the app: Chords › Listen, `js/listen-audio.js` and `js/listen-detect.js`, with the `listen` deep-link tab. "Phase 1 · What exists" describes the app before Listen, and "Open questions" may already be answered in the code. What the app does today is in `docs/design-system.md`.
 Wireframes: `docs/listen-wireframes.html` (open it in a browser). Spike: `spikes/listen/`.
+
+| | What | Status |
+|---|---|---|
+| 1 | **One chord, shown on my instrument**: Chords › Listen on every instrument names the chord someone plays nearby (sure / likely / unsure, the second guess, the notes this instrument lacks) and keeps the chords heard so far as chips. Settings › Listen debug. "Send us the recording" (the listening report). | **Built** |
+| 2 | Single notes and melody | Parked |
+| 3 | Song timeline and key | Parked |
+| 4 | Loop and saving as a progression | Parked |
+| 5 | Check and edit, then Play along | Parked |
+| 6 | Notes that fit the song on one-note instruments | Parked |
+| 7 | Recordings and song files | Parked |
+
+Parked means designed below but not built, and not to be built until people use step 1 enough to justify it (the outside-in review's recommendation, November 2026). So today **Listen does not follow a song and there is no play-along**: everything below about "Follow a song", the timeline, the loop and "Play along" describes the parked steps. Texts that promise Listen to users (the `/listen` link's preview card in `js/links.js`, the website) must describe step 1 only.
 
 The feature: the app listens to someone playing nearby (guitar, piano, another handpan), works out the notes and chords, and helps me join in on the instrument I have open (handpan, ocarina, flute; later kalimba, tongue drum).
 
@@ -202,9 +214,9 @@ mic ─▶ audio pipeline ─▶ detection ─▶ song analysis ─▶ Listen vi
 - **Each chord**: sure / likely / unsure, from how well it fits, how far ahead of the next guess it is, and how steadily it held while it rang (`listenTracker`). Shown as a three-step bar with the word under the chord name; unsure chords show the root with "?" when the root is clear, and the second guess ("or Cmaj7?") when not sure.
 - **Overall**: "Heard clearly" / "Mostly clear" / "Hard to hear: ask them to play it again, closer to the phone": the chords' confidence weighted by how long each was heard (`listenOverallConfidence`). Step 4 adds whether the loop repeated the same way.
 
-## Implementation plan (after approval)
+## Implementation plan
 
-Each step is a pull request, smallest useful version first:
+Step 1 is built; steps 2–7 are parked (see the status table at the top). Each step is a pull request, smallest useful version first:
 1. **Single chord, shown on my instrument** (case a) — **built** (`js/listen-detect.js`, `js/listen-audio.js`, Chords › Listen on handpan, ocarina and flute, Settings › Listen debug; `tests/listen.test.mjs`): audio pipeline, `listen-detect.js` (chroma, templates, tracker), the Now card on the shared Chords layout for handpan and ocarina, privacy note and mic flow, and the **debug view**. Unit tests: chord matching on synthetic chroma, closest version on D Kurd 9, D Celtic Minor 9, a custom layout with bottom notes, and the 12-hole alto C ocarina.
 2. **Single notes** (case d): note mode with YIN, last notes row, likely scale. Tests: note naming, chord/notes decision.
 3. **Song timeline and key** (case b, Listen phase): `listen-song.js` timeline, key with confidence, uncertainty and the Correct sheet. Tests: key detection on chord histories (incl. relative keys and a key change).

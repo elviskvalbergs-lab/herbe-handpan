@@ -8,6 +8,7 @@
 import { createClient } from "next-sanity";
 import { apiVersion, dataset, projectId, writeToken } from "../src/sanity/env";
 import * as seed from "../src/content/seed";
+import * as before from "./seed-before-2026-11-21";
 import { toBlocks } from "../src/sanity/lib/blocks";
 
 // Production builds only: previews share the dataset, so a pull request's
@@ -19,7 +20,53 @@ type Fix = { name: string; run: () => Promise<string> };
 
 const OLD_OCARINA_TEXT = "The app also designs one from a scale: chambers, hole sizes and the clay's shrinkage. Then tune it hole by hole with the built-in tuner.";
 
+// The makers page before the makers programme (2026-11-21): what each text
+// read when the page's buttons were emails. Only texts that still read
+// exactly like this are replaced.
+const OLD_MAKERS = {
+  heroCta: "Tell us about your instruments",
+  howTitle: "One link in the box",
+  ctaText: "Write to us about your instruments and scales. We'll help you set up your first ones, and we'd like to hear what would help your buyers.",
+  steps: ["Set it up once", "Put it in the case", "One tap for the buyer"],
+  offer: ["A page for every scale you sell", "Your own tunings", "Handpans, kalimbas, flutes and more", "Works on any phone"],
+  brandQuestion: "Can it show my brand or my shop?",
+  seoDescription: "Help every buyer keep playing the instrument you made: a QR code or NFC tag in the box opens it on their phone with every chord. Free.",
+};
+const NEW_MAKER_FIELDS = [
+  "heroNote", "talkCta", "directoryTitle", "directoryText", "directoryJoinTitle", "directoryJoinText",
+  "makerInstrumentsTitle", "makerInstrumentsText", "makerPlayCta", "makerTuningLink", "makerNoInstruments", "makerReport", "makerJoinText",
+] as const;
+
 const FIXES: Fix[] = [
+  {
+    // The makers programme (docs/makers-programme.md in the repository root;
+    // owner, 2026-11-21): the page's buttons open the app on "Create your
+    // maker page" instead of an email, so its words say so; the directory
+    // and the maker pages get their words. A text edited in the Studio stays.
+    name: "2026-11-21-makers-programme",
+    async run() {
+      type Doc = { heroCta?: string; howTitle?: string; ctaText?: string; steps?: { title?: string }[]; offer?: { title?: string }[]; faqs?: { question?: string }[]; seo?: { description?: string } } & Record<string, unknown>;
+      const doc = await client.fetch<Doc | null>(`*[_id == "makersPage"][0]`);
+      if (!doc) return "no makers page";
+      const m = seed.makers;
+      const set: Record<string, unknown> = {};
+      const key = () => Math.random().toString(36).slice(2, 10);
+      const keyed = <T extends object>(list: T[] = []) => list.map((x) => ({ _key: key(), ...x }));
+      const titles = (list?: { title?: string }[]) => (list ?? []).map((x) => x.title).join("|");
+      if (doc.heroCta === OLD_MAKERS.heroCta) set.heroCta = m.heroCta;
+      if (doc.howTitle === OLD_MAKERS.howTitle) set.howTitle = m.howTitle;
+      if (doc.ctaText === OLD_MAKERS.ctaText) set.ctaText = m.ctaText;
+      if (titles(doc.steps) === OLD_MAKERS.steps.join("|")) set.steps = keyed(m.steps);
+      if (titles(doc.offer) === OLD_MAKERS.offer.join("|")) set.offer = keyed(m.offer);
+      // The questions: replaced as a set only while "Can it show my brand?" is still there with its old five.
+      if (doc.faqs?.length === 5 && doc.faqs.some((f) => f.question === OLD_MAKERS.brandQuestion)) set.faqs = keyed(m.faqs);
+      if (doc.seo?.description === OLD_MAKERS.seoDescription) set["seo.description"] = m.seo!.description;
+      for (const f of NEW_MAKER_FIELDS) if (!doc[f]) set[f] = m[f];
+      if (!Object.keys(set).length) return "left as edited in the Studio";
+      await client.patch("makersPage").set(set).commit();
+      return `set ${Object.keys(set).join(", ")}`;
+    },
+  },
   {
     // Building ocarinas is for chosen accounts only (profiles.can_build), so
     // the website no longer offers it (owner's decision, 2026-11-17).
@@ -161,6 +208,45 @@ const FIXES: Fix[] = [
     },
   },
   {
+    // The recorder is in the app (outside-in review, 2026-11-21): its page is
+    // created if it isn't there, and the texts that named it as "next" or
+    // listed the instruments change only while they still read as the
+    // starting content had them.
+    name: "2026-11-21-recorder-available",
+    async run() {
+      const start = seed.instruments.find((i) => i._id === "instrument-recorder")!;
+      const notes: string[] = [];
+      const tx = client.transaction();
+      const doc = await client.fetch<Record<string, unknown> | null>(`*[_id == "instrument-recorder"][0]`);
+      if (!doc) {
+        tx.createIfNotExists({ ...start, _type: "instrument", slug: { _type: "slug", current: start.slug }, faqs: (start.faqs ?? []).map((f, i) => ({ _key: `k${i}`, ...f })) });
+        notes.push("created instrument-recorder");
+      } else if (doc.status === "soon" && doc.family === "none") {
+        const set: Record<string, unknown> = { family: "recorder", status: "available" };
+        for (const key of ["tuningsLine", "title", "intro", "featuredTunings", "playAlongTitle", "playAlongText", "ctaTitle", "ctaText"] as const) {
+          const v = doc[key];
+          if (v == null || (Array.isArray(v) && !v.length)) set[key] = start[key];
+        }
+        if (!(doc.faqs as unknown[] | undefined)?.length) set.faqs = (start.faqs ?? []).map((f, i) => ({ _key: `k${i}`, ...f }));
+        tx.patch("instrument-recorder", (p) => p.set(set));
+        notes.push(`recorder page available; filled ${Object.keys(set).join(", ")}`);
+      } else notes.push("recorder page left as edited in the Studio");
+      const OLD: Record<string, string> = {
+        "feature-more": "Recorder is next. Vote for what you play.",
+        "feature-instruments": "Every handpan, tongue drum, kalimba, ocarina and flute you own, with its exact setup, one tap apart.",
+        "feature-fingerings": "Ocarina and flute fingerings for every note, from published charts.",
+      };
+      const docs = await client.fetch<{ _id: string; text?: string }[]>(`*[_id in $ids]{_id, text}`, { ids: Object.keys(OLD) });
+      for (const d of docs) {
+        if (d.text !== OLD[d._id]) continue;
+        tx.patch(d._id, (p) => p.set({ text: seed.features.find((f) => f._id === d._id)!.text }));
+        notes.push(d._id);
+      }
+      await tx.commit();
+      return notes.join("; ");
+    },
+  },
+  {
     // The makers video on /makers (owner, 2026-11-19): its title and text,
     // filled only while the fields are empty.
     name: "2026-11-19-makers-video",
@@ -279,6 +365,67 @@ const FIXES: Fix[] = [
       const page = seed.pages.find((p) => p._id === "page-privacy")!;
       await client.patch("page-privacy").set({ body: toBlocks(page.body), updated: page.updated }).commit();
       return "privacy notice updated";
+    },
+  },
+  {
+    // The copy review of 2026-11-21: the home page says what Oakhum is and
+    // leads with "Play my notes" and songs, features carry the app's own
+    // names, the ocarina page names the 6-hole pendant, and the privacy page
+    // covers measurement on the website. Every field is compared with the
+    // starting content as it was before (scripts/seed-before-2026-11-21.ts):
+    // it changes only while it still reads exactly as it did then, and new
+    // fields are filled only while empty, so Studio edits stay.
+    name: "2026-11-21-copy-review",
+    async run() {
+      const tx = client.transaction();
+      const notes: string[] = [];
+      // Arrays of objects carry Sanity's _key: compared without, written with.
+      const plain = (v: unknown): unknown => (Array.isArray(v) ? v.map((x) => (x && typeof x === "object" ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== "_key" && k !== "_type")) : x)) : v);
+      const same = (a: unknown, b: unknown) => JSON.stringify(plain(a) ?? null) === JSON.stringify(plain(b) ?? null);
+      const keyed = (v: unknown): unknown => (Array.isArray(v) ? v.map((x, i) => (x && typeof x === "object" ? { _key: `r${i}`, ...x } : x)) : v);
+      // What to set on a document: fields whose starting text changed, where the live text is still the old one (or missing).
+      const changes = (doc: Record<string, unknown>, was: Record<string, unknown>, now: Record<string, unknown>) => {
+        const set: Record<string, unknown> = {};
+        for (const key of Object.keys(now)) {
+          if (key.startsWith("_") || key === "slug" || same(was[key], now[key])) continue;
+          if (doc[key] == null || same(doc[key], was[key])) set[key] = keyed(now[key]);
+        }
+        return set;
+      };
+      const apply = (id: string, set: Record<string, unknown>) => {
+        if (!Object.keys(set).length) return;
+        tx.patch(id, (p) => p.set(set));
+        notes.push(`${id}: ${Object.keys(set).join(", ")}`);
+      };
+
+      const home = await client.fetch<Record<string, unknown> | null>(`*[_id == "homePage"][0]`);
+      if (home) apply("homePage", changes(home, before.home as Record<string, unknown>, seed.home as Record<string, unknown>));
+      const settings = await client.fetch<Record<string, unknown> | null>(`*[_id == "siteSettings"][0]`);
+      if (settings) apply("siteSettings", changes(settings, before.settings as Record<string, unknown>, seed.settings as Record<string, unknown>));
+
+      const ids = [...seed.instruments, ...seed.features].map((d) => d._id);
+      const docs = await client.fetch<Record<string, unknown>[]>(`*[_id in $ids]`, { ids });
+      const old = new Map<string, Record<string, unknown>>([...before.instruments, ...before.features].map((d) => [d._id, d as Record<string, unknown>]));
+      for (const now of [...seed.instruments, ...seed.features] as Record<string, unknown>[]) {
+        const doc = docs.find((d) => d._id === now._id);
+        const was = old.get(now._id as string);
+        if (doc && was) apply(now._id as string, changes(doc, was, now));
+      }
+      // New in the app since the list was written.
+      const songs = seed.features.find((f) => f._id === "feature-songs")!;
+      tx.createIfNotExists({ _type: "feature", ...songs });
+      notes.push("feature-songs");
+
+      // The privacy page: replaced only while it reads exactly as it did.
+      const page = seed.pages.find((p) => p._id === "page-privacy")!;
+      const wasPage = before.pages.find((p) => p._id === "page-privacy")!;
+      const live = await client.fetch<{ t?: string[] } | null>(`*[_id == "page-privacy"][0]{"t": body[].children[].text}`);
+      if (live && JSON.stringify(live.t ?? []) === JSON.stringify((wasPage.body as { text: string }[]).map((b) => b.text))) {
+        tx.patch("page-privacy", (p) => p.set({ body: toBlocks(page.body), updated: page.updated }));
+        notes.push("page-privacy");
+      }
+      await tx.commit();
+      return notes.join("; ") || "left as edited in the Studio";
     },
   },
 ];

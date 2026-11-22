@@ -30,7 +30,7 @@ if os.environ.get('DATABASE_URL'):
 css = read('css/fingering.css') + '\n' + read('styles.css') + '\n' + read('css/pan-drawing.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/harmony.js', 'js/songs.js', 'js/scalefinder.js', 'js/setup.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/tonguedrums.js', 'js/kalimbas.js', 'js/layoutfamilies.js', 'js/links.js', 'js/makers.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/makers-ui.js', 'js/app.js']
+js_files = ['js/data.js', 'js/features.js', 'js/helpdoc.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/harmony.js', 'js/songs.js', 'js/scalefinder.js', 'js/setup.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/tonguedrums.js', 'js/kalimbas.js', 'js/layoutfamilies.js', 'js/links.js', 'js/makers.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/makers-ui.js', 'js/app.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -65,6 +65,14 @@ _sentry_env = os.environ.get('VERCEL_ENV') or 'development'
 _sentry_release = 'oakhum-app@' + (os.environ.get('VERCEL_GIT_COMMIT_SHA') or 'local')[:12]
 _sentry_traces = '1.0' if _sentry_env == 'development' else '0.1'
 
+# The help articles (help/en/*.md) go into the page, so the help sheet opens
+# with no connection (js/helpdoc.js HELP_BUNDLE; docs/help-centre.md).
+import json
+_help_dir = os.path.join(ROOT, 'help', 'en')
+_help = {f[:-3]: read(os.path.join('help', 'en', f)) for f in sorted(os.listdir(_help_dir)) if f.endswith('.md')}
+assert 'const HELP_BUNDLE = null;' in js_bundle, 'js/helpdoc.js must declare HELP_BUNDLE'
+js_bundle = js_bundle.replace('const HELP_BUNDLE = null;', 'const HELP_BUNDLE = ' + json.dumps(_help, ensure_ascii=False).replace('</', '<\\/') + ';')
+
 # The offline cache's version: a hash of everything in the page, so each
 # build gets a fresh service worker and precache (sw.js?v=…, js/offline.js).
 import hashlib
@@ -88,11 +96,11 @@ html = f'''<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Oakhum</title>
-  <meta name="description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina or flute you own. Free, in your browser.">
+  <meta name="description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina, flute or recorder you own. Free, in your browser.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Oakhum">
   <meta property="og:title" content="Oakhum">
-  <meta property="og:description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina or flute you own. Free, in your browser.">
+  <meta property="og:description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina, flute or recorder you own. Free, in your browser.">
   <meta property="og:image" content="/og/app.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">
@@ -121,6 +129,7 @@ html = f'''<!DOCTYPE html>
     }};
   </script>
   <script src="https://js-de.sentry-cdn.com/61ab240ada1884d0c6ce945b07d50e33.min.js" crossorigin="anonymous"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
   <link rel="preload" href="/fonts/oakhum-text-400.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/oakhum-text-600.woff2" as="font" type="font/woff2" crossorigin>
   <style>

@@ -16,7 +16,7 @@ Design brief for the ocarina work: `docs/ocarina-mode.md`. Read it before starti
 
 ## Scope
 - Don't change existing handpan behaviour unless the current phase says so.
-- Progressions, chord-sheet import, the play levels from the brief's last two sections and Songs to learn (folk melodies in `js/songs.js`, each read from a published score with its source and licence noted) are built (at the owner's request). The rest of the songs project (MusicXML/MIDI import, a large song catalogue) is still for later: don't build it unless asked. Melodies follow the same rule as fingering charts: from a published source, never from memory.
+- Progressions, chord-sheet import, the play levels from the brief's last two sections (on one-note instruments as Roots, Arpeggio and Melody: `windPattern` in `js/chordsheet.js`) and Songs to learn (folk melodies in `js/songs.js`, each read from a published score with its source and licence noted) are built (at the owner's request). The rest of the songs project (MusicXML/MIDI import, a large song catalogue) is still for later: don't build it unless asked. Melodies follow the same rule as fingering charts: from a published source, never from memory.
 - If anything in the brief conflicts with the code, stop and ask rather than guessing.
 
 ## Design consistency (reuse, don't copy)
@@ -29,12 +29,18 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - **Data from a published source** (see Data and database): its tunings/scales or fingering charts, with the source URL in the data file.
 - **Its picture and its fingerings or strike map**: the only instrument-specific UI. Everything else plugs into the shared parts.
 - **Its brand picture**: a 512 × 512 transparent WebP in `brand/instruments/` in the same style as the others (see `docs/design-system.md` §0), shown on its setup tile (`SETUP_TILES` in `js/app.js`) and in the website's instrument list (`site/src/lib/pictures.ts`).
-- **App, the same screens as every other instrument**: the beginner setup (default "Play my notes": the app listens and works out the tuning; second "I know my scale/key"; details only behind "Show all"), the same four tabs (`instrumentTabs`: Chords, Songs, Playlists and its own), Chords (`chordsScreenHtml` / `chordCardHtml` / `chordRowHtml`), Songs to learn, Playlists (with chord sheets), Listen, Save (through the shared save sheet, so it syncs and works offline for accounts), Share, deep links in `js/links.js` (`/<family>/<slug>[/tab[/chord]]`) and a preview image under `og/`.
+- **App, the same screens as every other instrument**: the beginner setup, one set of steps in one frame (struck instruments: default "Play my notes", where the app listens and works out the tuning, second "I know my scale/key"; wind instruments, whose fingerings come from their type's published chart: "Which one do you have?", then "Do you know its key?", with "I don't know: listen" and "play it my own way" beside it; details only behind "Show all"), the same four tabs (`instrumentTabs`: Chords, Songs, Playlists and its own), Chords (`chordsScreenHtml` / `chordCardHtml` / `chordRowHtml`), Songs to learn, Playlists (with chord sheets), Listen, Save (through the shared save sheet, so it syncs and works offline for accounts), Share, deep links in `js/links.js` (`/<family>/<slug>[/tab[/chord]]`) and a preview image under `og/`.
+- **Its family everywhere it is listed**: `INSTRUMENT_FAMILIES` (`js/instruments.js`), `LINK_FAMILIES` / `LINK_TABS` (`js/links.js`), the rewrites in `vercel.json`, the matcher in `middleware.js`, `APP_PAGES` in `sw.js`, `APP_PATHS` in `site/next.config.ts`, and the `Family` type, schema list and seed document on the website. A one-note instrument also goes into the setup (`SETUP_WIND_WORDS`, `SETUP_WIND_TYPES`), `PLAY_POPULAR`, and `isTubeFamily` / `windWord` if it is a tube.
 - **Sound**: a voice in `js/audio.js`. Instruments that sound one note at a time play chords as arpeggios (as the ocarina and flute do).
-- **Website, the same pages as every other instrument**: its instrument page and one page per tuning (`site/src/app/(site)/instruments/[slug]/…`), with the **playable demo**: the instrument's own picture from the app's engine, chord buttons that play the chord with the app's sound and light the notes/fingerings, exactly as the handpan demo does. Its Sanity `instrument` document (copy, FAQ, status "available"), and it appears in the home page list, the sitemap and the request form.
+- **Website, the same pages as every other instrument**: its instrument page and one page per tuning (`site/src/app/(site)/instruments/[slug]/…`), with the **playable demo**: the instrument's own picture from the app's engine, chord buttons that play the chord with the app's sound and light the notes/fingerings, exactly as the handpan demo does. Its Sanity `instrument` document (copy, FAQ, status "available"; written in `site/src/content/seed.ts` and created in the live content by a named fix in `site/scripts/content-fixes.ts`, which the production build runs once), and it appears in the home page list, the sitemap and the request form.
 - **Makers**: the family is in `MAKER_FAMILIES` (`js/makers.js`) and in the `makers.families` check of a new migration, so makers can say they make it (a test compares the list with the link families).
 - **Tests**: data round-trips (every tuning has a link, `parseLink(linkFor(x))`), chords found on at least one real tuning, the site's engine tests for the new family.
 - **Docs**: `docs/design-system.md` (anything new in the shared patterns) and this checklist if something was missing.
+
+## Makers and shops
+- The design is `docs/makers-programme.md`; read it before changing anything for makers. Makers and shops are one of the two public audiences (the other is players). The clay ocarina builder (`profiles.can_build`) is internal and is never offered to makers.
+- Who made an instrument is only ever what the server says for its code (`open_shared_instrument`). Never read a maker from shared data or from a link.
+- Scan counts are counts: no cookies, no stored identifiers, no IP addresses. Anything that would identify a buyer needs the owner's decision first.
 
 ## Docs
 - Every document in `docs/` has a **status line** directly under its title, one of: **current** (describes the product or the plan as it is now; keep it true), **plan** (agreed or proposed, not done yet: say what is and isn't built), **built** (a design record of something that has shipped; the code wins where they differ) or **history** (kept for the record; don't work from it). A document with mixed parts says which part is which.
@@ -42,10 +48,16 @@ Every instrument gets the same experience, in the app and on the website. A new 
 - One topic, one document: merge into the existing document instead of adding a second version next to it. How Oakhum is described (names of features, what is free, tone) comes from `docs/messaging.md`; the website copy, videos and posts follow it.
 - The clay ocarina builder is an internal tool: it does not appear in marketing copy, videos or the maker kit.
 
-## Makers and shops
-- The design is `docs/makers-programme.md`; read it before changing anything for makers. Makers and shops are one of the two public audiences (the other is players). The clay ocarina builder (`profiles.can_build`) is internal and is never offered to makers.
-- Who made an instrument is only ever what the server says for its code (`open_shared_instrument`). Never read a maker from shared data or from a link.
-- Scan counts are counts: no cookies, no stored identifiers, no IP addresses. Anything that would identify a buyer needs the owner's decision first.
+## Help and docs
+The help centre (oakhum.com/help, the app's Help sheet, and the exports an AI assistant reads) is built from `help/en/*.md` and the feature registry `js/features.js`. Design: `docs/help-centre.md`.
+- Every pull request that adds, renames, moves or removes something a user sees updates, in the same pull request: its entry in `js/features.js`, its help article (new feature: new article or a new `##` section; removed feature: remove both), and the article's `verified` date once you have re-read it against the running app.
+- Names live in one place. Articles never spell a tab, button or feature name: they write `{{id}}` and `js/features.js` holds the text exactly as the app shows it.
+- Never describe a screen you have not opened. Walk the built app (`python3 build.py`, served with the deep-link fallback) before writing or re-verifying an article.
+- Pictures are made by `node scripts/help-screenshots.mjs` from `help/screenshots.json`, never by hand. Re-run it when a pictured screen changes.
+- Anchors (`{#like-this}`) and article ids are permanent: they are links on other sites and citation ids for an assistant. Reword a heading freely; keep its anchor.
+- Help never states a tuning's notes, a fingering or a chord's notes: it links into the app, where that data comes from published sources.
+- No public help for the clay ocarina builder (internal).
+- `node --test` (`tests/help.test.mjs`) and `site`'s `pnpm test` fail when any of this is out of step.
 
 ## Data and database
 - Database changes are additive only: new tables, columns, functions or policies, never altering or dropping existing ones. Write them as new SQL files under `supabase/migrations/` (`YYYYMMDD_short_name.sql`); the build applies them automatically (`supabase/migrate.py`, see `supabase/README.md`). Never edit a migration file after it has been merged: add a new one. Never ask for, print or commit the database connection string or any Supabase secret key; it lives only in Vercel's environment variables.
