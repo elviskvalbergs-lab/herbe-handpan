@@ -39,7 +39,7 @@ describe("the site's words", () => {
 });
 
 it("an app link's canonical page exists on the site: the same instrument slugs", () => {
-  const paths: Record<string, string> = { handpan: "/handpan/d-kurd", "tongue-drum": "/tongue-drum/d-kurd-9", kalimba: "/kalimba/c-major-17", ocarina: "/ocarina/alto-c-12", flute: "/flute/tin-whistle-d" };
+  const paths: Record<string, string> = { handpan: "/handpan/d-kurd", "tongue-drum": "/tongue-drum/d-kurd-9", kalimba: "/kalimba/c-major-17", ocarina: "/ocarina/alto-c-12", flute: "/flute/tin-whistle-d", recorder: "/recorder/soprano-baroque" };
   for (const doc of seed.instruments) {
     const header = (linkSearchHeaders(paths[doc.family]) as { link?: string }).link ?? "";
     expect(header).toContain(`https://oakhum.com/instruments/${doc.slug}/`);

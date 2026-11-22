@@ -43,6 +43,8 @@ export async function serveApp({ headers = {} } = {}) {
     // A test can stand in for a bad network: app.intercept(path, res) answers
     // (or delays) the request itself and returns true.
     if (app.intercept?.(path, res)) return;
+    // Vercel serves its Web Analytics script itself (build.py adds the tag): here it is an empty script.
+    if (path === '/_vercel/insights/script.js') { res.writeHead(200, { 'content-type': 'text/javascript' }).end(''); return; }
     let file = join(ROOT, path);
     if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
     if (APP_PATHS.test(path)) file = join(ROOT, 'index.html');
