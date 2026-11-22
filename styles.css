@@ -1989,3 +1989,16 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .maker-review-story { color: var(--text-2); font-size: var(--fs-13); line-height: var(--lh-13); white-space: pre-line; }
 .maker-review-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
 .ed-card[hidden] { display: none; }
+/* Makers, phase 2: instruments, codes, the printed card, importing a list */
+.maker-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.maker-code-card { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+.maker-code { font: var(--fw-bold) var(--fs-24)/var(--lh-24) ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.12em; color: var(--text-1); }
+.maker-code-url { font: var(--fs-13)/var(--lh-13) ui-monospace, Menlo, Consolas, monospace; color: var(--text-2); word-break: break-all; margin-bottom: var(--space-1); }
+.maker-code-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.row.is-retired .row-title { color: var(--text-3); text-decoration: line-through; }
+.row.is-bad .row-lead { color: var(--danger); }
+.maker-card-preview { display: flex; justify-content: center; align-items: center; min-height: 120px; padding: var(--space-3); margin-bottom: var(--space-4); background: var(--qr-bg); border-radius: var(--r-sm); }
+.maker-card-preview svg { width: 100%; max-width: 340px; height: auto; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+.maker-steps { margin: var(--space-3) 0; padding-left: var(--space-5); color: var(--text-2); font-size: var(--fs-13); line-height: var(--lh-13); }
+.maker-steps li + li { margin-top: var(--space-1); }
+.input.maker-import-text { min-height: 160px; font: var(--fs-13)/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; }

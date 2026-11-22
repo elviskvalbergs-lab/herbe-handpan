@@ -313,3 +313,23 @@ export async function openSharedCode(code) {
   const data = await fetchSharedInstrument(code);
   return data ? { data, code } : null;
 }
+
+// Codes of individual instruments and scan counting
+// (supabase/migrations/20261122_maker_codes_scans.sql).
+// Every serial code of the account: [{ code, instrument_id, serial, created_at, retired_at }], or null.
+export async function fetchMakerCodes() {
+  if (!_sb || !_session) return null;
+  try {
+    const { data, error } = await _sb.from('maker_codes').select('code,instrument_id,serial,created_at,retired_at').order('created_at');
+    return error ? null : data ?? [];
+  } catch { return null; }
+}
+// { ok, codes } | { ok: false, error: 'not-shared' | 'too-many' } | { error }.
+export async function createMakerCodes(instrumentId, serials) { const r = await makerRpc('create_maker_codes', { p_instrument_id: instrumentId, p_serials: serials }); return r.data ?? r; }
+export async function retireMakerCode(code, retired = true) { return (await makerRpc('retire_maker_code', { p_code: code, p_retired: retired })).data === true; }
+// One thing that happened with a code ('open' | 'save' | 'chords' | 'songs').
+// Counted on the server, nothing kept here; never in the way of playing.
+export function logMakerEvent(code, event, { via = null, count = 1, first = false } = {}) {
+  if (!_sb || !code) return;
+  try { _sb.rpc('log_maker_event', { p_code: code, p_event: event, p_via: via, p_count: count, p_first: first }).then(() => {}, () => {}); } catch { /* never in the way */ }
+}

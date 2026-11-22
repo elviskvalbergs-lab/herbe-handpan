@@ -1,6 +1,7 @@
 // The makers programme (docs/makers-programme.md): the pure parts. Makers and
 // shops ask for the maker role, set up a public profile, and their shared
 // instruments show "Made by" to the buyer who opens them by code.
+// Phase 2 adds codes, the printed card and the bulk import.
 // No DOM and no network here, so the tests, the website and the link-preview
 // middleware can use it. The screens are in js/makers-ui.js; the database
 // rules these mirror are in supabase/migrations/20261121_makers.sql.
@@ -217,4 +218,253 @@ export function makerLinkPreview(card, base, appName = 'Oakhum') {
     description: `${maker ? `Made by ${maker}. ` : ''}Notes, chords, songs and play-along for this ${known.includes(card.family) ? card.family.replace('-', ' ') : 'instrument'}${serial}. Free, in your browser: open it and play.`,
     image: known.includes(card.family) ? `/og/${card.family}.jpg` : base.image,
   };
+}
+
+// ── Codes: links, serial numbers, where a scan came from ─────────────────────
+export const MAKER_VIAS = ['qr', 'nfc', 'embed']; // anything else is a plain link
+
+// The address a code opens. via marks the printed QR code ('qr') and the
+// NFC tag ('nfc'), so the maker can tell them apart from a copied link.
+export function makerCodeUrl(origin, code, via = null) {
+  return `${String(origin ?? '').replace(/\/$/, '')}/s/${String(code).toUpperCase()}${MAKER_VIAS.includes(via) ? `?via=${via}` : ''}`;
+}
+// "oakhum.com/s/7KQ2PM": the address as printed on a card.
+export function makerCodeLabel(origin, code) {
+  return makerCodeUrl(origin, code).replace(/^https?:\/\/(www\.)?/, '');
+}
+// '?via=qr' → 'qr'; anything else → null.
+export function makerViaFromSearch(search) {
+  try { const v = new URLSearchParams(search ?? '').get('via'); return MAKER_VIAS.includes(v) ? v : null; } catch { return null; }
+}
+
+// Serial numbers from what a maker types: "17, 18, 20-25" or "A-07 A-08",
+// one per line or separated by commas. A range of plain numbers is filled
+// in, keeping leading zeros ("001-003" → 001, 002, 003). Each at most 40
+// characters, no repeats. Returns { serials, error }.
+export function parseSerials(text, { max = 500 } = {}) {
+  const out = [];
+  const seen = new Set();
+  const add = s => { if (s && !seen.has(s)) { seen.add(s); out.push(s); } };
+  for (const part of String(text ?? '').split(/[,;\n\t]+/).map(x => x.trim().replace(/^#/, '')).filter(Boolean)) {
+    const m = /^(\d{1,9})\s*(?:-|–|\.\.)\s*(\d{1,9})$/.exec(part);
+    if (m) {
+      const a = Number(m[1]), b = Number(m[2]);
+      if (b < a) return { serials: [], error: `“${part}” runs backwards` };
+      if (b - a >= max) return { serials: [], error: `At most ${max} at a time` };
+      const pad = m[1].startsWith('0') ? m[1].length : 0;
+      for (let n = a; n <= b; n++) add(String(n).padStart(pad, '0'));
+    } else if (part.length > 40) {
+      return { serials: [], error: `“${part.slice(0, 20)}…” is too long` };
+    } else add(part);
+    if (out.length > max) return { serials: [], error: `At most ${max} at a time` };
+  }
+  return { serials: out, error: out.length ? '' : 'Type at least one serial number' };
+}
+
+// ── The printed card ─────────────────────────────────────────────────────────
+function mkEsc(t) { return String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+// Text cut to fit a width (no text measuring without a DOM: about 0.55 em a letter).
+function mkFit(text, widthMm, sizeMm) {
+  const max = Math.max(4, Math.floor(widthMm / (sizeMm * 0.55)));
+  const t = String(text ?? '');
+  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t;
+}
+
+// A QR code's dark squares as one SVG path, drawn in a box of `size` at x, y.
+// modules is a square array of rows of booleans (true = dark).
+export function qrPath(modules, x, y, size) {
+  const n = modules.length;
+  const cell = size / n;
+  const r = v => Math.round(v * 1000) / 1000;
+  let d = '';
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col < n; col++) {
+      if (!modules[row][col]) continue;
+      let run = 1;
+      while (col + run < n && modules[row][col + run]) run++;
+      d += `M${r(x + col * cell)} ${r(y + row * cell)}h${r(run * cell)}v${r(cell)}h-${r(run * cell)}z`;
+      col += run - 1;
+    }
+  }
+  return d;
+}
+
+export const MAKER_CARD_FORMATS = {
+  // A business-card size for the case or the certificate; 2 × 5 on A4 with cut marks.
+  card: { label: 'Cards', w: 85, h: 55, cols: 2, rows: 5, gapX: 10, gapY: 2, marks: true, hint: '85 × 55 mm, ten to an A4 sheet, with cut marks' },
+  // Labels 63.5 × 38.1 mm, 3 × 7 on A4 (the common L7160 sheet).
+  label: { label: 'Stickers', w: 63.5, h: 38.1, cols: 3, rows: 7, gapX: 2.5, gapY: 0, marks: false, hint: '63.5 × 38.1 mm, 21 to an A4 label sheet (L7160)' },
+};
+
+// One card as SVG markup (in millimetres): the QR code, "Scan to see what it
+// can play", the instrument's name, its serial number, the maker and the
+// address. Black on white, for any printer. card = { modules, name, serial,
+// maker, logo, label }. With { inner: true } only the card's contents come
+// back, to place on a sheet.
+export function qrCardSvg(card, format = 'card', { inner = false } = {}) {
+  const f = MAKER_CARD_FORMATS[format] ?? MAKER_CARD_FORMATS.card;
+  const small = f.h < 45;
+  const pad = small ? 3 : 5;
+  // The code is big enough to scan from arm's length, and leaves the words room.
+  const qr = small ? 27 : 36;
+  const qy = (f.h - qr) / 2;
+  const tx = pad + qr + (small ? 3 : 5);
+  const tw = f.w - tx - pad;
+  const sz = small ? { hint: 2.3, name: 3.7, serial: 2.6, maker: 2.8, url: 2.1 } : { hint: 2.8, name: 5, serial: 3.2, maker: 3.4, url: 2.5 };
+  const logo = card.logo && makerLogoOk(card.logo) ? card.logo : '';
+  const logoSize = small ? 5 : 7;
+  let y = pad + sz.hint;
+  const lines = [];
+  lines.push(`<text x="${tx}" y="${y}" font-size="${sz.hint}" fill="#555">Scan to see what it can play</text>`);
+  y += sz.name + (small ? 1.6 : 2.6);
+  lines.push(`<text x="${tx}" y="${y}" font-size="${sz.name}" font-weight="700">${mkEsc(mkFit(card.name, tw, sz.name))}</text>`);
+  if (card.serial) {
+    y += sz.serial + (small ? 1.2 : 1.8);
+    lines.push(`<text x="${tx}" y="${y}" font-size="${sz.serial}" fill="#333">No. ${mkEsc(mkFit(card.serial, tw - 6, sz.serial))}</text>`);
+  }
+  const bottom = f.h - pad;
+  lines.push(`<text x="${tx}" y="${bottom}" font-size="${sz.url}" fill="#555" font-family="ui-monospace, Menlo, Consolas, monospace">${mkEsc(mkFit(card.label, tw, sz.url * 1.12))}</text>`);
+  if (card.maker) {
+    const my = bottom - sz.url - (small ? 2 : 3);
+    if (logo) lines.push(`<image href="${mkEsc(logo)}" x="${tx}" y="${my - logoSize + 1}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>`);
+    const mx = logo ? tx + logoSize + 1.5 : tx;
+    lines.push(`<text x="${mx}" y="${my}" font-size="${sz.maker}" font-weight="600">${mkEsc(mkFit(card.maker, tw - (logo ? logoSize + 1.5 : 0), sz.maker))}</text>`);
+  }
+  const body = `<rect width="${f.w}" height="${f.h}" fill="#fff"/><path d="${qrPath(card.modules, pad, qy, qr)}" fill="#000"/>${lines.join('')}`;
+  if (inner) return body;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f.w} ${f.h}" width="${f.w}mm" height="${f.h}mm" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">${body}</svg>`;
+}
+
+// Cards laid out on A4 pages, one SVG per page, ready to print (the
+// browser's Print makes the PDF). Cards get faint cut marks; label sheets
+// don't, their labels are already cut.
+export function qrSheetSvgs(cards, format = 'card') {
+  const f = MAKER_CARD_FORMATS[format] ?? MAKER_CARD_FORMATS.card;
+  const W = 210, H = 297;
+  const per = f.cols * f.rows;
+  const x0 = (W - f.cols * f.w - (f.cols - 1) * f.gapX) / 2;
+  const y0 = (H - f.rows * f.h - (f.rows - 1) * f.gapY) / 2;
+  const r = v => Math.round(v * 100) / 100;
+  const pages = [];
+  for (let p = 0; p < cards.length; p += per) {
+    let g = '';
+    cards.slice(p, p + per).forEach((card, i) => {
+      const x = x0 + (i % f.cols) * (f.w + f.gapX), y = y0 + Math.floor(i / f.cols) * (f.h + f.gapY);
+      g += `<g transform="translate(${r(x)} ${r(y)})">${qrCardSvg(card, format, { inner: true })}`;
+      if (f.marks) g += `<rect width="${f.w}" height="${f.h}" fill="none" stroke="#bbb" stroke-width="0.15" stroke-dasharray="1 1"/>`;
+      g += '</g>';
+    });
+    pages.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}mm" height="${H}mm" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">${g}</svg>`);
+  }
+  return pages;
+}
+
+// The page that prints those sheets: nothing but the pages, at A4.
+export function qrPrintDocument(pages, title = 'Oakhum cards') {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${mkEsc(title)}</title>
+<style>@page{size:A4;margin:0}html,body{margin:0;background:#fff}svg{display:block;width:210mm;height:297mm;page-break-after:always;break-after:page}svg:last-child{page-break-after:auto;break-after:auto}@media screen{body{background:#ddd}svg{margin:8px auto;box-shadow:0 1px 6px rgba(0,0,0,.3);background:#fff}}</style>
+</head><body>${pages.join('')}</body></html>`;
+}
+
+// ── Importing a list ─────────────────────────────────────────────────────────
+export const MAKER_IMPORT_COLUMNS = ['name', 'instrument', 'scale', 'ding', 'top', 'bottom', 'serials'];
+export const MAKER_IMPORT_LIMITS = { rows: 200, serials: 2000 };
+export const MAKER_IMPORT_EXAMPLE = `name,instrument,scale,ding,top,bottom,serials
+D Kurd 9,handpan,d-kurd,,,,101-103
+Low Pygmy special,handpan,,F3,G3 Ab3 C4 Eb4 F4 G4 Ab4 C5,C3 Eb3,104
+C major 17,kalimba,c-major-17,,,,
+`;
+
+// Rows of cells from pasted or uploaded text: commas, semicolons or tabs
+// (whichever the first line uses), quotes around a cell that holds one.
+export function parseCsv(text) {
+  const src = String(text ?? '').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  const first = src.split('\n')[0] ?? '';
+  const sep = [',', ';', '\t'].map(c => [c, first.split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = [];
+  let row = [], cell = '', quoted = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"' && cell.trim() === '') quoted = true;
+    else if (ch === sep) { row.push(cell.trim()); cell = ''; }
+    else if (ch === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  row.push(cell.trim());
+  rows.push(row);
+  return rows.filter(r => r.some(c => c !== ''));
+}
+
+const MAKER_IMPORT_FAMILY_WORDS = {
+  handpan: 'handpan', handpans: 'handpan', pan: 'handpan', pantam: 'handpan',
+  'tongue-drum': 'tongue-drum', 'tongue drum': 'tongue-drum', tonguedrum: 'tongue-drum', drum: 'tongue-drum',
+  kalimba: 'kalimba', kalimbas: 'kalimba', ocarina: 'ocarina', ocarinas: 'ocarina', flute: 'flute', flutes: 'flute', whistle: 'flute',
+};
+
+// Checks a pasted list and says, row by row, what would be made.
+// tools = { parseLink, closestLinks, safeNoteName } from js/links.js and
+// js/layoutfamilies.js (passed in so this file stays free of the catalogue).
+// Returns { rows: [{ line, ok, error, name, family, kind: 'scale' | 'custom'
+// | 'chart', scaleId, chartId, keyId, ding, top, bottom, serials, what }],
+// error } where error is about the whole list (empty, too long).
+export function makerImportRows(text, tools) {
+  const table = parseCsv(text);
+  if (!table.length) return { rows: [], error: 'Paste a list, or choose a file' };
+  const head = table[0].map(c => c.toLowerCase().replace(/[^a-z]/g, ''));
+  const alias = { name: 'name', model: 'name', instrument: 'instrument', type: 'instrument', family: 'instrument', scale: 'scale', tuning: 'scale',
+    ding: 'ding', lowest: 'ding', top: 'top', notes: 'top', bottom: 'bottom', serials: 'serials', serial: 'serials', serialnumbers: 'serials' };
+  const hasHead = head.includes('name') || head.includes('model');
+  const cols = hasHead ? head.map(h => alias[h] ?? null) : MAKER_IMPORT_COLUMNS;
+  const body = hasHead ? table.slice(1) : table;
+  if (!body.length) return { rows: [], error: 'The list has a heading but no rows' };
+  if (body.length > MAKER_IMPORT_LIMITS.rows) return { rows: [], error: `At most ${MAKER_IMPORT_LIMITS.rows} rows at a time (this has ${body.length})` };
+  const notesOf = cell => String(cell ?? '').split(/[\s,]+/).filter(Boolean);
+  let serialTotal = 0;
+  const rows = body.map((cells, i) => {
+    const get = k => { const at = cols.indexOf(k); return at < 0 ? '' : (cells[at] ?? '').trim(); };
+    const row = { line: i + (hasHead ? 2 : 1), ok: false, error: '', name: get('name').slice(0, 80), family: null, kind: null, serials: [], what: '' };
+    const fail = msg => ({ ...row, error: msg });
+    if (!row.name) return fail('No name');
+    const family = MAKER_IMPORT_FAMILY_WORDS[get('instrument').toLowerCase()] ?? (get('instrument') ? null : 'handpan');
+    if (!family) return fail(`Unknown instrument: ${get('instrument')}`);
+    row.family = family;
+    const layoutFamily = family === 'handpan' || family === 'tongue-drum' || family === 'kalimba';
+    const slug = get('scale').toLowerCase().replace(/\s+/g, '-');
+    if (slug) {
+      const link = tools.parseLink(`/${family}/${slug}`);
+      if (!link || link.kind === 'unknown' || link.kind === 'custom') {
+        const near = tools.closestLinks(family, slug, 1)[0];
+        const nearSlug = near ? String(near.path ?? near.slug ?? near).split('/').pop() : '';
+        return fail(`No such ${layoutFamily ? 'scale' : 'chart'}: ${slug}${nearSlug ? `. Did you mean ${nearSlug}?` : ''}`);
+      }
+      if (link.kind === 'scale') Object.assign(row, { kind: 'scale', scaleId: link.scaleId });
+      else if (link.kind === 'chart') Object.assign(row, { kind: 'chart', chartId: link.chartId, keyId: link.keyId });
+      else return fail(`No such scale: ${slug}`);
+      row.what = slug;
+    } else {
+      if (!layoutFamily) return fail('Give the chart, as in its address on oakhum.com (for example alto-c-12)');
+      const ding = get('ding'), top = notesOf(get('top')), bottom = notesOf(get('bottom'));
+      if (!ding && !top.length) return fail('Give a scale, or the notes');
+      if (!ding) return fail('Give the lowest note (ding)');
+      for (const n of [ding, ...top, ...bottom]) if (!tools.safeNoteName(n)) return fail(`${n} isn’t a note (write it like D3, Bb3 or F#4)`);
+      if (!top.length) return fail('Give the notes around the lowest one');
+      if (bottom.length && family !== 'handpan') return fail('Only a handpan has bottom notes');
+      Object.assign(row, { kind: 'custom', ding, top, bottom });
+      row.what = `${ding} + ${top.length + bottom.length} notes`;
+    }
+    if (get('serials')) {
+      const ser = parseSerials(get('serials'));
+      if (ser.error) return fail(`Serial numbers: ${ser.error}`);
+      row.serials = ser.serials;
+      serialTotal += ser.serials.length;
+    }
+    return { ...row, ok: true };
+  });
+  const names = new Map();
+  for (const r of rows) if (r.ok) { if (names.has(r.name)) { r.ok = false; r.error = `The same name as row ${names.get(r.name)}`; } else names.set(r.name, r.line); }
+  return { rows, error: serialTotal > MAKER_IMPORT_LIMITS.serials ? `At most ${MAKER_IMPORT_LIMITS.serials} serial numbers at a time (this has ${serialTotal})` : '' };
 }

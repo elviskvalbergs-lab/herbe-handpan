@@ -236,6 +236,8 @@ function render() {
   else if (state.view === 'maker') html = viewMaker(); // js/makers-ui.js
   else if (state.view === 'maker-profile') html = viewMakerProfile();
   else if (state.view === 'maker-review') html = viewMakerReview();
+  else if (state.view === 'maker-inst') html = viewMakerInst();
+  else if (state.view === 'maker-import') html = viewMakerImport();
   // Everything after the app bar goes into <main>, the page's content column.
   // The tab title names the instrument on screen (preview cards: middleware.js).
   const titled = state.layout?.name ?? (state.view === 'instrument' ? currentInstrument()?.name : null);
@@ -8274,6 +8276,8 @@ function stateToHash() {
   if (!state.layout) return '';
   const tab = state.view === 'chords' ? 'chords' : state.view === 'hp-playlists' ? 'playlists' : state.view === 'hp-songs' ? 'songs' : null;
   const chord = state.view === 'chords' ? state.selectedChord?.id ?? null : null;
+  const makerCode = makerCodePath(tab, chord ? linkSlug(chord) : null); // a maker's instrument keeps its code's address (js/makers-ui.js)
+  if (makerCode) return makerCode;
 
   if (!state.layout.isCustom) {
     const path = linkFor({ scaleId: state.layout.id }, { tab, chord }) ?? `#scale=${state.layout.id}${chord ? `&chord=${chord}` : ''}`;
