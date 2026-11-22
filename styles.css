@@ -1853,8 +1853,19 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .song-view-row { display: flex; align-items: center; gap: var(--space-2); }
 .song-view-row .seg { flex: 1; }
 .song-tab { display: flex; flex-direction: column; gap: 20px; }
-/* Followed while playing (songTabFollow): the line sits just under the app bar. */
-.tab-line { scroll-margin-top: calc(var(--appbar-h) + var(--safe-top) + var(--space-3)); }
+/* The instrument stays in view while the tab follows (songTabFollow): the
+   picture, the current note and the words stick under the app bar, smaller,
+   and the tab moves beneath them as in a frame. */
+.song-top { display: flex; flex-direction: column; gap: var(--space-3); }
+.song-top.is-framed {
+  position: sticky; top: calc(var(--appbar-h) + var(--safe-top)); z-index: 3;
+  background: var(--bg); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border);
+  margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter);
+}
+.song-top.is-framed .song-stage { min-height: 0; }
+.song-top.is-framed .song-stage.pan-wrap svg { max-height: 28dvh; }
+.song-top.is-framed .song-stage .fingering { max-height: 24dvh; }
+.song-top.is-framed .song-now-note { font-size: 22px; }
 .tab-line { display: flex; align-items: stretch; }
 .tab-hands { display: grid; grid-template-rows: 18px 32px 32px; width: 18px; flex: none; font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-3); }
 .tab-hands span { display: flex; align-items: center; }

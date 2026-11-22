@@ -3179,6 +3179,7 @@ function viewSong() {
     <div class="song">
       <h1 class="song-print-title">${escHtml(song.title)}</h1>
       <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}</p>
+      <div class="song-top${T && !state.songPrinting ? ' is-framed' : ''}">
       <div class="song-stage${inst ? ' fg-stage' : ' pan-wrap'}">${picture}</div>
       <div class="song-now" aria-live="polite">
         <span class="song-now-note">${cur.midi == null ? 'Rest' : escHtml(nn(cur.midi))}</span>
@@ -3186,6 +3187,7 @@ function viewSong() {
         <span class="song-now-pos">${idx + 1} / ${notes.length}</span>
       </div>
       ${LY && !state.songPrinting ? songLyricLineHtml(LY, idx) : ''}
+      </div>
       <div class="song-controls${T ? ' actionbar' : ''}">
         ${uiIconBtn('rewind', 'Back to the start', { action: 'song-restart', disabled: idx === 0 && !playing })}
         ${uiIconBtn('skip-back', 'Back one note', { action: 'song-prev' })}
@@ -3427,7 +3429,15 @@ function songTabFollow() {
   _songTabLine = key;
   if (first && !_songTabForce) return;
   _songTabForce = false;
-  lines[at].scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  // The instrument stays in view (the framed top block sticks under the app
+  // bar): the line goes just under it, so the tab moves as in a frame.
+  const bar = document.querySelector('.appbar');
+  const top = document.querySelector('.song-top.is-framed');
+  const offset = (bar?.offsetHeight ?? 0) + (top?.offsetHeight ?? 0) + 8;
+  const y = lines[at].getBoundingClientRect().top + window.scrollY - offset;
+  // At once, like turning a page: a smooth scroll is cut short by the next
+  // note's redraw.
+  window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
 }
 let _songTabLine = null;
 let _songTabForce = false; // Play pressed: bring the current line up even if it hasn't changed
