@@ -86,7 +86,7 @@ export function checkListenFiles(files: { size: number; type: string }[], photos
   return null;
 }
 
-const FAMILY_WORDS: Record<string, string> = { handpan: "handpan", "tongue-drum": "tongue drum", kalimba: "kalimba", ocarina: "ocarina", flute: "flute" };
+const FAMILY_WORDS: Record<string, string> = { handpan: "handpan", "tongue-drum": "tongue drum", kalimba: "kalimba", ocarina: "ocarina", flute: "flute", recorder: "recorder" };
 
 /** One line for the Studio list and the Jira summary. */
 export function listenReportTitle(r: ListenReport): string {

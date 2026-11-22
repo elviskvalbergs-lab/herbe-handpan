@@ -10,6 +10,7 @@ const APP_PATHS = [
   "/kalimba/:path*",
   "/ocarina/:path*",
   "/flute/:path*",
+  "/recorder/:path*",
   "/s/:path*",
   "/song/:path*",
   "/sw.js",

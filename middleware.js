@@ -7,7 +7,7 @@ import { linkPreview, withLinkPreview, parseLink } from './js/links.js';
 import { makerLinkPreview } from './js/makers.js';
 import { supabasePublic } from './js/auth.js';
 
-export const config = { matcher: ['/handpan/:path*', '/tongue-drum/:path*', '/kalimba/:path*', '/ocarina/:path*', '/flute/:path*', '/s/:path*', '/song/:path*'] };
+export const config = { matcher: ['/handpan/:path*', '/tongue-drum/:path*', '/kalimba/:path*', '/ocarina/:path*', '/flute/:path*', '/recorder/:path*', '/s/:path*', '/song/:path*'] };
 
 export default async function middleware(request) {
   try {

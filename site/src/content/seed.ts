@@ -199,6 +199,27 @@ export const instruments: InstrumentDoc[] = [
     ],
   },
   {
+    _id: "instrument-recorder",
+    name: "Recorder",
+    slug: "recorder",
+    family: "recorder",
+    status: "available",
+    order: 6,
+    tuningsLine: "Soprano, alto, tenor and sopranino, baroque and German fingering",
+    title: "Recorder fingerings and chords",
+    intro: "Every note's fingering for the soprano (descant) and alto (treble) recorder, from published charts, in baroque and German fingering. Chords play as arpeggios, with each note's fingering.",
+    featuredTunings: ["soprano-baroque", "alto-baroque", "soprano-german", "tenor-baroque", "sopranino-baroque"],
+    playAlongTitle: "Baroque or German?",
+    playAlongText: "Most recorders, and every size above the soprano, have baroque (English) fingering, where F is a forked fingering. Some school sopranos have German fingering, where F is the next finger after E. Pick the one that matches yours: the charts differ from F up.",
+    ctaTitle: "Play your recorder in the app, free",
+    ctaText: "Opens straight on your recorder with the fingering for every note.",
+    faqs: [
+      { question: "Which recorders are covered?", answer: "Soprano (descant), alto (treble), tenor and sopranino with baroque fingering, and the soprano with German fingering. Another recorder can be set up note by note with the built-in tuner." },
+      { question: "Where do the fingerings come from?", answer: "From the Woodwind Fingering Guide and the charts Yamaha and Mollenhauer publish for their recorders, checked against each other note by note. The sources are noted in the app. We never fill fingerings in from memory." },
+      { question: "Can a recorder play chords?", answer: "One note at a time: a chord is played as an arpeggio. The app shows the notes of each chord in order, with the fingering and what changes between them." },
+    ],
+  },
+  {
     _id: "instrument-kalimba",
     name: "Kalimba",
     slug: "kalimba",
@@ -243,19 +264,19 @@ export const instruments: InstrumentDoc[] = [
 ];
 
 export const features: FeatureDoc[] = [
-  { _id: "feature-instruments", title: "My instruments", text: "Every handpan, tongue drum, kalimba, ocarina and flute you own, with its exact setup, one tap apart.", status: "ready", order: 1 },
+  { _id: "feature-instruments", title: "My instruments", text: "Every handpan, tongue drum, kalimba, ocarina, flute and recorder you own, with its exact setup, one tap apart.", status: "ready", order: 1 },
   { _id: "feature-setup-listen", title: "Set up by ear", text: "Don't know your tuning? Play each note and the app works out which instrument you have.", status: "ready", order: 1.5 },
   { _id: "feature-chords", title: "Chord finder", text: "Every chord your notes can make, drawn on your instrument's own layout. Or tap notes to name the chord they make.", status: "ready", order: 2 },
   { _id: "feature-arpeggios", title: "Arpeggios and autoplay", text: "Play any chord note by note, or let the app step through chords at your pace.", status: "ready", order: 3 },
   { _id: "feature-playlists", title: "Playlists and progressions", text: "Sets of chords and progressions in order, for practice, a jam or a gig.", status: "ready", order: 4 },
   { _id: "feature-chordsheet", title: "Chord sheets", text: "Paste a song's chords and the app fits them to your instrument, then teaches it in levels: roots, arpeggio, groove.", status: "ready", order: 5 },
-  { _id: "feature-fingerings", title: "Fingering charts", text: "Ocarina and flute fingerings for every note, from published charts.", status: "ready", order: 6 },
+  { _id: "feature-fingerings", title: "Fingering charts", text: "Ocarina, flute and recorder fingerings for every note, from published charts.", status: "ready", order: 6 },
   { _id: "feature-tuner", title: "Tuner", text: "A built-in tuner, also for tuning an ocarina you made hole by hole.", status: "ready", order: 7 },
   { _id: "feature-share", title: "Share an instrument", text: "Send your exact setup as a link, a code or a QR code.", status: "ready", order: 9 },
   { _id: "feature-listen", title: "Hear a chord, see it on your instrument", text: "When a friend plays a chord on guitar or piano, the app listens and shows it on your instrument, or the closest version your notes allow.", status: "ready", order: 8 },
   { _id: "feature-offline", title: "On every device, and offline", text: "With a free account, your instruments, chords and playlists sync between your devices and keep working with no signal.", status: "ready", order: 10 },
   { _id: "feature-signin", title: "Sign in with Google or Apple", text: "Besides the email code.", status: "next", order: 22 },
-  { _id: "feature-more", title: "More instruments", text: "Recorder is next. Vote for what you play.", status: "next", order: 23 },
+  { _id: "feature-more", title: "More instruments", text: "Vote for what you play, and we add it next.", status: "next", order: 23 },
 ];
 
 export const pages: PageDoc[] = [

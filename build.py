@@ -88,11 +88,11 @@ html = f'''<!DOCTYPE html>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Oakhum</title>
-  <meta name="description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina or flute you own. Free, in your browser.">
+  <meta name="description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina, flute or recorder you own. Free, in your browser.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Oakhum">
   <meta property="og:title" content="Oakhum">
-  <meta property="og:description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina or flute you own. Free, in your browser.">
+  <meta property="og:description" content="Chords and songs for the exact handpan, tongue drum, kalimba, ocarina, flute or recorder you own. Free, in your browser.">
   <meta property="og:image" content="/og/app.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="/manifest.json">

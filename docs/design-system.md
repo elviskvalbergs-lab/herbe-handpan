@@ -1034,6 +1034,16 @@ A kalimba is the third layout family. What differs between handpans, tongue drum
 - **Sound:** a plucked voice (`'kalimba'` in `js/audio.js`): a clear fundamental with a shorter ring than the drums and a quick bright pluck.
 - **Data:** `js/kalimbas.js`, each tuning with its makers' charts as sources.
 
+### Recorders: the flute's screens, their own picture
+
+A recorder is a one-note instrument that plays from a published chart, so it is a chart family (`family: 'recorder'` in `js/charts.js`) and uses the ocarina and flute screens unchanged: Notes, Chords (arpeggios, the fingering of each note and what changes), Playlists, Listen, songs with the flute's tab, the setup, saving, links (`/recorder/soprano-baroque`). What is its own:
+
+- **Data:** two charts, `recorder-baroque` (soprano, alto, tenor, sopranino) and `recorder-german` (soprano), each two octaves and a tone. Sources in the data file: the Woodwind Fingering Guide's basic chart, checked note by note against Yamaha's and Mollenhauer's charts. A size is a key of the chart with its own name and link slug (`instName`, `slug`).
+- **Picture:** the flute's tube with a recorder's body (`fgFluteBody` style `'recorder'`: beak and window, head ring, flared foot), seven finger holes on top and the thumb hole in the "underside" strip under the first finger hole. A half-filled hole is the pinched thumb in the upper register, or one of the double holes open on the two lowest holes.
+- **Setup:** "Which recorder do you have?" asks the fingering system (baroque, German, another: note by note), then "Do you know its key?" is its size (C: soprano or tenor; F: alto or sopranino).
+- **Sound:** the `'recorder'` voice in `js/audio.js`: a clear, steady tone with a quick chiff and hardly any vibrato.
+- **Shared with flutes:** `isTubeFamily` (drawn as a tube, holes counted from the mouthpiece down, a 3:1 photo) and `windWord` (the word in sentences) in `js/instruments.js`. A recorder without a chart (a German alto, a bass) is charted note by note like any other flute.
+
 ### Rule: one pattern per screen, for every instrument
 
 Handpan, ocarina, flute and any instrument added later share their screens. Each screen is made of shared parts; an instrument supplies only what really differs (the picture of the instrument, its fingerings), never its own version of a screen.

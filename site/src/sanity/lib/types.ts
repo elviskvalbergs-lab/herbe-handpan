@@ -81,7 +81,7 @@ export type InstrumentDoc = {
   _id: string;
   name: string;
   slug: string;
-  family: "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute" | "none";
+  family: "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute" | "recorder" | "none";
   status: "available" | "soon";
   order: number;
   tuningsLine?: string;

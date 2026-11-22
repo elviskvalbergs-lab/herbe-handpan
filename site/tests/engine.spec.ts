@@ -78,6 +78,25 @@ it("ocarinas and flutes get a playable demo: the chords of their key, as arpeggi
   expect(windVoice(chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!)).toBe("whistle");
 });
 
+it("recorders come from the app: every size, its chords in its own key, its fingerings and its voice", () => {
+  const rec = tuningsFor("recorder");
+  expect(rec.map((t) => t.slug)).toEqual(["soprano-baroque", "alto-baroque", "tenor-baroque", "sopranino-baroque", "soprano-german"]);
+  for (const t of rec) {
+    expect(t.path).toBe(`/recorder/${t.slug}`);
+    expect(windVoice(t)).toBe("recorder");
+    expect(windChords(t).length, t.slug).toBe(6);
+  }
+  const soprano = findTuning("recorder", "soprano-baroque")!;
+  expect(soprano.name).toBe("Soprano recorder, baroque fingering");
+  expect(soprano.notes[0]).toBe("C5");
+  expect(windChords(soprano).map((c) => c.short)).toEqual(["C", "Dm", "Em", "F", "G", "Am"]);
+  const alto = findTuning("recorder", "alto-baroque")!;
+  expect(alto.notes[0]).toBe("F4");
+  expect(windChords(alto).map((c) => c.short)).toEqual(["F", "Gm", "Am", "B♭", "C", "Dm"]);
+  const f = windChords(alto)[0];
+  expect(windFingering(alto, f.arpeggio[0])).toMatch(/class="fingering[^"]* is-flute/);
+});
+
 it("a wind instrument's chords are spelled as its key: F#m on a D whistle", () => {
   const whistle = chartTunings("flute").find((t) => t.slug.startsWith("tin-whistle"))!;
   expect(windChords(whistle).map((c) => c.short)).toContain("F#m");
