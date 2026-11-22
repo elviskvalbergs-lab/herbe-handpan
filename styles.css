@@ -597,6 +597,14 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .install-banner > span:first-child { display: flex; align-items: center; gap: var(--space-2); }
 .install-banner > span:first-child .icon { flex-shrink: 0; }
 .install-banner-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+/* Help articles in the help sheet (js/helpdoc.js helpHtml). */
+.help-doc { color: var(--text-1); }
+.help-doc p, .help-doc .help-list { margin: 0 0 var(--space-3); }
+.help-doc .help-list { padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.help-doc .help-h { margin: var(--space-5) 0 var(--space-2); font-size: var(--text-lg, 1.125rem); font-weight: 600; scroll-margin-top: var(--space-3); }
+.help-doc .help-h4 { margin: var(--space-4) 0 var(--space-2); font-weight: 600; }
+.help-doc .help-note { padding: var(--space-3); border-radius: var(--radius-md, 8px); background: var(--surface-2, var(--surface)); color: var(--text-2); }
+.help-doc .list-title:first-child, .help-doc .help-h:first-child { margin-top: 0; }
 .install-steps { margin: 0 0 var(--space-3); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); color: var(--text-1); }
 
 /* Pan SVG container */

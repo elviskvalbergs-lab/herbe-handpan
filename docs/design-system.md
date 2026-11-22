@@ -981,6 +981,7 @@ Turning on finger labels for the first time opens the "Which finger is which" sh
 - **Add to playlist** (`renderPlaylistPicker`): title "Add to playlist", a `.list` of rows (24px check in the leading slot, name, count trailing), then a "New playlist" row that turns into an input + Create.
 - **Share** (`shareModalHtml`): title "Share this instrument". The explanation (15 `--text-2`), the code at 32/700 with letter-spacing 0.18em, the QR on a white 240px block, the link in a read-only `.input`, and a footer with [Copy link] primary and [Close] ghost.
 - **Which finger is which** (`handLegendModal`): title, sub-line, `renderHandLegend()` at full width, and [Close] in the footer.
+- **Help** (`helpSheet`, one for every screen and instrument): opened by `data-action="help-open"`. With `data-id` it shows that article (`help/en/<id>.md`, drawn by `helpHtml` in `js/helpdoc.js` inside `.help-doc`); with an empty `data-id` the list of articles by section, as `.list` rows; with no `data-id` the article for the current screen (`helpScreenKey` → `HELP_SCREENS` in `js/features.js`). Footer: [All help topics] ghost and [Open on oakhum.com] secondary. Entry points: Settings › About › Help, and the Help row ("About this screen") in every ⋯ menu. A new screen gets its key in `helpScreenKey`, never its own help UI. `docs/help-centre.md`.
 - **Shared instrument banner:** `.banner` with "Shared instrument K7Q2XD · read-only" and [Add to My instruments].
 
 ---

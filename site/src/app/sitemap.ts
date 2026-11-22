@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { canonicalTuning, findTuning } from "@/lib/engine";
 import { instrumentTunings } from "@/lib/instruments";
 import { listMakers } from "@/lib/makers";
+import { getHelpArticles } from "@/lib/help";
 import { SITE_URL } from "@/lib/site";
 import { FEATURED_SONG_TUNINGS, allSongs, songOn } from "@/lib/songs";
 import { getHome, getInstruments, getMakers, getPages } from "@/sanity/lib/data";
@@ -19,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry("/makers", makersPage._updatedAt),
     ...pages.map((p) => entry(`/${p.slug}`, p.updated ?? p._updatedAt)),
   ];
+  urls.push(entry("/help"), ...getHelpArticles().map((a) => entry(`/help/${a.id}`)));
   for (const doc of instruments) {
     urls.push(entry(`/instruments/${doc.slug}`, doc._updatedAt));
     const { featured, all } = instrumentTunings(doc);

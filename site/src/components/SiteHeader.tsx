@@ -24,6 +24,7 @@ export function SiteHeader() {
           <Link href="/#instruments" className={link}>Instruments</Link>
           <Link href="/#how" className={link}>How it works</Link>
           <Link href="/makers" className={link}>For makers</Link>
+          <Link href="/help" className={link}>Help</Link>
           <Link href="/request" className={link}>Request</Link>
         </div>
       </nav>

@@ -83,6 +83,7 @@ const state = {
   shared: null,            // instrument opened from a share link (#p/<code>), read-only
   sharedStatus: null,      // 'loading' | 'missing' while a share link loads
   shareModal: null,        // { code, url, qr } while the share dialog is open
+  help: null,              // the help sheet: { id, anchor } for an article, { id: null } for the list (js/helpdoc.js)
   installHelp: false,      // the "Add to home screen" steps sheet (no install prompt on this browser)
   menu: false,             // the instrument's ⋯ menu is open
   confirm: null,           // { kind: 'instrument' | 'playlist', id, title, body, ok } while confirming
@@ -504,6 +505,7 @@ function viewSettings() {
       <h2 class="list-title">Account and about</h2>
       <div class="list">
         ${accountSettingsHtml()}
+        ${uiRow({ title: featureName('help'), meta: 'How to set up, play, save and share. Works offline', action: 'help-open', data: { id: '' }, lead: 'info', chevron: true })}
         ${uiRow({ title: 'Send feedback', meta: 'Something confusing, wrong or missing? Tell us, it really helps', action: 'open-feedback', lead: 'message-square', chevron: true })}
         ${uiRow({ title: 'Check for updates', meta: 'Reloads the latest app version and synced data', action: 'check-updates', lead: 'refresh' })}
         <div class="brand-about">${brandLogo()}<span class="brand-about-line">Notes, chords and scales for handpan, tongue drum, kalimba, ocarina and flute.</span></div>
@@ -7095,9 +7097,59 @@ function installHelpSheet() {
   });
 }
 
+// ── Help ─────────────────────────────────────────────────────────────────────
+// The help articles (help/en/*.md, built into the page by build.py) in the
+// shared sheet, so help opens with no connection. docs/help-centre.md.
+
+// Which help the current screen asks for: a key of HELP_SCREENS (js/features.js).
+function helpScreenKey() {
+  const v = state.view;
+  if (v === 'chords') return state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'chords';
+  if (v === 'editor') return 'pan';
+  if (v === 'hp-playlists') return 'playlists';
+  if (v === 'instrument') {
+    const tab = state.oc.tab;
+    if (tab === 'chords') return state.oc.listen ? 'listen' : 'chords';
+    return tab === 'playlists' ? 'playlists' : tab === 'practice' ? 'practice' : 'notes';
+  }
+  if (v === 'playlist') return 'playlist';
+  if (v === 'progression') return 'progression';
+  if (v === 'song') return 'song';
+  if (v === 'setup' || v === 'wizard') return 'setup';
+  if (v === 'play' || v === 'selector') return 'try';
+  if (v === 'settings') return 'settings';
+  return 'home';
+}
+
+// The ⋯ menu's row: help for the screen you are on.
+function helpMenuRow() {
+  return uiRow({ lead: 'info', title: featureName('help'), meta: 'About this screen', action: 'help-open' });
+}
+
+function helpSheet() {
+  const all = helpBundled();
+  const a = state.help.id ? all[state.help.id] : null;
+  if (a) {
+    return uiSheet({
+      key: 'help', title: a.title, close: 'help-close',
+      body: `<div class="help-doc">${helpHtml(a)}</div>`,
+      footer: `<button type="button" class="btn btn-ghost" data-action="help-open" data-id="">All help topics</button>
+        <a class="btn btn-secondary" href="${HELP_SITE}/help/${a.id}" target="_blank" rel="noopener">Open on oakhum.com</a>`,
+    });
+  }
+  const list = helpSort(Object.values(all));
+  const body = list.length
+    ? HELP_SECTIONS.filter(s => list.some(x => x.section === s.id)).map(s => `
+        <h3 class="list-title">${escHtml(s.title)}</h3>
+        <div class="list">${list.filter(x => x.section === s.id).map(x => uiRow({ title: x.title, chevron: true, action: 'help-open', data: { id: x.id } })).join('')}</div>`).join('')
+    : `<p class="sheet-text">Help is on <a href="${HELP_SITE}/help" target="_blank" rel="noopener">oakhum.com/help</a>.</p>`;
+  return uiSheet({ key: 'help', title: featureName('help'), close: 'help-close', body: `<div class="help-doc">${body}</div>` });
+}
+
 // ── Sheets ───────────────────────────────────────────────────────────────────
 // At most one sheet is open; it's rendered from state after the view.
 function sheetHtml() {
+  if (state.help) return helpSheet();
   if (state.speedSheet) return speedSheet();
   if (state.listenReport) return listenReportSheet();
   if (state.goesWith) return goesWithSheet();
@@ -7183,6 +7235,7 @@ function menuSheet() {
     if (inst && !shared) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument' }));
     if (inst?.link) rows.push(uiRow({ lead: 'link', title: 'Copy link', action: 'copy-url' }));
     if (inst) rows.push(uiRow({ lead: 'hand', title: 'Which finger is which', action: 'oc-hand-open' }));
+    rows.push(helpMenuRow());
     rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
     if (inst && !shared) rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: inst.id }, cls: 'is-danger' }));
   } else if (state.layout) {
@@ -7191,11 +7244,13 @@ function menuSheet() {
     if (mine) rows.push(uiRow({ lead: 'pencil', title: 'Edit instrument', meta: instEditMeta(mine), action: 'inst-edit-open', data: { id: mine.id } }));
     if (mine) rows.push(uiRow({ lead: 'share-2', title: 'Share…', meta: 'Code, link and QR code', action: 'share-instrument', data: { id: mine.id } }));
     rows.push(uiRow({ lead: 'link', title: state.selectedChord ? 'Copy link to this chord' : 'Copy link', action: 'copy-url' }));
+    rows.push(helpMenuRow());
     rows.push(uiRow({ lead: 'settings', title: 'Settings', action: 'open-settings' }));
     if (state.currentInstrumentId) {
       rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: state.currentInstrumentId }, cls: 'is-danger' }));
     }
   }
+  if (state.view === 'playlist' || state.view === 'progression') rows.push(helpMenuRow());
   return uiSheet({ key: 'menu', variant: 'menu', title, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
 }
 
@@ -9609,6 +9664,17 @@ document.addEventListener('click', e => {
     return;
   }
   if (action === 'install-help-close') { state.installHelp = false; render(); return; }
+  if (action === 'help-close') { state.help = null; render(); return; }
+  if (action === 'help-open') {
+    // A row or link names the article; the menu's row asks for this screen's; '' is the list.
+    const id = el.dataset.id ?? HELP_SCREENS[helpScreenKey()];
+    state.help = { id: id || null };
+    logEvent('help', { article: id || 'index' });
+    render();
+    const top = el.dataset.anchor ? document.getElementById(`help-${el.dataset.anchor}`) : document.querySelector('.sheet-root[data-sheet="help"] .sheet-body');
+    if (el.dataset.anchor) top?.scrollIntoView(); else if (top) top.scrollTop = 0;
+    return;
+  }
   if (action === 'install-dismiss') {
     try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
     render();
