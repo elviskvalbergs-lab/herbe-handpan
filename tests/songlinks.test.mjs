@@ -125,6 +125,12 @@ test('vercel.json, middleware.js and the website route every link family and /so
     assert.ok(matcher.includes(`'${w}'`), `middleware.js matches ${w}`);
     assert.ok(appPaths.includes(`"${w}"`), `site/next.config.ts sends ${w} to the app`);
   }
+  // The browser tests' server serves the same paths as production: every
+  // link family (from LINK_FAMILIES), /s and /song.
+  const harness = readFileSync(new URL('./e2e/harness.mjs', import.meta.url), 'utf8');
+  const served = /const APP_PATHS = new RegExp\(`\^\/\(\|play\|\(\$\{\[\.\.\.LINK_FAMILIES, ([^\]]*)\]/.exec(harness);
+  assert.ok(served, 'tests/e2e/harness.mjs builds APP_PATHS from LINK_FAMILIES');
+  for (const extra of ['s', 'song']) assert.ok(served[1].includes(`'${extra}'`), `tests/e2e/harness.mjs serves /${extra}/`);
   // The website's own song pages live at /songs, which must stay the site's.
   assert.ok(!rewrites.some(r => r.startsWith('/songs')));
   assert.ok(!appPaths.includes('"/songs'));

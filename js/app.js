@@ -3301,8 +3301,8 @@ function songBackToList() {
   songStop();
   const inst = songInstrument();
   state.songCtx = null;
-  if (inst) { state.view = 'instrument'; state.oc.tab = 'playlists'; navReplace(instUrl(inst.id, 'playlists')); }
-  else if (state.layout) { state.view = 'hp-playlists'; navReplace(stateToHash()); }
+  if (inst) { state.view = 'instrument'; state.oc.tab = 'songs'; navReplace(instUrl(inst.id, 'songs')); }
+  else if (state.layout) { state.view = 'hp-songs'; navReplace(stateToHash()); }
   else { goHome(); return; }
   render();
 }
