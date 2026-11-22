@@ -22,8 +22,9 @@ export const settings: SiteSettings = {
 
 export const home: HomePage = {
   heroTitle: "The chords and songs your instrument can play",
+  // Names a few instruments "and other instruments", never the whole list: the list keeps growing (owner, 2026-11-22).
   heroText:
-    "Oakhum is a free app for handpan, tongue drum, kalimba, ocarina and flute. Play your notes and it works out which instrument you have, then shows every chord it can play, the songs that fit it, and how to join in when a friend brings a guitar.",
+    "Oakhum is a free app for handpans, kalimbas, flutes and other instruments. Play your notes and it works out which instrument you have, then shows every chord it can play, the songs that fit it, and how to join in when a friend brings a guitar.",
   heroNote: "Free. Works in your browser, nothing to install. No sign-up needed to play.",
   // The one wording for every button that opens the app.
   heroCta: "Start playing free",
@@ -77,7 +78,7 @@ export const home: HomePage = {
     { question: "Do I need to read music?", answer: "No. Oakhum shows the notes on a picture of your instrument, so you can follow it with no theory at all." },
     { question: "I don't know my instrument's tuning. What do I do?", answer: "Choose “Play my notes”: play each note once, and Oakhum listens and works out which instrument you have. It uses your microphone only while it listens, and the sound is worked out on your device." },
     { question: "My handpan has a custom tuning. Will it work?", answer: "Yes. Pick the closest scale from the list, or enter your own notes, bottom notes included. The app works from exactly those notes." },
-    { question: "Is Oakhum free?", answer: "Yes. Every instrument and feature is free, with no ads. Oakhum is a one-person project from Latvia, and it runs in your browser, so it costs little to keep going. A free account is only for keeping what you set up." },
+    { question: "Is Oakhum free?", answer: "Yes. Every instrument and feature is free, with no ads. Oakhum is a personal passion project from Latvia, and it runs in your browser, so it costs little to keep going. A free account is only for keeping what you set up." },
     { question: "Do I need an account?", answer: "Not to play. You can open any instrument and use every feature without signing up. A free account is only needed to keep things: your instruments, favourite chords and playlists, on all your devices." },
     { question: "Which phones and computers does it run on?", answer: "Any phone, tablet or computer with a modern browser, such as Chrome, Safari, Firefox or Edge. There's nothing to install, and you can add it to your home screen so it opens like an app." },
     { question: "Does it work offline?", answer: "Yes, with a free account: sign in once while connected, and your instruments, chords and playlists keep working with no signal." },
