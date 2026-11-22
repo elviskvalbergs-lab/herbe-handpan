@@ -11,6 +11,7 @@ export const MAKER_FAMILIES = [
   { id: 'kalimba', label: 'Kalimbas' },
   { id: 'ocarina', label: 'Ocarinas' },
   { id: 'flute', label: 'Flutes' },
+  { id: 'recorder', label: 'Recorders' },
 ];
 export const MAKER_KINDS = [{ value: 'maker', label: 'Maker' }, { value: 'shop', label: 'Shop' }];
 

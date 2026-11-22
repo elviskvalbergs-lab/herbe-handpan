@@ -28,7 +28,9 @@ test('a page address from a name', () => {
 test('the reserved addresses and the rules match the database migration', () => {
   const sql = readFileSync(new URL('../supabase/migrations/20261121_makers.sql', import.meta.url), 'utf8');
   for (const s of MAKER_RESERVED_SLUGS) assert.ok(sql.includes(`'${s}'`), `the database reserves ${s}`);
-  for (const f of MAKER_FAMILIES) assert.ok(sql.includes(`'${f.id}'`), f.id);
+  // The families check, as replaced by the latest migration that sets it.
+  const fams = readFileSync(new URL('../supabase/migrations/20261122_makers_recorder.sql', import.meta.url), 'utf8');
+  for (const f of MAKER_FAMILIES) assert.ok(fams.includes(`'${f.id}'`), f.id);
   assert.ok(sql.includes(`char_length(story) <= ${MAKER_LIMITS.story}`));
   assert.ok(sql.includes(`char_length(logo) <= ${MAKER_LIMITS.logoChars}`));
   assert.ok(sql.includes(`char_length(name) between 2 and ${MAKER_LIMITS.name}`));

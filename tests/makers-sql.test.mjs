@@ -53,14 +53,20 @@ test('migrations apply in order and the makers SQL behaves', { skip: !ADMIN_URL 
 
 // Whatever the database: the rules every migration file must keep (CLAUDE.md,
 // "Data and database"), checked on the text.
+const MIGRATION_CHECK_WIDENINGS = { '20261122_makers_recorder.sql': 'alter table public.makers drop constraint if exists makers_families_check;' };
+
 test('migrations are additive and every new table has row-level security', async () => {
   const { readFileSync } = await import('node:fs');
   const dir = path.join(ROOT, 'supabase/migrations');
   for (const f of readdirSync(dir).filter(f => f.endsWith('.sql'))) {
     assert.match(f, /^\d{8}_[a-z0-9_]+\.sql$/, f);
     const sql = readFileSync(path.join(dir, f), 'utf8').replace(/--.*$/gm, '');
-    assert.doesNotMatch(sql, /\bdrop\s+(table|column|function|policy|schema|index)\b/i, `${f}: nothing is dropped`);
-    assert.doesNotMatch(sql, /\balter\s+table\s+[\w.]+\s+(drop|rename|alter)\b/i, `${f}: existing columns stay as they are`);
+    // The one owner-approved exception (22 Nov 2026): makers.families' check is
+    // replaced by a wider one so makers can say they make recorders.
+    const allowed = MIGRATION_CHECK_WIDENINGS[f];
+    const checked = allowed ? sql.replace(allowed, '') : sql;
+    assert.doesNotMatch(checked, /\bdrop\s+(table|column|function|policy|schema|index)\b/i, `${f}: nothing is dropped`);
+    assert.doesNotMatch(checked, /\balter\s+table\s+[\w.]+\s+(drop|rename|alter)\b/i, `${f}: existing columns stay as they are`);
     assert.doesNotMatch(sql, /\btruncate\b/i, f);
     for (const m of sql.matchAll(/create table if not exists (public\.\w+)/g)) {
       assert.ok(sql.includes(`alter table ${m[1]} enable row level security`), `${f}: ${m[1]} has row-level security`);
