@@ -17,8 +17,9 @@ describe("the site's words", () => {
     expect(seed.settings.description.length).toBeLessThanOrEqual(160);
   });
 
-  it("the hero says what Oakhum is, for every instrument in the app, and how it starts", () => {
-    for (const w of ["handpan", "tongue drum", "kalimba", "ocarina", "flute", "Play your notes", "songs"]) expect(seed.home.heroText).toContain(w);
+  it("the hero says what Oakhum is and how it starts, naming a few instruments and others, never the whole list", () => {
+    for (const w of ["free app", "handpans", "other instruments", "Play your notes", "songs"]) expect(seed.home.heroText).toContain(w);
+    expect(all).not.toMatch(/one-person/i);
   });
 
   it("use the app's own names for its features, and no jargon", () => {

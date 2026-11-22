@@ -428,6 +428,26 @@ const FIXES: Fix[] = [
       return notes.join("; ") || "left as edited in the Studio";
     },
   },
+  {
+    // The owner's wording (2026-11-22): the hero names a few instruments "and
+    // other instruments" instead of the whole list, and Oakhum is a personal
+    // passion project, not "a one-person project". Each text changes only
+    // while it still reads as the copy review of 2026-11-21 left it.
+    name: "2026-11-22-hero-and-free-wording",
+    async run() {
+      const OLD_HERO = "Oakhum is a free app for handpan, tongue drum, kalimba, ocarina and flute. Play your notes and it works out which instrument you have, then shows every chord it can play, the songs that fit it, and how to join in when a friend brings a guitar.";
+      const OLD_FREE = "Yes. Every instrument and feature is free, with no ads. Oakhum is a one-person project from Latvia, and it runs in your browser, so it costs little to keep going. A free account is only for keeping what you set up.";
+      const home = await client.fetch<{ heroText?: string; faqs?: { _key: string; answer?: string }[] } | null>(`*[_id == "homePage"][0]{heroText, faqs}`);
+      if (!home) return "no home page";
+      const set: Record<string, unknown> = {};
+      if (home.heroText === OLD_HERO) set.heroText = seed.home.heroText;
+      const faq = home.faqs?.find((f) => f.answer === OLD_FREE);
+      if (faq) set[`faqs[_key=="${faq._key}"].answer`] = seed.home.faqs!.find((f) => f.question === "Is Oakhum free?")!.answer;
+      if (!Object.keys(set).length) return "left as edited in the Studio";
+      await client.patch("homePage").set(set).commit();
+      return `set ${Object.keys(set).join(", ")}`;
+    },
+  },
 ];
 
 type FeatureStart = (typeof seed.features)[number];
