@@ -24,7 +24,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
 // isn't a file is a 404, as it is in production: a missing picture or font
 // then fails the smoke suite instead of quietly getting the app's HTML.
 // The families come from the app's own list, so a new instrument's links work here too.
-const APP_PATHS = new RegExp(`^/(|play|(${[...LINK_FAMILIES, 's'].join('|')})(/.*)?)$`);
+const APP_PATHS = new RegExp(`^/(|play|(${[...LINK_FAMILIES, 's', 'song'].join('|')})(/.*)?)$`);
 
 // The response headers production sends (vercel.json), with one change: the
 // Content-Security-Policy that is report-only there is ENFORCED here, so

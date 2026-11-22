@@ -130,6 +130,32 @@ try {
   });
   await first.ctx.close();
 
+  // ── Song links (docs/songs-next.md §1) ────────────────────────────────────
+  const songs = await guest('song links');
+  await step('a song opens from its link, with Share, and back goes to the Songs tab', songs, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/songs/twinkle-twinkle`);
+    await p.locator('[data-action="song-play"]').waitFor();
+    await p.locator('[data-action="song-share"]').waitFor();
+    assert.match(await p.locator('.song-meta').innerText(), /on your handpan/);
+    await p.click('[data-action="nav-back"]');
+    await p.waitForURL(/\/handpan\/d-kurd\/songs$/);
+    await p.locator('#pl-sec-songs').waitFor();
+  });
+  await step('a song on a flute opens from its link, and back goes to its Songs tab', songs, async p => {
+    await p.goto(`${app.base}/flute/tin-whistle-d/songs/ode-to-joy`);
+    await p.locator('[data-action="song-play"]').waitFor();
+    assert.match(await p.locator('.song-meta').innerText(), /on your flute/);
+    await p.click('[data-action="nav-back"]');
+    await p.waitForURL(/\/flute\/tin-whistle-d\/songs$/);
+    await p.locator('#pl-sec-songs').waitFor();
+  });
+  await step('a song with no instrument asks which', songs, async p => {
+    await p.goto(`${app.base}/song/ode-to-joy`);
+    await p.locator('.play-notice').waitFor();
+    assert.match(await p.locator('.play-notice').innerText(), /Pick your instrument to play Ode to Joy/);
+  });
+  await songs.ctx.close();
+
   // ── One deep link per instrument family ───────────────────────────────────
   const links = catalogueLinks();
   for (const family of LINK_FAMILIES) {
