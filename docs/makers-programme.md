@@ -1,6 +1,6 @@
 # The makers programme
 
-Version 1, 21 Nov 2026. **Status:** phases 1 to 3 are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
+Version 1, 21 Nov 2026. **Status:** phases 1 to 4 are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
 
 Until now "for makers" meant a page in the website's footer with two `mailto:` buttons. This turns it into something a maker can use alone: ask for the maker role, set up a public profile, manage instruments, print a code for each one, and see how those codes are used.
 
@@ -154,6 +154,8 @@ It is built from the app's shared parts (`uiAppBar`, `uiRow`, `uiField`, `uiShee
 - **`/makers`** rebuilt: the message, the steps, the video, the real call to action (to `/play#maker`), the directory, and the FAQ. Linked from the header, not only the footer.
 - **`/makers/<slug>`**: a maker's page: logo, name, place, story, website, and their instruments, each with the playable demo link. In the sitemap.
 - **The request form** gets the kind "Maker or shop" for people who want to talk first.
+- A maker's page shows each instrument as the app draws it (from its saved notes), with "Play it" (the code's link) and, for one of the catalogue's scales, a link to that scale's page. The pages are refreshed about hourly, so an approval or an edit shows within the hour.
+- "Report this page" opens the request form on Feedback with the page named. (In the app, the Made by sheet reports straight to the review list.)
 - Copy lives in Sanity as the site's rules require; makers' own data comes from the database (they edit it in the app), never from Sanity.
 
 ### Embed (phase 5)

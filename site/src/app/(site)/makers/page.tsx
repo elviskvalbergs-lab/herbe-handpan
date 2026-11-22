@@ -3,17 +3,24 @@ import Image from "next/image";
 import { stegaClean } from "next-sanity";
 import { Faq } from "@/components/Faq";
 import { HandpanDemo } from "@/components/HandpanDemo";
+import { MakersDirectory } from "@/components/MakersDirectory";
 import { Reasons } from "@/components/Reasons";
 import { Steps } from "@/components/Steps";
 import { findTuning, handpanChords, triads } from "@/lib/engine";
+import { listMakers } from "@/lib/makers";
 import { instrumentPicture } from "@/lib/pictures";
-import { btnCta, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
+import { APP_URL } from "@/lib/site";
+import { btnCta, btnOnDark, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
 import * as seed from "@/content/seed";
-import { getMakers, getSettings } from "@/sanity/lib/data";
+import { getMakers } from "@/sanity/lib/data";
 
 // For people who make or sell instruments: why Oakhum helps their buyers keep
-// playing, how a QR code or NFC tag in the box opens the instrument, and what
-// the buyer sees (the same playable demo as the home page).
+// playing, how a code in the case opens the instrument, what the buyer sees
+// (the same playable demo as the home page), and the makers already here.
+// The main button opens the app on "Create your maker page"
+// (docs/makers-programme.md in the repository root).
+const MAKER_APP_URL = `${APP_URL}#maker`;
+const TALK_URL = "/request?kind=maker";
 const DEMO_SCALE = "d-kurd";
 // The makers video (scripts/demo-video/makers), with burned-in captions.
 const VIDEO = { src: "/video/oakhum-makers.mp4", poster: "/video/oakhum-makers.jpg" };
@@ -25,8 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function MakersPage() {
-  const [m, settings] = await Promise.all([getMakers(), getSettings()]);
-  const mail = `mailto:${settings.contactEmail}?subject=${encodeURIComponent(stegaClean(m.emailSubject) || "Oakhum for makers")}`;
+  const [m, makerList] = await Promise.all([getMakers(), listMakers()]);
   const demoChords = triads(handpanChords(DEMO_SCALE)).slice(0, 7);
   const dm = Math.max(0, demoChords.findIndex((c) => c.id === "d-min"));
 
@@ -37,9 +43,10 @@ export default async function MakersPage() {
           <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,64px)] font-bold leading-[1.03] tracking-[-0.03em]">{m.heroTitle}</h1>
           <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{m.heroText}</p>
           <div className="flex flex-wrap gap-3.5">
-            <a href={mail} className={btnPrimary}>{m.heroCta ?? seed.makers.heroCta}</a>
+            <a href={MAKER_APP_URL} className={btnPrimary}>{m.heroCta ?? seed.makers.heroCta}</a>
             <a href="#demo" className={btnOnPicture}>{m.heroSecondary ?? seed.makers.heroSecondary}</a>
           </div>
+          <p className="m-0 mt-4 text-[15px] text-muted">{m.heroNote ?? seed.makers.heroNote}</p>
         </div>
         <div aria-hidden="true" className="flex w-full min-w-0 max-w-[560px] flex-[1_1_320px] items-end justify-center">
           {PICTURES.map((slug, i) => {
@@ -91,13 +98,22 @@ export default async function MakersPage() {
         </div>
       </section>
 
+      <section id="makers" className={`${container} scroll-mt-4 pb-24`}>
+        <h2 className={`${h2} m-0 mb-3`}>{m.directoryTitle ?? seed.makers.directoryTitle}</h2>
+        <p className="m-0 mb-8 max-w-[640px] text-body">{m.directoryText ?? seed.makers.directoryText}</p>
+        <MakersDirectory makers={makerList} joinTitle={m.directoryJoinTitle ?? seed.makers.directoryJoinTitle!} joinText={m.directoryJoinText ?? seed.makers.directoryJoinText!} />
+      </section>
+
       <section className="on-dark bg-dark text-on-dark">
         <div className={`${container} flex flex-wrap items-center justify-between gap-8 py-20`}>
           <div className="flex-[1_1_520px]">
             {m.ctaTitle ? <h2 className="m-0 mb-3 text-[clamp(28px,3.5vw,40px)] font-semibold leading-[1.1] tracking-[-0.02em]">{m.ctaTitle}</h2> : null}
             {m.ctaText ? <p className="m-0 max-w-[560px] text-on-dark-muted">{m.ctaText}</p> : null}
           </div>
-          <a href={mail} className={btnCta}>{m.heroCta ?? seed.makers.heroCta}</a>
+          <div className="flex flex-wrap gap-3.5">
+            <a href={MAKER_APP_URL} className={btnCta}>{m.heroCta ?? seed.makers.heroCta}</a>
+            <a href={TALK_URL} className={btnOnDark}>{m.talkCta ?? seed.makers.talkCta}</a>
+          </div>
         </div>
       </section>
 

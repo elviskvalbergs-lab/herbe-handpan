@@ -19,7 +19,53 @@ type Fix = { name: string; run: () => Promise<string> };
 
 const OLD_OCARINA_TEXT = "The app also designs one from a scale: chambers, hole sizes and the clay's shrinkage. Then tune it hole by hole with the built-in tuner.";
 
+// The makers page before the makers programme (2026-11-21): what each text
+// read when the page's buttons were emails. Only texts that still read
+// exactly like this are replaced.
+const OLD_MAKERS = {
+  heroCta: "Tell us about your instruments",
+  howTitle: "One link in the box",
+  ctaText: "Write to us about your instruments and scales. We'll help you set up your first ones, and we'd like to hear what would help your buyers.",
+  steps: ["Set it up once", "Put it in the case", "One tap for the buyer"],
+  offer: ["A page for every scale you sell", "Your own tunings", "Handpans, kalimbas, flutes and more", "Works on any phone"],
+  brandQuestion: "Can it show my brand or my shop?",
+  seoDescription: "Help every buyer keep playing the instrument you made: a QR code or NFC tag in the box opens it on their phone with every chord. Free.",
+};
+const NEW_MAKER_FIELDS = [
+  "heroNote", "talkCta", "directoryTitle", "directoryText", "directoryJoinTitle", "directoryJoinText",
+  "makerInstrumentsTitle", "makerInstrumentsText", "makerPlayCta", "makerTuningLink", "makerNoInstruments", "makerReport", "makerJoinText",
+] as const;
+
 const FIXES: Fix[] = [
+  {
+    // The makers programme (docs/makers-programme.md in the repository root;
+    // owner, 2026-11-21): the page's buttons open the app on "Create your
+    // maker page" instead of an email, so its words say so; the directory
+    // and the maker pages get their words. A text edited in the Studio stays.
+    name: "2026-11-21-makers-programme",
+    async run() {
+      type Doc = { heroCta?: string; howTitle?: string; ctaText?: string; steps?: { title?: string }[]; offer?: { title?: string }[]; faqs?: { question?: string }[]; seo?: { description?: string } } & Record<string, unknown>;
+      const doc = await client.fetch<Doc | null>(`*[_id == "makersPage"][0]`);
+      if (!doc) return "no makers page";
+      const m = seed.makers;
+      const set: Record<string, unknown> = {};
+      const key = () => Math.random().toString(36).slice(2, 10);
+      const keyed = <T extends object>(list: T[] = []) => list.map((x) => ({ _key: key(), ...x }));
+      const titles = (list?: { title?: string }[]) => (list ?? []).map((x) => x.title).join("|");
+      if (doc.heroCta === OLD_MAKERS.heroCta) set.heroCta = m.heroCta;
+      if (doc.howTitle === OLD_MAKERS.howTitle) set.howTitle = m.howTitle;
+      if (doc.ctaText === OLD_MAKERS.ctaText) set.ctaText = m.ctaText;
+      if (titles(doc.steps) === OLD_MAKERS.steps.join("|")) set.steps = keyed(m.steps);
+      if (titles(doc.offer) === OLD_MAKERS.offer.join("|")) set.offer = keyed(m.offer);
+      // The questions: replaced as a set only while "Can it show my brand?" is still there with its old five.
+      if (doc.faqs?.length === 5 && doc.faqs.some((f) => f.question === OLD_MAKERS.brandQuestion)) set.faqs = keyed(m.faqs);
+      if (doc.seo?.description === OLD_MAKERS.seoDescription) set["seo.description"] = m.seo!.description;
+      for (const f of NEW_MAKER_FIELDS) if (!doc[f]) set[f] = m[f];
+      if (!Object.keys(set).length) return "left as edited in the Studio";
+      await client.patch("makersPage").set(set).commit();
+      return `set ${Object.keys(set).join(", ")}`;
+    },
+  },
   {
     // Building ocarinas is for chosen accounts only (profiles.can_build), so
     // the website no longer offers it (owner's decision, 2026-11-17).
