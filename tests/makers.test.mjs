@@ -8,6 +8,7 @@ import {
   withoutMadeBy, sharedOpening, madeByToKeep, makerPagePath, makerLinkPreview,
   makerCodeUrl, makerCodeLabel, makerViaFromSearch, parseSerials, qrPath, qrCardSvg, qrSheetSvgs, qrPrintDocument, MAKER_CARD_FORMATS,
   parseCsv, makerImportRows, MAKER_IMPORT_EXAMPLE, MAKER_IMPORT_LIMITS,
+  makerEmbedUrl, makerEmbedCode,
   makerNum, makerStatsDays, makerDayLabel, makerDaysAgo, makerCodeStatText, makerStatsByInstrument, makerStatsCsv, MAKER_VIA_LABELS,
 } from '../js/makers.js';
 import { LINK_FAMILIES, linkPreview, withLinkPreview, parseLink, closestLinks } from '../js/links.js';
@@ -319,4 +320,15 @@ test('stats: by instrument, most scanned first, and as a CSV', () => {
   assert.equal(csv[1], 'D Kurd 9,101,B7XK3N,12,4,1,2,0,40,0,2026-11-21,');
   assert.equal(csv[3], `"'=Pygmy, ""low""",,PYGMY2,0,0,0,0,0,0,0,,yes`, 'a name that looks like a formula is defused');
   for (const k of ['qr', 'nfc', 'link', 'embed']) assert.ok(MAKER_VIA_LABELS[k]);
+});
+
+// ── Phase 5: the embed ──────────────────────────────────────────────────────
+test('the embed code is one iframe on the website\'s embed page, and can\'t be broken by a name', () => {
+  assert.equal(makerEmbedUrl('https://oakhum.com/', 'b7xk3n'), 'https://oakhum.com/embed/s/B7XK3N');
+  const code = makerEmbedCode('https://oakhum.com', 'B7XK3N', { name: 'D Kurd 9', maker: 'Ilze Pans' });
+  assert.match(code, /^<iframe src="https:\/\/oakhum\.com\/embed\/s\/B7XK3N" title="D Kurd 9 by Ilze Pans, playable" width="100%" height="740" style="border:0;max-width:520px" loading="lazy"><\/iframe>$/);
+  const evil = makerEmbedCode('https://oakhum.com', 'B7XK3N', { name: '"><script>alert(1)</script>' });
+  assert.equal((evil.match(/</g) ?? []).length, 2, 'only the iframe\'s own tags');
+  assert.ok(!evil.includes('"><script>'));
+  assert.match(makerEmbedCode('https://oakhum.com', 'B7XK3N'), /title="Instrument, playable"/);
 });

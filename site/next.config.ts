@@ -53,6 +53,11 @@ const nextConfig: NextConfig = {
     const app = (process.env.NEXT_PUBLIC_APP_URL || "https://oakhum.vercel.app").replace(/\/$/, "");
     return APP_PATHS.map((source) => ({ source, destination: `${app}${source}` }));
   },
+  // The embeds (/embed/…) are made to sit inside a maker's or shop's own page,
+  // so any site may frame them; nothing else on the site says so.
+  async headers() {
+    return [{ source: "/embed/:path*", headers: [{ key: "Content-Security-Policy", value: "frame-ancestors *" }] }];
+  },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.sanity.io" }],
   },

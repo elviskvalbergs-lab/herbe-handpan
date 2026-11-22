@@ -537,3 +537,15 @@ export function makerStatsCsv(stats, names = {}) {
   }
   return `${lines.join('\n')}\n`;
 }
+
+// ── The embed: an instrument playable on the maker's own shop page ───────────
+// The <iframe> a maker pastes into their site. It shows the website's
+// /embed/s/CODE page (site/src/app/embed): the instrument, its chords, and a
+// link to Oakhum. Opens from it count as "On your website".
+export function makerEmbedUrl(origin, code) {
+  return `${String(origin ?? '').replace(/\/$/, '')}/embed/s/${String(code).toUpperCase()}`;
+}
+export function makerEmbedCode(origin, code, { name = '', maker = '' } = {}) {
+  const title = `${name || 'Instrument'}${maker ? ` by ${maker}` : ''}, playable`;
+  return `<iframe src="${mkEsc(makerEmbedUrl(origin, code))}" title="${mkEsc(title)}" width="100%" height="740" style="border:0;max-width:520px" loading="lazy"></iframe>`;
+}

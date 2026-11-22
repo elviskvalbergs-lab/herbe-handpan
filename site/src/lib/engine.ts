@@ -151,7 +151,12 @@ const SHORT: Record<string, string> = {
 export function handpanChords(slug: string, family: PanFamily = "handpan"): Chord[] {
   const scale = panScale(slug, family);
   if (!scale) return [];
-  const chords = findAllChords(createLayoutFromScale(scale));
+  return chordsOfLayout(createLayoutFromScale(scale));
+}
+
+// The chords the app finds on a layout, as the site shows them.
+function chordsOfLayout(layout: unknown): Chord[] {
+  const chords = findAllChords(layout);
   return chords
     .filter((c: { type: { category: string } }) => c.type.category !== "Interval")
     .map((c: { id: string; rootName: string; type: { id: string; name: string; category: string }; notes: string[] }) => ({
@@ -286,13 +291,13 @@ function cleanLayout(layout: unknown, family: PanFamily) {
   }
 }
 
-/** The app's drawing of a maker's handpan, tongue drum or kalimba from its saved notes, or null. */
-export function layoutPicture(layout: unknown, family: PanFamily, name: string): string | null {
+/** The app's drawing of a maker's handpan, tongue drum or kalimba from its saved notes (a chord's notes lit), or null. */
+export function layoutPicture(layout: unknown, family: PanFamily, name: string, chordNotes: string[] = []): string | null {
   const safe = cleanLayout(layout, family);
   if (!safe) return null;
   try {
     const label = `${name} ${panWord(family)} layout`.replace(/[^\p{L}\p{N} #.,'’()-]/gu, "");
-    return renderPan(safe, { useFlats: true }).replace('id="handpan-svg"', `role="img" aria-label="${label}"`);
+    return renderPan(safe, { highlightNotes: chordNotes, useFlats: true }).replace('id="handpan-svg"', `role="img" aria-label="${label}"`);
   } catch {
     return null;
   }
@@ -315,4 +320,15 @@ export function findTuningById(family: PanFamily, scaleId: string): (Tuning & { 
   if (!path) return null;
   const tuning = tuningsFor(family).find((t) => t.path === path);
   return tuning ? { ...tuning, instrumentSlug: family === "tongue-drum" ? "steel-tongue-drum" : family } : null;
+}
+
+/** The chords the app finds on a maker's own layout (the embed's chord buttons). */
+export function layoutChords(layout: unknown, family: PanFamily): Chord[] {
+  const safe = cleanLayout(layout, family);
+  if (!safe) return [];
+  try {
+    return chordsOfLayout(safe);
+  } catch {
+    return [];
+  }
 }

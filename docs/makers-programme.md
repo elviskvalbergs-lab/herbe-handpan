@@ -1,6 +1,6 @@
 # The makers programme
 
-Version 1, 21 Nov 2026. **Status:** phases 1 to 4 are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
+Version 1, 21 Nov 2026. **Status:** all five phases are built (see "Build order"); the rest is design. Wireframes: `docs/makers-programme-wireframes.html`. The message and the video are in `docs/video-script-makers.md`; this document is the product behind them.
 
 Until now "for makers" meant a page in the website's footer with two `mailto:` buttons. This turns it into something a maker can use alone: ask for the maker role, set up a public profile, manage instruments, print a code for each one, and see how those codes are used.
 
@@ -159,7 +159,17 @@ It is built from the app's shared parts (`uiAppBar`, `uiRow`, `uiField`, `uiShee
 - Copy lives in Sanity as the site's rules require; makers' own data comes from the database (they edit it in the app), never from Sanity.
 
 ### Embed (phase 5)
-A maker's product page can show the playable picture: `<iframe src="https://oakhum.com/embed/s/7KQ2PM">` (or `/embed/handpan/d-kurd` for a catalogue scale). The embed is the site's existing demo component without the site chrome, with "Made by … · Open in Oakhum" under it. It counts as a source of its own (`via=embed`).
+A maker's product page can show the instrument, playable: the maker copies one line from the instrument's screen in the app ("For your shop page") and pastes it into their website.
+
+```
+<iframe src="https://oakhum.com/embed/s/7KQ2PM" title="D Kurd 9 by Ilze Pans, playable" width="100%" height="740" style="border:0;max-width:520px" loading="lazy"></iframe>
+```
+
+- `/embed/s/CODE` is one of the maker's instruments, drawn from its saved notes with the chords the app finds on it. `/embed/handpan/d-kurd` (any family and catalogue tuning) is for a shop that sells a standard scale and has no account.
+- It is the website's own demo (`HandpanDemo`, `WindDemo`) without the site around it: the name, "Made by …", the picture, chord buttons that play and light up, "Play it in Oakhum" (a new tab), and one line saying where it comes from.
+- An ocarina or flute shared by code shows its picture and the button; its fingerings play in the app. (Catalogue ocarinas and flutes are fully playable at `/embed/ocarina/…`.)
+- Only `/embed/…` may be framed by other sites (`frame-ancestors *` on those paths only), and the embed pages are kept out of search engines.
+- An open from an embed is counted as its own source, "On your website", the same way as any other open: a count, nothing about the visitor.
 
 ### Bulk import
 Paste, or a `.csv` file. One row per model:

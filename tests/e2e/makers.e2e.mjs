@@ -472,6 +472,20 @@ try {
     assert.deepEqual(res.data.by_code, []);
   });
 
+  // ── Phase 5: the embed code ───────────────────────────────────────────────
+  await step('the instrument screen gives the code for the maker\'s own website', async () => {
+    await m.goto(`${BASE}/#maker`);
+    await m.locator('[data-action="maker-inst-open"]').filter({ hasText: 'Low Pygmy special' }).click();
+    await m.click('[data-action="maker-embed-open"]');
+    const html = await m.locator('#maker-embed-code').inputValue();
+    const c = sql("select public_id from public.instruments where data->>'name' = 'Low Pygmy special';");
+    assert.equal(html, `<iframe src="${BASE}/embed/s/${c}" title="Low Pygmy special by Ilze Pans, playable" width="100%" height="740" style="border:0;max-width:520px" loading="lazy"></iframe>`);
+    await shot(m, '18-embed');
+    // An open from the embed counts under its own source.
+    assert.equal(server.rpc(null, 'log_maker_event', { p_code: c, p_event: 'open', p_via: 'embed' }, { 'x-forwarded-for': '203.0.113.200', 'user-agent': 'Shop visitor' }).error, undefined);
+    assert.equal(sql(`select via || ':' || opens from public.maker_scan_days where code = ${lit(c)};`), 'embed:1');
+  });
+
   if (typeof globalThis.makersMoreSteps === 'function') await globalThis.makersMoreSteps({ step, device, signIn, sql, lit, BASE, toast, shot, users, maker, buyer, admin, code });
   assert.deepEqual(problems, [], 'no page errors, console errors, policy violations or missing files');
   console.log(`\n${passed} steps passed`);

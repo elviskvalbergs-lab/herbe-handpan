@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
-import { panSvg, type Chord, type PanFamily } from "@/lib/engine";
+import { layoutPicture, panSvg, type Chord, type PanFamily } from "@/lib/engine";
 import { playPanChord, playPanNote } from "@/lib/sound";
 import { btnCta, btnPrimary } from "@/lib/ui";
 
@@ -9,9 +9,17 @@ import { btnCta, btnPrimary } from "@/lib/ui";
 // chord re-draws it with that chord's notes, coloured root, third, fifth… and
 // plays it as the app does: each note in turn, then all together, with the
 // sounding note lit. Tapping a note on the drawing plays that note.
+// A maker's own instrument (not one of the catalogue's scales) is drawn from
+// its saved notes instead: pass `layout` and its name as `slug`.
 export function HandpanDemo({
-  slug, chords, caption, tone = "light", initial = 0, family = "handpan", appPath,
-}: { slug: string; chords: Chord[]; caption?: string; tone?: "light" | "dark"; initial?: number; family?: PanFamily; appPath?: string }) {
+  slug, chords, caption, tone = "light", initial = 0, family = "handpan", appPath, layout, cta,
+}: {
+  slug: string; chords: Chord[]; caption?: string; tone?: "light" | "dark"; initial?: number; family?: PanFamily; appPath?: string;
+  /** The saved notes of a maker's instrument; `slug` is then its name. */
+  layout?: unknown;
+  /** The button under the demo, instead of "Play … in the app": { href, label, newTab }. */
+  cta?: { href: string; label: string; newTab?: boolean };
+}) {
   const [index, setIndex] = useState(Math.min(initial, Math.max(0, chords.length - 1)));
   const drawingRef = useRef<HTMLDivElement>(null);
   const chord = chords[index];
@@ -41,7 +49,7 @@ export function HandpanDemo({
         onClick={tapNote}
         onKeyDown={keyNote}
         className="pan-drawing w-full max-w-[440px] [&_.pan-note[data-note]]:cursor-pointer"
-        dangerouslySetInnerHTML={{ __html: panSvg(slug, chord?.notes ?? [], family) }}
+        dangerouslySetInnerHTML={{ __html: layout ? layoutPicture(layout, family, slug, chord?.notes ?? []) ?? "" : panSvg(slug, chord?.notes ?? [], family) }}
       />
       {caption ? <p className={`m-0 text-center text-[15px] ${dark ? "text-on-dark-muted" : "text-muted"}`}>{caption}</p> : null}
       <div role="group" aria-label="Chords" className="flex flex-wrap justify-center gap-2">
@@ -70,7 +78,9 @@ export function HandpanDemo({
         </p>
       ) : null}
       {/* Straight on to the app, on this tuning with the chord just played. */}
-      {appPath && chord ? (
+      {cta ? (
+        <a href={cta.href} {...(cta.newTab ? { target: "_blank", rel: "noopener" } : {})} className={dark ? btnCta : btnPrimary}>{cta.label}</a>
+      ) : appPath && chord ? (
         <a href={`${appPath}/chords/${chord.id}`} className={dark ? btnCta : btnPrimary}>Play {chord.short} in the app</a>
       ) : null}
     </div>
