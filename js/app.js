@@ -252,6 +252,7 @@ function render() {
   const offlineCard = guestOfflineCardHtml();
   if (offlineCard) app.insertAdjacentHTML('beforeend', offlineCard);
   rememberLastPath();
+  songTabFollow();
   document.body.classList.toggle('has-tabbar', !!app.querySelector('.tabbar'));
   document.body.classList.toggle('tuner-on', state.tuner.on || listenUi().on);
   document.body.classList.toggle('has-actionbar', !!app.querySelector('.actionbar'));
@@ -3178,6 +3179,7 @@ function viewSong() {
     <div class="song">
       <h1 class="song-print-title">${escHtml(song.title)}</h1>
       <p class="song-meta">${escHtml(songMeta(song, shift))} · on your ${escHtml(songInstWord(inst))}</p>
+      <div class="song-top${T && !state.songPrinting ? ' is-framed' : ''}">
       <div class="song-stage${inst ? ' fg-stage' : ' pan-wrap'}">${picture}</div>
       <div class="song-now" aria-live="polite">
         <span class="song-now-note">${cur.midi == null ? 'Rest' : escHtml(nn(cur.midi))}</span>
@@ -3185,7 +3187,8 @@ function viewSong() {
         <span class="song-now-pos">${idx + 1} / ${notes.length}</span>
       </div>
       ${LY && !state.songPrinting ? songLyricLineHtml(LY, idx) : ''}
-      <div class="song-controls">
+      </div>
+      <div class="song-controls${T ? ' actionbar' : ''}">
         ${uiIconBtn('rewind', 'Back to the start', { action: 'song-restart', disabled: idx === 0 && !playing })}
         ${uiIconBtn('skip-back', 'Back one note', { action: 'song-prev' })}
         <button type="button" class="btn btn-primary song-play" data-action="song-play">${icon(playing ? 'square' : 'play')} ${playing ? 'Stop' : idx ? 'Play on' : 'Play'}</button>
@@ -3375,7 +3378,8 @@ function songTabHtml(S, T, idx, LY = null) {
         ${rows.map(r => b.cols.map(c => `<span class="tab-cell ${r.cls}${colCls(c)}">${r.cell(c)}</span>`).join('')).join('')}
         ${LY ? b.cols.map(c => `<span class="tab-lyric${c.i === idx ? ' is-current' : ''}">${c.i != null && LY[c.i] ? escHtml(LY[c.i].text) : ''}</span>`).join('') : ''}
       </div>`).join('');
-    return `<div class="tab-line${LY ? ' has-lyrics' : ''} tab-${family}"><div class="tab-hands" aria-hidden="true" style="grid-template-rows:${heights}"><span></span>${rows.map(r => `<span class="${r.cls}">${escHtml(r.label)}</span>`).join('')}${LY ? '<span></span>' : ''}</div>${bars}</div>`;
+    const here = line.bars.some(b => b.cols.some(c => c.i === idx));
+    return `<div class="tab-line${LY ? ' has-lyrics' : ''} tab-${family}${here ? ' is-current-line' : ''}"><div class="tab-hands" aria-hidden="true" style="grid-template-rows:${heights}"><span></span>${rows.map(r => `<span class="${r.cls}">${escHtml(r.label)}</span>`).join('')}${LY ? '<span></span>' : ''}</div>${bars}</div>`;
   }).join('');
   const handWord = family === 'kalimba' ? 'thumb' : 'hand';
   const label = {
@@ -3410,6 +3414,33 @@ function songLyricLineHtml(LY, idx) {
   }
   return `<p class="song-lyric-line" aria-live="off">${from > 0 ? '… ' : ''}${html}${to < at.length ? ' …' : ''}</p>`;
 }
+// The tab follows the music: when the current note moves to another line
+// (playing, stepping, tapping, rewinding), that line scrolls to the top of
+// the screen, just under the app bar. Only on a change of line, so it never
+// pulls the page back while someone scrolls through it by hand; not when the
+// song first opens (the picture and controls are seen first).
+function songTabFollow() {
+  if (state.view !== 'song' || !state.songCtx || state.songPrinting) { _songTabLine = null; return; }
+  const lines = [...document.querySelectorAll('.song-tab .tab-line')];
+  const at = lines.findIndex(l => l.classList.contains('is-current-line'));
+  const key = `${state.songCtx.id}:${at}`;
+  if (at < 0 || (key === _songTabLine && !_songTabForce)) return;
+  const first = _songTabLine == null || !_songTabLine.startsWith(`${state.songCtx.id}:`);
+  _songTabLine = key;
+  if (first && !_songTabForce) return;
+  _songTabForce = false;
+  // The instrument stays in view (the framed top block sticks under the app
+  // bar): the line goes just under it, so the tab moves as in a frame.
+  const bar = document.querySelector('.appbar');
+  const top = document.querySelector('.song-top.is-framed');
+  const offset = (bar?.offsetHeight ?? 0) + (top?.offsetHeight ?? 0) + 8;
+  const y = lines[at].getBoundingClientRect().top + window.scrollY - offset;
+  // At once, like turning a page: a smooth scroll is cut short by the next
+  // note's redraw.
+  window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+}
+let _songTabLine = null;
+let _songTabForce = false; // Play pressed: bring the current line up even if it hasn't changed
 function songPrint() {
   songStop();
   state.songPrinting = true;
@@ -3470,6 +3501,7 @@ function songAction(action, el) {
     initAudio();
     if (state.songCtx.idx >= last) state.songCtx.idx = 0;
     state.songPlay = { at: Date.now() };
+    _songTabForce = true;
     logEvent('feature', { name: 'song-play', family: measureFamily() });
     songTick();
     return true;

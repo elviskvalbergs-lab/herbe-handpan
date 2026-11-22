@@ -99,6 +99,18 @@ try {
     assert.ok(await p.locator('[data-action="song-step"]').count() > 0, 'the song has notes to tap');
     await p.click('[data-action="song-play"]');
     await p.waitForTimeout(300);
+    // The tab follows the music under the instrument: the picture stays in
+    // view (the framed top block) and the playing line sits just below it.
+    if (await p.locator('.song-tab').count()) {
+      const pos = await p.evaluate(() => ({
+        stage: document.querySelector('.song-top.is-framed .song-stage')?.getBoundingClientRect().top ?? -1,
+        topBottom: document.querySelector('.song-top.is-framed')?.getBoundingClientRect().bottom ?? -1,
+        line: document.querySelector('.tab-line.is-current-line')?.getBoundingClientRect().top ?? -1,
+      }));
+      assert.ok(pos.stage >= 0 && pos.stage < 120, `the instrument stays at the top (${pos.stage})`);
+      assert.ok(pos.line >= pos.topBottom && pos.line - pos.topBottom < 40, `the playing line sits under it (${pos.line} vs ${pos.topBottom})`);
+    }
+    await p.click('[data-action="song-play"]');
     await p.click('[data-action="nav-back"]');
     await p.waitForURL(/\/songs$/);
     await p.locator('[data-action="song-open"]').first().waitFor();
