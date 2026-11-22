@@ -7,7 +7,8 @@ kept in takes-elevenlabs/ like the makers video's.
 
 Cut 1 (94 s) and its takes stay in ../makers/. The last phrase goes to
 ElevenLabs as "[excited] Let's get your instruments PLAYED!", as in cut 1.
-m6 is the maker dashboard: leave it out until the makers programme is live.
+m6 is the maker dashboard with scan counts: leave it out until makers phases
+2-3 are merged (phase 1, the role, profile and "Made by", is).
 """
 
 # One line per scene. A line is a list of phrases, so a pause is a real pause.
@@ -30,7 +31,7 @@ LINES = {
     'm5':   ['Every scan opens that instrument.',
              'With every chord it can play, and the songs that fit it.',
              'No app to install. No sign-up.'],
-    # [You see every scan · Your instruments, your name (needs: makers programme)]
+    # [You see every scan · Your instruments, your name (needs: makers phases 2-3)]
     'm6':   ['And you see it working: which instruments were opened, and how often.'],
     # [Save it once. Every scan opens it. · Free for you and your buyers · oakhum.com/makers]
     'm7':   ["It's free, for you and for your buyers.",

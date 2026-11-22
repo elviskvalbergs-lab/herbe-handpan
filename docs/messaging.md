@@ -32,7 +32,7 @@ Three per audience, in this order. Each one is something a person can check in u
 **Makers and shops**
 
 1. **Set up once, exactly as built.** Your scale, your layout, every bottom note. Save it with a free account.
-2. **One code per instrument.** Share gives it a code, a link and a QR code. On a card in the case or on the certificate, it opens that exact instrument. *(needs: makers programme)* With a maker profile it also says "Made by <maker>" and counts the scans.
+2. **One code per instrument.** Share gives it a code, a link and a QR code. On a card in the case or on the certificate, it opens that exact instrument. For an approved maker it also says "Made by <maker>" (built 21 Nov). *(needs: makers phases 2–3)* The maker sees how often each code is scanned.
 3. **Free for you and for the buyer.** The buyer needs no app store and no sign-up to open and play it.
 
 How many songs fit depends on the instrument, and we say so. Checked on 21 Nov 2026: tin whistle in D 103 of 103, alto C ocarina 102, 17-key kalimba in C 90, D Celtic minor handpan 32, D Kurd handpan or tongue drum 21. Never say "103 songs for your handpan".
@@ -183,7 +183,7 @@ Most new owners play the scale for a week and then get stuck. That is when an in
 
 With Oakhum, a maker sets each instrument up once, exactly as it was built: the scale, the layout, every bottom note. Saved with a free account, it gets its own code, link and QR code. Put the code on a card in the case or on the certificate, and one scan opens that exact instrument on the buyer's phone, ready to play: every chord it can make, drawn on its own layout, the songs its notes can play, and help to join in when a friend plays guitar. The buyer needs no app store and no sign-up. Oakhum is free for makers and for players, and every tuning also has a public page that a shop can link from its product page, so people can hear a scale before they choose it.
 
-*(needs: makers programme)* Once maker profiles are live, add: "Shared instruments say who made them, and the maker sees how often each code is scanned."
+Maker profiles are live (21 Nov), so add: "Shared instruments say who made them." *(needs: makers phases 2–3)* Then also: "and the maker sees how often each code is scanned."
 
 ## 9. Where each line is used
 

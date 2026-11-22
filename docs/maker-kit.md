@@ -6,12 +6,12 @@
 
 **What is true today, and what is on the way.** Write only the left column until the right one is live.
 
-| Works today | *(needs: makers programme)* |
+| Works today (checked 21 Nov 2026, makers phase 1 merged) | Not built yet *(needs: makers phases 2–5)* |
 |---|---|
-| A maker saves an instrument with a free account, exactly as built (scale, layout, bottom notes). | A maker role and profile (name, logo, link to the shop). |
-| Share gives it a 6-character code, a link (`oakhum.com/s/<code>`) and a QR code. | "Made by <maker>" on the shared instrument. |
-| Anyone who opens the code sees that instrument and can play it: no app store, no sign-up. | A printable card and an NFC link per instrument from the maker's own screen. |
-| Every catalogue tuning has a public page with a playable demo (`oakhum.com/instruments/<instrument>/…`) and an app link (`oakhum.com/handpan/d-kurd`). | Scan statistics per code; a makers directory; later an embed for the maker's site. |
+| A maker saves an instrument with a free account, exactly as built (scale, layout, bottom notes). | The maker asks for the maker role in Settings › For makers and shops; once approved, they have a public profile and their shared instruments say "Made by <maker>". |
+| Share gives it a 6-character code, a link (`oakhum.com/s/<code>`) and a QR code. | The maker's own list of instruments, serial numbers, a printable QR card and sticker sheet, NFC instructions (phase 2). |
+| Anyone who opens the code sees that instrument and can play it: no app store, no sign-up. | Scan statistics per code (phase 3). |
+| Every catalogue tuning has a public page with a playable demo (`oakhum.com/instruments/<instrument>/…`) and an app link (`oakhum.com/handpan/d-kurd`). | A makers directory and maker pages on the website (phase 4); an embed for the maker's site (phase 5). |
 | Free for the maker and the buyer. | |
 
 Never mention the clay ocarina builder. Never promise "your brand on it" or "an embed" before the right column is live; "it's being built, tell me if it matters to you" is fine.
@@ -47,7 +47,7 @@ Notes:
 
 - **The link** is the app page of a tuning they actually sell, tagged: `oakhum.com/handpan/f-celtic-minor?utm_source=email&utm_medium=maker-email&utm_campaign=makers-202612`. If they only build custom tunings, set one up as a custom instrument and link that.
 - **The specific sentence** has to be real (a scale they build, something from their site or a video). If there is nothing specific to say, don't write to them.
-- **When the makers programme is live**, add one sentence after "…or an account.": "It says who made it, and you can see how often each code is opened."
+- **Maker profiles are live** (21 Nov), so the email may add after "…or an account.": "It says who made it." Add "and you can see how often each code is opened" only when scan statistics exist *(needs: makers phase 3)*.
 - **For a shop** (sells other makers' instruments), replace the second paragraph's first two sentences with: "I make Oakhum, a free web app for the people who buy instruments like the ones you sell. Every scale has a page where a customer can hear it and play it before they choose, and you can put a code in the box that opens their instrument on their phone."
 
 ## 2. Follow-up
@@ -94,7 +94,7 @@ A4, portrait, one side, in the brand's cream, ink and clay with the Oakhum text 
 | **Top left** | Logo. Small: "For makers and shops". |
 | **Headline** | **Save it once. Every scan opens it, ready to play.** |
 | **Under it, one line** | Oakhum puts each instrument you make on its buyer's phone: every chord it can play and the songs its notes can play. |
-| **Picture, right half** | A phone showing a shared instrument with a chord lit; beside it, the QR card (§6) at real size. *(needs: makers programme)* the phone shows "Made by <maker>". |
+| **Picture, right half** | A phone showing a shared instrument with a chord lit; beside it, the QR card (§6) at real size. The phone shows "Made by <maker>". |
 | **Three steps, numbered** | **1 Save it.** Set the instrument up exactly as you built it: scale, layout, every bottom note. · **2 Put its code in the case.** A QR code on a card or on the certificate. · **3 They scan it.** Their instrument opens, ready to play. No app, no sign-up. |
 | **Why, three short lines** | Buyers get past "what do I play now?" · Fewer emails asking what to play · Unusual scales are easier to choose when people can hear them first |
 | **Small print, one line** | Free for you and your buyers. A buyer's free account keeps their instrument, works offline and syncs. Handpans, tongue drums, kalimbas, ocarinas and flutes. |
@@ -102,7 +102,7 @@ A4, portrait, one side, in the brand's cream, ink and clay with the Oakhum text 
 
 Not on the page: NFC details, the shop link, Listen, feature lists. One page, one promise.
 
-*(needs: makers programme)* When scan statistics exist, the third "why" line becomes "See how often each instrument is opened".
+*(needs: makers phase 3)* When scan statistics exist, the third "why" line becomes "See how often each instrument is opened".
 
 ## 5. Product-page copy for a maker's shop
 
@@ -165,7 +165,7 @@ oakhum.com/s/7KQ2PM
 - Line 2 is the instrument's own name, as the maker saved it.
 - The link is printed under the code for anyone whose camera won't scan it.
 - The QR code is at least 30 mm wide, dark on light, with a quiet margin of four modules.
-- *(needs: makers programme)* Above the logo: "Made by [Maker]", with the maker's logo. Until then the maker can print their own logo on the back.
+- Above the logo: "Made by [Maker]" (the app shows the same line for an approved maker). *(needs: makers phase 2)* The app will print this card itself; until then it is made by hand from the Share sheet's QR code.
 
 **Back (optional)**
 
