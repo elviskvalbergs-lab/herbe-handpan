@@ -448,6 +448,44 @@ const FIXES: Fix[] = [
       return `set ${Object.keys(set).join(", ")}`;
     },
   },
+  {
+    // The copy review of 2026-11-21 left the home page's lists (steps, reasons,
+    // account points, questions) and the instruments' questions as they were:
+    // it compared them as text, and Sanity returns an object's fields in its
+    // own order, so "unchanged" lists looked edited. Compared here field by
+    // field. A list is replaced only while it still reads as it did before the
+    // review (scripts/seed-before-2026-11-21.ts); Studio edits stay.
+    name: "2026-11-22-copy-review-lists",
+    async run() {
+      type Item = Record<string, unknown>;
+      // An item without Sanity's own fields, its fields in one order.
+      const plain = (x: unknown): unknown => (x && typeof x === "object"
+        ? Object.fromEntries(Object.entries(x as Item).filter(([k]) => !k.startsWith("_")).sort(([a], [b]) => a.localeCompare(b)))
+        : x);
+      const same = (a: unknown, b: unknown) => JSON.stringify(((a as unknown[]) ?? []).map(plain)) === JSON.stringify(((b as unknown[]) ?? []).map(plain));
+      const keyed = (list: unknown[]) => list.map((x, i) => (x && typeof x === "object" ? { _key: `s${i}`, ...(x as Item) } : x));
+      const tx = client.transaction();
+      const notes: string[] = [];
+      const sync = (id: string, doc: Item | null | undefined, was: Item, now: Item, keys: string[]) => {
+        if (!doc) return;
+        const set: Item = {};
+        for (const key of keys) if (!same(was[key], now[key]) && same(doc[key], was[key])) set[key] = keyed(now[key] as unknown[]);
+        if (!Object.keys(set).length) return;
+        tx.patch(id, (p) => p.set(set));
+        notes.push(`${id}: ${Object.keys(set).join(", ")}`);
+      };
+      const home = await client.fetch<Item | null>(`*[_id == "homePage"][0]{steps, why, memberPoints, faqs}`);
+      sync("homePage", home, before.home as Item, seed.home as Item, ["steps", "why", "memberPoints", "faqs"]);
+      const docs = await client.fetch<Item[]>(`*[_id in $ids]{_id, faqs}`, { ids: seed.instruments.map((d) => d._id) });
+      for (const now of seed.instruments) {
+        const was = before.instruments.find((d) => d._id === now._id);
+        if (was) sync(now._id, docs.find((d) => d._id === now._id), was as Item, now as Item, ["faqs"]);
+      }
+      if (!notes.length) return "left as edited in the Studio";
+      await tx.commit();
+      return notes.join("; ");
+    },
+  },
 ];
 
 type FeatureStart = (typeof seed.features)[number];
