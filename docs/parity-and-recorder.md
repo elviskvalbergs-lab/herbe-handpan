@@ -1,5 +1,7 @@
 # Parity gaps and the recorder: design note
 
+**Status: built** (status line added 22 Nov 2026): the recorder and the parity pull requests are merged. The questions left for the owner are still open unless answered below.
+
 From the outside-in review (November 2026). CLAUDE.md says every instrument gets the same experience; this note lists where that wasn't true, what each gap gets, where each chart comes from, and what is left for the owner to decide. Built in three pull requests into `preview`:
 
 | | Branch | What |

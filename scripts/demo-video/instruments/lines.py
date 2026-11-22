@@ -1,4 +1,4 @@
-"""The five per-instrument clips (16-18 s each): the voice-over, one line per scene (docs/video-plan.md §8).
+"""The six per-instrument clips (16-18 s each): the voice-over, one line per scene (docs/video-plan.md §8).
 Used by ../voiceover.py; the video's compose.py fits each scene to its line.
 
 First cuts are voiced with Kokoro (free); once the owner agrees the words and
@@ -6,8 +6,7 @@ timing, the same lines go to ElevenLabs "Liam" (eleven_v4), one take each,
 kept in takes-elevenlabs/ like the makers video's.
 
 Three lines per clip: the question, its chords, a song. The end cards have
-no voice. A recorder clip adds recorder1-recorder3 here when it ships.
-"""
+no voice. """
 
 # One line per scene. A line is a list of phrases, so a pause is a real pause.
 # Captions on screen in brackets, so the voice can add to them, not repeat them.
@@ -35,4 +34,8 @@ LINES = {
     'whistle2':["Every note's fingering, as you play."],
     'whistle3':['And songs, note by note.',
              'For Native American flutes too.'],
+    # [What can your recorder play?]
+    'recorder1':['The recorder from school. Still in a drawer?'],
+    'recorder2':["Every note's fingering, as you play."],
+    'recorder3':['And a hundred songs you already know, note by note.'],
 }

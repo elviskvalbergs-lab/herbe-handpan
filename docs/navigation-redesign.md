@@ -1,5 +1,7 @@
 # Navigation redesign: tabs, Songs, a calmer Chords screen, one microphone story
 
+**Status: built** (status line added 22 Nov 2026; merged in #84, #87, #89 and #101), except where a section says "not built yet". The living record of the shared patterns is `docs/design-system.md`.
+
 Design for the outside-in review of November 2026. Wireframes: `docs/navigation-wireframes.html`.
 The shared patterns that come out of it are written into `docs/design-system.md` as each part is built.
 

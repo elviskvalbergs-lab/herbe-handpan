@@ -1,8 +1,8 @@
 # Oakhum launch campaign
 
-**Status: plan** (rewritten 21 Nov 2026 for the product as it is now; replaces the six-week "feedback round" plan of 17 Nov). Nothing here has been posted or sent yet. Words come from `docs/messaging.md`, videos from `docs/video-plan.md`, everything for makers from `docs/maker-kit.md`.
+**Status: plan** (rewritten 21 Nov 2026, checked against `preview` on 22 Nov; replaces the six-week "feedback round" plan of 17 Nov). Nothing here has been posted or sent yet. Words come from `docs/messaging.md`, videos from `docs/video-plan.md`, everything for makers from `docs/maker-kit.md`.
 
-**What changed since the first plan:** there are two audiences, not six; Songs exist (103 songs with tabs) and lead the posts for kalimba, ocarina and whistle; the app has a feedback button (Settings › Send feedback); "works offline" is only ever said with "free account"; the makers pitch is one promise; and "what worked" is now a number.
+**What changed since the first plan:** there are two audiences, not six; Songs exist (114 songs with tabs, each with its own link) and lead the posts for kalimba, ocarina, whistle and recorder; the app has a feedback button (Settings › Send feedback); "works offline" is only ever said with "free account"; the makers pitch is one promise; and "what worked" is now a number.
 
 The budget is still €0 and about 2–3 hours of the owner's time a week. The aim is still feedback and an honest read on who comes back, not a launch day.
 
@@ -12,7 +12,7 @@ The budget is still €0 and about 2–3 hours of the owner's time a week. The a
 
 | | Jammers | Makers and shops |
 |---|---|---|
-| Who | Adults who own a handpan, tongue drum, kalimba, ocarina or flute, want to join in with friends and want to play songs | People and workshops who make or sell them |
+| Who | Adults who own a handpan, tongue drum, kalimba, ocarina, flute or recorder, want to join in with friends and want to play songs | People and workshops who make or sell them |
 | What we ask them to do | Open the link for their instrument and play something | Save one instrument and put its code in the case |
 | Where they are | Instrument subreddits and Facebook groups, forums, teachers' channels, search | Their own sites and published business addresses |
 | The video | A (overview), then the clip for their instrument | Makers v2 (cut 1b until it exists) |
@@ -23,16 +23,16 @@ Communities are still approached one instrument at a time, because a post in r/k
 
 | # | What | Who | Status |
 |---|---|---|---|
-| 1 | The website says what Oakhum is: hero, all five instruments, "Play my notes", Songs on the home page | Site session | In progress |
-| 2 | Songs has its own tab, so a post can link straight to an instrument's songs (`oakhum.com/kalimba/c-major-17/songs`) | App session | **Done** (merged 21 Nov). A link per song does not exist yet; posts link to the Songs tab. |
+| 1 | The website says what Oakhum is: the hero, "Play my notes", Songs on the home page, song pages, the help centre | Site session | **Done** (merged 22 Nov) |
+| 2 | Songs has its own tab and a link per song, so a post can link straight to a song on an instrument (`oakhum.com/kalimba/c-major-17/songs/ode-to-joy`) | App session | **Done** |
 | 3 | Video A and the clip for the first instrument (F3 kalimba or F1 handpan) | Video session | Scripts ready (`docs/video-plan.md`) |
-| 4 | Site measurement (§3): Vercel Analytics on the site and the three site events | Site session | **Not there yet**: on 21 Nov the site has Sentry only. Without it, posts that link to the website can't be measured; posts that link straight into the app can. |
+| 4 | Site measurement (§3): Vercel Web Analytics and the site's PostHog events, with campaign tags carried from the site into the app | Site session | **Done** (merged 22 Nov). Check in week 0 that events arrive in PostHog from production. |
 | 5 | Tracked links for every post (§3) | Claude | The table is in §5; fill in at posting time |
 | 6 | Free alerts: an [F5Bot](https://f5bot.com) alert and a Google Alert for "oakhum" | Owner, 5 min | To do |
 | 7 | Google Search Console and Bing Webmaster Tools: submit `oakhum.com/sitemap.xml` | Owner, 15 min | To do |
 | 8 | The email setup for maker outreach (§7) | Owner | To decide |
 
-Items 1, 3 and 4 gate week 1. Item 2 does not.
+Item 3 (the videos) is what still gates week 1.
 
 ## 3. Measurement
 
@@ -41,10 +41,10 @@ Items 1, 3 and 4 gate week 1. Item 2 does not.
 | Where | Tool | What it gives | Limits |
 |---|---|---|---|
 | **App** (`oakhum.com/play`, every `/<family>/<tuning>` and `/s/<code>` link) | PostHog EU, cookieless (`logEvent` in `js/auth.js`) | The events below, with `utm_source`, `utm_medium` and `utm_campaign` on `open`; taps for heatmaps | No guest is recognised on a second visit (nothing is stored on the device, on purpose). Returning is counted for accounts only. |
-| **Website** (home, instrument and tuning pages, `/makers`, `/help`) | Vercel Analytics *(needs: site analytics)* | Page views, referrers and UTM per page, without cookies | Page views, not people. Use it for "which post brought traffic to which page". |
-| **Website to app** | PostHog events on the site *(needs: site analytics)*: `site_cta` (which button, which page), `site_demo_play` (a chord tapped in a page's playable demo), `site_video` (video, 25/50/100 %) | Whether a page sends people on into the app, and whether the videos are watched | The site must pass the UTM tags on in its links to the app, or the app sees every visitor as coming from `oakhum.com`. |
+| **Website** (home, instrument, tuning and song pages, `/makers`, `/help`) | Vercel Web Analytics and Speed Insights (`site/src/components/Measure.tsx`) | Page views, referrers and UTM per page, without cookies | Page views, not people. Use it for "which post brought traffic to which page". |
+| **Website to app** | PostHog events on the site (`site/src/lib/analytics.ts`, the same PostHog project as the app, marked `surface: site`): `app_cta_click` (where on the page, and the link), `demo_chord_played` (family, tuning, chord), `video_play` (which video), `request_submitted`, `maker_contact_click` | Whether a page sends people on into the app, whether the playable demo and the videos are used | A link from the site into the app carries the visit's `utm_…` tags with it, so the app's `open` event still knows which post the visitor came from. `video_play` counts starts, not how far people watched. |
 | **Accounts** | Supabase: `profiles.last_seen_on` | Exact return counts for people with an account | — |
-| **Makers** | A hand-kept list (who was written to, who replied, who said no), then scan statistics *(needs: makers phase 3)* | Replies, makers with a shared instrument, scans per code | Until scan statistics exist, a maker's scans are `open` events on `/s/<code>` paths in PostHog. |
+| **Makers** | A hand-kept list (who was written to, who replied, who said no), and the makers programme's own numbers (scans, saves and chords played per code; the admin's list of maker requests) | Replies, maker pages requested and approved, instruments with a code, scans per code | Counts only: nobody is identified. |
 
 **App events that exist today:** `open` (path, referrer, utm) · `setup` (the setup steps and which path: listen or know) · `first_play` (family, seconds from landing) · `feature` (name: chords, arpeggio, listen, tuner, chord-sheet, song-play, song-print, …) · `save_tap` · `signup_shown` · `signup_method` · `signup_done` · `save_completed` · `install` · `offline_session` · `guest_offline` · `listen_check`.
 
@@ -55,7 +55,7 @@ Every link in a post or an email carries three tags. Keep them lower case, with 
 ```
 ?utm_source=<reddit|facebook|forum|email|youtube|instagram|hn>
 &utm_medium=<post|comment|maker-email|teacher-email|video|bio>
-&utm_campaign=<handpan|tongue-drum|kalimba|ocarina|flute|makers>-<yyyymm>
+&utm_campaign=<handpan|tongue-drum|kalimba|ocarina|flute|recorder|makers>-<yyyymm>
 ```
 
 Example: `oakhum.com/kalimba/c-major-17?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612`
@@ -124,7 +124,7 @@ Video: F1 (handpan clip), or A. Link: `oakhum.com/handpan/d-kurd?utm_source=redd
 > So I built Oakhum. You pick your scale (62 so far), or enter your own notes, bottom notes included, or tap "Play my notes" and play each note so it works out what you have. Then it shows:
 >
 > - every chord your scale can make, drawn on your own layout
-> - the songs your notes can play, with a tab (a D Kurd gets about twenty; nine notes are nine notes)
+> - the songs your notes can play, with a tab (a D Kurd gets a couple of dozen; nine notes are nine notes)
 > - a song's chords in order, as a playlist, if you paste its chord sheet
 > - and with "Listen" it hears a chord someone plays nearby and shows it on your pan
 >
@@ -148,7 +148,7 @@ Video: A. Link: the same page with `utm_source=facebook`.
 
 ### 5.3 r/kalimba (week 2)
 
-Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17/songs?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612` (the kalimba's Songs tab).
+Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17/songs/ode-to-joy?utm_source=reddit&utm_medium=post&utm_campaign=kalimba-202612` (Ode to Joy on a 17-key kalimba; "Back" from it is the kalimba's Songs tab).
 
 > **Title:** Free kalimba tabs that light up note by note, filtered to the songs your kalimba can actually play. Feedback wanted
 >
@@ -164,7 +164,7 @@ Video: F3 (kalimba clip) or C (Songs). Link: `oakhum.com/kalimba/c-major-17/song
 >
 > Free, no sign-up to try. A free account keeps your kalimba and your songs, and works offline.
 >
-> Here's a 17-key in C: [link] (the link opens its Songs tab)
+> Here's Ode to Joy on a 17-key in C: [link]
 >
 > I'd like to hear what's wrong: is the tab the way you read tabs? Which songs are missing? Is your kalimba in the list?
 
@@ -219,7 +219,23 @@ Video: F5. Link: `oakhum.com/flute/tin-whistle-d/songs?utm_source=reddit&utm_med
 
 ### 5.7 Native American flute groups (week 3)
 
-Use 5.6 with the first two paragraphs about the NAF: "5 and 6-hole flutes in every key, the fingering for every note from a published chart, and the songs your flute's notes can play". Link: `oakhum.com/flute/naf-6-a4?utm_source=facebook&utm_medium=post&utm_campaign=flute-202612`. Check on the day how many songs a NAF in A gets (a pentatonic flute plays far fewer than a whistle) and say that number, not "a hundred".
+Lead with fingerings and chords, not songs: a pentatonic flute has the notes for very few of the catalogue's songs (2 on a 6-hole flute in A on 22 Nov). Use 5.6 with its second paragraph replaced by: "For Native American flutes: 5 and 6-hole flutes in every key, the fingering for every note from a published chart, and chords played one note at a time, so you can play along with a guitar. It can also listen to a guitar and show you which notes fit." Leave out "a hundred tunes". Link: `oakhum.com/flute/naf-6-a4?utm_source=facebook&utm_medium=post&utm_campaign=flute-202612`.
+
+### 5.7b r/Recorder (week 3)
+
+Video: F6. Link: `oakhum.com/recorder/soprano-baroque/songs?utm_source=reddit&utm_medium=post&utm_campaign=recorder-202612`. Read the sub's rules first: it is a community of serious players, so say plainly who this is for.
+
+> **Title:** Free: 100 well-known tunes for soprano recorder that show each fingering as they play (baroque and German). Corrections welcome
+>
+> Hello. I'm Elvis, from Latvia. I make a free web app called Oakhum for people who play instruments with a fixed set of notes, and it now does recorders: soprano and alto in baroque fingering, and soprano in German fingering.
+>
+> It has a fingering chart from a published source, and about a hundred folk songs, children's songs and carols. Each one plays at whatever speed you like and shows the note and its fingering as it goes. It's for adults picking the recorder up again and for parents helping a child, not for people playing Telemann.
+>
+> Free, no sign-up to try. A free account keeps your recorder and songs, and works offline.
+>
+> [link]
+>
+> I'd value corrections from people who play: fingerings, alternative fingerings I should show, keys.
 
 ### 5.8 Short video captions (each instrument's week)
 
@@ -230,10 +246,11 @@ One per clip, the same text on Reels, Shorts and TikTok:
 - **Kalimba (F3):** Songs your kalimba can play, in kalimba tab, lit note by note. Free, no sign-up to try: oakhum.com
 - **Ocarina (F4):** Every fingering, and songs that show each one as they play. Free: oakhum.com
 - **Tin whistle (F5):** A hundred well-known tunes for D whistle, with every fingering. Free: oakhum.com
+- **Recorder (F6):** The recorder from school, and a hundred songs you already know, with every fingering. Free: oakhum.com
 - **Play my notes (B):** Don't know your tuning? Play each note once. oakhum.com
 - **Songs (C):** The songs your instrument's notes can play, with the tab. oakhum.com
 
-Hashtags, three at most, the instrument's own: #handpan #handpanmusic · #kalimba #kalimbatabs · #tonguedrum · #ocarina · #tinwhistle. The profile link carries `utm_source=instagram&utm_medium=bio` (or `youtube`, `tiktok`).
+Hashtags, three at most, the instrument's own: #handpan #handpanmusic · #kalimba #kalimbatabs · #tonguedrum · #ocarina · #tinwhistle · #recorder. The profile link carries `utm_source=instagram&utm_medium=bio` (or `youtube`, `tiktok`).
 
 ### 5.9 Email to a teacher or creator (weeks 2 and 3)
 
@@ -270,10 +287,10 @@ About 2–3 hours of the owner's time a week. Posts go out Tuesday to Thursday; 
 | **0 · Get ready** | Check §2's list. | Videos A and F1 reviewed. Tracked links made. Join the Facebook groups and forums. | Alerts and Search Console set up. | Everything in §2 that gates week 1 is done. |
 | **1 · Handpan** | Post 5.1 to r/handpan (after reading its rules). | One handpan Facebook group a day (5.2). Upload F1 as a Reel, Short and TikTok. Reply to every comment. | First read of the funnel. Fix the top two or three problems. | The week-1 numbers written into §3 in place of the guesses. |
 | **2 · Kalimba and tongue drum** | Reply 5.10 in the week-1 threads. | r/kalimba (5.3); tongue drum groups (5.4); clips F3 and F2. First batch of 10 teacher emails (5.9). | Weekly review. | A decision: do Songs or chords lead the kalimba pitch? (Read `feature: song-play` against chords.) |
-| **3 · Ocarina, whistle, flute. Makers batch 1** | Reply 5.10 in the week-2 threads. | r/ocarina and Pure Ocarinas (5.5); r/tinwhistle and Chiff & Fipple (5.6); NAF groups (5.7); clips F4 and F5. **Makers: 20 cold emails** (`docs/maker-kit.md`), 10 on Tuesday and 10 on Thursday. | Weekly review. | Maker replies answered within a day. |
+| **3 · Ocarina, whistle, flute. Makers batch 1** | Reply 5.10 in the week-2 threads. | r/ocarina and Pure Ocarinas (5.5); r/tinwhistle and Chiff & Fipple (5.6); NAF groups (5.7); r/Recorder (5.7b); clips F4, F5 and F6. **Makers: 20 cold emails** (`docs/maker-kit.md`), 10 on Tuesday and 10 on Thursday. | Weekly review. | Maker replies answered within a day. |
 | **4 · Follow up and decide** | Reply 5.10 in the week-3 threads. | One follow-up to every maker and teacher who didn't answer, then stop. **Makers batch 2: 20 more.** The local Riga handpan community, in person. | The four-week review (§8). | A written decision on where the next two months go. |
 
-Makers are written to in week 3 and not before, for two reasons: by then the site and the makers video say the one promise, and the first weeks' fixes are in. Maker profiles and "Made by" are live (makers phase 1, merged 21 Nov), so the email offers them; codes on a printable card and scan statistics are offered only once phases 2 and 3 are merged.
+Makers are written to in week 3 and not before, for two reasons: by then the makers video says the one promise, and the first weeks' fixes are in. The makers programme is built (maker page, a code per instrument, "Made by", the numbers), so the email offers all of it and asks for one thing: set up one instrument.
 
 ## 7. Email: how it's done
 
@@ -305,7 +322,7 @@ Makers are written to in week 3 and not before, for two reasons: by then the sit
 ## 9. What is not verified
 
 - Subreddit and group rules and sizes: Reddit blocks requests from Claude's environment. Read each sidebar before posting.
-- Whether a NAF in a given key gets enough songs to mention (5.7): check in the app on the day.
-- The site measurement in §3 does not exist yet. Until it does, only links that go straight into the app are measured.
+- Subreddit names (r/Recorder and the others) were not opened from here; confirm each exists and is the active one.
+- The site measurement in §3 is merged but has not been seen working on production: check in week 0 that `app_cta_click` and `demo_chord_played` arrive in PostHog and that a tagged link keeps its tags into the app.
 - The targets in §3 are guesses until week 1 replaces them.
-- Song counts in the posts were read from the app on 21 Nov 2026 (D Kurd handpan 21, 17-key kalimba in C 90, alto C ocarina 102, D whistle 103). Check them again on the day of the post.
+- Song counts in the posts were read from the app's **Popular** list on 22 Nov 2026 (D Kurd handpan 22, 17-key kalimba in C 89, alto C ocarina 100, D whistle 101, soprano recorder 101). Check them again on the day of the post.
