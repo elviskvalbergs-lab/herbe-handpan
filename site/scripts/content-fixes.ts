@@ -8,6 +8,7 @@
 import { createClient } from "next-sanity";
 import { apiVersion, dataset, projectId, writeToken } from "../src/sanity/env";
 import * as seed from "../src/content/seed";
+import * as before from "./seed-before-2026-11-21";
 import { toBlocks } from "../src/sanity/lib/blocks";
 
 // Production builds only: previews share the dataset, so a pull request's
@@ -364,6 +365,67 @@ const FIXES: Fix[] = [
       const page = seed.pages.find((p) => p._id === "page-privacy")!;
       await client.patch("page-privacy").set({ body: toBlocks(page.body), updated: page.updated }).commit();
       return "privacy notice updated";
+    },
+  },
+  {
+    // The copy review of 2026-11-21: the home page says what Oakhum is and
+    // leads with "Play my notes" and songs, features carry the app's own
+    // names, the ocarina page names the 6-hole pendant, and the privacy page
+    // covers measurement on the website. Every field is compared with the
+    // starting content as it was before (scripts/seed-before-2026-11-21.ts):
+    // it changes only while it still reads exactly as it did then, and new
+    // fields are filled only while empty, so Studio edits stay.
+    name: "2026-11-21-copy-review",
+    async run() {
+      const tx = client.transaction();
+      const notes: string[] = [];
+      // Arrays of objects carry Sanity's _key: compared without, written with.
+      const plain = (v: unknown): unknown => (Array.isArray(v) ? v.map((x) => (x && typeof x === "object" ? Object.fromEntries(Object.entries(x).filter(([k]) => k !== "_key" && k !== "_type")) : x)) : v);
+      const same = (a: unknown, b: unknown) => JSON.stringify(plain(a) ?? null) === JSON.stringify(plain(b) ?? null);
+      const keyed = (v: unknown): unknown => (Array.isArray(v) ? v.map((x, i) => (x && typeof x === "object" ? { _key: `r${i}`, ...x } : x)) : v);
+      // What to set on a document: fields whose starting text changed, where the live text is still the old one (or missing).
+      const changes = (doc: Record<string, unknown>, was: Record<string, unknown>, now: Record<string, unknown>) => {
+        const set: Record<string, unknown> = {};
+        for (const key of Object.keys(now)) {
+          if (key.startsWith("_") || key === "slug" || same(was[key], now[key])) continue;
+          if (doc[key] == null || same(doc[key], was[key])) set[key] = keyed(now[key]);
+        }
+        return set;
+      };
+      const apply = (id: string, set: Record<string, unknown>) => {
+        if (!Object.keys(set).length) return;
+        tx.patch(id, (p) => p.set(set));
+        notes.push(`${id}: ${Object.keys(set).join(", ")}`);
+      };
+
+      const home = await client.fetch<Record<string, unknown> | null>(`*[_id == "homePage"][0]`);
+      if (home) apply("homePage", changes(home, before.home as Record<string, unknown>, seed.home as Record<string, unknown>));
+      const settings = await client.fetch<Record<string, unknown> | null>(`*[_id == "siteSettings"][0]`);
+      if (settings) apply("siteSettings", changes(settings, before.settings as Record<string, unknown>, seed.settings as Record<string, unknown>));
+
+      const ids = [...seed.instruments, ...seed.features].map((d) => d._id);
+      const docs = await client.fetch<Record<string, unknown>[]>(`*[_id in $ids]`, { ids });
+      const old = new Map<string, Record<string, unknown>>([...before.instruments, ...before.features].map((d) => [d._id, d as Record<string, unknown>]));
+      for (const now of [...seed.instruments, ...seed.features] as Record<string, unknown>[]) {
+        const doc = docs.find((d) => d._id === now._id);
+        const was = old.get(now._id as string);
+        if (doc && was) apply(now._id as string, changes(doc, was, now));
+      }
+      // New in the app since the list was written.
+      const songs = seed.features.find((f) => f._id === "feature-songs")!;
+      tx.createIfNotExists({ _type: "feature", ...songs });
+      notes.push("feature-songs");
+
+      // The privacy page: replaced only while it reads exactly as it did.
+      const page = seed.pages.find((p) => p._id === "page-privacy")!;
+      const wasPage = before.pages.find((p) => p._id === "page-privacy")!;
+      const live = await client.fetch<{ t?: string[] } | null>(`*[_id == "page-privacy"][0]{"t": body[].children[].text}`);
+      if (live && JSON.stringify(live.t ?? []) === JSON.stringify((wasPage.body as { text: string }[]).map((b) => b.text))) {
+        tx.patch("page-privacy", (p) => p.set({ body: toBlocks(page.body), updated: page.updated }));
+        notes.push("page-privacy");
+      }
+      await tx.commit();
+      return notes.join("; ") || "left as edited in the Studio";
     },
   },
 ];

@@ -1,16 +1,19 @@
-import { getImageProps } from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { Faq } from "@/components/Faq";
 import { Features } from "@/components/Features";
 import { HandpanDemo } from "@/components/HandpanDemo";
+import { JsonLd } from "@/components/JsonLd";
 import { InstrumentList } from "@/components/InstrumentList";
 import { Reasons } from "@/components/Reasons";
 import { Steps } from "@/components/Steps";
-import { findTuning, handpanChords, triads } from "@/lib/engine";
+import { findTuning, handpanChords, songCount, triads } from "@/lib/engine";
+import { appShot } from "@/lib/pictures";
+import { faqLd, webApplicationLd } from "@/lib/seo";
 import { APP_URL } from "@/lib/site";
-import { btnCta, btnInk, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
+import { btnCta, btnOnPicture, btnPrimary, container, h2, h3 } from "@/lib/ui";
 import * as seed from "@/content/seed";
-import { getFeatures, getHome, getInstruments } from "@/sanity/lib/data";
+import { getFeatures, getHome, getInstruments, getSettings } from "@/sanity/lib/data";
 
 const DEMO_SCALE = "d-kurd";
 
@@ -20,13 +23,18 @@ const { props: { srcSet: heroWide } } = getImageProps({ src: "/brand/hero-sky-wi
 const { props: heroImg } = getImageProps({ src: "/brand/hero-sky-tall.webp", alt: "", width: 1024, height: 1536, sizes: "100vw", priority: true });
 
 export default async function HomePage() {
-  const [home, instruments, features] = await Promise.all([getHome(), getInstruments(), getFeatures()]);
+  const [home, instruments, features, settings] = await Promise.all([getHome(), getInstruments(), getFeatures(), getSettings()]);
+  // One wording for every button that opens the app.
+  const cta = home.heroCta ?? seed.home.heroCta;
+  const songsShot = appShot("songs");
   const demoChords = triads(handpanChords(DEMO_SCALE)).slice(0, 7);
   const demoPath = findTuning("handpan", DEMO_SCALE)?.path;
   const dm = Math.max(0, demoChords.findIndex((c) => c.id === "d-min"));
 
   return (
     <>
+      <JsonLd data={webApplicationLd(settings.description)} />
+      <JsonLd data={faqLd(home.faqs)} />
       {/* Hero A (docs/design/hero-a-reference.webp): the brand landscape full
           bleed, words over its open sky (kept left of the tree). Phones get the tall picture. */}
       <section className="relative isolate overflow-hidden bg-bg">
@@ -38,14 +46,12 @@ export default async function HomePage() {
           <div className="max-w-[80%] md:max-w-[min(54%,720px)]">
             <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,70px)] font-bold leading-[1.03] tracking-[-0.03em] text-text">{home.heroTitle}</h1>
             <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{home.heroText}</p>
-            <div className="flex flex-wrap gap-3.5">
-              <a href={APP_URL} className={btnPrimary}>{home.heroCta ?? seed.home.heroCta}</a>
-              <a href="#demo" className={btnOnPicture}>{home.heroListen ?? seed.home.heroListen}</a>
+            {/* Two buttons, two places: the app, and the playable handpan just below. */}
+            <div data-loc="hero" className="flex flex-wrap gap-3.5">
+              <a href={APP_URL} className={btnPrimary}>{cta}</a>
+              <a href="#demo" className={btnOnPicture}><span aria-hidden="true">↓</span> {home.heroListen ?? seed.home.heroListen}</a>
             </div>
           </div>
-          <a href="#demo" className={`${btnInk} absolute bottom-8 left-4 px-5 py-2.5 text-[16px] max-md:hidden sm:left-8`}>
-            <span aria-hidden="true">↓</span> {home.heroTry ?? seed.home.heroTry}
-          </a>
         </div>
       </section>
 
@@ -61,16 +67,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <Steps id="how" title={home.howTitle} steps={home.steps} />
+      <Steps id="how" title={home.howTitle} steps={home.steps} shots={[appShot("setup"), appShot("handpan"), appShot("song")]} />
+
+      {home.songsTitle ? (
+        <section id="songs" className={`${container} flex scroll-mt-4 flex-wrap items-center gap-x-14 gap-y-10 pt-16 lg:pt-24`}>
+          <div className="min-w-0 flex-[1_1_420px]">
+            <h2 className={`${h2} m-0 mb-4`}>{home.songsTitle}</h2>
+            {home.songsText ? <p className="m-0 mb-7 max-w-[560px] text-[19px] text-body">{home.songsText.replace("{songs}", String(songCount()))}</p> : null}
+            <a href={APP_URL} data-loc="songs" className={btnPrimary}>{cta}</a>
+          </div>
+          {songsShot ? (
+            <div className="min-w-0 flex-[1_1_300px]">
+              <Image src={songsShot.src} alt={songsShot.alt} width={songsShot.width} height={songsShot.height} sizes="(min-width: 768px) 360px, 90vw"
+                className="mx-auto block aspect-[39/56] h-auto w-full max-w-[360px] rounded-card object-cover object-top shadow-[inset_0_0_0_1px_var(--border)]" />
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section id="instruments" className={`${container} pt-16 pb-24 lg:pt-24`}>
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <h2 className={`${h2} m-0`}>Instruments</h2>
+          <h2 className={`${h2} m-0`}>{home.instrumentsTitle ?? seed.home.instrumentsTitle}</h2>
           {home.instrumentsText ? <p className="m-0 max-w-[440px] text-body">{home.instrumentsText}</p> : null}
         </div>
         <InstrumentList instruments={instruments} />
         <p className="mt-6 mb-0">
-          Playing something else? <Link href="/request" className="font-semibold">Ask for your instrument</Link>, and vote for ones others have asked for.
+          <Link href="/request" className="font-semibold">{home.instrumentsAsk ?? seed.home.instrumentsAsk}</Link>
         </p>
       </section>
 
@@ -86,7 +108,7 @@ export default async function HomePage() {
               {(home.guestPoints ?? []).map((p, i) => <li key={i}>{p}</li>)}
             </ul>
             {home.guestNote ? <p className="mt-5 mb-0 text-[15px] text-muted">{home.guestNote}</p> : null}
-            <a href={APP_URL} className={`${btnPrimary} mt-6`}>Start playing</a>
+            <a href={APP_URL} data-loc="account" className={`${btnPrimary} mt-6`}>{cta}</a>
           </div>
           <div className="on-dark flex-[2_1_560px] rounded-card bg-dark p-8 text-on-dark">
             <h3 className={`${h3} m-0 mb-6`}>{home.memberTitle}</h3>
@@ -114,7 +136,7 @@ export default async function HomePage() {
             {home.requestTitle ? <h2 className="m-0 mb-3 text-[clamp(28px,3.5vw,40px)] font-semibold leading-[1.1] tracking-[-0.02em]">{home.requestTitle}</h2> : null}
             {home.requestText ? <p className="m-0 max-w-[560px] text-on-dark-muted">{home.requestText}</p> : null}
           </div>
-          <Link href="/request" className={btnCta}>Make a request</Link>
+          <Link href="/request" className={btnCta}>{home.requestCta ?? seed.home.requestCta}</Link>
         </div>
       </section>
 

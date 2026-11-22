@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { InstrumentView } from "@/components/InstrumentView";
 import { instrumentTunings } from "@/lib/instruments";
-import { fingeringsTitle, isPanFamily, panWord } from "@/lib/engine";
+import { JsonLd } from "@/components/JsonLd";
+import { canonicalTuning } from "@/lib/engine";
+import { breadcrumbLd, pageMeta } from "@/lib/seo";
+import { tuningCounts, tuningDescription, tuningHeading } from "@/lib/tuningText";
 import { getInstrument, getInstruments } from "@/sanity/lib/data";
 
 type Props = { params: Promise<{ slug: string; tuning: string }> };
@@ -19,14 +22,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = await getInstrument(slug);
   const t = doc ? instrumentTunings(doc).all.find((x) => x.slug === tuning) : null;
   if (!doc || !t) return {};
-  const word = isPanFamily(t.family) ? panWord(t.family) : null;
-  return {
-    title: word ? `${t.name} ${word} chords` : fingeringsTitle(t.name),
-    description: word
-      ? `Every chord on the ${t.name} ${word} (${t.notes.join(" ")}), drawn on its layout. Free in your browser.`
-      : `Fingerings for every note of the ${t.name}, and chords as arpeggios. Free in your browser.`,
-    alternates: { canonical: `/instruments/${slug}/${tuning}` },
-  };
+  // The same key in another octave has the same fingerings and note names:
+  // search engines are pointed at one page for it (engine.ts canonicalTuning).
+  const main = canonicalTuning(t);
+  return pageMeta({
+    title: tuningHeading(t),
+    description: tuningDescription(t, tuningCounts(t)),
+    path: `/instruments/${slug}/${tuning}`,
+    canonical: `/instruments/${slug}/${main.slug}`,
+    family: t.family,
+  });
 }
 
 export default async function TuningPage({ params }: Props) {
@@ -37,5 +42,10 @@ export default async function TuningPage({ params }: Props) {
   const t = all.find((x) => x.slug === tuning);
   if (!t) notFound();
   if (t.slug === featured[0]?.slug) permanentRedirect(`/instruments/${slug}`);
-  return <InstrumentView instrument={doc} tuning={t} featured={featured} all={all} />;
+  return (
+    <>
+      <JsonLd data={breadcrumbLd([{ name: "Oakhum", path: "/" }, { name: doc.name, path: `/instruments/${slug}` }, { name: t.name, path: `/instruments/${slug}/${t.slug}` }])} />
+      <InstrumentView instrument={doc} tuning={t} featured={featured} all={all} />
+    </>
+  );
 }

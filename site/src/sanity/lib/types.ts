@@ -13,6 +13,8 @@ export type SiteSettings = {
 };
 
 export type HomePage = {
+  /** Set by Sanity: when the document last changed (the sitemap's date). */
+  _updatedAt?: string;
   heroTitle: string;
   heroText: string;
   heroNote?: string;
@@ -22,7 +24,11 @@ export type HomePage = {
   demoCaption?: string;
   howTitle?: string;
   steps?: Point[];
+  songsTitle?: string;
+  songsText?: string;
+  instrumentsTitle?: string;
   instrumentsText?: string;
+  instrumentsAsk?: string;
   whyTitle?: string;
   why?: Point[];
   accountTitle?: string;
@@ -36,6 +42,7 @@ export type HomePage = {
   featuresTitle?: string;
   requestTitle?: string;
   requestText?: string;
+  requestCta?: string;
   faqTitle?: string;
   faqs?: QA[];
 };
@@ -54,6 +61,7 @@ export type SongsPage = {
 };
 
 export type MakersPage = {
+  _updatedAt?: string;
   heroTitle: string;
   heroText: string;
   heroCta?: string;
@@ -96,6 +104,7 @@ export type MakersPage = {
 
 export type InstrumentDoc = {
   _id: string;
+  _updatedAt?: string;
   name: string;
   slug: string;
   family: "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute" | "recorder" | "none";

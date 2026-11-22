@@ -5,6 +5,7 @@
 // (scripts/replay-listen.mjs in the repository root), fixed and answered.
 //
 // Pure, so it is unit-tested (tests/listenReport.spec.ts).
+import { originAllowed } from "./guard";
 import type { JiraSettings } from "./jira";
 
 export type ListenReport = {
@@ -132,10 +133,5 @@ export function listenReportIssueFields(r: ListenReport, s: JiraSettings, links:
 }
 
 // Where the app may send reports from: the site's own domain (no CORS needed),
-// the app's own Vercel addresses and a local build.
-export function listenReportOriginAllowed(origin: string | null): boolean {
-  if (!origin) return false;
-  return /^https:\/\/(www\.)?oakhum\.com$/.test(origin)
-    || /^https:\/\/(oakhum|herbe-handpan)(-[a-z0-9-]+)?\.vercel\.app$/.test(origin)
-    || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-}
+// the app's own Vercel addresses and a local build (src/lib/guard.ts).
+export const listenReportOriginAllowed = (origin: string | null): boolean => originAllowed(origin);

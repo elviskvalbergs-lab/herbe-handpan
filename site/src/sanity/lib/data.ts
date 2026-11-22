@@ -47,6 +47,12 @@ export async function getPageSlugs(): Promise<string[]> {
   return ((await fetchData<{ slug: string }[]>(PAGE_SLUGS_QUERY)) ?? []).map((r) => r.slug);
 }
 
+/** Every text page's address and dates, for the sitemap. */
+export async function getPages(): Promise<{ slug: string; updated?: string; _updatedAt?: string }[]> {
+  if (!hasSanity) return seed.pages.map((p) => ({ slug: p.slug, updated: p.updated }));
+  return (await fetchData<{ slug: string; updated?: string; _updatedAt?: string }[]>(PAGE_SLUGS_QUERY)) ?? [];
+}
+
 export async function getPublicRequests(): Promise<PublicRequest[]> {
   if (!hasSanity) return [];
   return (await fetchData<PublicRequest[]>(PUBLIC_REQUESTS_QUERY)) ?? [];
