@@ -5,7 +5,7 @@ import { SONG_FAMILIES, noteLabel, songAfterWord, songAppLink, songHref, songOn,
 import { btnPrimary, btnSecondary, container, h2 } from "@/lib/ui";
 import type { SongsPage } from "@/sanity/lib/types";
 
-const FAMILY_NAMES: Record<Family, string> = { handpan: "Handpans", "tongue-drum": "Tongue drums", kalimba: "Kalimbas", ocarina: "Ocarinas", flute: "Flutes" };
+const FAMILY_NAMES: Record<Family, string> = { handpan: "Handpans", "tongue-drum": "Tongue drums", kalimba: "Kalimbas", ocarina: "Ocarinas", flute: "Flutes", recorder: "Recorders" };
 
 /** What the instrument is called: "D Kurd handpan", "C Major 17-key kalimba", "Tin whistle in D". */
 /** A name inside a sentence: "Tin whistle in D" → "tin whistle in D"; "D Kurd handpan" stays. */
