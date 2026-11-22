@@ -333,3 +333,5 @@ export function logMakerEvent(code, event, { via = null, count = 1, first = fals
   if (!_sb || !code) return;
   try { _sb.rpc('log_maker_event', { p_code: code, p_event: event, p_via: via, p_count: count, p_first: first }).then(() => {}, () => {}); } catch { /* never in the way */ }
 }
+// A maker's totals for the last `days` days (maker_stats), or null.
+export async function fetchMakerStats(days = 30) { return (await makerRpc('maker_stats', { p_days: days })).data ?? null; }

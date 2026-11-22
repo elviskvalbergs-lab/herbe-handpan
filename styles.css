@@ -2002,3 +2002,27 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 .maker-steps { margin: var(--space-3) 0; padding-left: var(--space-5); color: var(--text-2); font-size: var(--fs-13); line-height: var(--lh-13); }
 .maker-steps li + li { margin-top: var(--space-1); }
 .input.maker-import-text { min-height: 160px; font: var(--fs-13)/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; }
+/* Makers, phase 3: stats. Tiles for the headline numbers; one bar a day. */
+.maker-period { margin-bottom: var(--space-4); }
+.maker-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-4); }
+.maker-tile { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); min-width: 0; }
+.maker-tile-value { font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.maker-tile-label { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2); }
+.maker-chart { padding: var(--space-3); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); margin-bottom: var(--space-2); }
+.maker-chart-head, .maker-chart-axis { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.maker-chart-head span:first-child { color: var(--text-1); font-weight: var(--fw-semibold); }
+.maker-bars { display: flex; align-items: flex-end; gap: 2px; height: 120px; margin: var(--space-3) 0 var(--space-1); border-bottom: 1px solid var(--border); }
+.maker-bar { position: relative; flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; outline: none; }
+.maker-bar i { display: block; width: 100%; height: var(--h); min-height: 3px; background: var(--accent); border-radius: 3px 3px 0 0; }
+.maker-bar.is-zero i { min-height: 0; height: 0; }
+.maker-bar:hover i, .maker-bar:focus-visible i { background: var(--accent-text); }
+.maker-bar:hover::after, .maker-bar:focus-visible::after {
+  content: attr(data-tip); position: absolute; bottom: calc(var(--h) + 6px); left: 50%; transform: translateX(-50%); z-index: 2;
+  padding: 2px 8px; border-radius: var(--r-sm); background: var(--text-1); color: var(--bg); font-size: var(--fs-13); line-height: var(--lh-13); white-space: nowrap; pointer-events: none;
+}
+.maker-bar:nth-child(-n+3):hover::after, .maker-bar:nth-child(-n+3):focus-visible::after { left: 0; transform: none; }
+.maker-bar:nth-last-child(-n+3):hover::after, .maker-bar:nth-last-child(-n+3):focus-visible::after { left: auto; right: 0; transform: none; }
+.maker-num { font-weight: var(--fw-semibold); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.maker-share { display: block; height: 6px; width: max(var(--w), 2px); max-width: 100%; margin-top: 4px; background: var(--accent); border-radius: 3px; }
+.maker-note { margin-top: var(--space-3); }
+.maker-code-stat { color: var(--text-1); font-weight: var(--fw-medium); }
