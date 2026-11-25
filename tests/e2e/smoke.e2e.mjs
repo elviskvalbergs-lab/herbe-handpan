@@ -190,6 +190,58 @@ try {
     await d.ctx.close();
   }
 
+  // ── Screens behind a tap: filters, sheets, the editor, progressions ───────
+  // Each opens through the action registry (js/app/actions.js), so a handler
+  // that went missing in a move shows up here.
+  const deeper = await guest('deeper screens');
+  await step('handpan: Filters, a note count, the chord\'s More sheet, the Pan tab', deeper, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/chords`);
+    await p.locator('[data-action="select-chord"]').nth(1).click();
+    await p.click('[data-action="hp-filters-open"]');
+    await p.locator('[data-sheet="hp-filters"] [data-action="toggle-note-count"]').first().click();
+    await p.locator('[data-sheet="hp-filters"] [data-action="hp-filters-close"][data-sheet-close]').click();
+    await p.locator('[data-sheet="hp-filters"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="hp-more-open"]');
+    await p.locator('[data-sheet="hp-more"]').waitFor();
+    await p.keyboard.press('Escape');
+    await p.locator('[data-sheet="hp-more"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="back-editor"]');
+    await p.locator('.ed-pan, .pan-wrap').first().waitFor();
+    await p.click('[data-action="go-chords"]');
+    await p.locator('[data-action="select-chord"]').first().waitFor();
+  });
+  await step('ocarina: a chord, Filters with the scale picker, the More sheet', deeper, async p => {
+    const oc = catalogueLinks().find(l => l.family === 'ocarina');
+    await p.goto(`${app.base}${oc.path}/chords`);
+    await p.locator('[data-action="oc-chord-select"]').nth(1).click();
+    await p.locator('[data-action="oc-play-arp"]').first().click();
+    await p.click('[data-action="oc-filters-open"]');
+    await p.locator('[data-sheet="oc-filters"] [data-action="oc-toggle-count"]').first().click();
+    await p.locator('[data-sheet="oc-filters"] [data-action="picker-open"]').click();
+    await p.keyboard.type('ma');
+    await p.keyboard.press('Enter');
+    await p.locator('[data-sheet="oc-filters"] [data-action="oc-filters-close"][data-sheet-close]').click();
+    await p.locator('[data-sheet="oc-filters"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="oc-more-open"]');
+    await p.locator('[data-sheet="oc-more"]').waitFor();
+    await p.keyboard.press('Escape');
+    await p.locator('[data-sheet="oc-more"]').waitFor({ state: 'detached' });
+  });
+  await step('a guest\'s New progression opens the save sheet, and Not now closes it', deeper, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/playlists`);
+    await p.click('[data-action="prog-new-open"]');
+    await p.locator('button[data-action="save-not-now"]').last().click();
+    await p.locator('[data-action="save-not-now"]').first().waitFor({ state: 'detached' });
+    await p.locator('[data-action="prog-new-open"]').waitFor();
+  });
+  await step('the ⋯ menu opens and Escape closes it', deeper, async p => {
+    await p.click('[data-action="menu-open"]');
+    await p.locator('[data-sheet="menu"]').waitFor();
+    await p.keyboard.press('Escape');
+    await p.locator('[data-sheet="menu"]').waitFor({ state: 'detached' });
+  });
+  await deeper.ctx.close();
+
   // ── Links that aren't in the catalogue ────────────────────────────────────
   const odd = await guest('odd links');
   await step('an unknown tuning opens the picker, not a blank page', odd, async p => {
