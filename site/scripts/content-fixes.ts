@@ -39,6 +39,45 @@ const NEW_MAKER_FIELDS = [
 
 const FIXES: Fix[] = [
   {
+    // The privacy notice covers the makers programme (owner, 2026-11-22):
+    // what a maker page holds and who sees it, how a maker's codes are
+    // counted, and Resend, which emails the owner about a maker's request.
+    // Replaced only while the page still reads exactly as before.
+    name: "2026-11-22-privacy-makers",
+    async run() {
+      const OLD = [
+        "Oakhum is free to use without an account. This page explains what we keep and why, in plain words.",
+        "Who we are",
+        "Oakhum is made by Elvis Kvalbergs in Latvia. For anything about your data, write to oakhummusic@gmail.com.",
+        "Playing without an account",
+        "We don't ask who you are. What you set up stays in your browser until you close the tab. To see which parts of the app and of this website are used, we count visits and taps without cookies and without storing an id on your device (PostHog, with data stored in the EU, and Vercel Web Analytics). We don't record your screen.",
+        "The microphone",
+        "When Oakhum listens to your instrument, the sound is worked out on your device and isn't sent anywhere. While it listens, it also keeps a recording in your browser's memory, so that you can send it to us if it heard your instrument wrong. The recording is gone when you close the page.",
+        "If you choose to send a listening report, we receive what you wrote, the notes Oakhum heard, the recording if you leave it switched on (it may also catch voices in the room), a photo of your instrument if you add one, your email if you leave it, and your browser and device type. We use it only to fix how Oakhum listens and to tell you when it's fixed. We keep it until it's fixed, and at most a year.",
+        "With an account",
+        "We keep your email address and what you save: instruments, favourite chords and playlists. They are stored with Supabase in the EU, which also sends your sign-in code. You can delete your account and everything in it from the app's settings, any time.",
+        "Requests on this website",
+        "If you send a request and leave your email, we use it only to tell you when your request is ready, then delete it. Your email is never shown on the site. Requests are kept with Sanity, the service that holds this website's content.",
+        "Services that help us run Oakhum",
+        "Each of these handles data only to do its job for us.",
+        "Vercel hosts the website and the app. Like any web host, it sees the address your browser connects from. It also counts page views and how fast pages load, without cookies.",
+        "Supabase stores accounts and what you save, in the EU, and sends sign-in codes.",
+        "PostHog counts visits and taps in the app and on this website, without cookies, with data stored in the EU.",
+        "Sentry receives a report when something in the app or on the website goes wrong: what failed, on which page, and the browser and device type, without your name or email. The reports are stored in the EU.",
+        "Sanity holds the website's text, the requests sent through it and listening reports, with the email you leave.",
+        "Jira, by Atlassian, is our to-do list: feedback and listening reports are copied there while we work on them.",
+        "Your rights",
+        "You can ask us for a copy of your data, to correct it or to delete it, and you can complain to the Latvian Data State Inspectorate (dvi.gov.lv)."
+      ];
+      const doc = await client.fetch<{ _id: string; t?: string[] } | null>(`*[_id == "page-privacy"][0]{_id, "t": body[].children[].text}`);
+      if (!doc) return "no privacy page";
+      if (JSON.stringify(doc.t ?? []) !== JSON.stringify(OLD)) return "left as edited in the Studio";
+      const page = seed.pages.find((p) => p._id === "page-privacy")!;
+      await client.patch("page-privacy").set({ body: toBlocks(page.body), updated: page.updated }).commit();
+      return "privacy notice updated";
+    },
+  },
+  {
     // The makers programme (docs/makers-programme.md in the repository root;
     // owner, 2026-11-21): the page's buttons open the app on "Create your
     // maker page" instead of an email, so its words say so; the directory
