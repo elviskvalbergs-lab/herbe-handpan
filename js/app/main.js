@@ -1,71 +1,13 @@
-import { brandLogo } from './brand.js';
-import {
-  SCALES, CHORD_TYPES, CHORD_CATEGORIES, createLayoutFromScale,
-  getAllNotes, NOTE_NAMES, notePC, getNoteName, noteToMidi, displayNote, preferFlats,
-} from './data.js';
-import {
-  getSavedLayouts, saveLayout, deleteLayout,
-  getFavorites, isFavorite,
-  getPlaylists, addPlaylist, renamePlaylist, deletePlaylist,
-  addChordToPlaylist, removeChordFromPlaylist, reorderChordInPlaylist,
-  isChordBookmarkedAnyVoicing, updatePlaylistChordVoicing, mergePlaylistsIntoProgressions,
-  PROG_DEFAULTS, PROG_LIMITS, newProgressionStep, progressionStepMs, progressionTotals,
-  nextProgressionStep, getProgressions, getProgressionsRaw, writeProgressionsRaw,
-  addProgression, renameProgression, deleteProgression, setProgressionTiming, addStepToProgression,
-  duplicateProgressionStep, moveProgressionStep, removeProgressionStep, setProgressionStepBars,
-  progressionStepBeats, progressionLevel, setProgressionLevel, fillProgression,
-} from './storage.js';
-import {
-  parseChordSheet, matchSheetChord, rankTranspositions, sheetCoverage, coverageBand, transposeChordSymbol,
-  stepLength, stackVoicing, strikePattern, strikeNumbers, PLAY_LEVELS, WIND_PLAY_LEVELS, windPlayLevel, windPattern,
-} from './chordsheet.js';
-import { findAllChords, getRelatedChords, identifyChord, mainChordsInKey } from './chords.js';
-import { instrumentKey, goesWellWith } from './harmony.js';
-import { songFit, songsInOrder, songLoopTap, songInLoop, songNextIndex, songWaitTarget, songWaitHeard, songCoverage, SONGS, SONG_ORIGINS, SONG_LICENCE, songNotes, playableSongs, songKeyOn, songsThatGoTogether, christmasSongs, christmasSeason, songsForFilter, SONG_COLLECTION_ORIGINS, songBars, songHands, songTimeLabel, songLyrics } from './songs.js';
-import { icon } from './icons.js';
-import { initAudio, playNote, playChord, playScale, playSequence, playClick, setPlaybackTempo, ensureAudioOutput, setVoice, onFirstSound } from './audio.js';
-import { kalimbaNumbers } from './kalimbas.js';
-import { renderPan, panPlaces, PAN_SVG_ID, updatePanHighlight, updatePanShellMode, updatePanPlaying, settlePanPlace } from './pan.js';
-import { noteWindows, chambersNeeded, scaleToMidis } from './ocarina.js';
-import {
-  renderFingering, renderHandLegend, fingeringMoves, playableMidis, fingeringFor,
-  ocarinaToLayout, arpeggioOrder, fitChordToInstrument, nextVoicing,
-} from './ocarina-ui.js';
-import { playablePairs, centsBetween, midiToHz, hzToMidi, pitchLabel, parsePitch, predictFingeringHz } from './ocarina.js';
-import { startTuner, yinPitch, openMic, drawMicWave, recordMic, micTakes, clearMicTakes, micRecordingSupported } from './tuner.js';
-import {
-  listenTracker, listenOverallConfidence, listenChordOnNotes, LISTEN_DEFAULTS,
-} from './listen-detect.js';
-import { startListening } from './listen-audio.js';
-import { rankScalesByNotes, addHeardNote, heardNoteName } from './scalefinder.js';
-import { setupRoots, setupScalesFor, setupTopScales, setupFirstChord, setupHeardEnough, setupKeyNote, chartSetupTunings, preferCommonChart, tuningOffsetCents, noteOnTuning, a4ForOffset, collectHeardNote, setupMatch, scaleFits } from './setup.js';
-import {
-  STAGE_ORDER, STAGE_TITLES, buildShrink, chamberBuild, stageTargets, noteAdvice,
-  leatherHolePlan, bodyPlan, nextStage, finishBuild, updateClayBody,
-  defaultCustomHoles, calibrateChamber, withHoleCount, holeSpot, usesHoleMap, withFixedFingerings, reverseHandFingers, holeDisplayOrder, holeLabel, cropRect, duplicateFingers, withSubLayout, SUB_LAYOUTS, fluteHoles, fluteStepStates, fluteChamberFromReadings,
-} from './builder.js';
-import { buildScaleChambers, OC_FINGER_ORDER, applyHoleSizes } from './ocarina.js';
-import { chartsForFamily, getChart, instrumentFromChart, chartDefaultKey, chartKeyFor, detectChartKey, detectLowestKey, CHART_ROOTS } from './charts.js';
-import { parseLink, linkFor, linkSlug, linkTitle, linkPreview, APP_NAME, layoutFromCustomParams, panPosToParam } from './links.js';
-import { TONGUE_DRUMS, isTongueDrumId } from './tonguedrums.js';
-import { LAYOUT_FAMILIES, findTuning, layoutInstrument, isLayoutFamily, layoutFamilyInfo, safeLayout } from './layoutfamilies.js';
-import {
-  INSTRUMENT_FAMILIES, isTubeFamily, windWord, getInstruments, getInstrument, saveInstrument, deleteInstrument,
-  touchInstrument, syncHandpanInstruments, isOnboarded, setOnboarded, handpanInstrumentId, usesLayout,
-  createScaleOcarina, createCustomOcarina, createCustomFlute, instrumentStatus, midiToNoteName,
-  getClayBodies, saveClayBodies, getInstrumentsRaw, writeInstrumentsRaw,
-  newPublicId, copySharedInstrument,
-} from './instruments.js';
-import { dataStore, DATA_KEYS, hasAccountOnDevice, carryOverVisit, clearAccountData, visitHasWork, safeSetItem, accountUserOnDevice, setAccountUserOnDevice, accountMatch } from './datastore.js';
-import { syncRound, syncKey, pendingChanges } from './sync.js';
-import {
-  initSupabase, isLoggedIn, getUserEmail, sendOtp, verifyOtp, signOut, scheduleSave, logEvent,
-  getAuthProviders, signInWithProvider, deviceKind, syncApi, touchLastSeen, importLegacyData, fetchAccountCounts, exportAccountRows,
-  deleteMyAccount, saveCloudInstruments, fetchSharedInstrument, fetchAccess, getUserId, hasStoredSession,
-} from './auth.js';
-import { syncBases } from './localdb.js';
-import { offline } from './offline.js';
-import { saveIntentFor, saveText, keepPendingSave, takePendingSave, dropPendingSave, plainDataset, alsoSavedText } from './store.js';
+// Bootstrap and the event listeners that dispatch to the action registry.
+// Part of the app split out of js/app.js (docs/app-structure-plan.md). Names from
+// the other js/app/ files are shared through the bundle's one scope (build.py).
+import { findAllChords } from '../chords.js';
+import { listenTracker } from '../listen-detect.js';
+import { initAudio, playNote, setVoice } from '../audio.js';
+import { updatePanPlaying } from '../pan.js';
+import { initSupabase, logEvent } from '../auth.js';
+import { offline } from '../offline.js';
+import { plainDataset, saveIntentFor } from '../store.js';
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 loadPrefs();
