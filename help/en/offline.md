@@ -7,7 +7,7 @@ type: faq
 audience: players
 instruments: all
 features: offline
-verified: 2026-11-21
+verified: 2026-11-25
 order: 20
 ---
 ## How do I make it work offline? {#how}
@@ -18,7 +18,7 @@ For the easiest start without a connection, also add Oakhum to your home screen.
 
 ## What works offline? {#what}
 
-Everything you have saved: your instruments, their chords, fingerings, playlists and the songs. The tuner and {{listen}} work too, because the sound is worked out on your device.
+Everything you have saved: your instruments, their chords, fingerings, playlists and the songs. The {{tuner}} and {{listen}} work too, because the sound is worked out on your device. The help pages in the app work offline as well.
 
 ## What does the Offline label mean? {#pill}
 

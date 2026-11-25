@@ -8,7 +8,7 @@ audience: players
 instruments: all
 features: setup-listen
 app: /play
-verified: 2026-11-21
+verified: 2026-11-25
 order: 20
 ---
 This is the easiest way if you do not know the name of your scale. You play, Oakhum listens.
@@ -38,8 +38,12 @@ Play the note again, a little softer, and let it ring. See [It heard the wrong n
 
 ## Is it recording me? {#recording}
 
-The sound is worked out on your phone and is not sent anywhere. Oakhum only listens while this screen is open. See [The microphone and your privacy](/help/microphone-and-privacy).
+The sound is worked out on your phone. Oakhum only listens while this screen is open, and the sound stays on your phone unless you choose to send it to us. See [The microphone and your privacy](/help/microphone-and-privacy).
 
 ## I would rather choose the scale {#choose-instead}
 
 At the bottom left there is a button to choose your scale or key instead. You can tap it at any time.
+
+## Find a scale in the list by playing {#in-the-list}
+
+In the list of all scales, {{setup-listen}} does the same: play your notes and Oakhum shows the scales that fit them.

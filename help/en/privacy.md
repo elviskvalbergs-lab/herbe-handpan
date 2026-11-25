@@ -7,7 +7,7 @@ type: faq
 audience: players
 instruments: all
 features: account
-verified: 2026-11-21
+verified: 2026-11-25
 order: 50
 ---
 This is the short version. The full [privacy notice](/privacy) is on oakhum.com.

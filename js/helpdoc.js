@@ -45,7 +45,7 @@ export const HELP_SITE = 'https://oakhum.com';
 export const HELP_SECTIONS = [
   { id: 'start',     title: 'Getting started' },
   { id: 'chords',    title: 'Chords' },
-  { id: 'songs',     title: 'Songs, playlists and progressions' },
+  { id: 'songs',     title: 'Songs and playlists' },
   { id: 'listening', title: 'Listen and the tuner' },
   { id: 'account',   title: 'Saving, accounts and offline' },
   { id: 'sharing',   title: 'Sharing' },
@@ -234,6 +234,7 @@ export function helpHtml(article) {
   const inl = parts => parts.map(p => {
     if (p.t === 'bold' || p.t === 'label') return `<strong>${helpEsc(p.v)}</strong>`;
     if (p.t === 'link') {
+      if (p.href === '/help') return `<button type="button" class="link-btn" data-action="help-open" data-id="">${helpEsc(p.v)}</button>`;
       const to = /^\/help\/([a-z0-9-]+)(?:#([a-z0-9-]+))?$/.exec(p.href);
       if (to) return `<button type="button" class="link-btn" data-action="help-open" data-id="${to[1]}"${to[2] ? ` data-anchor="${to[2]}"` : ''}>${helpEsc(p.v)}</button>`;
       return `<a href="${helpEsc(p.href.startsWith('/') ? HELP_SITE + p.href : p.href)}" target="_blank" rel="noopener">${helpEsc(p.v)}</a>`;

@@ -7,12 +7,12 @@ type: howto
 audience: players
 instruments: all
 features: install
-verified: 2026-11-21
+verified: 2026-11-25
 order: 30
 ---
 Once it is on your home screen, Oakhum opens full screen, is quicker to reach, and with an account it works offline.
 
-The app shows a banner that says {{install}}. Tap Add on it. On some phones that is all. On others it shows the steps below.
+After you have played a chord, {{my-instruments}} and {{try}} show a banner that says {{install}}. Tap Add on it. On some phones that is all. On others it shows the steps below.
 
 ## iPhone and iPad, in Safari {#iphone}
 
@@ -40,6 +40,6 @@ In Chrome or Edge, open the browser menu and choose to install Oakhum. You can a
 
 No. Oakhum runs in your browser, so there is nothing to download and it is always the latest version.
 
-## I do not see the banner any more {#banner}
+## I do not see the banner {#banner}
 
-The banner goes away once you have tapped Not now, or when Oakhum is already on your home screen. The steps above work at any time.
+The banner shows only after you have played something, and it goes away once you have tapped Not now, or when Oakhum is already on your home screen. The steps above work at any time.

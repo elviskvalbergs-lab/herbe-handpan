@@ -7,12 +7,12 @@ type: reference
 audience: players
 instruments: all
 features: none
-verified: 2026-11-21
+verified: 2026-11-25
 order: 10
 ---
 ## Note {#note}
 
-One sound of your instrument: one dent on a handpan, one tongue on a tongue drum, one key on a kalimba, one fingering on a flute. Notes have letter names from A to G.
+One sound of your instrument: one dent on a handpan, one tongue on a tongue drum, one key on a kalimba, one fingering on a flute or a recorder. Notes have letter names from A to G.
 
 ## Sharp and flat {#sharp-flat}
 
@@ -60,7 +60,7 @@ The main note of a chord: the D in D Minor. Playing only the roots is the simple
 
 ## Arpeggio {#arpeggio}
 
-The notes of a chord played one after another. An ocarina or a flute plays one note at a time, so it always plays chords this way.
+The notes of a chord played one after another. An ocarina, a flute or a recorder plays one note at a time, so it always plays chords this way.
 
 ## Progression {#progression}
 
@@ -76,11 +76,11 @@ How fast the beat goes. BPM means beats per minute. 60 is one beat a second. 80 
 
 ## Fingering {#fingering}
 
-Which holes to cover on an ocarina or a flute to play one note.
+Which holes to cover on an ocarina, a flute or a recorder to play one note.
 
 ## Tab {#tab}
 
-A simple way to write a tune for one kind of instrument: numbers for a handpan or kalimba, small fingering pictures for a flute.
+A simple way to write a tune for one kind of instrument: numbers for a handpan or kalimba, small fingering pictures for a flute, ocarina or recorder.
 
 ## In tune {#in-tune}
 

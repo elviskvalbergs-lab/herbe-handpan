@@ -1,17 +1,17 @@
 ---
 id: sharing
-title: Share an instrument
-summary: Send a tuning as a link, or share your own saved instrument with a code, a link or a QR code.
+title: Share an instrument or a song
+summary: Send a tuning or a song as a link, or share your own saved instrument with a code, a link or a QR code.
 section: sharing
 type: howto
 audience: players
 instruments: all
-features: share, copy-link
+features: share, copy-link, share-song
 app: /handpan/d-kurd
-verified: 2026-11-21
+verified: 2026-11-25
 order: 10
 ---
-There are two kinds of sharing: a link to a tuning anyone can open, and your own instrument with its own code.
+You can share a link to a tuning or a song that anyone can open, or your own instrument with its own code.
 
 ## Send a link to a tuning {#link}
 
@@ -20,6 +20,10 @@ There are two kinds of sharing: a link to a tuning anyone can open, and your own
 3. Paste the link into a message.
 
 With a chord chosen on the {{chords}} tab, the link opens that chord. The person who gets the link does not need an account or an app.
+
+## Send a song {#song}
+
+Open the song and tap {{share-song}} at the top. The link opens the song on the same instrument.
 
 ## Share your own instrument {#code}
 

@@ -7,31 +7,34 @@ be connected to later, and the rules that stop it drifting from the product.
 
 Status: built, except where a section says "designed, not built".
 
-## Open questions for the owner (with what was done meanwhile)
+## Decisions
 
-1. **Markdown in the repository, not Sanity.** Recommended and built. Say so if
-   you want to edit help in the Studio instead: see "Where the content lives"
-   for what that would cost.
-2. **"Help with this screen" lives in the ⋯ menu and in Settings, not as a "?"
-   button on every screen.** Recommended and built this way because the
-   navigation redesign owns the screens' layout; a "?" in the app bar is one
-   line once that settles (`uiIconBtn('info', …, { action: 'help-open' })`).
-3. **No first-use tour or coach marks.** Recommended: don't build them. Reasons
-   under "In the app".
-4. **Articles go stale after 180 days** (`VERIFY_DAYS` in
-   `tests/help.test.mjs`): the test fails until someone re-checks the article
-   against the app. Shorter is stricter; say if you want another number.
+Answered by the owner (November 2026):
+
+1. **Content: Markdown in the repository, shown as a wiki.** `/help` is a
+   separate, wiki-style part of the site rendered from `help/en/*.md`: the
+   contents of every section beside each page (a fold on phones), "On this
+   page" links to each section, and previous/next. The app links into it.
+2. **A "?" at each relevant point in the app**, opening the article at the
+   right section, in the app's own sheet (works offline), with a button to
+   the same page on the wiki. The ⋯ menu's Help row and Settings › Help stay.
+3. **First-use tour: decide from data.** Not built. The `help` analytics event
+   (which article, from which "?") and the existing feature events show where
+   people get stuck; look after a month.
+4. **Articles go stale after 180 days** (`VERIFY_DAYS` in `tests/help.test.mjs`).
+
+Still open, with the recommendation:
+
 5. **The site's "In the app now" list** (Sanity `feature` documents) still has
-   its own titles. Recommended next step, with the website session: give the
-   `feature` schema a `featureId` and show the registry's name. Not built: the
-   list is the website session's.
-6. **Latvian.** The structure is ready (`help/lv/`, same ids). Recommended:
-   translate after the navigation redesign lands, so it is done once.
+   its own titles. Give the `feature` schema a `featureId` and show the
+   registry's name. Not built: the list is the website's.
+6. **Latvian.** The structure is ready (`help/lv/`, same ids). Translate once
+   the screens settle.
 7. **Video.** The setup's "Watch how" stays "later". Each how-to article is
-   already a script for a 30-second clip; decide when videos are worth making.
+   already a script for a 30-second clip.
 8. **oakhum.com as the public address.** The app's help sheet links to
-   `https://oakhum.com/help/<id>` (`HELP_SITE` in `js/helpdoc.js`), as the app's
-   `/privacy` redirect already does.
+   `https://oakhum.com/help/<id>` (`HELP_SITE` in `js/helpdoc.js`), as the
+   app's `/privacy` redirect already does.
 
 ## Where the content lives
 
@@ -93,11 +96,11 @@ Intro paragraph.
 
 | Output | Where | Made by |
 | --- | --- | --- |
-| Human pages with search | `/help`, `/help/<id>` | `site/src/app/(site)/help/` |
+| The wiki: pages with search, contents beside every page, "On this page", previous/next | `/help`, `/help/<id>` | `site/src/app/(site)/help/` (`layout.tsx`, `HelpNav`) |
 | JSON for a chatbot or RAG pipeline | `/help/index.json` | `helpExport()` in `site/src/lib/help.ts` |
 | llmstxt.org files | `/llms.txt`, `/llms-full.txt` | `llmsTxt()`, `llmsFullTxt()` |
 | JSON-LD | each article: `HowTo` (type howto) or `FAQPage`, plus `BreadcrumbList` | `helpJsonLd()` |
-| The app's help sheet, offline | Settings › Help, ⋯ › Help | `build.py` → `HELP_BUNDLE`, `helpSheet()` in `js/app.js` |
+| The app's help sheet, offline | every "?", ⋯ › Help, Settings › Help | `build.py` → `HELP_BUNDLE`, `helpSheet()` in `js/app.js` |
 | Sitemap entries | `/sitemap.xml` | `site/src/app/sitemap.ts` |
 
 All of the site's outputs are prerendered at build time.
@@ -107,21 +110,21 @@ All of the site's outputs are prerendered at build time.
 Sections (`HELP_SECTIONS`), in this order, with today's articles:
 
 - **Getting started**: set up your instrument · by playing your notes · by
-  picking your scale · an ocarina or flute · try a tuning without saving · My
-  instruments · change the notes · fingerings.
+  picking your scale · an ocarina, flute or recorder · try a tuning without
+  saving · My instruments · change the notes · fingerings.
 - **Chords**: find the chords · which chord am I playing · which chords go
   together · slower or faster.
-- **Songs, playlists and progressions**: songs to learn · playlists · paste a
-  chord sheet.
+- **Songs and playlists**: songs to learn (Wait for me, loops) · playlists
+  (progressions are playlists since the lists were merged) · paste a chord sheet.
 - **Listen and the tuner**: Listen · the tuner · the microphone and your privacy.
 - **Saving, accounts and offline**: saving and accounts · offline · add to home
   screen (iPhone, Android, Samsung, computer) · settings · your data and privacy.
-- **Sharing**: links, codes and QR codes.
+- **Sharing**: links, songs, codes and QR codes.
 - **When something goes wrong**: it heard the wrong note · fix common problems ·
   get help or tell us.
 - **Words explained**: the glossary (ding, scale, chord, progression, bar…),
   one anchor per word so any article can link to a single word.
-- **For makers and shops**: one page, `audience: makers`.
+- **For makers and shops**: one page, `audience: makers`, including the in-app maker page and codes.
 
 Per-instrument differences are handled inside an article ("On an ocarina or
 flute…") and by the `instruments` field, not by five copies of each article.
@@ -146,32 +149,38 @@ is the navigation redesign's call and is a one-line change per label.
 
 ## In the app
 
-- **Settings › About › Help** opens the list of articles in the shared sheet.
-- **⋯ menu › Help ("About this screen")** on every instrument, playlist and
-  song menu opens the article for the screen you are on (`helpScreenKey()`).
-- Articles open in the shared bottom sheet (`uiSheet`), links between articles
-  stay inside it, and a button opens the same article on the website (with its
-  pictures). The text is built into the page, so it works offline for
-  everyone the page works for, account or not. Cost: about 60 KB of the 1.2 MB
-  page.
-- **Coach marks: not built, on purpose.** The setup is already a guided
-  four-step flow that ends on "Play my first chord"; a tour on top would
-  repeat it, block the first chord, and need re-drawing with every layout
-  change (the navigation redesign is about to move the tabs). What a tour is
-  for is covered by good empty states and help one tap away. Revisit only if
-  analytics (`help` events, by article) show people stuck on one screen.
-- **Empty states** (designed, not built: the screens are the navigation
-  redesign's). Each says what the thing is, the one action that fills it, and
-  links to its article with `data-action="help-open" data-id="…"`:
-  - Playlists, none yet: "Chords in order… Tap ♡ on any chord to start one, or
-    paste a chord sheet." (exists) + "How playlists work" → `playlists`.
-  - Songs, none playable: "No song here fits these notes yet." + "Why?" →
-    `songs-to-learn#key`.
-  - Listen, nothing heard for 5 s: the existing hint + "It shows nothing" →
-    `listen#nothing`.
+- **"?" at each relevant point**: `uiHelp(id, anchor)` in `js/app.js` is a
+  small round "?" button (44px tap area) that opens one article at one
+  section. It sits next to the heading or control it explains:
+  - the set-up frame, next to the stage dots (which article depends on the step);
+  - Chords: the All chords · Tap notes · Listen switch (the article for the
+    mode on), Goes well with, Filters and the chord's ⋯ sheet;
+  - Songs: Songs to learn, Almost fit, Chords of a song, a song's Wait for me
+    and Loop; Playlists: the heading, a playlist's play levels;
+  - the instrument's own tab (Make my own copy, Move notes), the fingering legend;
+  - the tuner and listening strip;
+  - sheets, through `uiSheet({ help })`: share, save, speed, progressions,
+    filters, add to a playlist, chord sheet, install, listening report,
+    Which finger is which, songs by country;
+  - each Settings section.
+  A new screen or sheet gets its "?" in the same pull request (CLAUDE.md).
+- **⋯ menu › Help ("About this screen")** opens the article for the screen you
+  are on (`helpScreenKey()` → `HELP_SCREENS`).
+- **Settings › Account and about › Help** opens the list of every article.
+- Articles open in the shared bottom sheet, scrolled to the section; links
+  between articles stay inside it; the footer opens the same page on the
+  wiki (with its pictures). Help over another sheet closes back to it. The
+  text is built into the page, so it works offline for everyone the page
+  works for. Cost: about 60 KB of the page.
+- **Coach marks: decide from data** (owner). Not built. The setup is already
+  a guided flow that ends on "Play my first chord", and a tour needs
+  redrawing with every layout change. Look at the `help` events after a month:
+  a screen whose "?" is opened often is one a tour (or a better screen) should help.
+- **Empty states** (designed, not built). Each says what the thing is, the one
+  action that fills it, and links to its article:
+  - Songs, none playable: "Why?" → `songs-to-learn#key`.
+  - Listen, nothing heard for 5 s: the existing hint + `listen#nothing`.
   - Tuner error "refused": the existing browser link + `troubleshooting#microphone`.
-  - Identify, fewer than two notes: (exists) + `identify-a-chord`.
-  - My instruments, empty: the welcome screen already is the empty state.
 - Usage is counted with the existing analytics: `logEvent('help', { article })`.
 
 ## Anti-drift rules
@@ -180,11 +189,13 @@ Checked by `node --test` (`tests/help.test.mjs`) and `pnpm test`
 (`site/tests/help.spec.ts`), which CI runs on every pull request:
 
 1. Every feature in the registry has an article, and that article lists the feature.
-2. Every feature name and UI label is found, letter for letter, in the app's
-   source. Rename something in the app only, and the test names it.
+2. Every feature name and UI label is shown by the app, letter for letter: as
+   UI text (in quotes or between tags, not in a comment). Rename something in
+   the app only, and the test names it.
 3. Every `{{id}}`, article link, `#anchor`, `app:` deep link (through the
    app's own `parseLink`) and link tab exists.
-4. Every key `helpScreenKey()` can return has an article.
+4. Every key `helpScreenKey()` can return has an article, and every "?"
+   (`uiHelp('id', 'anchor')`, literal ids only) leads to an article and anchor that exist.
 5. Markdown outside the subset fails to parse.
 6. Every picture is listed in `help/screenshots.json`, exists, has a
    description, and is used; a file in `help/img/` that the script does not
@@ -195,11 +206,14 @@ Checked by `node --test` (`tests/help.test.mjs`) and `pnpm test`
 
 **Screenshots are made by a script, never by hand:**
 `python3 build.py && node scripts/help-screenshots.mjs`. It opens the built
-app in the pre-installed Chromium (`scripts/lib/app-browser.mjs`: a local
-server with the deep-link fallback, a fake microphone, a stand-in account for
-the screens that need one, a fixed date) and follows the steps in
+app in the pre-installed Chromium (`scripts/lib/app-browser.mjs`, on top of
+the browser tests' own harness `tests/e2e/harness.mjs`: the same server,
+headers and Content-Security-Policy, a stand-in account for the screens that
+need one, a fake microphone) and follows the steps in
 `help/screenshots.json`. When a pictured screen changes, run it and commit the
 new pictures.
+
+The smoke suite (`tests/e2e/smoke.e2e.mjs`) opens a "?", the list and the ⋯ menu's Help.
 
 The rules for people and for Claude are in `CLAUDE.md`, "Help and docs".
 

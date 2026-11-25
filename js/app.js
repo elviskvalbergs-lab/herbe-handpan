@@ -458,7 +458,7 @@ function viewSettings() {
   const fams = settingsFamilies();
   return `${backAppBar('Settings')}
     <div class="settings">
-      <h2 class="list-title">Notes and display</h2>
+      <h2 class="list-title">Notes and display ${uiHelp('settings', 'notes')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Theme', control: uiSeg([
           { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'auto', label: 'Auto' },
@@ -471,7 +471,7 @@ function viewSettings() {
         ], state.useSolfege ? 'solfege' : 'letters', { action: 'set-solfege', label: 'Note style' }) })}
       </div>
 
-      <h2 class="list-title">Playing</h2>
+      <h2 class="list-title">Playing ${uiHelp('settings', 'playing')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Speed', help: 'How fast chords, scales and fingerings play, everywhere', wide: true, control: tempoControlHtml() })}
         ${uiSetRow({ label: 'Seconds per chord in auto-play', control: uiStepper({
@@ -480,14 +480,14 @@ function viewSettings() {
         }) })}
       </div>
 
-      ${fams.has('layout') ? `<h2 class="list-title">Handpans and drums</h2>
+      ${fams.has('layout') ? `<h2 class="list-title">Handpans and drums ${uiHelp('settings', 'handpan')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Ring orientation', help: 'Rotated puts the two lowest notes towards you', control: uiSeg([
           { value: 'standard', label: 'Standard' }, { value: 'rotated', label: 'Rotated' },
         ], state.ringRotated ? 'rotated' : 'standard', { action: 'set-rotation', label: 'Ring orientation' }) })}
       </div>` : ''}
 
-      ${fams.has('wind') ? `<h2 class="list-title">Ocarinas and flutes</h2>
+      ${fams.has('wind') ? `<h2 class="list-title">Ocarinas and flutes ${uiHelp('fingerings', 'fingers')}</h2>
       <div class="list">
         ${uiSwitchRow({ label: 'Finger labels in holes', help: 'R4, L1, LT inside each hole', on: state.showFingers, action: 'oc-toggle-fingers' })}
         ${canBuild() || state.showSizes ? uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' }) : ''}
@@ -503,7 +503,7 @@ function viewSettings() {
       </div>` : ''}
       ${makerSettingsHtml()}
 
-      <h2 class="list-title">Account and about</h2>
+      <h2 class="list-title">Account and about ${uiHelp('accounts-and-saving')}</h2>
       <div class="list">
         ${accountSettingsHtml()}
         ${uiRow({ title: featureName('help'), meta: 'How to set up, play, save and share. Works offline', action: 'help-open', data: { id: '' }, lead: 'info', chevron: true })}
@@ -562,6 +562,15 @@ function uiData(data = {}) {
     .map(([k, v]) => ` data-${k}="${escHtml(v)}"`).join('');
 }
 
+// "?": opens one help article (help/en/<id>.md) in the help sheet, at a
+// section when an anchor is given. Next to a heading or a control, wherever
+// someone might wonder what it does. Always literal ids: tests/help.test.mjs
+// checks every call against the articles. docs/help-centre.md.
+function uiHelp(id, anchor = '') {
+  return `<button type="button" class="help-q" data-action="help-open" data-id="${escHtml(id)}"${anchor ? ` data-anchor="${escHtml(anchor)}"` : ''}
+    aria-label="Help" title="Help">${icon('help-circle')}</button>`;
+}
+
 // Icon-only button: 44×44, always labelled.
 function uiIconBtn(name, label, { action, data, pressed, cls = '', attrs = '', disabled = false } = {}) {
   return `<button type="button" class="icon-btn ${cls}"${action ? ` data-action="${action}"` : ''}${uiData(data)}
@@ -616,7 +625,7 @@ function uiTabBar(tabs, current) {
 
 // Bottom sheet (phone) / centred modal (≥600px). `close` is the action that
 // closes it (scrim, close button and Esc all use it). variant: '' | 'menu' | 'confirm'.
-function uiSheet({ key, title, body, footer = '', close, closeData, variant = '' }) {
+function uiSheet({ key, title, body, footer = '', close, closeData, variant = '', help = '' }) {
   const id = `sheet-${key}`;
   return `
     <div class="sheet-root${variant ? ' sheet-' + variant : ''}" data-sheet="${escHtml(key)}">
@@ -625,7 +634,7 @@ function uiSheet({ key, title, body, footer = '', close, closeData, variant = ''
         <div class="sheet-handle" aria-hidden="true"></div>
         <div class="sheet-head">
           <h2 class="sheet-title" id="${id}-title">${escHtml(title)}</h2>
-          ${uiIconBtn('x', 'Close', { action: close, data: closeData, attrs: 'data-sheet-close' })}
+          ${help}${uiIconBtn('x', 'Close', { action: close, data: closeData, attrs: 'data-sheet-close' })}
         </div>
         <div class="sheet-body">${body}</div>
         ${footer ? `<div class="sheet-foot">${footer}</div>` : ''}
@@ -1271,7 +1280,7 @@ function listenReportSheet() {
     : `${uiSwitchRow({ label: `Send the recording (${secs} s)`, help: 'It helps most: we hear what Oakhum heard. It may also catch voices in the room.', on: R.withAudio, action: 'lr-audio' })}
        ${R.withAudio ? `<div class="lr-takes">${R.takes.map(t => `<audio class="lr-audio" controls preload="metadata" src="${t.url}"></audio>`).join('')}</div>` : ''}`;
   return uiSheet({
-    key: 'listen-report', title: 'Help us hear it right', close,
+    help: uiHelp('it-heard-the-wrong-note', 'report'), key: 'listen-report', title: 'Help us hear it right', close,
     body: `
       <p class="sheet-text">Tell us what Oakhum got wrong. We’ll listen, fix it and let you know.</p>
       ${heard ? `<p class="lr-heard"><span class="lr-heard-label">Oakhum heard</span> ${escHtml(heard)}${ctx.a4 !== 440 ? ` <span class="lr-heard-label">· A = ${ctx.a4} Hz</span>` : ''}</p>` : ''}
@@ -1845,7 +1854,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'how') {
     return stepFrame({
-      header, stage: 2, title: `Let’s find out which ${word} you have`,
+      header, help: uiHelp('set-up-by-playing', 'before'), stage: 2, title: `Let’s find out which ${word} you have`,
       sub: `No need to know its ${fi.pick}. Play it to your phone and Oakhum works it out.`,
       body: `
         <ol class="setup-how">
@@ -1867,7 +1876,7 @@ function viewBeginnerSetup() {
     const what = st.family === 'handpan' ? 'Count the notes on top, the ding in the middle too. Then any underneath.'
       : st.family === 'kalimba' ? 'Count every key.' : 'Count every tongue, a round one in the middle too.';
     return stepFrame({
-      header, stage: 3, title: `How many notes does your ${word} have?`, sub: what,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3, title: `How many notes does your ${word} have?`, sub: what,
       body: `
         <div class="setup-count">
           ${st.family === 'handpan'
@@ -1888,7 +1897,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'windtype') {
     return stepFrame({
-      header, stage: 2, title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or play it a note.',
+      header, help: uiHelp('set-up-ocarina-or-flute'), stage: 2, title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or play it a note.',
       body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : `${t.hint ? `${t.hint} · ` : ''}${t.noChart ? 'no published chart found yet: ' : ''}set up note by note with the tuner`.replace(/^s/, 'S')), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>${st.family === 'ocarina' ? `<p class="wizard-foot">A double or triple ocarina (several chambers)? Their charts aren’t in Oakhum yet. <a class="link-btn" href="${SETUP_REQUEST_URL}">Ask for yours</a>.</p>` : ''}`,
       bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · play my notes</button>' },
     });
@@ -1900,7 +1909,7 @@ function viewBeginnerSetup() {
     const picked = st.windRoot ? keys.find(k => k.root === st.windRoot) : null;
     const rn = r => escHtml(displayNote(r, uf, us));
     return stepFrame({
-      header, stage: 3, title: 'Do you know its key?',
+      header, help: uiHelp('set-up-ocarina-or-flute', 'listen'), stage: 3, title: 'Do you know its key?',
       sub: `It’s usually written on the ${escHtml(word)} or its box. ${keys.length <= 2 ? '' : st.family === 'flute' ? 'A, G and F♯ are the most common.' : st.family === 'recorder' ? 'A soprano (descant) or tenor is in C, an alto (treble) or sopranino in F.' : 'C is the most common.'}`,
       body: `
         <div class="setup-roots setup-wind-roots">
@@ -1929,7 +1938,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? (g.idx === 0 ? 'Listening' : `${g.idx} of ${g.seq.length} · listening`) : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, stage: 3,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3,
       title: g.idx === 0 ? 'Cover every hole and blow gently' : `Now play ${windNoteName(want + g.offset)}`,
       sub: (g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.')
         + (g.chartId.startsWith('naf6') ? ' On a 6-hole Native American flute the third hole from the top stays closed for this whole scale.' : ''),
@@ -1954,7 +1963,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `${filled} of ${guideTotal(g)} · listening` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, stage: 3,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3,
       title: g.notes[g.active] != null ? `Play ${label} again` : `Play ${label}`,
       sub: `${fi.sound} The one to play is lit; tap another if you’re playing that one instead.`,
       body: `${setupPanHtml({ guide: g, family: st.family })}
@@ -1975,7 +1984,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `Listening · ${n} note${n !== 1 ? 's' : ''} heard` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, stage: 3,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3,
       title: n === 0 ? `Play ${fi.firstShort}` : 'Now the next note',
       sub: n === 0 ? fi.sound : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going, any order. ${fi.next}`,
       body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
@@ -1995,7 +2004,7 @@ function viewBeginnerSetup() {
     if (!best && st.guide && notes.length >= 3) {
       const closeLinks = sameSize.map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
       return stepFrame({
-        header, stage: 3, title: `We heard ${notes.length} notes`,
+        header, help: uiHelp('set-up-by-playing', 'wrong-note'), stage: 3, title: `We heard ${notes.length} notes`,
         body: `
           <div class="setup-result card">
             <p class="setup-result-lead">Your ${word}</p>
@@ -2015,7 +2024,7 @@ function viewBeginnerSetup() {
     }
     if (!best) {
       return stepFrame({
-        header, stage: 3, title: `We couldn’t tell which ${fi.pick} that is`,
+        header, help: uiHelp('set-up-by-playing', 'wrong-note'), stage: 3, title: `We couldn’t tell which ${fi.pick} that is`,
         sub: `Try again in a quieter spot, ${fi.again}, or choose it yourself.`,
         body: `${notes.length >= 3 ? `<div class="list">${setupOwnRowHtml(st, notes.length)}</div>` : ''}${listenReportLinkHtml('Is something not right?')}`,
         bar: {
@@ -2027,7 +2036,7 @@ function viewBeginnerSetup() {
     const s = best.scale;
     const close = ranked.filter(r => r.ding !== 'none' && r.scale.family !== s.family && (!st.guide || r.total === guideTotal(st.guide))).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
     return stepFrame({
-      header, stage: 3, title: `We heard ${notes.length} notes`,
+      header, help: uiHelp('set-up-by-playing', 'wrong-note'), stage: 3, title: `We heard ${notes.length} notes`,
       body: `
         <div class="setup-result card">
           <p class="setup-result-lead">Your ${word} is ${/^[AEIOU]/i.test(s.name) ? 'an' : 'a'}</p>
@@ -2053,7 +2062,7 @@ function viewBeginnerSetup() {
   if (st.step === 'know') {
     const roots = setupRoots(tunings, { first: fi.firstRoot });
     return stepFrame({
-      header, stage: 3, title: fi.knowTitle,
+      header, help: (fi.wind ? uiHelp('set-up-ocarina-or-flute') : uiHelp('set-up-by-scale', 'steps')), stage: 3, title: fi.knowTitle,
       sub: fi.knowSub,
       body: `
         <div class="setup-roots">
@@ -2073,7 +2082,7 @@ function viewBeginnerSetup() {
     const shown = st.showAll || fi.wind ? all : setupTopScales(all);
     const root = setupRootName(st.root);
     return stepFrame({
-      header, stage: 3, title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
+      header, help: (fi.wind ? uiHelp('set-up-ocarina-or-flute') : uiHelp('set-up-by-scale', 'steps')), stage: 3, title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
       body: `
         <div class="list">
           ${shown.map(s => uiRow({
@@ -2091,7 +2100,7 @@ function viewBeginnerSetup() {
   const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
-    header, stage: 4, title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
+    header, help: uiHelp('set-up-your-instrument', 'account'), stage: 4, title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
     sub: chord ? (fi.wind ? `Start with this chord. Your ${word} plays one note at a time, so Oakhum shows the fingering of each note and plays them in turn.`
       : `Start with this chord. Oakhum lights its notes on your ${word}, and plays them for you.`) : '',
     body: `
@@ -2584,7 +2593,7 @@ function stageDotsHtml(stage) {
         <span aria-hidden="true">${SETUP_STAGES[stage - 1]}</span>
       </div>`;
 }
-function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, title, sub = '', body, bar = {} }) {
+function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, help = '', title, sub = '', body, bar = {} }) {
   // The quiet hero (artwork, then the logo), docs/design-system.md "Brand".
   const heroHtml = hero ? `
       <div class="brand-hero">
@@ -2598,7 +2607,7 @@ function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, t
     <div class="wizard">
       ${heroHtml}
       ${notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(notice)}</p>` : ''}
-      ${stage ? stageDotsHtml(stage) : count ? `<div class="wizard-count">${escHtml(count)}</div>` : ''}
+      ${stage ? `<div class="wizard-stage-row">${stageDotsHtml(stage)}${help}</div>` : count ? `<div class="wizard-count">${escHtml(count)}</div>` : ''}
       <h2 class="wizard-title">${escHtml(title)}</h2>
       ${sub ? `<p class="wizard-sub">${sub}</p>` : ''}
       ${body}
@@ -3052,7 +3061,7 @@ function instrumentAppBar(inst, view, { practice = false } = {}) {
 function playlistsTabHtml(inst) {
   return `
     <section class="pl-section" aria-labelledby="pl-sec-playlists">
-      <h2 class="list-title" id="pl-sec-playlists">Playlists</h2>
+      <h2 class="list-title" id="pl-sec-playlists">Playlists ${uiHelp('playlists')}</h2>
       ${state.progressions.length
         ? `<div class="list">${progressionRowsHtml(inst)}</div>`
         : '<p class="pl-section-hint">Chords in order, the same chord as often as you like (Am – Dm – Am), played in time. Tap the bookmark on any chord to start one, or paste a chord sheet.</p>'}
@@ -3068,7 +3077,7 @@ function playlistsTabHtml(inst) {
 function songsTabHtml(inst) {
   return `${songsSectionHtml(inst)}
     <section class="pl-section" aria-labelledby="pl-sec-sheet">
-      <h2 class="list-title" id="pl-sec-sheet">Chords of a song</h2>
+      <h2 class="list-title" id="pl-sec-sheet">Chords of a song ${uiHelp('chord-sheets')}</h2>
       <div class="list">${uiRow({ lead: 'clipboard-paste', title: 'Paste a chord sheet', meta: 'Know a song’s chords? Play along with them', chevron: true, action: 'cs-open' })}</div>
     </section>`;
 }
@@ -3137,7 +3146,7 @@ function songsSectionHtml(inst) {
   const what = filter === 'christmas' ? 'Christmas songs' : origin ? `songs from ${SONG_ORIGINS[origin]}` : 'songs';
   return `
     <section class="pl-section" aria-labelledby="pl-sec-songs">
-      <h2 class="list-title" id="pl-sec-songs">Songs to learn</h2>
+      <h2 class="list-title" id="pl-sec-songs">Songs to learn ${uiHelp('songs-to-learn')}</h2>
       <div class="chips songs-filter" role="group" aria-label="Which songs">
         ${nXmas ? chip('christmas', `Christmas · ${nXmas}`, { cls: spotlight ? ' is-spotlight' : '', lead: spotlight ? icon('sparkles') : '' }) : ''}
         ${chip('popular', `Popular · ${nPop}`)}
@@ -3150,7 +3159,7 @@ function songsSectionHtml(inst) {
             action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
           })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${what}`, action: 'songs-all' }) : ''}</div>`
         : `<p class="pl-section-hint">None of these ${escHtml(what)} fits your ${escHtml(word)} completely${almost.length ? '' : ': each needs notes it doesn’t have'}.</p>`}
-      ${almost.length ? `<h3 class="list-title song-almost-title">Almost fit: one note missing</h3>
+      ${almost.length ? `<h3 class="list-title song-almost-title">Almost fit: one note missing ${uiHelp('songs-to-learn', 'almost')}</h3>
         <div class="list">${(state.songsAlmostAll ? almost : almost.slice(0, SONGS_ALMOST_SHOWN)).map(x => uiRow({
             lead: 'music', title: x.song.title, meta: escHtml(`${songMeta(x.song, x.shift)} · ${songMissingLabel(x)}`), chevron: true,
             action: 'song-open', data: { id: x.song.id, inst: inst?.id ?? '' },
@@ -3172,7 +3181,7 @@ function songsCountriesSheet() {
     action: 'songs-filter', data: { value: `origin:${o}` }, chevron: true,
   })).join('');
   return uiSheet({
-    key: 'songs-countries', title: 'Songs by country', close: 'songs-countries-close',
+    help: uiHelp('songs-to-learn', 'steps'), key: 'songs-countries', title: 'Songs by country', close: 'songs-countries-close',
     body: `<div class="list">${rows}</div>`,
   });
 }
@@ -3665,6 +3674,7 @@ function songPracticeRowHtml(S, idx) {
   return `<div class="song-practice">
       <button type="button" class="btn btn-secondary song-wait-btn" data-action="song-wait" aria-pressed="${!!state.songWait}">${icon('mic')} Wait for me</button>
       <button type="button" class="btn btn-secondary song-loop-btn" data-action="song-loop" aria-pressed="${!!loop}">${icon(loop && loop.to != null ? 'x' : 'repeat')} ${loopLabel}</button>
+      ${uiHelp('songs-to-learn', 'wait')}
     </div>
     ${status ? `<p class="song-practice-status" role="status">${status}</p>` : ''}`;
 }
@@ -4146,7 +4156,7 @@ function ocFiltersSheet() {
   const oc = state.oc;
   const inst = currentInstrument();
   return chordFiltersSheet({
-    key: 'oc-filters', close: 'oc-filters-close', clear: 'oc-filters-clear',
+    help: uiHelp('chords', 'filters'), key: 'oc-filters', close: 'oc-filters-close', clear: 'oc-filters-clear',
     roots: chordRootsOf(inst ? ocChordModel(inst).chords : []), root: oc.root ?? 'All', rootAction: 'oc-filter-root',
     counts: new Set(oc.counts ?? []), countAction: 'oc-toggle-count', category: oc.category, categoryAction: 'oc-category',
     extra: uiField({ label: 'Scale', id: 'oc-scale-filter', control: ocScaleSelect('Only chords made of this scale\'s notes'), help: 'Only chords made of the scale\'s notes.' }),
@@ -4166,7 +4176,7 @@ function ocChordMoreSheet() {
   const pairs = inst.chambers.length > 1 ? playablePairs(inst.chambers, card.midis) : [];
   const hasHalf = card.midis.some(m => fingeringFor(inst, m)?.states?.includes('h'));
   return chordMoreSheet({
-    key: 'oc-more', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
+    help: uiHelp('chords', 'more'), key: 'oc-more', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
     extra: `
       <div class="field oc-more-octaves">
         <span class="field-label">Octaves</span>
@@ -4280,7 +4290,7 @@ function viewOcarinaPractice(inst) {
 function handLegendModal() {
   if (!state.oc.handLegend) return '';
   return uiSheet({
-    key: 'hand', title: 'Which finger is which', close: 'oc-hand-close',
+    help: uiHelp('fingerings', 'fingers'), key: 'hand', title: 'Which finger is which', close: 'oc-hand-close',
     body: `<p class="sheet-text">As you hold the instrument, looking at the backs of your hands.</p>${renderHandLegend()}`,
     footer: `<button class="btn btn-secondary" data-action="oc-hand-close">Close</button>`,
   });
@@ -4344,7 +4354,7 @@ function viewInstrument() {
         ${recordedCentsHtml(inst, oc.selected)}
         ${state.ocLegendSeen ? '' : `
           <div class="fg-legend">
-            <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span><span>${legendHole('h')} half</span>
+            <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span><span>${legendHole('h')} half</span>${uiHelp('fingerings', 'read')}
             <button type="button" class="btn btn-ghost btn-sm" data-action="oc-legend-dismiss">Got it</button>
           </div>`}
       </div>
@@ -4551,7 +4561,7 @@ function shareModalHtml() {
   const m = state.shareModal;
   if (!m) return '';
   return uiSheet({
-    key: 'share', title: 'Share this instrument', close: 'share-close',
+    help: uiHelp('sharing', 'code'), key: 'share', title: 'Share this instrument', close: 'share-close',
     body: `
       <p class="sheet-text">${escHtml(m.text)}</p>
       <div class="share-code">${escHtml(m.code)}</div>
@@ -5765,6 +5775,7 @@ function tunerStripHtml() {
     <div id="tuner-panel" class="tuner" role="region" aria-label="${listening ? 'Listening' : 'Tuner'}">
       <canvas class="mic-wave tuner-wave" aria-hidden="true"></canvas>
       <div id="tuner-parts" class="tuner-parts">${listening ? listenStripInner() : tunerPanelInner()}</div>
+      ${listening ? uiHelp('listen', 'tips') : uiHelp('tuner', 'needle')}
       ${uiIconBtn('x', listening ? 'Stop listening' : 'Stop the tuner', { action: listening ? 'hear-stop' : 'tuner-toggle', cls: 'tuner-close' })}
       <span id="tuner-live" class="sr-only" aria-live="polite"></span>
     </div>`;
@@ -6109,7 +6120,7 @@ function hpLayoutSaved() {
 function edActionsHtml() {
   const saved = hpLayoutSaved();
   return `
-    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('copy')} Make my own copy</button>` : ''}
+    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('copy')} Make my own copy</button>${uiHelp('change-your-notes', 'change')}` : uiHelp('change-your-notes', 'move')}
     ${saved
       ? `<span class="ed-status" role="status">${icon('check')} Saved</span>
          <button type="button" class="btn btn-primary" data-action="save-layout" disabled>Saved</button>`
@@ -6673,7 +6684,7 @@ function speedBtnHtml() {
 }
 function speedSheet() {
   return uiSheet({
-    key: 'speed', title: 'Speed', close: 'speed-close',
+    help: uiHelp('speed'), key: 'speed', title: 'Speed', close: 'speed-close',
     body: `<p class="sheet-text">How fast chords, scales and fingerings play, on every instrument. Slower is easier to follow.</p>${tempoControlHtml()}`,
     footer: '<button type="button" class="btn btn-primary" data-action="speed-close">Done</button>',
   });
@@ -6721,7 +6732,7 @@ function goesWithLineHtml() {
   }).join('');
   if (!chips) return '';
   return `<div class="gw-line">
-      <span class="gw-label">Goes well with</span>
+      <span class="gw-label">Goes well with ${uiHelp('goes-well-with')}</span>
       <div class="gw-chips">${chips}</div>
     </div>`;
 }
@@ -6746,7 +6757,7 @@ function goesWithSheet() {
       <button type="button" class="btn btn-secondary btn-sm" data-action="gw-save" data-i="${i}">Save</button>`,
   })).join('');
   return uiSheet({
-    key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
+    help: uiHelp('goes-well-with', 'progressions'), key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
     body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? windWord(currentInstrument()) : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a playlist.</p>
       <div class="list gw-list">${rows}</div>`,
   });
@@ -6818,8 +6829,10 @@ function chordNotesWord(n) { return `${n} note${n !== 1 ? 's' : ''}`; }
 // All chords · Tap notes · Listen: the three ways to find a chord, the same
 // switch on every instrument.
 function chordModeSegHtml(mode, action) {
-  return uiSeg([{ value: 'browse', label: 'All chords' }, { value: 'identify', label: 'Tap notes' }, { value: 'listen', label: 'Listen' }],
+  const seg = uiSeg([{ value: 'browse', label: 'All chords' }, { value: 'identify', label: 'Tap notes' }, { value: 'listen', label: 'Listen' }],
     mode, { action, label: 'Find a chord' });
+  const help = mode === 'identify' ? uiHelp('identify-a-chord', 'steps') : mode === 'listen' ? uiHelp('listen', 'steps') : uiHelp('chords', 'play');
+  return `<div class="chord-mode-row">${seg}${help}</div>`;
 }
 
 // Main chords (chords.js mainChordsInKey): every Chords list shows the plain
@@ -6875,9 +6888,9 @@ function chordCountKey(n) { return n >= 5 ? '5+' : String(n); }
 // The Filters sheet of every instrument's Chords: the note the chord starts
 // on, how many notes, the type, then the instrument's own field (a
 // handpan's playlist, an ocarina's or flute's scale).
-function chordFiltersSheet({ key, close, clear, roots, root, rootAction, counts, countAction, category, categoryAction, extra = '' }) {
+function chordFiltersSheet({ key, help = '', close, clear, roots, root, rootAction, counts, countAction, category, categoryAction, extra = '' }) {
   const uf = state.useFlats, us = state.useSolfege;
-  return uiSheet({
+  return uiSheet({ help,
     key, title: 'Filters', close,
     body: `
     <div class="hp-sheet-form">
@@ -6901,12 +6914,12 @@ function chordFiltersSheet({ key, close, clear, roots, root, rootAction, counts,
 // ⋯ of the chord on top, the same sheet on every instrument: the
 // instrument's own rows, the well-known progressions with this chord, then
 // whatever else the instrument shows (related chords, octaves, the legend).
-function chordMoreSheet({ key, variant = 'menu', title, close, rows = [], extra = '' }) {
+function chordMoreSheet({ key, help = '', variant = 'menu', title, close, rows = [], extra = '' }) {
   const all = [
     ...rows,
     goesWithHasProgressions() ? uiRow({ lead: 'list-ordered', title: 'Progressions with this chord', meta: 'Well-known ones, to hear and to save', chevron: true, action: 'gw-open' }) : '',
   ].join('');
-  return uiSheet({ key, variant, title, close, body: `<div class="list">${all}</div>${extra}` });
+  return uiSheet({ help, key, variant, title, close, body: `<div class="list">${all}</div>${extra}` });
 }
 
 function viewChords() {
@@ -7044,7 +7057,7 @@ function hpFiltersSheet() {
   const f = state.chordFilter;
   const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
   return chordFiltersSheet({
-    key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
+    help: uiHelp('chords', 'filters'), key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
     roots: chordRootsOf(state.chords), root: f.root, rootAction: 'filter-root',
     counts: state.chordCountSet, countAction: 'toggle-note-count', category: f.category, categoryAction: 'filter-category',
     extra: `${!state.playlists.length ? '' : uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
@@ -7061,7 +7074,7 @@ function hpMoreSheet() {
   const chord = state.selectedChord;
   const { pl, canUpdate } = hpSourceEntry();
   return chordMoreSheet({
-    key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
+    help: uiHelp('chords', 'more'), key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
     rows: [
       uiRow({ lead: 'play', title: 'Play the scale', meta: 'Every note, from the lowest up', action: 'play-scale' }),
       canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',
@@ -7122,7 +7135,7 @@ function installHelpSheet() {
     ? ['Open the menu (the three lines at the bottom).', 'Choose <b>Add page to</b>, then <b>Home screen</b>.']
     : ['Open the browser menu (⋮ or ≡).', 'Choose <b>Add to Home screen</b> or <b>Install app</b>.'];
   return uiSheet({
-    key: 'install', title: 'Add Oakhum to your home screen', close: 'install-help-close',
+    help: uiHelp('install'), key: 'install', title: 'Add Oakhum to your home screen', close: 'install-help-close',
     body: `<ol class="install-steps">${steps.map(t => `<li>${t}</li>`).join('')}</ol>
       <p class="sheet-text">Then open Oakhum from its icon: full screen, quicker to reach, and with an account it works offline.</p>`,
     footer: '<button type="button" class="btn btn-primary" data-action="install-help-close">Done</button>',
@@ -7139,10 +7152,13 @@ function helpScreenKey() {
   if (v === 'chords') return state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'chords';
   if (v === 'editor') return 'pan';
   if (v === 'hp-playlists') return 'playlists';
+  if (v === 'hp-songs') return 'songs';
   if (v === 'instrument') {
-    const tab = state.oc.tab;
-    if (tab === 'chords') return state.oc.listen ? 'listen' : 'chords';
-    return tab === 'playlists' ? 'playlists' : tab === 'practice' ? 'practice' : 'notes';
+    const oc = state.oc;
+    if (oc.tab === 'chords') return oc.listen ? 'listen' : oc.identify ? 'identify' : 'chords';
+    if (oc.tab === 'songs') return 'songs';
+    if (oc.tab === 'setup') return 'pan';
+    return oc.tab === 'playlists' ? 'playlists' : oc.tab === 'practice' ? 'practice' : 'notes';
   }
   if (v === 'playlist') return 'playlist';
   if (v === 'progression') return 'progression';
@@ -7150,6 +7166,7 @@ function helpScreenKey() {
   if (v === 'setup' || v === 'wizard') return 'setup';
   if (v === 'play' || v === 'selector') return 'try';
   if (v === 'settings') return 'settings';
+  if (v.startsWith('maker')) return 'makers';
   return 'home';
 }
 
@@ -7236,7 +7253,7 @@ function renderPlaylistPicker() {
        </div>`
     : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New playlist', action: 'show-new-progression-input' });
   return uiSheet({
-    key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
+    help: uiHelp('playlists', 'start'), key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
     body: `<p class="picker-hint">Adds the chord at the end. The same chord can go in more than once; ✓ marks the playlists it is in already.</p><div class="list">${rows}${create}</div>`,
   });
 }
@@ -7851,7 +7868,7 @@ function viewProgression() {
             ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
           : `<div class="prog-now-hint">${level === 'chord' ? 'Play runs the chords in order, in time. Tap a chord to hear it.' : 'Play counts in one bar, then shows each chord numbered in strike order with L and R hands, the next chord faint. Tap a chord to see it.'}</div>`}
         </div>
-        <div class="prog-level">${levelSeg}</div>
+        <div class="prog-level">${levelSeg}${uiHelp('playlists', 'levels')}</div>
         <div class="prog-play-row">
           ${uiIconBtn('rewind', 'Back to the first chord', { action: 'prog-restart', cls: 'btn-lg', disabled: !nHere || curIdx <= 0 })}
           ${playing
@@ -7891,7 +7908,7 @@ function viewProgression() {
             ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
           : `<div class="prog-now-hint">Play counts in one bar, then goes through the chords in time, one note at a time, with the fingering of each note. Tap a chord to hear it.</div>`}
         </div>
-        <div class="prog-level">${levelSeg}</div>
+        <div class="prog-level">${levelSeg}${uiHelp('playlists', 'levels')}</div>
         <div class="prog-play-row">
           ${uiIconBtn('rewind', 'Back to the first chord', { action: 'prog-restart', cls: 'btn-lg', disabled: !nHere || curIdx <= 0 })}
           ${playing
@@ -8119,7 +8136,7 @@ function chordSheetSheet() {
       })
       : '<p class="cs-note">Add an instrument first: the chords are fitted to one.</p>';
     return uiSheet({
-      key: 'chordsheet', title: 'Paste a chord sheet', close: 'cs-cancel',
+      help: uiHelp('chord-sheets', 'formats'), key: 'chordsheet', title: 'Paste a chord sheet', close: 'cs-cancel',
       body: `<div class="hp-sheet-form">
         ${uiField({
           label: 'Chord sheet', id: 'cs-text', error: cs.error,
@@ -8155,7 +8172,7 @@ function chordSheetSheet() {
     return `${sec}<span class="chip is-static${miss ? ' is-off' : ''}"${miss ? ' title="Not on this instrument"' : ''}>${escHtml(sym)}${miss ? '<span class="sr-only"> (not on this instrument)</span>' : ''}</span>`;
   }).join('') + (sheet.steps.length > 64 ? `<span class="chip is-static">+${sheet.steps.length - 64}</span>` : '');
   return uiSheet({
-    key: 'chordsheet', title: `Fit to ${target?.name ?? 'instrument'}`, close: 'cs-cancel',
+    help: uiHelp('chord-sheets', 'formats'), key: 'chordsheet', title: `Fit to ${target?.name ?? 'instrument'}`, close: 'cs-cancel',
     body: `<div class="hp-sheet-form">
       ${uiField({ label: 'Name', id: 'cs-name', control: `<input class="input" id="cs-name" value="${escHtml(cs.name)}" placeholder="Playlist name" autocomplete="off">` })}
       <p class="cs-facts">${escHtml(facts)}${sheet.sections.length ? `<br>Sections: ${escHtml(sheet.sections.join(', '))}` : ''}</p>
@@ -8841,7 +8858,7 @@ function saveSheetHtml() {
       ${legal}`;
   }
   return uiSheet({
-    key: 'save', title: t.title, close: 'save-not-now', body,
+    help: uiHelp('accounts-and-saving', 'why'), key: 'save', title: t.title, close: 'save-not-now', body,
     footer: `<button type="button" class="btn btn-ghost" data-action="save-not-now">Not now</button>`,
   });
 }
