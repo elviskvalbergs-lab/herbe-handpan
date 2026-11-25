@@ -1,10 +1,10 @@
 # Oakhum videos: the plan and the scripts
 
-**Status: current** (21 Nov 2026). This is the one document for every Oakhum video except the makers one, whose message and script are in `docs/video-script-makers.md`. It replaces `docs/video-script.md` (the first overview draft, 18 Nov) and the earlier version of this plan (19 Nov), which each had their own overview script. Words come from `docs/messaging.md`.
+**Status: current** (shots checked against `preview` on 22 Nov 2026). This is the one document for every Oakhum video except the makers one, whose message and script are in `docs/video-script-makers.md`. It replaces `docs/video-script.md` (the first overview draft, 18 Nov) and the earlier version of this plan (19 Nov), which each had their own overview script. Words come from `docs/messaging.md`.
 
 **What exists today:** the makers video, cut 1 (94 s, on `/makers`), and a first overview cut (44 s, Kokoro voice, never published). **Everything below is a script**, written so the video session can build it with `scripts/demo-video/` as it is.
 
-Every shot was checked against the app built from `preview` on 21 Nov 2026, after #79–#81 and the navigation redesign (#84, #87, #89, #101): the tabs Chords · Songs · Playlists and the instrument's own (Pan, Keys, Drum or Notes); one kind of list, Playlists; the song chips Christmas · Popular · Countries; the Chords switch All chords · Tap notes · Listen; note names written as the scale writes them (B♭ on a D Kurd); the last setup step's "Keep this handpan". A shot that depends on work other sessions are doing is marked **(needs: …)**; §9 lists what can be filmed today.
+Every shot was checked against the app built from `preview` on 22 Nov 2026. Since the first version of this plan the product gained: the tabs Chords · Songs · Playlists and the instrument's own (Pan, Keys, Drum or Notes); one kind of list, Playlists; the song chips Christmas · Popular · Countries and a link for every song (`/<family>/<tuning>/songs/<song>`); the Chords switch All chords · Tap notes · Listen; note names written as the scale writes them (B♭ on a D Kurd); "Keep this handpan" on the last setup step; the recorder; the help centre at `/help`; and the whole makers programme. Nothing in this plan waits for unreleased work any more; §11 lists what each video still needs for the shoot.
 
 ---
 
@@ -14,7 +14,7 @@ Every shot was checked against the app built from `preview` on 21 Nov 2026, afte
 2. **The hook is in the first 3 seconds**, as a caption and as picture, before any logo. For jammers the hook is a question about *their* instrument. No "why" opening longer than one scene.
 3. **The voice tells the story; the captions say the point.** People can read, so the voice doesn't read the caption aloud: it says what happens around it.
 4. **No music-theory words in the voice.** Chord names may be on screen; the voice says "chord".
-5. **Instruments in the voice and in burned-in text:** "handpans, kalimbas, flutes and more", or the one instrument the video is about. Never the full list (it grows; a video can't be edited).
+5. **Instruments in the voice and in burned-in text:** "handpans, kalimbas, flutes and more", or the one instrument the video is about. Never the full list (the owner's rule: it keeps growing, and a video can't be edited).
 6. **Honest about free:** end cards say "Free. No sign-up to try." Nothing says or shows saving or offline without the words "free account". A recording that shows a saved instrument is made signed in; a guest recording shows "Not saved", which is fine in a video about trying and wrong in a video about saving.
 7. **No numbers in the voice** that the catalogue can change (songs, scales). The screen may show them, because the screen is the app.
 8. **Sound has three layers:** the voice; the app's own instrument sound (tapped from the page by `record.js`), loud when nobody speaks and ducked under the voice; nothing else. No stock music, so nothing needs a licence.
@@ -38,7 +38,7 @@ Scene **kinds**: *still* (a picture made by `scenes.js`), *phone* (a still with 
 
 **Voice.** ElevenLabs "Liam" (eleven_v4), one take per scene key, kept in the video's `takes-elevenlabs/`. First cuts use the free Kokoro voice to check words and timing; only agreed text goes to ElevenLabs. Characters (about 1 credit each) are given per script.
 
-**Where to record.** `record.js` records `https://oakhum.com`. Shots marked (needs: …) are recorded on the preview deployment once that work is merged to `preview`. Shots of saved instruments, Share and playing a chord sheet need **a signed-in demo account**: sign in once in a persistent Playwright profile with a test address, and save the demo instruments there ("Elvis's D Kurd", "Anna's kalimba").
+**Where to record.** `record.js` records `https://oakhum.com`. Record on the preview deployment when production is behind `preview`. Shots of saved instruments, Share and playing a chord sheet need **a signed-in demo account**: sign in once in a persistent Playwright profile with a test address, and save the demo instruments there ("Elvis's D Kurd", "Anna's kalimba").
 
 **"Play my notes" needs sound in the microphone.** Launch Chromium with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=<notes.wav>`: the app then hears the WAV as its microphone. The WAV is each note of the instrument, one by one, with a second of silence between; best a phone recording of a real instrument, otherwise the app's own sound for that instrument rendered to a file.
 
@@ -63,8 +63,8 @@ oakhum.com
 | C | **Songs you can play today** | Jammers who want tunes | 26 s | The songs your notes can play, with the tab | Home page Songs section, r/kalimba, r/ocarina, r/tinwhistle posts |
 | D | **Play along with a guitarist** | Jammers who play with friends | 28 s | A song's chords, in order, on your instrument | Handpan posts, the handpan instrument page |
 | E | **For makers, v2** | Makers and shops | 60 s | Save it once; every scan opens it | `/makers`, cold emails. Script in `docs/video-script-makers.md` |
-| F1–F5 | **What can your [instrument] play?** × 5 | Owners of that instrument | 16–18 s each | One instrument: its chords and one song | Each instrument page, social, that instrument's communities |
-| G1–G3 | **How to**: set up · save and add to home screen · share with a code | People already in the app | 70–80 s each | One task, start to finish | The help centre at `/help` *(needs: help centre)*, YouTube |
+| F1–F6 | **What can your [instrument] play?** × 6 | Owners of that instrument | 16–18 s each | One instrument: its chords and one song | Each instrument page, social, that instrument's communities |
+| G1–G3 | **How to**: set up · save and add to home screen · share with a code | People already in the app | 70–80 s each | One task, start to finish | The help centre at `/help` (the articles named in §9), YouTube |
 
 A is the only one that tries to say everything. B, C and D each take one sentence of A and show it properly.
 
@@ -73,16 +73,16 @@ A is the only one that tries to say everything. B, C and D each take one sentenc
 ## 4. A · What can your instrument play? (overview, 40 s)
 
 - **Goal:** a stranger who owns one of these instruments taps the link. Success is `first_play` on the app within the same visit.
-- **Audience:** jammers, any of the five instruments.
+- **Audience:** jammers, any instrument.
 - **Hook (0–3 s):** the question "What can *your* instrument play?" over three instruments, each with a different set of notes.
 - **Folder:** `scripts/demo-video/overview/` (replaces its current six scenes; the scene keys stay `o1`–`o6`, but `o2`–`o5` are all phone scenes now, so its `compose.py` needs four recordings instead of one). Voice: 84 words, about 415 characters.
 
 | # | Key · kind | Picture: link and taps | Voice-over | Caption (big / sub) | App sound |
 |---|---|---|---|---|---|
 | 1 | `o1` · still, 4 s | Brand pictures of a handpan, a kalimba and an ocarina (`brand/instruments/`), each with its note names under it (D Kurd: D A B♭ C D E F G A · 17-key kalimba in C · alto C ocarina). | "Every one of these has its own notes." / "So what can *yours* actually play?" | **What can *your* instrument play?** | D Kurd scale (`play-scale`), full volume for the first second |
-| 2 | `o2` · phone, 7 s | `/play` as a new visitor: "What do you play?" with the five tiles. Tap **Handpan** (`setup-family`, `data-family="handpan"`): "Let's find out which handpan you have". Hold on the two buttons, "I know my scale" and "Play my notes". | "Tell Oakhum which one you have." / "Or just play its notes, and it works it out." | **It starts from your instrument** / Pick it, or play its notes | — |
+| 2 | `o2` · phone, 7 s | `/play` as a new visitor: "What do you play?" with the instrument tiles. Tap **Handpan** (`setup-family`, `data-family="handpan"`): "Let's find out which handpan you have". Hold on the two buttons, "I know my scale" and "Play my notes". | "Tell Oakhum which one you have." / "Or just play its notes, and it works it out." | **It starts from your instrument** / Pick it, or play its notes | — |
 | 3 | `o3` · phone, 8 s | `/handpan/d-kurd/chords`. Tap the row **D Minor** (`select-chord`): three notes light up on the pan and ring. Then **Bb Major**, then **F Major**. | "Then it shows every chord your notes can make, right where they live." | **Every chord, on your own instrument** | The three chords, from the recording |
-| 4 | `o4` · phone, 8 s | `/kalimba/c-major-17/songs` (the Songs tab), tap **Popular** (`songs-filter`), tap **Ode to Joy** (`song-open`), tap **Play** (`song-play`): the keys light one by one and the tab follows. | "And the songs they can play, note by note." | **Songs your notes can play** / With the tab | The melody, from the recording |
+| 4 | `o4` · phone, 8 s | `/kalimba/c-major-17/songs/ode-to-joy` (the song's own link), tap **Play** (`song-play`): the keys light one by one and the tab follows. | "And the songs they can play, note by note." | **Songs your notes can play** / With the tab | The melody, from the recording |
 | 5 | `o5` · phone, 7 s | `/handpan/d-kurd/chords`, tap **Listen** in the All chords · Tap notes · Listen switch (`toggle-discover-mode`), then **Listen**. A guitar chord goes in as the microphone (`--use-file-for-fake-audio-capture`, a recorded D minor then B♭): the chord appears, lit on the pan. | "A friend picks up a guitar?" / "It listens, and shows you where to join in." | **Join in** / Oakhum hears the chord and shows it on yours | The guitar chord, then the pan answering |
 | 6 | `o6` · card, 6 s | The end card (§2). | "It's free, and there's no sign-up to try." / "Oakhum." / "Find the music hiding in your instrument!" | **Find the music hiding in your instrument** / Free. No sign-up to try. · oakhum.com | F major, then C major, as in the makers video |
 
@@ -118,14 +118,14 @@ A is the only one that tries to say everything. B, C and D each take one sentenc
 - **Goal:** show tune-players (kalimba, ocarina, whistle, tongue drum) that Oakhum has songs, not only chords. Success is `feature: song-play` per visit from the posts that carry this video.
 - **Audience:** jammers who want tunes.
 - **Hook (0–3 s):** a song title, and its notes lighting on a kalimba, with the caption "Songs your kalimba can play today".
-- **Folder:** `scripts/demo-video/songs/`. Voice: 49 words, about 260 characters (plus about 250 for the ocarina, whistle and Christmas variants). Can be filmed today from the Songs tab. A song has no link of its own yet (an open song is `/play#song/<id>`), so the recording taps its way there.
+- **Folder:** `scripts/demo-video/songs/`. Voice: 49 words, about 260 characters (plus about 250 for the ocarina, whistle and Christmas variants). Can be filmed today. Every song has its own link, so a recording can open straight on it, and the post that carries this video links to the same song.
 
 | # | Key · kind | Picture: link and taps | Voice-over | Caption (big / sub) | App sound |
 |---|---|---|---|---|---|
-| 1 | `g1` · phone, 4 s | `/kalimba/c-major-17/songs` → **Popular** → **Ode to Joy** → **Play** (`song-play`), already playing when the video starts (start the clip a second after the tap). *(needs: Songs links, then `goto` the song's own link)* | "This is a song your kalimba can play." / "Today." | **Songs your kalimba can play today** | The melody, full volume |
+| 1 | `g1` · phone, 4 s | `/kalimba/c-major-17/songs/ode-to-joy` (the song's own link) → **Play** (`song-play`), already playing when the video starts (start the clip a second after the tap). | "This is a song your kalimba can play." / "Today." | **Songs your kalimba can play today** | The melody, full volume |
 | 2 | `g2` · phone, 7 s | Back (`nav-back`) to the list under **Songs to learn**: the chips **Christmas · Popular · Countries**, the titles, each with country, key and time, and the line "… more need notes your kalimba doesn't have" in view. | "Your instrument only has certain notes." / "So Oakhum lists the songs those notes can play." | **Only the songs your notes can play** | — |
 | 3 | `g3` · phone, 7 s | Open **Twinkle, Twinkle, Little Star**, tap **Tab** (`song-view`) then **Play**: the tab scrolls, numbers with octave dots, left and right thumb, the words under the notes. | "Pick one. It lights each note in turn," / "and writes the tab the way kalimba players read it." | **With the tab** / Numbers, thumbs, words | The melody |
-| 4 | `g4` · phone, 5 s | `/handpan/d-kurd/songs` → **Popular** → **Twinkle, Twinkle, Little Star** → **Play**: the same song on a handpan, its own tab (R and L hands). | "On a handpan, the same song, in its own tab." | **Handpans, flutes and more** | The melody on the pan |
+| 4 | `g4` · phone, 5 s | `/handpan/d-kurd/songs/twinkle-twinkle` → **Play**: the same song on a handpan, its own tab (R and L hands). | "On a handpan, the same song, in its own tab." | **Handpans, flutes and more** | The melody on the pan |
 | 5 | `g5` · card, 3 s | The end card, last line "Folk songs, children's songs and carols · oakhum.com" | — | **Songs your notes can play** / Free. No sign-up to try. · oakhum.com | Last notes ring |
 
 **9:16 cut:** all scenes. For r/ocarina and r/tinwhistle, make a wind variant by swapping scenes 1–3 to `/ocarina/alto-c-12` or `/flute/tin-whistle-d` (`/ocarina/alto-c-12/songs`, `/flute/tin-whistle-d/songs`; the tab shows note letters and each fingering in turn) and re-voicing `g1` and `g3` with "ocarina" / "tin whistle" (two extra takes each, in `lines.py` as `g1_ocarina`, `g3_ocarina`, `g1_whistle`, `g3_whistle`).
@@ -162,8 +162,8 @@ A is the only one that tries to say everything. B, C and D each take one sentenc
 
 - **Goal:** one clip that an owner of that instrument recognises as theirs in the first second. For the top of each instrument page and for that instrument's communities.
 - **Audience:** owners of that one instrument.
-- **Shape (the same for all five):** the question with the instrument's name (3 s) → its chords (5 s) → one song with its tab (6 s) → end card with the instrument's page (3 s).
-- **Folder:** `scripts/demo-video/instruments/`, one `lines.py` with keys `<instrument>1`…`<instrument>3`; the end card has no voice. About 26 words and 140 characters each, 690 for all five. All can be filmed today.
+- **Shape (the same for all six):** the question with the instrument's name (3 s) → its chords (5 s) → one song with its tab (6 s) → end card with the instrument's page (3 s).
+- **Folder:** `scripts/demo-video/instruments/`, one `lines.py` with keys `<instrument>1`…`<instrument>3`; the end card has no voice. About 26 words and 140 characters each, 830 for all six. All can be filmed today.
 - **Hook (0–3 s):** the caption "What can your [instrument] play?" over the instrument itself, already sounding.
 
 | Clip | Scene 1 (3 s): link, taps, caption | Scene 2 (5 s): chords | Scene 3 (6 s): a song | Voice-over (`…1` / `…2` / `…3`) | End card last line |
@@ -178,13 +178,13 @@ The ocarina's and whistle's first screen shows a legend ("covered · open · hal
 
 **9:16 cut:** these are made 9:16 first (social), with a 16:9 master for the instrument pages. The end card is the standard one with the instrument's page as the address and, above it, "Free. No sign-up to try."
 
-*(needs: recorder)* A sixth clip follows the same shape when the recorder ships: add `recorder1`–`recorder3` to the same `lines.py`.
+| **F6 Recorder** | `/recorder/soprano-baroque`, tap **C5**, **D5**, **E5** on the note row: the fingering changes. Caption: **What can your recorder play?** | `/recorder/soprano-baroque/chords`, tap **C Major**, tap **Chord** (`play-chord`): its three fingerings in turn. Caption: **Every note's fingering** | **Songs** tab → Popular → **Ode to Joy** → **Play**. Caption: **Songs, note by note** | "The recorder from school. Still in a drawer?" / "Every note's fingering, as you play." / "And a hundred songs you already know, note by note." | oakhum.com/instruments/recorder |
 
 ---
 
 ## 9. G · How-to videos for the help centre (70–80 s each)
 
-For people who are already in the app. Calm, exact, numbered steps on screen (`copy(big, sub, n)` with the number in a circle). Each ends with where to ask for help, not with a pitch. *(needs: help centre for the `/help` pages they sit on; the videos themselves can be filmed as noted.)*
+For people who are already in the app. Calm, exact, numbered steps on screen (`copy(big, sub, n)` with the number in a circle). Each ends with where to ask for help, not with a pitch. Each sits at the top of its help article: G1 on `/help/set-up-your-instrument`, G2 on `/help/accounts-and-saving` (and `/help/install`), G3 on `/help/sharing`. The help articles are the reference for the steps: if a video and its article disagree, check the app and fix both.
 
 All three: **Audience** people who opened the app and want to do one thing. **Hook (0–3 s):** the task in the caption and the finished result on the phone ("this is where you'll be in a minute"). **End card:** "More help: oakhum.com/help · Something not right? Settings › Send feedback". **9:16:** not needed; if one is wanted for Shorts, cut steps 1–3 only with the step captions.
 
@@ -255,23 +255,23 @@ Checked against `preview` on 21 Nov 2026.
 |---|---|---|
 | A · Overview | **Yes.** Needs a recorded guitar chord for scene 5. | — |
 | B · Play my notes | **Yes.** Needs a WAV of kalimba notes (and one of handpan notes for the variant). | — |
-| C · Songs | **Yes**, from the Songs tab. | A link per song, so a post can open the song itself: not needed for the video. |
+| C · Songs | **Yes.** | — |
 | D · Play along | **Yes**, with a signed-in demo account. | — |
-| E · Makers v2 | **Scenes 1–5 and 7 yes**, with "Made by <maker>" (a signed-in demo maker account that an admin has approved). | Scene 6 (the maker dashboard with instruments and scan counts): makers phases 2–3. See `docs/video-script-makers.md`. |
-| F1–F5 · Instruments | **Yes**, all five. | F6 recorder: the recorder. |
-| G1 · Set up | **Yes** (handpan WAV). | The `/help` page it sits on. |
-| G2 · Save and add to home screen | **Yes** (test email; real-phone stills for scene 5). | The `/help` page. |
-| G3 · Share with a code | **Yes** (signed-in demo account). | The `/help` page. |
+| E · Makers v2 | **Yes, every scene**, with a signed-in demo maker account that an admin has approved and that has a few scans on its codes. See `docs/video-script-makers.md`. | — |
+| F1–F6 · Instruments | **Yes**, all six. | — |
+| G1 · Set up | **Yes** (handpan WAV). | — |
+| G2 · Save and add to home screen | **Yes** (test email; real-phone stills for scene 5). | — |
+| G3 · Share with a code | **Yes** (signed-in demo account). | — |
 
 ## 12. Build order and credits
 
 1. **A** (every post and the home page need it) and **B** (it reuses A's setup recording).
 2. **F3 kalimba, F1 handpan** and **C** (the launch plan's weeks 1 and 2).
-3. **E makers v2**, scenes 1–5, with a placeholder for scene 6 (week 3's emails link to it).
-4. **D**, then **F2, F4, F5**.
-5. **G1–G3**, when the help centre is ready to hold them.
+3. **E makers v2**, all seven scenes (week 3's emails link to it).
+4. **D**, then **F2, F4, F5, F6**.
+5. **G1–G3**, for the help centre.
 
-ElevenLabs characters, one take per line: A 415 · B 230 · C 510 with its variants · D 250 · E 640 · F 690 · G 2,125. About **4,900** for the whole set, 2,750 without the how-tos (counted from the committed `lines.py` files). Voice every script with Kokoro first; send only agreed text to ElevenLabs.
+ElevenLabs characters, one take per line: A 415 · B 230 · C 510 with its variants · D 250 · E 640 · F 830 with the recorder · G 2,125. About **5,050** for the whole set, 2,900 without the how-tos (counted from the committed `lines.py` files). Voice every script with Kokoro first; send only agreed text to ElevenLabs.
 
 ## 13. Questions for the owner
 

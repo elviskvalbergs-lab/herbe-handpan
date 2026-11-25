@@ -31,7 +31,7 @@ LINES = {
     'm5':   ['Every scan opens that instrument.',
              'With every chord it can play, and the songs that fit it.',
              'No app to install. No sign-up.'],
-    # [You see every scan · Your instruments, your name (needs: makers phases 2-3)]
+    # [You see every scan · Your instruments, your name]
     'm6':   ['And you see it working: which instruments were opened, and how often.'],
     # [Save it once. Every scan opens it. · Free for you and your buyers · oakhum.com/makers]
     'm7':   ["It's free, for you and for your buyers.",

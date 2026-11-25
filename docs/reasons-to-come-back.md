@@ -1,5 +1,7 @@
 # Reasons to come back: the songbook
 
+**Status: plan** (status line added 22 Nov 2026). A design for the owner's review; none of it is built.
+
 Design for review. **No feature code until the owner approves it.**
 Wireframes: `docs/reasons-to-come-back-wireframes.html` (open it in a browser).
 
