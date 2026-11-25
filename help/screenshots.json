@@ -98,7 +98,7 @@
       "name": "song",
       "steps": [
         {
-          "go": "/handpan/d-kurd/playlists"
+          "go": "/handpan/d-kurd/songs"
         },
         {
           "css": "[data-action=songs-filter][data-value=popular]"
@@ -127,7 +127,10 @@
           "go": "/handpan/d-kurd/chords/d-min"
         },
         {
-          "tap": "gw-open"
+          "tap": "hp-more-open"
+        },
+        {
+          "text": "Progressions with this chord"
         },
         {
           "css": ".sheet-root button:has-text('Save')"
@@ -156,7 +159,10 @@
           "go": "/handpan/d-kurd/chords/d-min"
         },
         {
-          "tap": "gw-open"
+          "tap": "hp-more-open"
+        },
+        {
+          "text": "Progressions with this chord"
         },
         {
           "css": ".sheet-root button:has-text('Save')"

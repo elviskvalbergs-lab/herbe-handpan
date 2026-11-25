@@ -53,10 +53,16 @@ test('the families in the registry are the app’s', () => {
 });
 
 test('feature names and labels are written as the app shows them', () => {
-  // Compared with the app's source, with its HTML escapes read back.
-  const src = appSource.replace(/&amp;/g, '&').replace(/\\'/g, '’');
-  for (const f of FEATURES) assert.ok(src.includes(f.name), `feature "${f.id}": the app does not say "${f.name}" any more. Rename it in js/features.js too.`);
-  for (const [id, text] of Object.entries(UI_LABELS)) assert.ok(src.includes(text), `label "${id}": the app does not say "${text}" any more. Rename it in js/features.js too.`);
+  // As UI text: inside quotes or between tags (">Label<", "} Label</b"), or
+  // a sentence the app builds ("Keep this ${word}"), never in a comment. So
+  // a word that survives only in a comment or a longer phrase does not pass.
+  // A name the app takes from the registry itself (featureName('help')) passes.
+  const src = appSource.split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+    .replace(/&amp;/g, '&').replace(/\\'/g, '’');
+  const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const shown = t => new RegExp(`(['"\`>]|\\}\\s)${esc(t)}(['"\`<]|\\s\\$\\{)`).test(src);
+  for (const f of FEATURES) assert.ok(shown(f.name) || src.includes(`featureName('${f.id}')`), `feature "${f.id}": the app does not show "${f.name}" any more. Rename it in js/features.js and in the articles that use it.`);
+  for (const [id, text] of Object.entries(UI_LABELS)) assert.ok(shown(text), `label "${id}": the app does not show "${text}" any more. Rename it in js/features.js and in the articles that use it.`);
 });
 
 test('articles only mention features and labels that are used', () => {
@@ -84,7 +90,7 @@ test('deep links, article links and anchors all lead somewhere', () => {
         assert.ok(to, `help/en/${a.file}: link to ${href}, but there is no article "${m[1]}"`);
         if (m[2]) assert.ok(to.anchors.includes(m[2]), `help/en/${a.file}: link to ${href}, but "${m[1]}" has no #${m[2]}`);
       } else {
-        assert.ok(['/privacy', '/request', '/makers'].includes(href), `help/en/${a.file}: link ${href} is not a help article or a known page of the site`);
+        assert.ok(['/help', '/privacy', '/request', '/makers'].includes(href), `help/en/${a.file}: link ${href} is not a help article or a known page of the site`);
       }
     }
   }
@@ -98,6 +104,19 @@ test('every screen with a help entry opens an article', () => {
   const asked = [...fn.matchAll(/(?:return|\?|:) '([a-z]+)'/g)].map(m => m[1]);
   assert.ok(asked.length >= 8);
   for (const key of asked) assert.ok(HELP_SCREENS[key], `js/app.js helpScreenKey can return '${key}', which HELP_SCREENS (js/features.js) does not list`);
+});
+
+test('every "?" in the app opens an article that exists, at an anchor that exists', () => {
+  const calls = appSource.match(/uiHelp\(/g) ?? [];
+  const literal = [...appSource.matchAll(/uiHelp\('([a-z0-9-]+)'(?:, '([a-z0-9-]+)')?\)/g)];
+  // The definition is the one call that is not literal.
+  assert.equal(literal.length, calls.length - 1, 'every uiHelp(…) call takes literal ids, so it can be checked here');
+  assert.ok(literal.length >= 25, `only ${literal.length} "?" buttons found`);
+  for (const [, id, anchor] of literal) {
+    const a = byId.get(id);
+    assert.ok(a, `uiHelp('${id}'): there is no article "${id}"`);
+    if (anchor) assert.ok(a.anchors.includes(anchor), `uiHelp('${id}', '${anchor}'): "${id}" has no #${anchor}`);
+  }
 });
 
 test('pictures are made by the script, and every one is used', () => {

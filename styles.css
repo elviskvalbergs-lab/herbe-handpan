@@ -603,6 +603,26 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .install-banner > span:first-child { display: flex; align-items: center; gap: var(--space-2); }
 .install-banner > span:first-child .icon { flex-shrink: 0; }
 .install-banner-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+/* "?": opens a help article (uiHelp in js/app.js). Small and quiet next to a
+   heading or control, with a 44px tap area. */
+.help-q {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  width: 24px; height: 24px; margin: -4px 0 -4px var(--space-1); padding: 0; flex: none;
+  border: 0; border-radius: 50%; background: none; color: var(--text-3, var(--text-2)); cursor: pointer;
+  text-transform: none; letter-spacing: normal;
+}
+.help-q::after { content: ''; position: absolute; inset: -10px; }
+.help-q svg { width: 20px; height: 20px; }
+.help-q:hover, .help-q:focus-visible { color: var(--accent-text); }
+.chord-mode-row, .wizard-stage-row { display: flex; align-items: center; gap: var(--space-2); }
+.chord-mode-row > .seg { flex: 1; min-width: 0; }
+.wizard-stage-row > .wizard-count { margin-bottom: 0; }
+.wizard-stage-row { margin-bottom: var(--space-2); }
+.sheet-head .help-q { margin-right: var(--space-1); }
+.prog-level { display: flex; align-items: center; gap: var(--space-2); }
+.prog-level > .seg { flex: 1; min-width: 0; }
+.song-practice, .fg-legend { align-items: center; }
+
 /* Help articles in the help sheet (js/helpdoc.js helpHtml). */
 .help-doc { color: var(--text-1); }
 .help-doc p, .help-doc .help-list { margin: 0 0 var(--space-3); }

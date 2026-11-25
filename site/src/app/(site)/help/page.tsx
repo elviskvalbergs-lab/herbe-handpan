@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { HelpSearch } from "@/components/HelpSearch";
 import { getHelpArticles, helpSearchEntries, helpSections } from "@/lib/help";
-import { container, h2 } from "@/lib/ui";
+import { h2 } from "@/lib/ui";
 
 export const metadata: Metadata = {
   title: "Help",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function HelpIndex() {
   const articles = getHelpArticles();
   return (
-    <div className={`${container} pt-14 pb-24`}>
+    <div>
       <h1 className="m-0 mb-3 text-[clamp(36px,5vw,52px)] font-semibold leading-[1.05] tracking-[-0.02em]">Help</h1>
       <p className="m-0 mb-8 max-w-measure text-[19px] text-body">
         Short answers, in plain words. New here? Start with <Link href="/help/set-up-your-instrument">Set up your instrument</Link>.
@@ -25,7 +25,7 @@ export default function HelpIndex() {
         return (
           <section key={s.id} id={s.id} className="mt-14 scroll-mt-6">
             <h2 className={`${h2} m-0 mb-5 text-[28px]`}>{s.title}</h2>
-            <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2">
               {inSection.map((a) => (
                 <li key={a.id}>
                   <Link href={`/help/${a.id}`} className="block h-full rounded-card border border-border bg-surface p-5 no-underline hover:border-border-strong">

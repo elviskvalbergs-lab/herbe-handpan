@@ -1,17 +1,17 @@
 ---
 id: fingerings
-title: Fingerings on an ocarina or flute
-summary: The Notes tab shows which holes to cover for every note your ocarina or flute can play.
+title: Fingerings on an ocarina, flute or recorder
+summary: The Notes tab shows which holes to cover for every note your ocarina, flute or recorder can play.
 section: start
 type: reference
 audience: players
-instruments: ocarina, flute
+instruments: ocarina, flute, recorder
 features: notes
 app: /ocarina/alto-c-12
-verified: 2026-11-21
+verified: 2026-11-25
 order: 80
 ---
-The {{notes}} tab is the fingering chart of your instrument.
+The {{notes}} tab is the fingering chart of your instrument. It is the last tab, after {{chords}}, {{songs}} and {{playlists}}.
 
 ![The Notes tab of a 12 hole ocarina](img:notes-tab)
 
@@ -37,4 +37,4 @@ Open the three dots menu and tap {{which-finger}}. In {{settings}} you can also 
 
 ## The fingering looks wrong for my instrument {#wrong}
 
-Charts come from published maker charts, but instruments differ. Tell us with {{feedback}} in {{settings}} and say which instrument you have.
+Charts come from printed maker charts, but instruments differ. Tell us with {{feedback}} in {{settings}} and say which instrument you have.
