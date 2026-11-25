@@ -98,7 +98,7 @@
       "name": "song",
       "steps": [
         {
-          "go": "/handpan/d-kurd/playlists"
+          "go": "/handpan/d-kurd/songs"
         },
         {
           "css": "[data-action=songs-filter][data-value=popular]"
@@ -125,6 +125,9 @@
         },
         {
           "go": "/handpan/d-kurd/chords/d-min"
+        },
+        {
+          "tap": "hp-more-open"
         },
         {
           "tap": "gw-open"
@@ -154,6 +157,9 @@
         },
         {
           "go": "/handpan/d-kurd/chords/d-min"
+        },
+        {
+          "tap": "hp-more-open"
         },
         {
           "tap": "gw-open"

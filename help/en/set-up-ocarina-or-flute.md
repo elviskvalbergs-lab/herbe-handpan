@@ -1,17 +1,17 @@
 ---
 id: set-up-ocarina-or-flute
-title: Set up an ocarina or flute
-summary: Choose the kind of ocarina or flute you have and its key. Oakhum then shows the fingering for every note it can play.
+title: Set up an ocarina, flute or recorder
+summary: Choose the kind of ocarina, flute or recorder you have and its key. Oakhum then shows the fingering for every note it can play.
 section: start
 type: howto
 audience: players
 instruments: ocarina, flute
 features: setup, setup-listen
 app: /play
-verified: 2026-11-21
+verified: 2026-11-25
 order: 40
 ---
-For an ocarina or a flute, Oakhum needs two things: the kind of instrument, and its key.
+For an ocarina, a flute or a recorder, Oakhum needs two things: the kind of instrument, and its key.
 
 ## Ocarina {#ocarina}
 
@@ -26,13 +26,21 @@ For some ocarinas, such as small pendants with 4, 7 or 8 holes, there is no read
 
 1. On the first screen, tap Flute or whistle.
 2. Choose your flute: a tin whistle, or a Native American flute with 5 or 6 holes.
-3. For a Native American flute, choose its key.
+3. Choose its key. A tin whistle is usually in D.
 
-Another kind of flute, such as a recorder or one made by hand, is set up note by note with the tuner.
+Another kind of flute, such as a bansuri or one made by hand, is set up note by note with the tuner.
+
+## Recorder {#recorder}
+
+1. On the first screen, tap Recorder.
+2. Choose its fingering. Most recorders have Baroque fingering, also called English. Some school sopranos have German fingering.
+3. Choose its key: C for a soprano or tenor, F for an alto.
+
+Another recorder, such as a bass, is set up note by note with the tuner.
 
 ## I do not know the key {#listen}
 
-Tap {{not-sure-listen}}, or the listen option on the key step. Play a few notes and Oakhum works it out.
+Tap {{not-sure-listen}} on the first step, or {{dont-know-play}} on the key step. Play a few notes and Oakhum works it out.
 
 ## Check it by playing {#check}
 

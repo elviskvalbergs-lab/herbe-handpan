@@ -57,10 +57,14 @@ export async function openApp() {
   if (!existsSync(join(ROOT, 'index.html'))) throw new Error('index.html is missing: run python3 build.py first');
   const http = createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    // Vercel's analytics script only exists on Vercel: an empty one here.
+    if (path === '/_vercel/insights/script.js') { res.writeHead(200, { 'content-type': 'text/javascript' }).end(''); return; }
     let file = join(ROOT, path);
     if (!file.startsWith(ROOT) || !existsSync(file) || statSync(file).isDirectory()) file = join(ROOT, 'index.html');
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
-    res.end(readFileSync(file));
+    // supabase-js is swapped for a stand-in, which its integrity hash would
+    // refuse: the page is served without the hash (as tests/e2e/harness.mjs does).
+    res.end(file.endsWith('index.html') ? readFileSync(file, 'utf8').replace(/ integrity="sha384-[^"]+"/, '') : readFileSync(file));
   });
   await new Promise(r => http.listen(0, '127.0.0.1', r));
   const base = `http://localhost:${http.address().port}`;

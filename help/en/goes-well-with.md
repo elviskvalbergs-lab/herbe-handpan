@@ -8,7 +8,7 @@ audience: players
 instruments: all
 features: goes-with, ready-progressions
 app: /handpan/d-kurd/chords/d-min
-verified: 2026-11-21
+verified: 2026-11-25
 order: 30
 ---
 You do not need theory to find chords that fit. Choose one chord and Oakhum suggests the next.
@@ -21,7 +21,7 @@ You do not need theory to find chords that fit. Choose one chord and Oakhum sugg
 
 ## Ready made progressions {#progressions}
 
-Tap {{ready-progressions}} next to {{goes-with}}. Oakhum lists well known chord orders in the key of your instrument, all playable on it. Tap play to hear one. Tap Save to keep it as a playlist. See [Playlists](/help/playlists).
+Tap the three dots on the chosen chord, then {{ready-progressions}}. Oakhum lists well known chord orders in the key of your instrument, all playable on it. Tap play to hear one. Tap Save to keep it as a playlist. See [Playlists](/help/playlists).
 
 ## What do the letters mean? {#letters}
 

@@ -1,20 +1,20 @@
 ---
 id: tuner
 title: The tuner
-summary: Tap the microphone at the top of any screen to see which note Oakhum hears and whether it is in tune.
+summary: Tap the tuning fork at the top of any screen to see which note Oakhum hears and whether it is in tune.
 section: listening
 type: howto
 audience: players
 instruments: all
 features: tuner
-verified: 2026-11-21
+verified: 2026-11-25
 order: 20
 ---
 The tuner names the note it hears. Use it to check a note on your instrument, or to find out what a note is.
 
 ## Use the tuner {#steps}
 
-1. Tap the microphone button at the top right. Your browser asks to use the microphone. Tap Allow.
+1. Tap the tuning fork button at the top right. Your browser asks to use the microphone. Tap Allow.
 2. Play one note and let it ring.
 3. A bar appears at the bottom with the name of the note and a needle.
 4. Tap the cross on the bar to stop.

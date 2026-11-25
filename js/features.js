@@ -16,7 +16,7 @@
 
 export const FEATURE_FAMILIES = ['handpan', 'tongue-drum', 'kalimba', 'ocarina', 'flute', 'recorder'];
 const FEATURE_PANS = ['handpan', 'tongue-drum', 'kalimba'];
-const FEATURE_WINDS = ['ocarina', 'flute'];
+const FEATURE_WINDS = ['ocarina', 'flute', 'recorder'];
 
 // id: stable, never reused. name: as shown in the app. where: the screen it
 // lives on, in words (for people and for an AI assistant). instruments: the
@@ -30,18 +30,18 @@ export const FEATURES = [
   { id: 'try',              name: 'Play something else',   where: 'My instruments',                              instruments: FEATURE_FAMILIES, account: false, help: 'try-without-saving' },
   { id: 'my-instruments',   name: 'My instruments',        where: 'The home screen once you have saved one',     instruments: FEATURE_FAMILIES, account: true,  help: 'my-instruments' },
   { id: 'chords',           name: 'Chords',                where: 'A tab of every instrument',                   instruments: FEATURE_FAMILIES, account: false, help: 'chords', link: 'chords' },
-  { id: 'chords-identify',  name: 'Identify',              where: 'Chords tab',                                  instruments: FEATURE_FAMILIES, account: false, help: 'identify-a-chord', link: 'chords' },
+  { id: 'chords-identify',  name: 'Tap notes',             where: 'Chords tab',                                  instruments: FEATURE_FAMILIES, account: false, help: 'identify-a-chord', link: 'chords' },
   { id: 'chords-filters',   name: 'Filters',               where: 'Chords tab',                                  instruments: FEATURE_FAMILIES, account: false, help: 'chords', link: 'chords' },
   { id: 'goes-with',        name: 'Goes well with',        where: 'Chords tab, on the chosen chord',             instruments: FEATURE_FAMILIES, account: false, help: 'goes-well-with', link: 'chords' },
   { id: 'speed',            name: 'Speed',                 where: 'The 1× button on a chord, and Settings',      instruments: FEATURE_FAMILIES, account: false, help: 'speed' },
   { id: 'pan',              name: 'Pan',                   where: 'A tab of a handpan (Drum on a tongue drum, Keys on a kalimba)', instruments: FEATURE_PANS, account: false, help: 'change-your-notes', link: 'pan' },
-  { id: 'notes',            name: 'Notes',                 where: 'A tab of an ocarina or flute',                instruments: FEATURE_WINDS,    account: false, help: 'fingerings', link: 'notes' },
+  { id: 'notes',            name: 'Notes',                 where: 'A tab of an ocarina, flute or recorder',      instruments: FEATURE_WINDS,    account: false, help: 'fingerings', link: 'notes' },
   { id: 'playlists',        name: 'Playlists',             where: 'A tab of every instrument',                   instruments: FEATURE_FAMILIES, account: true,  help: 'playlists', link: 'playlists' },
-  { id: 'ready-progressions', name: 'Progressions',        where: 'Chords tab, next to Goes well with',          instruments: FEATURE_FAMILIES, account: true,  help: 'goes-well-with', link: 'chords' },
-  { id: 'chord-sheet',      name: 'Paste a chord sheet',   where: 'Playlists tab',                                         instruments: FEATURE_FAMILIES, account: true,  help: 'chord-sheets', link: 'playlists' },
-  { id: 'songs',            name: 'Songs to learn',        where: 'Playlists tab',                               instruments: FEATURE_FAMILIES, account: false, help: 'songs-to-learn', link: 'playlists' },
+  { id: 'ready-progressions', name: 'Progressions with this chord', where: 'Chords tab, the ⋯ button on the chosen chord', instruments: FEATURE_FAMILIES, account: true,  help: 'goes-well-with', link: 'chords' },
+  { id: 'chord-sheet',      name: 'Paste a chord sheet',   where: 'Songs tab, and Playlists tab',                instruments: FEATURE_FAMILIES, account: false, help: 'chord-sheets', link: 'songs' },
+  { id: 'songs',            name: 'Songs to learn',        where: 'Songs tab',                                   instruments: FEATURE_FAMILIES, account: false, help: 'songs-to-learn', link: 'songs' },
   { id: 'listen',           name: 'Listen',                where: 'Chords tab',                                  instruments: FEATURE_FAMILIES, account: false, help: 'listen', link: 'listen' },
-  { id: 'tuner',            name: 'Tuner',                 where: 'The microphone button at the top of every screen', instruments: FEATURE_FAMILIES, account: false, help: 'tuner' },
+  { id: 'tuner',            name: 'Tuner',                 where: 'The tuning fork button at the top of every screen', instruments: FEATURE_FAMILIES, account: false, help: 'tuner' },
   { id: 'save',             name: 'Save',                  where: 'On any instrument you have not saved yet',    instruments: FEATURE_FAMILIES, account: true,  help: 'accounts-and-saving' },
   { id: 'account',          name: 'Account',               where: 'Settings',                                    instruments: FEATURE_FAMILIES, account: true,  help: 'accounts-and-saving' },
   { id: 'offline',          name: 'Offline',               where: 'Settings, Account',                           instruments: FEATURE_FAMILIES, account: true,  help: 'offline' },
@@ -68,7 +68,12 @@ export const UI_LABELS = {
   'customize':       'Make my own copy',
   'drum-tab':        'Drum',
   'keys-tab':        'Keys',
-  'browse':          'Browse',
+  'browse':          'All chords',
+  'starts-on':       'Starts on',
+  'add-to-playlist': 'Add to a playlist',
+  'songs-tab':       'Songs',
+  'play-it':         'Play it',
+  'dont-know-play':  'I don’t know: play it',
   'show-all':        'Show all',
   'scale-btn':       'Scale',
   'new-playlist':    'New playlist',

@@ -7,7 +7,7 @@ type: howto
 audience: players
 instruments: all
 features: save, account
-verified: 2026-11-21
+verified: 2026-11-25
 order: 10
 ---
 You can play without an account. Without one, what you set up stays only until you close the tab.
@@ -22,7 +22,7 @@ It is free. We only keep your email and what you save.
 
 ## Create an account or sign in {#sign-in}
 
-1. Tap {{save}} on an instrument, or the heart on a chord. You can also open {{settings}} and tap {{sign-in}}.
+1. Tap {{save}} on an instrument, or the bookmark on a chord. You can also open {{settings}} and tap {{sign-in}}.
 2. Type your email and tap {{send-code}}.
 3. Open the email from Oakhum. Type the code from it into the app, or tap the link in the same email.
 
