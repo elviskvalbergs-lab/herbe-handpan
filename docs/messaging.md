@@ -86,7 +86,7 @@ What it means, so nobody over-promises:
 - A guest can open any instrument, set up their own, see every chord, open every song, use Listen and the tuner. Nothing to fill in.
 - A guest keeps nothing between visits. That is on purpose. Never write "it remembers", "your instrument is saved" or "works offline" about guests.
 - A free account (email and a sign-in code, no password) is what saves instruments, chords, playlists and songs, makes them work offline, and syncs them.
-- Pasting a chord sheet shows a guest how the song fits their notes; **playing it step by step saves it as a playlist ("Save playlist"), which asks for the free account** (checked in the app on 21 Nov 2026). Say "paste a song's chords and see how they fit", not "play any song without signing up".
+- A guest can paste a chord sheet and play it straight away (the owner's decision, 25 Nov 2026). It shows "Not saved · gone when you close this page"; keeping it is what asks for the free account. So "paste a song's chords and play along, no sign-up" is true; "it keeps your songs" needs "with a free account".
 - Sharing an instrument (code, link, QR code) needs the instrument to be saved, so it needs the free account. Opening a shared instrument needs nothing.
 - There is no paid plan. Don't say "free forever" (nobody can promise that); say "free".
 

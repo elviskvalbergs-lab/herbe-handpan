@@ -5,8 +5,8 @@ First cuts are voiced with Kokoro (free); once the owner agrees the words and
 timing, the same lines go to ElevenLabs "Liam" (eleven_v4), one take each,
 kept in takes-elevenlabs/ like the makers video's.
 
-Scenes d3-d4 are recorded signed in: playing a pasted chord sheet saves it as
-a playlist, which needs the free account. The end card (d5) has no voice.
+Recorded as a guest: a pasted chord sheet plays without an account (it shows
+"Not saved" until it is kept). The end card (d5) has no voice.
 """
 
 # One line per scene. A line is a list of phrases, so a pause is a real pause.
@@ -19,7 +19,7 @@ LINES = {
     'd2':   ["Paste the song's chords.",
              'Oakhum fits them to the notes you have.'],
     # [The chords, in order · On your own instrument]
-    'd3':   ['Save it, and you get the chords in order,',
+    'd3':   ['Tap Play it, and you get the chords in order,',
              'each one lit on your handpan.'],
     # [Start with one note per chord]
     'd4':   ['Start with one note per chord.',
