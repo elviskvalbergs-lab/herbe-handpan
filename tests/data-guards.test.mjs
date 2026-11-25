@@ -14,7 +14,7 @@ test('displayNote shows a non-string as it is instead of throwing (note.match is
 });
 
 // build.py puts every js file into one script scope, so a helper called in
-// app.js has to be declared in some file of that list. Calling one that was
+// the app (js/app/*.js) has to be declared in some file of that list. Calling one that was
 // never declared is a ReferenceError the moment its screen renders
 // ("speedBtnHtml is not defined").
 const root = new URL('../', import.meta.url);
@@ -22,8 +22,8 @@ const read = f => readFileSync(new URL(f, root), 'utf8');
 const files = [...read('build.py').match(/js_files = \[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
 const sources = files.map(read);
 
-test('every fooHtml() helper called in app.js is declared in the bundle', () => {
-  const app = read('js/app.js');
+test('every fooHtml() helper called in the app is declared in the bundle', () => {
+  const app = files.filter(f => f === 'js/app.js' || f.startsWith('js/app/')).map(read).join('\n');
   const called = new Set([...app.matchAll(/(?<![.\w$])([a-z]\w*Html)\(/g)].map(m => m[1]));
   assert.ok(called.has('speedBtnHtml'), 'the scan finds the helper it is meant to guard');
   const declared = name => sources.some(src =>

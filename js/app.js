@@ -9449,6 +9449,1893 @@ document.addEventListener('touchstart', () => initAudio(), { once: true, passive
 // so it runs before the handlers below).
 document.addEventListener('click', () => setVoice(voiceForState()), true);
 
+// ── Click: picker and the ⋯ menu (before a menu row closes its menu) ──────
+registerActions({
+  'picker-open': (el, e, action) => { openPicker(el.dataset.picker); return; },
+  'menu-open': (el, e, action) => { state.menu = true; render(); return; },
+  'row-menu': (el, e, action) => { e.stopPropagation(); state.menu = { id: el.dataset.id }; render(); return; },
+  'visit-save': (el, e, action) => {
+    // Reached with an account only (a guest gets the save sheet first, and
+    // signing in moved this visit's work into the account).
+    reloadSaved();
+    showToast('Saved to My instruments');
+    render();
+    return;
+  },
+  'menu-close': (el, e, action) => { state.menu = false; render(); return; },
+}, EARLY_ACTIONS);
+
+// ── Click: Sheets: the ⋯ menu and confirm ─────────────────────────────────
+registerActions({
+  'confirm-cancel': (el, e, action) => { state.confirm = null; render(); return; },
+  'confirm-ok': (el, e, action) => {
+    const c = state.confirm;
+    state.confirm = null;
+    if (c?.kind === 'instrument') removeInstrument(c.id);
+    else if (c?.kind === 'playlist') removePlaylist(c.id);
+    else if (c?.kind === 'progression') removeProgression(c.id);
+    else render();
+    return;
+  },
+  'hp-playlists, hp-songs': (el, e, action) => {
+    stopAutoplay();
+    state.pendingSlot = null;
+    state.view = action;
+    // Remembered on the history entry, so coming back to it reopens this tab.
+    if (state.layout) navReplace(stateToHash(), { hpTab: action === 'hp-songs' ? 'songs' : 'playlists' });
+    render();
+    return;
+  },
+});
+
+// ── Click: My instruments ─────────────────────────────────────────────────
+registerActions({
+  'open-instrument': (el, e, action) => {
+    if (e.target.closest('[data-action="delete-instrument"]')) return;
+    if (openInstrument(el.dataset.id)) render();
+    else showToast('Instrument not found');
+    return;
+  },
+  'delete-instrument': (el, e, action) => {
+    e.stopPropagation();
+    const inst = getInstrument(el.dataset.id);
+    if (!inst) return;
+    state.confirm = {
+      kind: 'instrument', id: inst.id, ok: 'Remove', title: `Remove ${inst.name}?`,
+      body: usesLayout(inst)
+        ? 'Its saved layout is removed from My instruments on this device and from sync.'
+        : 'Its readings and build history are removed from this device and from sync.',
+    };
+    render();
+    return;
+  },
+  'back-home': (el, e, action) => { goHome(); guestLeaving(); return; },
+  'nav-back': (el, e, action) => {
+    if (history.state?.hp) history.back();
+    else if (el.dataset.fallback === 'selector') goSelector();
+    else if (el.dataset.fallback === 'settings') openSettings({ push: false });
+    else if (el.dataset.fallback === 'songs' && state.songCtx) songBackToList();
+    else goHome();
+    return;
+  },
+  'open-settings': (el, e, action) => { openSettings(); return; },
+  'open-play': (el, e, action) => {
+    goHome({ push: false });
+    state.view = 'play';
+    if (el.dataset.family) state.playFamily = el.dataset.family;
+    state.playNotice = null;
+    navPush('#play');
+    render();
+    guestLeaving();
+    return;
+  },
+  'play-family': (el, e, action) => {
+    state.playFamily = el.dataset.value;
+    state.playNotice = null;
+    render();
+    return;
+  },
+  'open-link': (el, e, action) => {
+    const link = parseLink(el.dataset.path);
+    if (!link) return;
+    openLink(link);
+    navPush(link.path ?? el.dataset.path);
+    render();
+    return;
+  },
+  'play-custom-handpan': (el, e, action) => {
+    // An empty custom handpan: a D3 ding and eight notes to set on the Pan.
+    // No bottom notes to start with: few beginners' handpans have them, and
+    // the Pan adds them when there are. A tongue drum: eight tongues from C4;
+    // a kalimba: ten keys from C4.
+    const fam = isLayoutFamily(el.dataset.family) ? el.dataset.family : 'handpan';
+    const rest = { handpan: 8, 'tongue-drum': 7, kalimba: 9 }[fam] ?? 8;
+    const params = new URLSearchParams({ ding: fam === 'handpan' ? 'D3' : 'C4', top: Array(rest).fill('null').join(','), bottom: '', tc: String(rest), bc: '0', name: `My ${LAYOUT_FAMILIES[fam].word}` });
+    const link = parseLink(`/${fam}/custom`, '?' + params);
+    openLink(link);
+    navPush(stateToHash());
+    render();
+    return;
+  },
+  'other-instrument': (el, e, action) => {
+    state.currentInstrumentId = null;
+    state.view = 'selector';
+    navPush('#scales');
+    render();
+    return;
+  },
+  'add-instrument': (el, e, action) => { setupAction('setup-open', el); return; },
+});
+
+// ── Click: Ocarina Notes view ─────────────────────────────────────────────
+registerActions({
+  'oc-select-note': (el, e, action) => {
+    const m = parseInt(el.dataset.midi, 10);
+    if (m !== state.oc.selected) { state.oc.previous = state.oc.selected; state.oc.selected = m; }
+    initAudio();
+    playNote(midiToNoteName(m));
+    render();
+    return;
+  },
+  'oc-play-selected': (el, e, action) => {
+    initAudio();
+    playNote(midiToNoteName(state.oc.selected));
+    return;
+  },
+  'oc-play-scale': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
+    const notes = playableMidis(inst).filter(m => !pcs || pcs.has(((m % 12) + 12) % 12)).map(midiToNoteName);
+    playScale(notes, n => {
+      const m = noteToMidi(n);
+      if (state.view !== 'instrument') return;
+      state.oc.previous = state.oc.selected;
+      state.oc.selected = m;
+      render();
+    });
+    return;
+  },
+  'oc-toggle-fingers': (el, e, action) => {
+    state.showFingers = !state.showFingers;
+    // The finger legend opens by itself the first time labels are switched on.
+    if (state.showFingers && !state.handLegendSeen) { state.handLegendSeen = true; state.oc.handLegend = true; }
+    savePrefs(); render(); return;
+  },
+  'oc-toggle-sizes': (el, e, action) => { state.showSizes = !state.showSizes; savePrefs(); render(); return; },
+  'toggle-closeup': (el, e, action) => { state.closeUp = !state.closeUp; savePrefs(); render(); return; },
+  'oc-legend-dismiss': (el, e, action) => { state.ocLegendSeen = true; savePrefs(); render(); return; },
+  'oc-hand-open': (el, e, action) => { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; },
+  'oc-hand-close': (el, e, action) => { state.oc.handLegend = false; render(); return; },
+  'tuner-toggle': (el, e, action) => { toggleTuner(); return; },
+  'install-app': (el, e, action) => {
+    if (_installEvent) {
+      const ev = _installEvent;
+      _installEvent = null;
+      ev.prompt();
+      ev.userChoice?.then(c => { logEvent('install', { outcome: c?.outcome ?? 'unknown' }); render(); });
+    } else {
+      state.installHelp = true;
+      logEvent('install', { outcome: 'help' });
+      render();
+    }
+    return;
+  },
+  'install-help-close': (el, e, action) => { state.installHelp = false; render(); return; },
+  'help-close': (el, e, action) => { state.help = null; render(); return; },
+  'help-open': (el, e, action) => {
+    // A row or link names the article; the menu's row asks for this screen's; '' is the list.
+    const id = el.dataset.id ?? HELP_SCREENS[helpScreenKey()];
+    state.help = { id: id || null };
+    logEvent('help', { article: id || 'index' });
+    render();
+    const top = el.dataset.anchor ? document.getElementById(`help-${el.dataset.anchor}`) : document.querySelector('.sheet-root[data-sheet="help"] .sheet-body');
+    if (el.dataset.anchor) top?.scrollIntoView(); else if (top) top.scrollTop = 0;
+    return;
+  },
+  'install-dismiss': (el, e, action) => {
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
+    render();
+    return;
+  },
+  'share-instrument': (el, e, action) => { shareInstrument(el.dataset.id); return; },
+  'share-close': (el, e, action) => { state.shareModal = null; render(); return; },
+  'link-sheet-close': (el, e, action) => { state.linkSheet = null; render(); return; },
+  'share-copy': (el, e, action) => {
+    navigator.clipboard?.writeText(state.shareModal?.url ?? state.linkSheet?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
+    return;
+  },
+  'shared-add': (el, e, action) => {
+    if (!state.shared) return;
+    // A visiting chart instrument (a deep link) is made afresh; a shared
+    // one is copied with its setup.
+    const copy = state.shared.link ? instrumentFromChart(state.shared.link.chartId, state.shared.link.keyId, { name: state.shared.name }) : copySharedInstrument(state.shared);
+    saveInstrument(copy);
+    refreshInstruments();
+    state.shared = null;
+    openInstrument(copy.id);
+    showToast(`${copy.name} added to My instruments`);
+    render();
+    return;
+  },
+});
+
+// ── Click: Builder and set-up ─────────────────────────────────────────────
+registerActions({
+  'b-record': (el, e, action) => {
+    // Arm the field (or disarm it); the tuner turns on if it's off.
+    if (state.rec.armed === el.dataset.path) { disarmRecord(); render(); return; }
+    armRecord(el.dataset.path);
+    if (!state.tuner.on || state.tuner.error) {
+      if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+      toggleTuner();
+      return;
+    }
+    render();
+    return;
+  },
+  'b-stage, b-next, b-unglazed': (el, e, action) => {
+    let inst = currentInstrument();
+    if (!inst) return;
+    const target = action === 'b-stage' ? el.dataset.stage
+      : action === 'b-unglazed' ? 'done' : nextStage(inst.build.stage);
+    if (target === 'done' && inst.build.stage !== 'done') inst = finishInstrumentBuild(inst);
+    else inst.build.stage = target;
+    state.oc.buildChamber = 0;
+    saveInstrument(inst);
+    refreshInstruments();
+    window.scrollTo(0, 0);
+    render();
+    return;
+  },
+  'b-design': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst || el.tagName === 'SELECT' || el.tagName === 'INPUT') return; // handled on change
+    inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    const key = el.dataset.key, v = parseInt(el.dataset.value, 10);
+    if (key === 'chambers') Object.assign(inst.design, { chambers: v, windowStart: null, excluded: [] });
+    if (key === 'windowStart') Object.assign(inst.design, { windowStart: v, excluded: [] });
+    if (key === 'toggleNote') {
+      const ex = inst.design.excluded ?? [];
+      inst.design.excluded = ex.includes(v) ? ex.filter(x => x !== v) : [...ex, v];
+    }
+    applyDesign(inst);
+    saveInstrument(inst);
+    render();
+    return;
+  },
+  'b-design-subs, b-design-sublayout, b-design-fill': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    if (action === 'b-design-subs') d.subHoles = parseInt(el.dataset.n, 10) || 0;
+    else if (action === 'b-design-fill') d.fillGaps = !d.fillGaps;
+    else d.subLayout = el.dataset.v;
+    applyDesign(inst);
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+    return;
+  },
+  'b-design-transpose, b-design-gu, b-design-chambers': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+    if (action === 'b-design-transpose') {
+      Object.assign(d, { transpose: Math.max(-6, Math.min(6, (d.transpose ?? 0) + parseInt(el.dataset.delta, 10))), windowStart: null, excluded: [] });
+    }
+    if (action === 'b-design-gu') Object.assign(d, { includeGu: !(d.includeGu ?? true), chambers: null, windowStart: null, excluded: [] });
+    if (action === 'b-design-chambers') Object.assign(d, { chambers: parseInt(el.dataset.n, 10), windowStart: null, excluded: [] });
+    applyDesign(inst);
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+    return;
+  },
+  'b-chamber': (el, e, action) => {
+    state.oc.buildChamber = parseInt(el.dataset.ci, 10) || 0;
+    render();
+    return;
+  },
+  'fg-edit-open': (el, e, action) => {
+    const inst = currentInstrument();
+    const f = inst && fingeringFor(inst, state.oc.selected);
+    if (!f) return;
+    state.oc.fgEdit = { midi: state.oc.selected, states: [...f.states] };
+    render();
+    return;
+  },
+  'fg-edit-hole': (el, e, action) => { if (!(state.oc.fgEdit)) return;
+    const i = parseInt(el.dataset.index, 10);
+    const next = { c: 'o', o: 'h', h: 'c' };
+    state.oc.fgEdit.states[i] = next[state.oc.fgEdit.states[i]] ?? 'c';
+    render();
+    return;
+  },
+  'fg-edit-cancel': (el, e, action) => { state.oc.fgEdit = null; render(); return; },
+  'fg-edit-save, fg-edit-reset': (el, e, action) => {
+    const inst = currentInstrument();
+    const ed = state.oc.fgEdit;
+    if (!inst || !ed) return;
+    inst.setup = inst.setup ?? setupOf(inst);
+    const fixed = { ...(inst.setup.fixed ?? {}) };
+    if (action === 'fg-edit-save') fixed[ed.midi] = ed.states;
+    else delete fixed[ed.midi];
+    let heard = null;
+    if (action === 'fg-edit-save' && ed.hz > 0) {
+      // A reading of this fingering: one more measurement for the fit. It
+      // fixes the note it actually sounds, which may not be the one picked.
+      const same = x => x.states.join() === ed.states.join();
+      inst.setup.extra = [...(inst.setup.extra ?? []).filter(x => !same(x)), { states: ed.states, hz: ed.hz }];
+      heard = Math.round(hzToMidi(ed.hz));
+      if (heard !== ed.midi) delete fixed[ed.midi];
+    }
+    inst.setup.fixed = fixed;
+    if (heard != null) {
+      const s2 = inst.setup;
+      const ch = calibrateChamber(s2.holes, s2.f0, s2.singles, { extra: s2.extra });
+      if (ch) {
+        inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, fixed)];
+        inst.calibration = ch.calibration;
+      }
+    } else if (action === 'fg-edit-save') {
+      inst.chambers = [withFixedFingerings(inst.chambers[0], { [ed.midi]: ed.states })];
+    } else if (inst.kind === 'traditional') {
+      // Back to the published chart's fingering for this note.
+      const chartFg = instrumentFromChart(inst.type, inst.key).chambers[0].fingerings[ed.midi];
+      const fg = { ...inst.chambers[0].fingerings };
+      if (chartFg) fg[ed.midi] = chartFg; else delete fg[ed.midi];
+      inst.chambers[0] = { ...inst.chambers[0], fingerings: fg, notes: Object.keys(fg).map(Number).sort((a, b) => a - b) };
+    } else {
+      // Back to the chart worked out from the readings for this note.
+      const s = inst.setup;
+      const ch = calibrateChamber(s.holes, s.f0, s.singles, { extra: s.extra });
+      if (ch?.fingerings[ed.midi]) inst.chambers[0] = { ...inst.chambers[0], fingerings: { ...inst.chambers[0].fingerings, [ed.midi]: ch.fingerings[ed.midi] } };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.fgEdit = null;
+    const uf = state.useFlats, us = state.useSolfege;
+    showToast(heard != null && heard !== ed.midi
+      ? `That fingering sounds ${displayNote(midiToNoteName(heard), uf, us)}: saved for ${displayNote(midiToNoteName(heard), uf, us)}, chart updated`
+      : heard != null ? 'Fingering and reading saved, chart updated'
+      : action === 'fg-edit-save' ? 'Fingering saved' : inst.kind === 'traditional' ? 'Back to the chart\'s fingering' : 'Back to the worked-out fingering');
+    if (heard != null && playableMidis(inst).includes(heard)) state.oc.selected = heard;
+    render();
+    return;
+  },
+  'inst-edit-open': (el, e, action) => {
+    const id = el.dataset.id || state.currentInstrumentId;
+    const inst = getInstrument(id);
+    state.menu = false;
+    // One you set up yourself is edited on its Set up tab, with everything else.
+    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && !usesLayout(inst)) {
+      if (state.currentInstrumentId !== id || state.view !== 'instrument') openInstrument(id);
+      state.oc.tab = 'setup';
+      state.oc.holeMap = null;
+      navReplace(`#i/${id}/setup`);
+      render();
+      window.scrollTo({ top: 0 });
+      return;
+    }
+    state.instEdit = id;
+    render();
+    return;
+  },
+  'crop-cancel': (el, e, action) => { state.photoCrop = null; render(); return; },
+  'crop-done': (el, e, action) => { finishCrop(); return; },
+  'crop-rotate': (el, e, action) => { rotateCropImage().catch(() => showToast('That photo couldn\'t be turned')); return; },
+  'inst-edit-close': (el, e, action) => { state.instEdit = null; refreshInstruments(); render(); return; },
+  'ie-photo-remove, ie-holes-step': (el, e, action) => {
+    let inst = getInstrument(el.dataset.id || state.instEdit);
+    if (!inst) return;
+    if (action === 'ie-photo-remove') { delete inst.photo; delete inst.holeMap; }
+    else inst = withHoleCount(inst, (inst.holeCount ?? 0) + parseInt(el.dataset.delta, 10));
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+    return;
+  },
+  'hm-open': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    state.oc.holeMap = { sel: hmFirstUnmarked(inst) ?? 0 };
+    render();
+    return;
+  },
+  'hm-close': (el, e, action) => { state.oc.holeMap = null; render(); return; },
+  'hm-select': (el, e, action) => { state.oc.holeMap.sel = parseInt(el.dataset.index, 10); render(); return; },
+  'hm-place, hm-clear': (el, e, action) => {
+    const inst = currentInstrument();
+    const sel = state.oc.holeMap?.sel;
+    if (!inst || sel == null) return;
+    const n = setupOf(inst).holes.length;
+    inst.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap?.[i] ?? null);
+    if (action === 'hm-clear') {
+      inst.holeMap[sel] = null;
+    } else {
+      const svg = el.querySelector('svg');
+      const box = svg.getBoundingClientRect();
+      const x = (e.clientX - box.left) / box.width, y = (e.clientY - box.top) / box.height;
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      inst.holeMap[sel] = { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    if (action === 'hm-place') state.oc.holeMap.sel = hmFirstUnmarked(inst);
+    render();
+    return;
+  },
+  's-fingers-reset, s-sub-layout': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const setup = setupOf(inst);
+    setup.holes = action === 's-fingers-reset' ? defaultCustomHoles(setup.holes.length) : withSubLayout(setup.holes, el.dataset.value);
+    inst.setup = setup;
+    if (inst.chambers?.[0]?.holes?.length === setup.holes.length) {
+      inst.chambers[0] = { ...inst.chambers[0], holes: inst.chambers[0].holes.map((h, i) => ({ ...h, finger: setup.holes[i].finger, side: setup.holes[i].side, sub: setup.holes[i].sub })) };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    render();
+    return;
+  },
+  's-fingers-reverse': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const setup = holesSetupOf(inst);
+    setup.holes = reverseHandFingers(setup.holes, el.dataset.hand);
+    inst.setup = setup;
+    // The chart's copies of the holes take the new finger names too.
+    if (inst.chambers?.[0]?.holes?.length === setup.holes.length) {
+      inst.chambers[0] = { ...inst.chambers[0], holes: inst.chambers[0].holes.map((h, i) => ({ ...h, finger: setup.holes[i].finger, side: setup.holes[i].side })) };
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    showToast(`${el.dataset.hand === 'R' ? 'Right' : 'Left'} hand reversed`);
+    render();
+    return;
+  },
+  's-fingers-open': (el, e, action) => { state.oc.fingersSheet = true; render(); return; },
+  's-fingers-close': (el, e, action) => { state.oc.fingersSheet = false; render(); return; },
+  'b-hole-done': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst) return;
+    const ci = parseInt(el.dataset.ci, 10), idx = parseInt(el.dataset.index, 10);
+    const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
+    const done = per.holesDone ?? [];
+    per.holesDone = done.includes(idx) ? done.filter(x => x !== idx) : [...done, idx];
+    saveInstrument(inst);
+    bAdvanceChamber(inst);
+    render();
+    return;
+  },
+  'b-window': (el, e, action) => { if (!(el.tagName === 'BUTTON')) return;
+    const inst = currentInstrument();
+    if (!inst) return;
+    const ci = parseInt(el.dataset.ci, 10);
+    const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
+    per.window = { ...chamberBuild(inst, ci).window, shape: el.dataset.value };
+    saveInstrument(inst);
+    render();
+    return;
+  },
+  'f-work-out': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst?.setup || inst.family !== 'flute') return;
+    const ch = fluteChamberFromReadings(inst.setup.holes, inst.setup.readings);
+    if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each line is a different note'); return; }
+    inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, inst.setup.fixed)];
+    inst.calibration = ch.calibration;
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.tab = 'notes';
+    navReplace(`#i/${inst.id}/notes`);
+    const n = ch.calibration.dropped.length;
+    const nn = m => displayNote(midiToNoteName(m), state.useFlats, state.useSolfege);
+    showToast(n
+      ? `Chart ready: ${ch.notes.length} notes. ${ch.calibration.dropped.map(d => nn(d.midi)).join(', ')} came out twice; the first fingering is kept`
+      : `Chart ready: ${ch.notes.length} notes`);
+    render();
+    return;
+  },
+  's-calibrate': (el, e, action) => {
+    const inst = currentInstrument();
+    if (!inst?.setup) return;
+    const ch = calibrateChamber(inst.setup.holes, inst.setup.f0, inst.setup.singles, { extra: inst.setup.extra });
+    if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each hole raises the pitch'); return; }
+    inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
+    inst.calibration = ch.calibration;
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.tab = 'notes';
+    showToast(`Chart ready: ${ch.notes.length} notes`);
+    render();
+    return;
+  },
+});
+
+// ── Click: Ocarina Chords view and practice ───────────────────────────────
+registerActions({
+  'oc-tab': (el, e, action) => {
+    state.oc.tab = el.dataset.tab;
+    state.oc.practice = null;
+    navReplace(instUrl(state.currentInstrumentId, state.oc.tab));
+    render();
+    return;
+  },
+  'oc-chord-select': (el, e, action) => {
+    if (e.target.closest('.row-trail button')) return;
+    // Like a handpan chord: pick it, and hear it.
+    state.oc.expanded = el.dataset.key;
+    state.oc.chordStep = {};
+    const list = document.querySelector('.chord-list');
+    const saved = list?.scrollTop ?? 0;
+    render();
+    const again = document.querySelector('.chord-list');
+    if (again) again.scrollTop = saved;
+    document.querySelector('.oc-stage [data-action="oc-play-arp"]')?.click();
+    return;
+  },
+  'oc-more-open': (el, e, action) => { state.oc.chordMore = true; render(); return; },
+  'oc-filters-open': (el, e, action) => { state.oc.filtersOpen = true; render(); return; },
+  'oc-filters-close': (el, e, action) => { state.oc.filtersOpen = false; render(); return; },
+  'oc-filter-root': (el, e, action) => { state.oc.root = el.dataset.root; render(); return; },
+  'oc-toggle-count': (el, e, action) => {
+    const set = new Set(state.oc.counts ?? []);
+    if (set.has(el.dataset.count)) set.delete(el.dataset.count); else set.add(el.dataset.count);
+    state.oc.counts = [...set];
+    render();
+    return;
+  },
+  'oc-more-close': (el, e, action) => { state.oc.chordMore = false; render(); return; },
+  'oc-missing-toggle': (el, e, action) => {
+    // The <details> opens by itself; remember it across re-renders.
+    state.oc.missingOpen = !el.closest('details').open;
+    return;
+  },
+  'oc-filters-clear': (el, e, action) => {
+    // The sheet's filters; the empty list's "Clear filters" also clears the root.
+    Object.assign(state.oc, { scaleFilter: 'All', category: 'All', counts: [] });
+    if (el.dataset.all) state.oc.root = 'All';
+    render();
+    return;
+  },
+  'oc-play-arp, oc-voicing, oc-show-playlist-picker': (el, e, action) => {
+    e.stopPropagation();
+    const inst = ocCardInstrument(el.dataset.key);
+    if (!inst) return;
+    const key = el.dataset.key;
+    const card = ocCardData(inst, key);
+    if (!card) return;
+    if (action === 'oc-play-arp') {
+      const names = card.midis.map(midiToNoteName);
+      const rootName = names.find(n => notePC(n) === card.rootPC) ?? names[0];
+      const seq = arpeggioOrder(names, rootName).map(midiToNoteName);
+      playSequence(seq, (n, i) => ocHighlightStep(key, i, i === seq.length - 1));
+      return;
+    }
+    if (action === 'oc-voicing') {
+      const m = parseInt(el.dataset.midi, 10);
+      const voiced = nextVoicing(inst, card.midis, m);
+      if (voiced.join() === card.midis.join()) { showToast('No other octave of this note on the instrument'); return; }
+      state.oc.voicings[key] = voiced;
+      playNote(midiToNoteName(voiced.find(x => !card.midis.includes(x)) ?? m));
+      render();
+      return;
+    }
+    // Playlist picker, reusing the handpan one. Someone's instrument shared
+    // by code is read-only: its chords go into playlists once it's added.
+    if (inst.id === SHARED_ID && !inst.link) { showToast('Add it to My instruments to keep its chords'); return; }
+    const names = card.midis.map(midiToNoteName);
+    state.pickerChordFavId = card.entry
+      ? (card.midis.join() === card.entry.notes.map(noteToMidi).join() ? card.entry.id : ocFavId(inst, card.chordId, names, null))
+      : ocFavId(inst, card.chordId, names, card.canonical);
+    state.pickerChordObj = {
+      id: card.chordId, rootName: card.rootName, notes: names, noteCount: names.length,
+      type: { name: card.typeName, category: card.category },
+    };
+    state.pickerNewPlaylist = false;
+    state.pickerInstrumentId = inst.id;
+    render();
+    return;
+  },
+  'oc-step': (el, e, action) => {
+    initAudio();
+    playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
+    ocHighlightStep(el.dataset.key, parseInt(el.dataset.i, 10), true);
+    return;
+  },
+  'oc-play-note': (el, e, action) => {
+    initAudio();
+    playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
+    const stage = el.closest('.oc-pstage');
+    if (stage) ocHighlightStep(stage.closest('.oc-player').dataset.key, parseInt(stage.dataset.i, 10), true);
+    return;
+  },
+  'oc-play-pair': (el, e, action) => {
+    initAudio();
+    playNote(midiToNoteName(parseInt(el.dataset.a, 10)));
+    playNote(midiToNoteName(parseInt(el.dataset.b, 10)));
+    return;
+  },
+  'oc-practice-start': (el, e, action) => {
+    if (el.dataset.id) state.oc.playlistId = el.dataset.id;
+    state.oc.practice = { playlistId: state.oc.playlistId, idx: 0 };
+    playPracticeStep();
+    render();
+    return;
+  },
+  'oc-practice-stop': (el, e, action) => { state.oc.practice = null; render(); return; },
+  'oc-practice-restart': (el, e, action) => {
+    if (!state.oc.practice) return;
+    state.oc.practice.idx = 0;
+    state.tuner.lastAdvance = performance.now();
+    playPracticeStep();
+    render();
+    return;
+  },
+  'oc-practice-next, oc-practice-prev': (el, e, action) => {
+    const src = practiceSource(currentInstrument());
+    if (!src) return;
+    const n = practiceSteps(src.entries).length;
+    state.oc.practice.idx = (state.oc.practice.idx + (action === 'oc-practice-next' ? 1 : n - 1)) % n;
+    state.tuner.lastAdvance = performance.now();
+    playPracticeStep();
+    render();
+    return;
+  },
+});
+
+// ── Click: Add-instrument wizard ──────────────────────────────────────────
+registerActions({
+  'wizard-family': (el, e, action) => {
+    const fams = state.wizard.families;
+    const f = el.dataset.family;
+    state.wizard.families = fams.includes(f) ? fams.filter(x => x !== f) : [...fams, f];
+    render();
+    return;
+  },
+  'wizard-families-next': (el, e, action) => {
+    if (!state.wizard.families.length) return;
+    state.wizard.queue = INSTRUMENT_FAMILIES.map(f => f.id).filter(f => state.wizard.families.includes(f));
+    state.wizard.history = [];
+    wizardNext();
+    return;
+  },
+  'wizard-skip': (el, e, action) => {
+    setOnboarded();
+    state.wizard = null;
+    state.view = 'selector';
+    navReplace('#scales');
+    render();
+    return;
+  },
+  'wizard-skip-step': (el, e, action) => { wizardNext(); return; },
+  'wizard-fl-create': (el, e, action) => {
+    const fl = state.wizard.fl;
+    if (fl.detect?.listening) stopFluteDetect(null);
+    const chart = fl.chartId === 'custom' ? null : getChart(fl.chartId) ?? chartsForFamily('flute')[0];
+    if (!chart && fl.chartId !== 'custom') return;
+    const inst = chart
+      ? instrumentFromChart(chart.id, fl.keyId ?? chartDefaultKey(chart), { name: fl.name.trim() || wizardFluteName(chart, fl.keyId) })
+      : createCustomFlute({ name: fl.name.trim(), holeCount: fl.holeCount });
+    fl.detect = null;
+    saveInstrument(inst);
+    refreshInstruments();
+    wizardAdded(inst.id, inst.name);
+    return;
+  },
+  'wizard-pick-handpan': (el, e, action) => {
+    const scale = findTuning(el.dataset.id);
+    if (!scale) return;
+    const layout = createLayoutFromScale(scale);
+    saveLayout({
+      id: scale.id, name: scale.name,
+      noteCount: 1 + scale.top.notes.length + scale.bottom.notes.length,
+      layout, savedAt: Date.now(),
+    });
+    state.savedLayouts = getSavedLayouts();
+    scheduleSave();
+    refreshInstruments();
+    state.wizard.search = '';
+    wizardAdded(handpanInstrumentId(scale.id), scale.name);
+    return;
+  },
+  'wizard-oc-path': (el, e, action) => {
+    if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
+    state.wizard.oc.detect = null;
+    state.wizard.oc.path = el.dataset.path || null;
+    render();
+    return;
+  },
+  'wizard-oc-chambers': (el, e, action) => {
+    state.wizard.oc.chambers = parseInt(el.dataset.n, 10);
+    state.wizard.oc.windowStart = null;
+    render();
+    return;
+  },
+  'wizard-oc-window': (el, e, action) => {
+    state.wizard.oc.windowStart = parseInt(el.dataset.start, 10);
+    render();
+    return;
+  },
+  'wizard-oc-create': (el, e, action) => {
+    const oc = state.wizard.oc;
+    if (oc.detect?.listening) stopFluteDetect(null, 'oc');
+    const inst = oc.path === 'have' && oc.chartId !== 'custom' && getChart(oc.chartId)
+      ? instrumentFromChart(oc.chartId, oc.keyId ?? chartDefaultKey(getChart(oc.chartId)), { name: oc.name.trim() })
+      : oc.path === 'have'
+      ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
+      : Object.assign(createScaleOcarina({
+          scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu,
+          notes: wizardOcarinaPlan().notes, name: oc.name.trim(),
+        }), { design: { scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu, chambers: oc.chambers, windowStart: oc.windowStart, excluded: [] } });
+    saveInstrument(inst);
+    refreshInstruments();
+    state.wizard.oc = newWizard(false).oc;
+    wizardAdded(inst.id, inst.name);
+    return;
+  },
+  'wizard-back': (el, e, action) => {
+    const w = state.wizard;
+    const prev = w.history.pop();
+    if (prev) { w.queue.unshift(w.step); w.step = prev; w.notice = null; }
+    render();
+    return;
+  },
+  'wizard-filter-notes': (el, e, action) => { state.wizard.noteFilter = el.dataset.val; render(); return; },
+  'wizard-fl-holes-step': (el, e, action) => {
+    const fl = state.wizard.fl;
+    fl.holeCount = Math.max(3, Math.min(8, fl.holeCount + parseInt(el.dataset.delta, 10)));
+    render();
+    return;
+  },
+  'wizard-fl-octave': (el, e, action) => {
+    const fl = state.wizard.fl;
+    const chart = getChart(fl.chartId);
+    if (!chart?.octaves) return;
+    const cur = chart.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart)));
+    fl.keyId = chartKeyFor(chart, cur.root, parseInt(el.dataset.octave, 10))?.id ?? fl.keyId;
+    render();
+    return;
+  },
+  'wizard-fl-detect': (el, e, action) => { startFluteDetect(); return; },
+  'listen-start': (el, e, action) => { startListen(); return; },
+  'listen-stop': (el, e, action) => { stopListen(); return; },
+  'listen-clear': (el, e, action) => {
+    if (!state.listen) return;
+    if (state.listen.listening) Object.assign(state.listen, { notes: [], raw: [], lastSince: null }); else state.listen = null;
+    clearMicTakes();
+    render();
+    return;
+  },
+  'listen-remove': (el, e, action) => {
+    if (!state.listen) return;
+    const m = parseInt(el.dataset.midi, 10);
+    state.listen.notes = state.listen.notes.filter(n => n !== m);
+    if (!state.listen.notes.length && !state.listen.listening) state.listen = null;
+    render();
+    return;
+  },
+  'wizard-oc-detect': (el, e, action) => {
+    if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
+    else startFluteDetect('oc');
+    return;
+  },
+  'wizard-oc-holes-step': (el, e, action) => {
+    const oc = state.wizard.oc;
+    oc.holeCount = Math.max(4, Math.min(13, oc.holeCount + parseInt(el.dataset.delta, 10)));
+    render();
+    return;
+  },
+  'wizard-oc-transpose-step': (el, e, action) => {
+    const oc = state.wizard.oc;
+    Object.assign(oc, { transpose: Math.max(-6, Math.min(6, oc.transpose + parseInt(el.dataset.delta, 10))), windowStart: null });
+    render();
+    return;
+  },
+  'wizard-oc-gu-toggle': (el, e, action) => {
+    Object.assign(state.wizard.oc, { includeGu: !state.wizard.oc.includeGu, chambers: null, windowStart: null });
+    render();
+    return;
+  },
+});
+
+// ── Click: Selector ───────────────────────────────────────────────────────
+registerActions({
+  'filter-notes': (el, e, action) => {
+    state.noteCountFilter = el.dataset.val;
+    render();
+    return;
+  },
+  'select-scale': (el, e, action) => {
+    const scale = findTuning(el.dataset.id);
+    if (!scale) return;
+    state.layout = createLayoutFromScale(scale);
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = null;
+    state.shellMode = 'both';
+    state.chordFilter = { category: 'All', root: 'All' };
+    state.view = 'editor';
+    state.currentInstrumentId = null;
+    navPush(stateToHash());
+    render();
+    return;
+  },
+});
+
+// ── Click: Saved layouts ──────────────────────────────────────────────────
+registerActions({
+  'save-layout': (el, e, action) => {
+    if (state.layout.isCustom && !state.layout.savedId) {
+      state.layout.savedId = 'c-' + Date.now();
+    }
+    const id = state.layout.isCustom ? state.layout.savedId : state.layout.id;
+    const total = 1 + state.layout.top.slots.filter(s => s.note).length
+                    + state.layout.bottom.slots.filter(s => s.note).length;
+    saveLayout({
+      id,
+      name: state.layout.name,
+      noteCount: total,
+      layout: JSON.parse(JSON.stringify(state.layout)),
+      savedAt: Date.now(),
+    });
+    state.savedLayouts = getSavedLayouts();
+    scheduleSave();
+    refreshInstruments();
+    state.currentInstrumentId = handpanInstrumentId(id);
+    showToast('Saved to My instruments');
+    render();
+    return;
+  },
+});
+
+// ── Click: Playlist picker ────────────────────────────────────────────────
+registerActions({
+  'show-playlist-picker': (el, e, action) => {
+    e.stopPropagation();
+    const chordId = el.dataset.chordId;
+    const favId = el.dataset.chordFavId;
+    // Panel heart (matches the selected chord) preserves any voicing swap;
+    // row hearts always use the canonical chord for that row.
+    const chord = (state.selectedChord && state.selectedChord.id === chordId)
+      ? state.selectedChord
+      : state.chords.find(c => c.id === chordId);
+    if (!chord) return;
+    state.pickerChordFavId = favId;
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  },
+  'update-playlist-entry': (el, e, action) => {
+    if (!state.selectedChord || !state.sourcePlaylistId || !state.sourceEntryId) return;
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    const newId = favIdForChord(layoutId, state.selectedChord, state.chords);
+    const ok = updatePlaylistChordVoicing(state.sourcePlaylistId, state.sourceEntryId, {
+      id: newId, notes: state.selectedChord.notes, noteCount: state.selectedChord.notes.length,
+    });
+    if (!ok) { showToast('That playlist entry no longer exists'); return; }
+    state.sourceEntryId = newId;
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    scheduleSave();
+    showToast('Saved to playlist');
+    render();
+    return;
+  },
+  'close-playlist-picker': (el, e, action) => {
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    state.pickerNewProgression = false;
+    render();
+    return;
+  },
+  'toggle-playlist-chord': (el, e, action) => {
+    const playlistId = el.dataset.playlistId;
+    const favId = state.pickerChordFavId;
+    const chord = state.pickerChordObj;
+    if (!chord || !favId) return;
+    const pl = state.playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+    if (pl.chords.some(c => c.id === favId)) {
+      removeChordFromPlaylist(playlistId, favId);
+    } else {
+      addChordToPlaylist(playlistId, playlistEntryFor(chord, favId));
+    }
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    scheduleSave();
+    render();
+    return;
+  },
+  'show-new-playlist-input': (el, e, action) => {
+    state.pickerNewPlaylist = true;
+    render();
+    setTimeout(() => document.getElementById('new-playlist-input')?.focus(), 0);
+    return;
+  },
+  'confirm-new-playlist': (el, e, action) => {
+    const input = document.getElementById('new-playlist-input');
+    const name = (input?.value || '').trim();
+    if (!name) return;
+    const newId = addPlaylist(name);
+    if (state.pickerChordObj && state.pickerChordFavId) {
+      addChordToPlaylist(newId, playlistEntryFor(state.pickerChordObj, state.pickerChordFavId));
+    }
+    state.playlists = getPlaylists();
+    state.pickerChordFavId = null;
+    state.pickerChordObj = null;
+    state.pickerNewPlaylist = false;
+    scheduleSave();
+    showToast('Playlist created');
+    render();
+    return;
+  },
+});
+
+// ── Click: Playlist view ──────────────────────────────────────────────────
+registerActions({
+  'open-playlist-chords': (el, e, action) => {
+    const pl = state.playlists.find(p => p.id === el.dataset.id);
+    if (!pl) return;
+    if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
+    if (pl.chords[0].instrumentId) {
+      if (openPlaylistEntryOnInstrument(pl, pl.chords[0])) render();
+      return;
+    }
+    if (!loadPlaylistChordAt(pl, 0)) { showToast('Scale not found'); return; }
+    state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
+    state.view = 'chords';
+    navPush(stateToHash());
+    render();
+    return;
+  },
+});
+
+// ── Click: Playlists tab and playlist detail ──────────────────────────────
+registerActions({
+  'hp-play-playlist': (el, e, action) => {
+    const pl = state.playlists.find(p => p.id === el.dataset.id);
+    if (pl) hpPlayPlaylist(pl);
+    return;
+  },
+  'pl-practice': (el, e, action) => {
+    const inst = currentInstrument();
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!inst || !pl) return;
+    state.view = 'instrument';
+    state.oc.tab = 'playlists';
+    state.oc.playlistId = pl.id;
+    state.oc.practice = { playlistId: pl.id, idx: 0 };
+    navPush(`#i/${inst.id}/playlists`);
+    playPracticeStep();
+    render();
+    return;
+  },
+  'pl-go-chords': (el, e, action) => {
+    if (state.layout) {
+      state.chords = findAllChords(state.layout);
+      state.selectedChord = null;
+      state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+      state.view = 'chords';
+      navPush(stateToHash());
+    } else if (state.currentInstrumentId) {
+      state.view = 'instrument';
+      state.oc.tab = 'chords';
+      navPush(instUrl(state.currentInstrumentId, 'chords'));
+    }
+    render();
+    return;
+  },
+  'pl-mode': (el, e, action) => { state.plMode = el.dataset.value; render(); return; },
+  'pl-row-menu': (el, e, action) => { e.stopPropagation(); state.plRowMenu = parseInt(el.dataset.idx, 10); render(); return; },
+  'pl-row-close': (el, e, action) => { state.plRowMenu = null; render(); return; },
+  'pl-new-open, pl-rename-open': (el, e, action) => {
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    state.plName = action === 'pl-new-open' ? { mode: 'new', value: '' } : { mode: 'rename', id: pl?.id, value: pl?.name ?? '' };
+    render();
+    setTimeout(() => document.getElementById('pl-name-input')?.focus(), 0);
+    return;
+  },
+  'pl-name-cancel': (el, e, action) => { state.plName = null; render(); return; },
+  'pl-name-save': (el, e, action) => {
+    const n = state.plName;
+    if (!n) return;
+    const name = (document.getElementById('pl-name-input')?.value ?? n.value).trim();
+    if (!name) { n.error = true; render(); document.getElementById('pl-name-input')?.focus(); return; }
+    if (n.mode === 'prog-new' || n.mode === 'prog-rename') {
+      const id = n.mode === 'prog-new' ? addProgression(name) : n.id;
+      if (n.mode === 'prog-rename') renameProgression(id, name);
+      state.progressions = getProgressions();
+      state.plName = null;
+      if (n.mode === 'prog-new') showToast('Playlist created', { action: { label: 'Open', run: () => openProgression(id) } });
+      render();
+      return;
+    }
+    if (n.mode === 'new') addPlaylist(name);
+    else renamePlaylist(n.id, name);
+    state.playlists = getPlaylists();
+    state.plName = null;
+    scheduleSave();
+    if (n.mode === 'new') showToast('Playlist created');
+    render();
+    return;
+  },
+});
+
+// ── Click: Progressions ───────────────────────────────────────────────────
+registerActions({
+  'picker-mode': (el, e, action) => {
+    state.pickerMode = el.dataset.value === 'progression' ? 'progression' : 'playlist';
+    state.pickerNewPlaylist = false;
+    state.pickerNewProgression = false;
+    render();
+    return;
+  },
+  'add-to-progression': (el, e, action) => {
+    const chord = state.pickerChordObj;
+    const prog = progFind(el.dataset.progId);
+    if (!chord || !prog) return;
+    const no = addStepToProgression(prog.id, playlistEntryFor(chord, state.pickerChordFavId));
+    if (!no) return;
+    state.progressions = getProgressions();
+    // The sheet closes so the toast doesn't cover it; ♡ opens it again on
+    // Progression for the next chord.
+    Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
+    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${prog.name} (chord ${no})`);
+    render();
+    return;
+  },
+  'show-new-progression-input': (el, e, action) => {
+    state.pickerNewProgression = true;
+    render();
+    setTimeout(() => document.getElementById('new-progression-input')?.focus(), 0);
+    return;
+  },
+  'confirm-new-progression': (el, e, action) => {
+    const name = (document.getElementById('new-progression-input')?.value || '').trim();
+    const chord = state.pickerChordObj;
+    if (!name || !chord) return;
+    const id = addProgression(name, [newProgressionStep(playlistEntryFor(chord, state.pickerChordFavId))]);
+    state.progressions = getProgressions();
+    Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
+    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${name} (chord 1)`);
+    render();
+    return;
+  },
+  'cs-open': (el, e, action) => { csOpen(el.dataset.progId || null); return; },
+  'cs-cancel': (el, e, action) => { state.chordSheet = null; render(); return; },
+  'cs-next': (el, e, action) => { csNext(); return; },
+  'cs-back': (el, e, action) => {
+    if (state.chordSheet) { state.chordSheet.name = document.getElementById('cs-name')?.value ?? state.chordSheet.name; state.chordSheet.step = 'paste'; }
+    render();
+    return;
+  },
+  'cs-semis': (el, e, action) => {
+    if (!state.chordSheet) return;
+    state.chordSheet.name = document.getElementById('cs-name')?.value ?? state.chordSheet.name;
+    state.chordSheet.semis = parseInt(el.dataset.semis, 10) || 0;
+    render();
+    return;
+  },
+  'cs-save': (el, e, action) => { csSave(); return; },
+  'prog-new-open, prog-rename-open': (el, e, action) => {
+    const prog = progFind();
+    state.plName = action === 'prog-new-open' ? { mode: 'prog-new', value: '' } : { mode: 'prog-rename', id: prog?.id, value: prog?.name ?? '' };
+    render();
+    setTimeout(() => document.getElementById('pl-name-input')?.focus(), 0);
+    return;
+  },
+  'open-progression': (el, e, action) => {
+    if (e.target.closest('.row-trail button')) return;
+    openProgression(el.dataset.id);
+    return;
+  },
+  'pl-copy-progression': (el, e, action) => {
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl || !pl.chords.length) return;
+    const id = addProgression(pl.name, pl.chords.map(c => newProgressionStep(c)));
+    state.progressions = getProgressions();
+    showToast(`Copied ${pl.name} as a progression`, { action: { label: 'Open', run: () => openProgression(id) } });
+    render();
+    return;
+  },
+  'prog-delete': (el, e, action) => {
+    const prog = progFind();
+    if (!prog) return;
+    state.confirm = {
+      kind: 'progression', id: prog.id, ok: 'Delete', title: `Delete ${prog.name}?`,
+      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
+    };
+    render();
+    return;
+  },
+  'prog-mode': (el, e, action) => { state.progMode = el.dataset.value === 'order' ? 'order' : 'steps'; render(); return; },
+  'prog-row-menu': (el, e, action) => { e.stopPropagation(); state.progRowMenu = parseInt(el.dataset.idx, 10); render(); return; },
+  'prog-row-close': (el, e, action) => { state.progRowMenu = null; render(); return; },
+  'prog-step-up, prog-step-down, prog-step-remove, prog-step-dup, prog-step-bars': (el, e, action) => {
+    const prog = progFind();
+    const idx = parseInt(el.dataset.idx, 10);
+    if (!prog || !prog.steps[idx]) return;
+    if (action === 'prog-step-up') moveProgressionStep(prog.id, idx, idx - 1);
+    if (action === 'prog-step-down') moveProgressionStep(prog.id, idx, idx + 1);
+    if (action === 'prog-step-remove') removeProgressionStep(prog.id, idx);
+    if (action === 'prog-step-dup') duplicateProgressionStep(prog.id, idx);
+    if (action === 'prog-step-bars') {
+      // A part-bar step (from a chord sheet) grows to a whole bar first.
+      const st = prog.steps[idx];
+      const d = parseInt(el.dataset.delta, 10);
+      if (st.beats != null) { if (d > 0) setProgressionStepBars(prog.id, idx, 1); }
+      else setProgressionStepBars(prog.id, idx, st.bars + d);
+    }
+    state.progressions = getProgressions();
+    render();
+    return;
+  },
+  'prog-bpm, prog-beats': (el, e, action) => {
+    const prog = progFind();
+    if (!prog) return;
+    const d = parseInt(el.dataset.delta, 10);
+    setProgressionTiming(prog.id, action === 'prog-bpm' ? { bpm: prog.bpm + d * 5 } : { beatsPerBar: prog.beatsPerBar + d });
+    state.progressions = getProgressions();
+    progRetime(progFind());
+    render();
+    return;
+  },
+  'prog-step-tap': (el, e, action) => {
+    if (e.target.closest('.row-trail button, .prog-bars button')) return;
+    const prog = progFind();
+    const idx = parseInt(el.dataset.idx, 10);
+    const s = prog?.steps[idx];
+    if (!s) return;
+    let ctx = progContext(prog);
+    if (s.missing) { showToast(`${s.symbol ?? 'This chord'} isn't on ${s.scaleName ?? 'this instrument'}`); return; }
+    if (!ctx || !ctx.isHere(s)) { showToast(`This chord isn’t on this instrument; it was added on ${s.scaleName ?? 'another instrument'}`); return; }
+    if (ctx.kind === 'oc') {
+      if (!ctx.open && state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, idx); return; }
+      // The step goes on show (when its instrument is the one on screen) and plays as its arpeggio.
+      if (!ctx.open) { state.progPlay = { id: prog.id, stepId: s.stepId, beat: 0, playing: false }; render(); }
+      initAudio();
+      playSequence(progWindNotes(s), n => { if (!ctx.open && state.progPlay?.stepId === s.stepId && !state.progPlay.playing) progWindShow(ctx.inst, n); });
+      return;
+    }
+    if (ctx.load) {
+      if (!progLoadHandpan(ctx.load)) { showToast('Scale not found'); return; }
+      ctx = progContext(prog);
+    }
+    if (state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, idx); return; }
+    state.progPlay = { id: prog.id, stepId: s.stepId, beat: 0, playing: false };
+    render();
+    progStrike(s);
+    return;
+  },
+  'prog-play': (el, e, action) => {
+    const prog = progFind(el.dataset.id || state.activeProgressionId);
+    if (!prog) return;
+    if (state.view !== 'progression') {
+      // From the Playlists tab: the player lives on the progression's screen.
+      stopAutoplay();
+      Object.assign(state, { view: 'progression', activeProgressionId: prog.id, progMode: 'steps', progRowMenu: null });
+      navPush(`#prog/${encodeURIComponent(prog.id)}`);
+    }
+    // From the chord it stopped on (the button says Play from here), else the first.
+    const at = state.view === 'progression' ? progCurrentIdx(prog) : -1;
+    progStart(prog, at > 0 ? at : null);
+    return;
+  },
+  'prog-restart': (el, e, action) => {
+    // Back to the first chord: playing goes on from there, stopped stays stopped.
+    const prog = progFind();
+    if (!prog) return;
+    const ctx = progContext(prog);
+    if (!ctx) return;
+    const first = nextProgressionStep(prog.steps, -1, ctx.isHere);
+    if (first < 0) return;
+    if (state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, first); return; }
+    state.progPlay = { id: prog.id, stepId: prog.steps[first].stepId, beat: 0, playing: false };
+    render();
+    progStrike(prog.steps[first]);
+    return;
+  },
+  'prog-stop': (el, e, action) => { progStop(); render(); return; },
+  'prog-level': (el, e, action) => {
+    const prog = progFind();
+    if (!prog || !setProgressionLevel(prog.id, el.dataset.value)) return;
+    state.progressions = getProgressions();
+    const pp = state.progPlay;
+    if (pp?.playing && pp.id === prog.id) { const at = progCurrentIdx(prog); progStart(progFind(), at >= 0 ? at : null); return; }
+    render();
+    return;
+  },
+  'prog-practice': (el, e, action) => {
+    const prog = progFind(el.dataset.id || state.activeProgressionId);
+    if (!prog) return;
+    const ctx = state.view === 'instrument' ? progOcContext(currentInstrument()) : progContext(prog);
+    if (!ctx || ctx.kind !== 'oc') return;
+    if (!(state.view === 'instrument' && state.currentInstrumentId === ctx.inst.id)) {
+      if (ctx.open && !openInstrument(ctx.inst.id, { push: false })) { showToast('That ocarina is no longer in My instruments'); return; }
+      state.view = 'instrument';
+      state.oc.tab = 'playlists';
+      navPush(`#i/${ctx.inst.id}/playlists`);
+    }
+    state.oc.practice = { progressionId: prog.id, idx: 0 };
+    playPracticeStep();
+    render();
+    return;
+  },
+  'open-playlist': (el, e, action) => {
+    stopAutoplay();
+    state.plMode = 'chords';
+    state.plRowMenu = null;
+    state.activePlaylistId = el.dataset.id;
+    state.view = 'playlist';
+    navPush(`#pl/${encodeURIComponent(el.dataset.id)}`);
+    render();
+    return;
+  },
+  'delete-playlist': (el, e, action) => {
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl || pl.id === 'favorites') return;
+    state.confirm = {
+      kind: 'playlist', id: pl.id, ok: 'Delete', title: `Delete ${pl.name}?`,
+      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
+    };
+    render();
+    return;
+  },
+  'move-chord-up': (el, e, action) => {
+    const idx = parseInt(el.dataset.idx, 10);
+    reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
+    state.playlists = getPlaylists();
+    scheduleSave();
+    render();
+    return;
+  },
+  'move-chord-down': (el, e, action) => {
+    const idx = parseInt(el.dataset.idx, 10);
+    reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
+    state.playlists = getPlaylists();
+    scheduleSave();
+    render();
+    return;
+  },
+  'remove-playlist-chord': (el, e, action) => {
+    const idx = parseInt(el.dataset.idx, 10);
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl) return;
+    const chord = pl.chords[idx];
+    if (!chord) return;
+    removeChordFromPlaylist(state.activePlaylistId, chord.id);
+    state.playlists = getPlaylists();
+    state.favorites = getFavorites();
+    scheduleSave();
+    render();
+    return;
+  },
+  'open-playlist-chord': (el, e, action) => {
+    const idx = parseInt(el.dataset.idx, 10);
+    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
+    if (!pl) return;
+    if (pl.chords[idx]?.instrumentId) {
+      if (openPlaylistEntryOnInstrument(pl, pl.chords[idx])) render();
+      return;
+    }
+    if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
+    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+    state.view = 'chords';
+    navPush(stateToHash());
+    render();
+    return;
+  },
+});
+
+// ── Click: Navigation ─────────────────────────────────────────────────────
+registerActions({
+  'back-selector': (el, e, action) => { goSelector(); return; },
+  'back-editor': (el, e, action) => {
+    stopAutoplay();
+    state.view = 'editor';
+    state.selectedChord = null;
+    state.sourcePlaylistId = null;
+    state.sourceEntryId = null;
+    navReplace(stateToHash(), { hpTab: null });
+    render();
+    return;
+  },
+});
+
+// ── Click: Settings ───────────────────────────────────────────────────────
+registerActions({
+  'set-theme': (el, e, action) => { state.theme = el.dataset.value; applyTheme(); savePrefs(); render(); return; },
+  'set-flats': (el, e, action) => { state.noteNames = ['auto', 'sharps', 'flats'].includes(el.dataset.value) ? el.dataset.value : 'auto'; savePrefs(); render(); return; },
+  'set-solfege': (el, e, action) => { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; },
+  'tempo-set': (el, e, action) => { setTempo(parseInt(el.dataset.value, 10), { preview: true }); render(); return; },
+  'speed-open': (el, e, action) => { state.speedSheet = true; state.hpMore = false; state.oc.chordMore = false; render(); return; },
+  'speed-close': (el, e, action) => { state.speedSheet = false; render(); return; },
+  'set-rotation': (el, e, action) => { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; },
+  'set-autoplay-step': (el, e, action) => {
+    const i = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
+    const next = AUTOPLAY_SECONDS[Math.max(0, Math.min(AUTOPLAY_SECONDS.length - 1, (i < 0 ? 1 : i) + parseInt(el.dataset.delta, 10)))];
+    state.autoplaySeconds = next;
+    savePrefs();
+    render();
+    return;
+  },
+  'reset-legends': (el, e, action) => {
+    state.ocLegendSeen = false;
+    state.handLegendSeen = false;
+    savePrefs();
+    showToast('The legend will show again');
+    return;
+  },
+  'open-clay-bodies': (el, e, action) => {
+    state.view = 'clay';
+    navPush('#settings/clay');
+    render();
+    return;
+  },
+  'clay-edit': (el, e, action) => {
+    const c = getClayBodies().find(x => x.id === el.dataset.id);
+    state.clayEdit = c
+      ? { id: c.id, name: c.name, pct: String(c.shrinkPct), error: null }
+      : { id: '__new__', name: '', pct: '11', error: null };
+    render();
+    return;
+  },
+  'clay-cancel': (el, e, action) => { state.clayEdit = null; render(); return; },
+  'clay-save': (el, e, action) => {
+    const c = state.clayEdit;
+    if (!c) return;
+    c.name = (document.getElementById('clay-name-input')?.value ?? c.name).trim();
+    c.pct = document.getElementById('clay-pct-input')?.value ?? c.pct;
+    const pct = parseFloat(c.pct);
+    c.error = !c.name ? 'name' : !(pct >= 0 && pct <= 30) ? 'pct' : null;
+    if (c.error) { render(); return; }
+    const list = getClayBodies();
+    if (c.id === '__new__') list.push({ id: 'clay-' + Date.now().toString(36), name: c.name, shrinkPct: pct, builds: 0 });
+    else Object.assign(list.find(x => x.id === c.id) ?? {}, { name: c.name, shrinkPct: pct });
+    saveClayBodies(list);
+    state.clayEdit = null;
+    showToast(`${c.name} saved`);
+    render();
+    return;
+  },
+  'check-updates': (el, e, action) => {
+    navigator.serviceWorker?.getRegistration?.().then(r => r?.update()).catch(() => {});
+    if (accountOn()) syncNow();
+    showToast(accountOn() ? 'Checked for updates and synced' : 'Checked for updates');
+    return;
+  },
+});
+
+// ── Click: Pan rotation ───────────────────────────────────────────────────
+registerActions({
+  'chords-scope': (el, e, action) => { state.chordsAll = !state.chordsAll; savePrefs(); render(); return; },
+  'ed-arrange': (el, e, action) => { state.edArrange = !edArranging(); render(); return; },
+  'ed-arrange-reset': (el, e, action) => { delete state.layout.pos; render(); return; },
+  'toggle-rotation': (el, e, action) => {
+    state.ringRotated = !state.ringRotated;
+    savePrefs();
+    render();
+    return;
+  },
+});
+
+// ── Click: Editor ─────────────────────────────────────────────────────────
+registerActions({
+  'shell-mode': (el, e, action) => {
+    state.shellMode = el.dataset.mode;
+    render();
+    return;
+  },
+  'clone-layout': (el, e, action) => {
+    state.currentInstrumentId = null;
+    state.layout = {
+      ...state.layout,
+      isCustom: true,
+      id: 'custom',
+      name: `My ${state.layout.name}`,
+      top: {
+        ...state.layout.top,
+        slots: state.layout.top.slots.map(s => ({ ...s })),
+      },
+      bottom: {
+        ...state.layout.bottom,
+        slots: state.layout.bottom.slots.map(s => ({ ...s })),
+      },
+    };
+    render();
+    return;
+  },
+  'go-chords': (el, e, action) => {
+    state.chords = findAllChords(state.layout);
+    state.selectedChord = null;
+    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+    state.view = 'chords';
+    navPush(stateToHash());
+    render();
+    return;
+  },
+  'ed-centre': (el, e, action) => {
+    if (layoutInstrument(state.layout) !== 'tongue-drum') return;
+    state.layout.centre = !state.layout.centre;
+    state.chords = findAllChords(state.layout);
+    navReplace(stateToHash());
+    render();
+    return;
+  },
+  'adjust-capacity': (el, e, action) => {
+    const shell = el.dataset.shell;
+    const delta = parseInt(el.dataset.delta);
+    const target = state.layout[shell];
+    const newCap = Math.max(0, Math.min(layoutFamilyInfo(layoutInstrument(state.layout)).maxNotes, target.capacity + delta));
+    if (newCap === target.capacity) return;
+
+    if (delta > 0) {
+      target.slots.push({ note: null });
+    } else {
+      // Only remove last slot if it's empty
+      const lastIdx = target.slots.length - 1;
+      if (lastIdx >= 0 && target.slots[lastIdx].note === null) {
+        target.slots.pop();
+      } else {
+        showToast('Remove the last note first');
+        return;
+      }
+    }
+    target.capacity = newCap;
+    state.chords = findAllChords(state.layout);
+    render();
+    return;
+  },
+  // Note picker: cancel or overlay background click
+  'close-picker': (el, e, action) => {
+    stopPickListen();
+    state.pendingSlot = null;
+    render();
+    return;
+  },
+  'pick-listen': (el, e, action) => { startPickListen(); return; },
+  'pick-listen-stop': (el, e, action) => { stopPickListen(); render(); return; },
+  // Note picker: pick a note
+  'pick-note': (el, e, action) => { setPendingSlotNote(el.dataset.note); return; },
+});
+
+// ── Click: Chord explorer ─────────────────────────────────────────────────
+registerActions({
+  'hp-filters-open': (el, e, action) => { state.hpFilters = true; render(); return; },
+  'hp-filters-close': (el, e, action) => { state.hpFilters = false; render(); return; },
+  'hp-more-open': (el, e, action) => { state.hpMore = true; render(); return; },
+  'hp-more-close': (el, e, action) => { state.hpMore = false; render(); return; },
+  'hp-filters-clear': (el, e, action) => {
+    // The sheet's filters; the empty list's "Clear filters" also clears the root.
+    state.chordCountSet.clear();
+    state.chordFilter.category = 'All';
+    if (state.autoplayOn && state.autoplayPlaylistId !== 'All') stopAutoplay();
+    state.chordFilter.playlist = 'All';
+    if (el.dataset.all) state.chordFilter.root = 'All';
+    render();
+    return;
+  },
+  'hp-clear-playlist': (el, e, action) => {
+    if (state.autoplayOn) stopAutoplay();
+    state.chordFilter.playlist = 'All';
+    render();
+    return;
+  },
+  'hp-edit-playlist': (el, e, action) => {
+    // Same as the old "Edit playlist" option of the playlist select.
+    stopAutoplay();
+    state.hpFilters = false;
+    state.plMode = 'chords';
+    state.activePlaylistId = state.chordFilter.playlist;
+    state.view = 'playlist';
+    navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
+    render();
+    return;
+  },
+  'toggle-note-count': (el, e, action) => {
+    const count = el.dataset.count;
+    if (state.chordCountSet.has(count)) state.chordCountSet.delete(count);
+    else state.chordCountSet.add(count);
+    render();
+    return;
+  },
+  'filter-root': (el, e, action) => {
+    state.chordFilter.root = el.dataset.root;
+    render();
+    return;
+  },
+  'select-chord': (el, e, action) => {
+    const chord = state.chords.find(c => c.id === el.dataset.id);
+    if (!chord) return;
+    stopAutoplay();
+
+    // If the chord list is filtered to a playlist, clicking a row is the
+    // same as opening that entry — show its saved voicing (it may differ
+    // from canonical) and track it so a swap can be saved back.
+    const pl = state.chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === state.chordFilter.playlist) : null;
+    const entry = pl ? pl.chords.find(c => c.chordId === chord.id) : null;
+    if (pl && entry) {
+      state.selectedChord = Array.isArray(entry.notes) ? { ...chord, notes: entry.notes } : chord;
+      state.sourcePlaylistId = pl.id;
+      state.sourceEntryId = entry.id;
+    } else {
+      state.selectedChord = chord;
+      state.sourcePlaylistId = null;
+      state.sourceEntryId = null;
+    }
+
+    navReplace(stateToHash());
+    // Preserve chord list scroll position across render
+    const chordList = document.querySelector('.chord-list');
+    const savedScroll = chordList?.scrollTop ?? 0;
+    render();
+    const newChordList = document.querySelector('.chord-list');
+    if (newChordList) newChordList.scrollTop = savedScroll;
+    // Arpeggiate then play together; show playing animation at the "together" moment
+    initAudio();
+    playChord(state.selectedChord.notes,
+      note => updatePanPlaying([note]),
+      notes => updatePanPlaying(notes)
+    );
+    return;
+  },
+  'autoplay-restart': (el, e, action) => {
+    // The playlist's first chord on this handpan; playing goes on from there.
+    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
+    if (!pl) return;
+    const first = pl.chords.findIndex(c => !c.instrumentId);
+    if (first < 0) return;
+    const wasOn = state.autoplayOn;
+    stopAutoplay();
+    if (!loadPlaylistChordAt(pl, first)) return;
+    navReplace(stateToHash());
+    if (wasOn) startAutoplay(pl); else { render(); playSelectedChordSound(); }
+    return;
+  },
+  'toggle-autoplay': (el, e, action) => {
+    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
+    if (!pl) return;
+    if (state.autoplayOn) { stopAutoplay(); render(); }
+    else startAutoplay(pl);
+    return;
+  },
+  'play-chord': (el, e, action) => {
+    if (!state.selectedChord) return;
+    initAudio();
+    playChord(state.selectedChord.notes,
+      note => updatePanPlaying([note]),
+      notes => updatePanPlaying(notes)
+    );
+    return;
+  },
+  'play-scale': (el, e, action) => {
+    const allNotes = getAllNotes(state.layout);
+    initAudio();
+    playScale(allNotes, note => updatePanPlaying([note]));
+    return;
+  },
+});
+
+// ── Click: Discover mode ──────────────────────────────────────────────────
+registerActions({
+  'hear-start': (el, e, action) => { listenStart(); return; },
+  'hear-stop': (el, e, action) => { listenStop(); return; },
+  'hear-clear': (el, e, action) => { Object.assign(listenUi(), { history: [], stopped: '' }); render(); return; },
+  'listen-oc-note': (el, e, action) => {
+    listenUi().ocNote = parseInt(el.dataset.midi, 10);
+    initAudio();
+    playNote(midiToNoteName(listenUi().ocNote));
+    render();
+    return;
+  },
+  'oc-listen-mode': (el, e, action) => {
+    const want = el.dataset.value;
+    const now = state.oc.listen ? 'listen' : state.oc.identify ? 'identify' : 'browse';
+    if (want === now) return;
+    state.oc.listen = want === 'listen';
+    state.oc.identify = want === 'identify';
+    state.oc.idNotes = [];
+    render();
+    return;
+  },
+  'oc-id-note': (el, e, action) => {
+    const m = parseInt(el.dataset.midi, 10);
+    const list = state.oc.idNotes ?? (state.oc.idNotes = []);
+    const i = list.indexOf(m);
+    if (i >= 0) list.splice(i, 1); else list.push(m);
+    if (i < 0) { initAudio(); playNote(midiToNoteName(m)); }
+    render();
+    return;
+  },
+  'oc-id-clear': (el, e, action) => { state.oc.idNotes = []; render(); return; },
+  'oc-id-play': (el, e, action) => {
+    const names = [...(state.oc.idNotes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
+    if (names.length >= 2) { initAudio(); playSequence(names, () => {}, 0.55); }
+    return;
+  },
+  'oc-id-open': (el, e, action) => {
+    // The chord found, in Browse: its fingerings in playing order, playlists, octaves.
+    Object.assign(state.oc, { identify: false, idNotes: [], expanded: el.dataset.id, root: 'All', category: 'All', scaleFilter: 'All', counts: [] });
+    render();
+    return;
+  },
+  'open-listen-debug': (el, e, action) => { state.view = 'listen-debug'; navPush('#settings/listen'); render(); return; },
+  'listen-tune-reset': (el, e, action) => {
+    const L = listenUi();
+    Object.assign(L.tune, LISTEN_DEFAULTS);
+    _listenTrack = listenTracker(L.tune);
+    render();
+    return;
+  },
+  'toggle-discover-mode': (el, e, action) => {
+    // From the Browse | Identify | Listen segment: only a change of mode toggles.
+    const want = el.dataset.value ?? (state.discoverMode ? 'browse' : 'identify');
+    const now = state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse';
+    if (want === now) return;
+    stopAutoplay();
+    state.hpListen = want === 'listen';
+    state.discoverMode = want === 'identify';
+    state.discoverNotes = [];
+    state.selectedChord = null;
+    state.sourcePlaylistId = null;
+    state.sourceEntryId = null;
+    render();
+    return;
+  },
+  'discover-clear': (el, e, action) => {
+    state.discoverNotes = [];
+    render();
+    return;
+  },
+  'discover-bookmark': (el, e, action) => {
+    const idx = parseInt(el.dataset.matchIdx, 10);
+    const chord = identifyChord(state.discoverNotes)[idx];
+    if (!chord) return;
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  },
+  'discover-bookmark-custom': (el, e, action) => {
+    if (state.discoverNotes.length < 2) return;
+    const notes = [...state.discoverNotes];
+    // A shared, note-less id — the favId suffix (added below since no
+    // canonical "custom" chord type exists) is what disambiguates combos.
+    const chord = {
+      id: 'custom', rootName: getNoteName(notes[0]),
+      type: { name: 'Custom', category: 'Custom' }, notes, noteCount: notes.length,
+    };
+    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
+    state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
+    state.pickerChordObj = chord;
+    state.pickerNewPlaylist = false;
+    render();
+    return;
+  },
+  'discover-play': (el, e, action) => {
+    const idx = parseInt(el.dataset.matchIdx, 10);
+    const chord = identifyChord(state.discoverNotes)[idx];
+    if (!chord) return;
+    initAudio();
+    playChord(chord.notes, note => updatePanPlaying([note]), notes => updatePanPlaying(notes));
+    return;
+  },
+  'discover-play-custom': (el, e, action) => {
+    if (state.discoverNotes.length < 2) return;
+    initAudio();
+    playChord(state.discoverNotes, note => updatePanPlaying([note]), notes => updatePanPlaying(notes));
+    return;
+  },
+  'copy-url': (el, e, action) => {
+    const url = location.origin + navUrl(currentPath());
+    navigator.clipboard.writeText(url).then(() => showToast('URL copied!'), () => showToast('Copy the link from the address bar'));
+    return;
+  },
+});
+
+// ── Change: Playlists ─────────────────────────────────────────────────────
+registerActions({
+  'select-playlist-filter': (el, e, action) => {
+    if (el.value === '__edit__') {
+      stopAutoplay();
+      state.activePlaylistId = state.chordFilter.playlist;
+      state.view = 'playlist';
+      navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
+    } else {
+      if (state.autoplayOn && el.value !== state.autoplayPlaylistId) stopAutoplay();
+      state.chordFilter.playlist = el.value;
+    }
+    render();
+  },
+}, CHANGE_ACTIONS);
+
+// ── Change: Chord explorer ────────────────────────────────────────────────
+registerActions({
+  'filter-category': (el, e, action) => { state.chordFilter.category = el.value; render(); },
+}, CHANGE_ACTIONS);
+
+// ── Change: Edit instrument ───────────────────────────────────────────────
+registerActions({
+  'ie-key': (el, e, action) => {
+    const inst = getInstrument(el.dataset.id);
+    if (!inst || inst.kind !== 'traditional') return;
+    const before = instrumentFromChart(inst.type, inst.key);
+    const fresh = instrumentFromChart(inst.type, el.value);
+    // A name the app made ("… (D4)") follows the key; one the owner typed stays.
+    if (inst.name === before.name) inst.name = fresh.name;
+    inst.key = fresh.key;
+    // Finger names the owner set stay with their holes; fingerings set by
+    // hand move with the key.
+    const shift = fresh.chambers[0].notes[0] - before.chambers[0].notes[0];
+    const holes = fresh.chambers[0].holes.map((h, i) => (inst.setup?.holes?.[i] ? { ...h, finger: inst.setup.holes[i].finger, side: inst.setup.holes[i].side } : h));
+    if (inst.setup?.fixed) {
+      inst.setup.fixed = Object.fromEntries(Object.entries(inst.setup.fixed).map(([m, st]) => [Number(m) + shift, st]));
+    }
+    inst.chambers = [withFixedFingerings({ ...fresh.chambers[0], holes }, inst.setup?.fixed)];
+    saveInstrument(inst);
+    refreshInstruments();
+    state.oc.selected = null;
+    render();
+    return;
+  },
+  'ie-name, ie-photo': (el, e, action) => {
+    const inst = getInstrument(el.dataset.id || state.instEdit);
+    if (!inst) return;
+    if (action === 'ie-name') {
+      inst.name = el.value.trim() || inst.name;
+      // A handpan, tongue drum or kalimba takes its name from its saved
+      // layout (instruments.js reconcileInstruments), so rename that too.
+      if (usesLayout(inst)) renameSavedLayout(inst.layoutId, inst.name);
+      saveInstrument(inst);
+      refreshInstruments();
+      render();
+      return;
+    }
+    const file = el.files?.[0];
+    if (!file) return;
+    readImageFile(file).then(img => {
+      state.photoCrop = { id: inst.id, ...img, ratio: photoRatio(inst), zoom: 1, cx: 0.5, cy: 0.5 };
+      render();
+    }).catch(() => showToast('That photo couldn\'t be read'));
+    return;
+  },
+}, CHANGE_ACTIONS);
+
+// ── Change: Listening reports ─────────────────────────────────────────────
+registerActions({
+  'lr-photo': (el, e, action) => { listenReportPhoto(el.files?.[0]); return; },
+}, CHANGE_ACTIONS);
+
+// ── Change: Chord sheet ───────────────────────────────────────────────────
+registerActions({
+  'cs-target': (el, e, action) => { if (!(state.chordSheet)) return; state.chordSheet.target = el.value; return; },
+}, CHANGE_ACTIONS);
+
+// ── Change: Ocarina chords ────────────────────────────────────────────────
+registerActions({
+  'oc-scale-filter': (el, e, action) => { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); },
+  'oc-category': (el, e, action) => { state.oc.category = el.value; render(); },
+}, CHANGE_ACTIONS);
+
+// ── Change: Builder and set-up ────────────────────────────────────────────
+registerActions({
+  'b-input, b-shrink, b-window, b-clay, b-from, s-finger, b-design': (el, e, action) => { if (!(action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')
+      || action === 'b-clay' || action === 'b-from' || action === 's-finger'
+      || (action === 'b-design' && (el.tagName === 'SELECT' || el.tagName === 'INPUT')))) return;
+    let inst = currentInstrument();
+    if (!inst) return;
+    const num = parseFloat(el.value);
+    if (action === 'b-input') {
+      // Record fields take a note ("D4", "Re4 +12") or a frequency; other
+      // builder inputs (the test hole in mm) stay plain numbers.
+      const v = el.dataset.kind === 'pitch' ? parsePitch(el.value) : (num > 0 ? num : null);
+      if (el.dataset.kind === 'pitch' && el.value.trim() && v == null) { showToast(`"${el.value.trim()}" isn't a note or a frequency`); render(); return; }
+      setReading(inst, el.dataset.path, v);
+    }
+    if (action === 'b-shrink' && num >= 0) inst.build.shrinkPct = num;
+    if (action === 'b-window') {
+      const ci = parseInt(el.dataset.ci, 10);
+      const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
+      if (num > 0) per.window = { ...chamberBuild(inst, ci).window, [el.dataset.key]: num };
+    }
+    if (action === 'b-clay') {
+      if (el.value === '__new__') {
+        const name = (prompt('Name of the clay body') || '').trim();
+        if (!name) { render(); return; }
+        const pct = parseFloat(prompt('Its shrinkage in %, if known', '11')) || 11;
+        const clay = { id: 'clay-' + Date.now().toString(36), name, shrinkPct: pct, builds: 0 };
+        saveClayBodies([...getClayBodies(), clay]);
+        inst.build.clayBody = clay.id;
+        inst.build.shrinkPct = pct;
+      } else {
+        const clay = getClayBodies().find(c => c.id === el.value);
+        inst.build.clayBody = el.value;
+        if (clay) inst.build.shrinkPct = clay.shrinkPct;
+      }
+    }
+    if (action === 'b-from') {
+      const src = getInstrument(el.value);
+      inst.build.fromId = src ? src.id : null;
+      if (src) {
+        inst.design = { ...(src.design ?? { scaleId: src.scaleId, transpose: src.transpose, includeGu: src.includeGu }) };
+        applyDesign(inst);
+        inst.build.clayBody = src.build.clayBody;
+        const clay = getClayBodies().find(c => c.id === src.build.clayBody);
+        inst.build.shrinkPct = clay ? clay.shrinkPct : src.build.shrinkPct;
+        inst.build.perChamber = (src.build.perChamber ?? []).map(p => ({ window: p?.window, testHoleMm: p?.readings?.leather?.d }));
+      }
+    }
+    if (action === 's-finger') {
+      const setup = holesSetupOf(inst);
+      const h = setup.holes[parseInt(el.dataset.index, 10)];
+      h.finger = el.value;
+      h.side = el.value.endsWith('T') ? 'bottom' : 'top';
+      inst.setup = setup;
+      // The chart's holes are copies made when it was worked out: keep their
+      // finger names in step (the notes don't depend on them).
+      const ch = inst.chambers?.[0]?.holes?.[parseInt(el.dataset.index, 10)];
+      if (ch) Object.assign(ch, { finger: h.finger, side: h.side });
+    }
+    if (action === 'b-design') {
+      inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
+      const key = el.dataset.key;
+      if (key === 'scaleId') Object.assign(inst.design, { scaleId: el.value, chambers: null, windowStart: null, excluded: [] });
+      applyDesign(inst);
+      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${findTuning(inst.scaleId).name} ocarina`;
+    }
+    saveInstrument(inst);
+    refreshInstruments();
+    if (action === 'b-input') bAdvanceChamber(inst);
+    // The Hole fingers sheet stays as it is (and keeps focus) while it's open.
+    if (action === 's-finger' && state.oc.fingersSheet) return;
+    render();
+  },
+}, CHANGE_ACTIONS);
+
+// ── Change: Add-instrument wizard ─────────────────────────────────────────
+registerActions({
+  'wizard-chart': (el, e, action) => {
+    const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
+    if (t.detect?.listening) stopFluteDetect(null, el.dataset.fam === 'oc' ? 'oc' : 'fl');
+    t.chartId = el.value; t.keyId = null;
+    t.detect = null;
+    render();
+  },
+  'wizard-fl-root': (el, e, action) => {
+    const fl = state.wizard.fl;
+    const chart = getChart(fl.chartId);
+    const cur = chart?.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart)));
+    if (cur) fl.keyId = chartKeyFor(chart, el.value, cur.octave)?.id ?? fl.keyId;
+    render();
+  },
+  'wizard-key': (el, e, action) => {
+    (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;
+  },
+  'wizard-oc-scale': (el, e, action) => {
+    Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
+    render();
+  },
+}, CHANGE_ACTIONS);
+
+// ── Change: Settings ──────────────────────────────────────────────────────
+registerActions({
+  'set-autoplay-seconds': (el, e, action) => {
+    state.autoplaySeconds = parseInt(el.value, 10);
+    savePrefs();
+    if (state.autoplayOn && _autoplayTimer) {
+      clearInterval(_autoplayTimer);
+      _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
+    }
+  },
+}, CHANGE_ACTIONS);
+
 // ── Global click delegation ───────────────────────────────────────────────────
 document.addEventListener('click', e => {
   // ── Pan note click — must be checked BEFORE the data-action early return ──
@@ -9517,1707 +11404,23 @@ document.addEventListener('click', e => {
   if (saveWhat) { guestSave({ what: saveWhat, action, data: plainDataset(el.dataset) }); return; }
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
   if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
-  if (action === 'picker-open') { openPicker(el.dataset.picker); return; }
+  // The actions each screen registers (js/app/actions.js). These come before
+  // the steps below that close a sheet when one of its rows is tapped.
+  if (runAction(action, el, e, EARLY_ACTIONS)) return;
   if (makerClick(action, el)) return; // makers and "Made by" (js/makers-ui.js)
-
-  // ── Sheets: the ⋯ menu and confirm ────────────────────────────────────────
-  if (action === 'menu-open') { state.menu = true; render(); return; }
-  if (action === 'row-menu') { e.stopPropagation(); state.menu = { id: el.dataset.id }; render(); return; }
-  if (action === 'visit-save') {
-    // Reached with an account only (a guest gets the save sheet first, and
-    // signing in moved this visit's work into the account).
-    reloadSaved();
-    showToast('Saved to My instruments');
-    render();
-    return;
-  }
-  if (action === 'menu-close') { state.menu = false; render(); return; }
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
   if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
   if (state.plRowMenu != null && el.closest('.sheet-plrow') && action !== 'pl-row-close') { state.plRowMenu = null; render(); }
   if (state.progRowMenu != null && el.closest('.sheet-progrow') && action !== 'prog-row-close') { state.progRowMenu = null; render(); }
-  if (action === 'confirm-cancel') { state.confirm = null; render(); return; }
-  if (action === 'confirm-ok') {
-    const c = state.confirm;
-    state.confirm = null;
-    if (c?.kind === 'instrument') removeInstrument(c.id);
-    else if (c?.kind === 'playlist') removePlaylist(c.id);
-    else if (c?.kind === 'progression') removeProgression(c.id);
-    else render();
-    return;
-  }
-
-  if (action === 'hp-playlists' || action === 'hp-songs') {
-    stopAutoplay();
-    state.pendingSlot = null;
-    state.view = action;
-    // Remembered on the history entry, so coming back to it reopens this tab.
-    if (state.layout) navReplace(stateToHash(), { hpTab: action === 'hp-songs' ? 'songs' : 'playlists' });
-    render();
-    return;
-  }
-
-  // ── My instruments ────────────────────────────────────────────────────────
-  if (action === 'open-instrument') {
-    if (e.target.closest('[data-action="delete-instrument"]')) return;
-    if (openInstrument(el.dataset.id)) render();
-    else showToast('Instrument not found');
-    return;
-  }
-  if (action === 'delete-instrument') {
-    e.stopPropagation();
-    const inst = getInstrument(el.dataset.id);
-    if (!inst) return;
-    state.confirm = {
-      kind: 'instrument', id: inst.id, ok: 'Remove', title: `Remove ${inst.name}?`,
-      body: usesLayout(inst)
-        ? 'Its saved layout is removed from My instruments on this device and from sync.'
-        : 'Its readings and build history are removed from this device and from sync.',
-    };
-    render();
-    return;
-  }
-  if (action === 'back-home') { goHome(); guestLeaving(); return; }
-  if (action === 'nav-back') {
-    if (history.state?.hp) history.back();
-    else if (el.dataset.fallback === 'selector') goSelector();
-    else if (el.dataset.fallback === 'settings') openSettings({ push: false });
-    else if (el.dataset.fallback === 'songs' && state.songCtx) songBackToList();
-    else goHome();
-    return;
-  }
-  if (action === 'open-settings') { openSettings(); return; }
-  if (action === 'open-play') {
-    goHome({ push: false });
-    state.view = 'play';
-    if (el.dataset.family) state.playFamily = el.dataset.family;
-    state.playNotice = null;
-    navPush('#play');
-    render();
-    guestLeaving();
-    return;
-  }
-  if (action === 'play-family') {
-    state.playFamily = el.dataset.value;
-    state.playNotice = null;
-    render();
-    return;
-  }
-  if (action === 'open-link') {
-    const link = parseLink(el.dataset.path);
-    if (!link) return;
-    openLink(link);
-    navPush(link.path ?? el.dataset.path);
-    render();
-    return;
-  }
-  if (action === 'play-custom-handpan') {
-    // An empty custom handpan: a D3 ding and eight notes to set on the Pan.
-    // No bottom notes to start with: few beginners' handpans have them, and
-    // the Pan adds them when there are. A tongue drum: eight tongues from C4;
-    // a kalimba: ten keys from C4.
-    const fam = isLayoutFamily(el.dataset.family) ? el.dataset.family : 'handpan';
-    const rest = { handpan: 8, 'tongue-drum': 7, kalimba: 9 }[fam] ?? 8;
-    const params = new URLSearchParams({ ding: fam === 'handpan' ? 'D3' : 'C4', top: Array(rest).fill('null').join(','), bottom: '', tc: String(rest), bc: '0', name: `My ${LAYOUT_FAMILIES[fam].word}` });
-    const link = parseLink(`/${fam}/custom`, '?' + params);
-    openLink(link);
-    navPush(stateToHash());
-    render();
-    return;
-  }
-  if (action === 'other-instrument') {
-    state.currentInstrumentId = null;
-    state.view = 'selector';
-    navPush('#scales');
-    render();
-    return;
-  }
-  if (action === 'add-instrument') { setupAction('setup-open', el); return; }
+  if (runAction(action, el, e)) return;
+  // Screens that handle a group of actions in one function.
   if (songAction(action, el)) return;
   if (listenReportAction(action)) return;
   if (goesWithAction(action, el)) return;
   if (setupAction(action, el)) return;
-
-
-  // ── Ocarina Notes view ────────────────────────────────────────────────────
-  if (action === 'oc-select-note') {
-    const m = parseInt(el.dataset.midi, 10);
-    if (m !== state.oc.selected) { state.oc.previous = state.oc.selected; state.oc.selected = m; }
-    initAudio();
-    playNote(midiToNoteName(m));
-    render();
-    return;
-  }
-  if (action === 'oc-play-selected') {
-    initAudio();
-    playNote(midiToNoteName(state.oc.selected));
-    return;
-  }
-  if (action === 'oc-play-scale') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const pcs = state.oc.scaleFilter !== 'All' ? scalePitchClasses(state.oc.scaleFilter) : null;
-    const notes = playableMidis(inst).filter(m => !pcs || pcs.has(((m % 12) + 12) % 12)).map(midiToNoteName);
-    playScale(notes, n => {
-      const m = noteToMidi(n);
-      if (state.view !== 'instrument') return;
-      state.oc.previous = state.oc.selected;
-      state.oc.selected = m;
-      render();
-    });
-    return;
-  }
-  if (action === 'oc-toggle-fingers') {
-    state.showFingers = !state.showFingers;
-    // The finger legend opens by itself the first time labels are switched on.
-    if (state.showFingers && !state.handLegendSeen) { state.handLegendSeen = true; state.oc.handLegend = true; }
-    savePrefs(); render(); return;
-  }
-  if (action === 'oc-toggle-sizes') { state.showSizes = !state.showSizes; savePrefs(); render(); return; }
-  if (action === 'toggle-closeup') { state.closeUp = !state.closeUp; savePrefs(); render(); return; }
-  if (action === 'oc-legend-dismiss') { state.ocLegendSeen = true; savePrefs(); render(); return; }
-  if (action === 'oc-hand-open') { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; }
-  if (action === 'oc-hand-close') { state.oc.handLegend = false; render(); return; }
-
-
-  if (action === 'tuner-toggle') { toggleTuner(); return; }
-  if (action === 'install-app') {
-    if (_installEvent) {
-      const ev = _installEvent;
-      _installEvent = null;
-      ev.prompt();
-      ev.userChoice?.then(c => { logEvent('install', { outcome: c?.outcome ?? 'unknown' }); render(); });
-    } else {
-      state.installHelp = true;
-      logEvent('install', { outcome: 'help' });
-      render();
-    }
-    return;
-  }
-  if (action === 'install-help-close') { state.installHelp = false; render(); return; }
-  if (action === 'help-close') { state.help = null; render(); return; }
-  if (action === 'help-open') {
-    // A row or link names the article; the menu's row asks for this screen's; '' is the list.
-    const id = el.dataset.id ?? HELP_SCREENS[helpScreenKey()];
-    state.help = { id: id || null };
-    logEvent('help', { article: id || 'index' });
-    render();
-    const top = el.dataset.anchor ? document.getElementById(`help-${el.dataset.anchor}`) : document.querySelector('.sheet-root[data-sheet="help"] .sheet-body');
-    if (el.dataset.anchor) top?.scrollIntoView(); else if (top) top.scrollTop = 0;
-    return;
-  }
-  if (action === 'install-dismiss') {
-    try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch {}
-    render();
-    return;
-  }
-  if (action === 'share-instrument') { shareInstrument(el.dataset.id); return; }
-  if (action === 'share-close') { state.shareModal = null; render(); return; }
-  if (action === 'link-sheet-close') { state.linkSheet = null; render(); return; }
-  if (action === 'share-copy') {
-    navigator.clipboard?.writeText(state.shareModal?.url ?? state.linkSheet?.url ?? '').then(() => showToast('Link copied'), () => showToast('Copy the link from the box'));
-    return;
-  }
-  if (action === 'shared-add') {
-    if (!state.shared) return;
-    // A visiting chart instrument (a deep link) is made afresh; a shared
-    // one is copied with its setup.
-    const copy = state.shared.link ? instrumentFromChart(state.shared.link.chartId, state.shared.link.keyId, { name: state.shared.name }) : copySharedInstrument(state.shared);
-    saveInstrument(copy);
-    refreshInstruments();
-    state.shared = null;
-    openInstrument(copy.id);
-    showToast(`${copy.name} added to My instruments`);
-    render();
-    return;
-  }
-
-  // ── Builder and set-up ────────────────────────────────────────────────────
-  if (action === 'b-record') {
-    // Arm the field (or disarm it); the tuner turns on if it's off.
-    if (state.rec.armed === el.dataset.path) { disarmRecord(); render(); return; }
-    armRecord(el.dataset.path);
-    if (!state.tuner.on || state.tuner.error) {
-      if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
-      toggleTuner();
-      return;
-    }
-    render();
-    return;
-  }
-  if (action === 'b-stage' || action === 'b-next' || action === 'b-unglazed') {
-    let inst = currentInstrument();
-    if (!inst) return;
-    const target = action === 'b-stage' ? el.dataset.stage
-      : action === 'b-unglazed' ? 'done' : nextStage(inst.build.stage);
-    if (target === 'done' && inst.build.stage !== 'done') inst = finishInstrumentBuild(inst);
-    else inst.build.stage = target;
-    state.oc.buildChamber = 0;
-    saveInstrument(inst);
-    refreshInstruments();
-    window.scrollTo(0, 0);
-    render();
-    return;
-  }
-  if (action === 'b-design') {
-    const inst = currentInstrument();
-    if (!inst || el.tagName === 'SELECT' || el.tagName === 'INPUT') return; // handled on change
-    inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
-    const key = el.dataset.key, v = parseInt(el.dataset.value, 10);
-    if (key === 'chambers') Object.assign(inst.design, { chambers: v, windowStart: null, excluded: [] });
-    if (key === 'windowStart') Object.assign(inst.design, { windowStart: v, excluded: [] });
-    if (key === 'toggleNote') {
-      const ex = inst.design.excluded ?? [];
-      inst.design.excluded = ex.includes(v) ? ex.filter(x => x !== v) : [...ex, v];
-    }
-    applyDesign(inst);
-    saveInstrument(inst);
-    render();
-    return;
-  }
-  if (action === 'b-design-subs' || action === 'b-design-sublayout' || action === 'b-design-fill') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
-    if (action === 'b-design-subs') d.subHoles = parseInt(el.dataset.n, 10) || 0;
-    else if (action === 'b-design-fill') d.fillGaps = !d.fillGaps;
-    else d.subLayout = el.dataset.v;
-    applyDesign(inst);
-    saveInstrument(inst);
-    refreshInstruments();
-    render();
-    return;
-  }
-  if (action === 'b-design-transpose' || action === 'b-design-gu' || action === 'b-design-chambers') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const d = inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
-    if (action === 'b-design-transpose') {
-      Object.assign(d, { transpose: Math.max(-6, Math.min(6, (d.transpose ?? 0) + parseInt(el.dataset.delta, 10))), windowStart: null, excluded: [] });
-    }
-    if (action === 'b-design-gu') Object.assign(d, { includeGu: !(d.includeGu ?? true), chambers: null, windowStart: null, excluded: [] });
-    if (action === 'b-design-chambers') Object.assign(d, { chambers: parseInt(el.dataset.n, 10), windowStart: null, excluded: [] });
-    applyDesign(inst);
-    saveInstrument(inst);
-    refreshInstruments();
-    render();
-    return;
-  }
-  if (action === 'b-chamber') {
-    state.oc.buildChamber = parseInt(el.dataset.ci, 10) || 0;
-    render();
-    return;
-  }
-  if (action === 'fg-edit-open') {
-    const inst = currentInstrument();
-    const f = inst && fingeringFor(inst, state.oc.selected);
-    if (!f) return;
-    state.oc.fgEdit = { midi: state.oc.selected, states: [...f.states] };
-    render();
-    return;
-  }
-  if (action === 'fg-edit-hole' && state.oc.fgEdit) {
-    const i = parseInt(el.dataset.index, 10);
-    const next = { c: 'o', o: 'h', h: 'c' };
-    state.oc.fgEdit.states[i] = next[state.oc.fgEdit.states[i]] ?? 'c';
-    render();
-    return;
-  }
-  if (action === 'fg-edit-cancel') { state.oc.fgEdit = null; render(); return; }
-  if (action === 'fg-edit-save' || action === 'fg-edit-reset') {
-    const inst = currentInstrument();
-    const ed = state.oc.fgEdit;
-    if (!inst || !ed) return;
-    inst.setup = inst.setup ?? setupOf(inst);
-    const fixed = { ...(inst.setup.fixed ?? {}) };
-    if (action === 'fg-edit-save') fixed[ed.midi] = ed.states;
-    else delete fixed[ed.midi];
-    let heard = null;
-    if (action === 'fg-edit-save' && ed.hz > 0) {
-      // A reading of this fingering: one more measurement for the fit. It
-      // fixes the note it actually sounds, which may not be the one picked.
-      const same = x => x.states.join() === ed.states.join();
-      inst.setup.extra = [...(inst.setup.extra ?? []).filter(x => !same(x)), { states: ed.states, hz: ed.hz }];
-      heard = Math.round(hzToMidi(ed.hz));
-      if (heard !== ed.midi) delete fixed[ed.midi];
-    }
-    inst.setup.fixed = fixed;
-    if (heard != null) {
-      const s2 = inst.setup;
-      const ch = calibrateChamber(s2.holes, s2.f0, s2.singles, { extra: s2.extra });
-      if (ch) {
-        inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, fixed)];
-        inst.calibration = ch.calibration;
-      }
-    } else if (action === 'fg-edit-save') {
-      inst.chambers = [withFixedFingerings(inst.chambers[0], { [ed.midi]: ed.states })];
-    } else if (inst.kind === 'traditional') {
-      // Back to the published chart's fingering for this note.
-      const chartFg = instrumentFromChart(inst.type, inst.key).chambers[0].fingerings[ed.midi];
-      const fg = { ...inst.chambers[0].fingerings };
-      if (chartFg) fg[ed.midi] = chartFg; else delete fg[ed.midi];
-      inst.chambers[0] = { ...inst.chambers[0], fingerings: fg, notes: Object.keys(fg).map(Number).sort((a, b) => a - b) };
-    } else {
-      // Back to the chart worked out from the readings for this note.
-      const s = inst.setup;
-      const ch = calibrateChamber(s.holes, s.f0, s.singles, { extra: s.extra });
-      if (ch?.fingerings[ed.midi]) inst.chambers[0] = { ...inst.chambers[0], fingerings: { ...inst.chambers[0].fingerings, [ed.midi]: ch.fingerings[ed.midi] } };
-    }
-    saveInstrument(inst);
-    refreshInstruments();
-    state.oc.fgEdit = null;
-    const uf = state.useFlats, us = state.useSolfege;
-    showToast(heard != null && heard !== ed.midi
-      ? `That fingering sounds ${displayNote(midiToNoteName(heard), uf, us)}: saved for ${displayNote(midiToNoteName(heard), uf, us)}, chart updated`
-      : heard != null ? 'Fingering and reading saved, chart updated'
-      : action === 'fg-edit-save' ? 'Fingering saved' : inst.kind === 'traditional' ? 'Back to the chart\'s fingering' : 'Back to the worked-out fingering');
-    if (heard != null && playableMidis(inst).includes(heard)) state.oc.selected = heard;
-    render();
-    return;
-  }
-  if (action === 'inst-edit-open') {
-    const id = el.dataset.id || state.currentInstrumentId;
-    const inst = getInstrument(id);
-    state.menu = false;
-    // One you set up yourself is edited on its Set up tab, with everything else.
-    if ((inst?.kind === 'custom' || inst?.kind === 'traditional') && !usesLayout(inst)) {
-      if (state.currentInstrumentId !== id || state.view !== 'instrument') openInstrument(id);
-      state.oc.tab = 'setup';
-      state.oc.holeMap = null;
-      navReplace(`#i/${id}/setup`);
-      render();
-      window.scrollTo({ top: 0 });
-      return;
-    }
-    state.instEdit = id;
-    render();
-    return;
-  }
-  if (action === 'crop-cancel') { state.photoCrop = null; render(); return; }
-  if (action === 'crop-done') { finishCrop(); return; }
-  if (action === 'crop-rotate') { rotateCropImage().catch(() => showToast('That photo couldn\'t be turned')); return; }
-  if (action === 'inst-edit-close') { state.instEdit = null; refreshInstruments(); render(); return; }
-  if (action === 'ie-photo-remove' || action === 'ie-holes-step') {
-    let inst = getInstrument(el.dataset.id || state.instEdit);
-    if (!inst) return;
-    if (action === 'ie-photo-remove') { delete inst.photo; delete inst.holeMap; }
-    else inst = withHoleCount(inst, (inst.holeCount ?? 0) + parseInt(el.dataset.delta, 10));
-    saveInstrument(inst);
-    refreshInstruments();
-    render();
-    return;
-  }
-  if (action === 'hm-open') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    state.oc.holeMap = { sel: hmFirstUnmarked(inst) ?? 0 };
-    render();
-    return;
-  }
-  if (action === 'hm-close') { state.oc.holeMap = null; render(); return; }
-  if (action === 'hm-select') { state.oc.holeMap.sel = parseInt(el.dataset.index, 10); render(); return; }
-  if (action === 'hm-place' || action === 'hm-clear') {
-    const inst = currentInstrument();
-    const sel = state.oc.holeMap?.sel;
-    if (!inst || sel == null) return;
-    const n = setupOf(inst).holes.length;
-    inst.holeMap = Array.from({ length: n }, (_, i) => inst.holeMap?.[i] ?? null);
-    if (action === 'hm-clear') {
-      inst.holeMap[sel] = null;
-    } else {
-      const svg = el.querySelector('svg');
-      const box = svg.getBoundingClientRect();
-      const x = (e.clientX - box.left) / box.width, y = (e.clientY - box.top) / box.height;
-      if (x < 0 || x > 1 || y < 0 || y > 1) return;
-      inst.holeMap[sel] = { x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000 };
-    }
-    saveInstrument(inst);
-    refreshInstruments();
-    if (action === 'hm-place') state.oc.holeMap.sel = hmFirstUnmarked(inst);
-    render();
-    return;
-  }
-  if (action === 's-fingers-reset' || action === 's-sub-layout') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const setup = setupOf(inst);
-    setup.holes = action === 's-fingers-reset' ? defaultCustomHoles(setup.holes.length) : withSubLayout(setup.holes, el.dataset.value);
-    inst.setup = setup;
-    if (inst.chambers?.[0]?.holes?.length === setup.holes.length) {
-      inst.chambers[0] = { ...inst.chambers[0], holes: inst.chambers[0].holes.map((h, i) => ({ ...h, finger: setup.holes[i].finger, side: setup.holes[i].side, sub: setup.holes[i].sub })) };
-    }
-    saveInstrument(inst);
-    refreshInstruments();
-    render();
-    return;
-  }
-  if (action === 's-fingers-reverse') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const setup = holesSetupOf(inst);
-    setup.holes = reverseHandFingers(setup.holes, el.dataset.hand);
-    inst.setup = setup;
-    // The chart's copies of the holes take the new finger names too.
-    if (inst.chambers?.[0]?.holes?.length === setup.holes.length) {
-      inst.chambers[0] = { ...inst.chambers[0], holes: inst.chambers[0].holes.map((h, i) => ({ ...h, finger: setup.holes[i].finger, side: setup.holes[i].side })) };
-    }
-    saveInstrument(inst);
-    refreshInstruments();
-    showToast(`${el.dataset.hand === 'R' ? 'Right' : 'Left'} hand reversed`);
-    render();
-    return;
-  }
-  if (action === 's-fingers-open') { state.oc.fingersSheet = true; render(); return; }
-  if (action === 's-fingers-close') { state.oc.fingersSheet = false; render(); return; }
-  if (action === 'b-hole-done') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const ci = parseInt(el.dataset.ci, 10), idx = parseInt(el.dataset.index, 10);
-    const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
-    const done = per.holesDone ?? [];
-    per.holesDone = done.includes(idx) ? done.filter(x => x !== idx) : [...done, idx];
-    saveInstrument(inst);
-    bAdvanceChamber(inst);
-    render();
-    return;
-  }
-  if (action === 'b-window' && el.tagName === 'BUTTON') {
-    const inst = currentInstrument();
-    if (!inst) return;
-    const ci = parseInt(el.dataset.ci, 10);
-    const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
-    per.window = { ...chamberBuild(inst, ci).window, shape: el.dataset.value };
-    saveInstrument(inst);
-    render();
-    return;
-  }
-  if (action === 'f-work-out') {
-    const inst = currentInstrument();
-    if (!inst?.setup || inst.family !== 'flute') return;
-    const ch = fluteChamberFromReadings(inst.setup.holes, inst.setup.readings);
-    if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each line is a different note'); return; }
-    inst.chambers = [withFixedFingerings({ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }, inst.setup.fixed)];
-    inst.calibration = ch.calibration;
-    saveInstrument(inst);
-    refreshInstruments();
-    state.oc.tab = 'notes';
-    navReplace(`#i/${inst.id}/notes`);
-    const n = ch.calibration.dropped.length;
-    const nn = m => displayNote(midiToNoteName(m), state.useFlats, state.useSolfege);
-    showToast(n
-      ? `Chart ready: ${ch.notes.length} notes. ${ch.calibration.dropped.map(d => nn(d.midi)).join(', ')} came out twice; the first fingering is kept`
-      : `Chart ready: ${ch.notes.length} notes`);
-    render();
-    return;
-  }
-  if (action === 's-calibrate') {
-    const inst = currentInstrument();
-    if (!inst?.setup) return;
-    const ch = calibrateChamber(inst.setup.holes, inst.setup.f0, inst.setup.singles, { extra: inst.setup.extra });
-    if (!ch || ch.notes.length < 2) { showToast('Those readings don\'t give a chart: check each hole raises the pitch'); return; }
-    inst.chambers = [{ notes: ch.notes, holes: ch.holes, fingerings: ch.fingerings }];
-    inst.calibration = ch.calibration;
-    saveInstrument(inst);
-    refreshInstruments();
-    state.oc.tab = 'notes';
-    showToast(`Chart ready: ${ch.notes.length} notes`);
-    render();
-    return;
-  }
-
-
-  // ── Ocarina Chords view and practice ──────────────────────────────────────
-  if (action === 'oc-tab') {
-    state.oc.tab = el.dataset.tab;
-    state.oc.practice = null;
-    navReplace(instUrl(state.currentInstrumentId, state.oc.tab));
-    render();
-    return;
-  }
-  if (action === 'oc-chord-select') {
-    if (e.target.closest('.row-trail button')) return;
-    // Like a handpan chord: pick it, and hear it.
-    state.oc.expanded = el.dataset.key;
-    state.oc.chordStep = {};
-    const list = document.querySelector('.chord-list');
-    const saved = list?.scrollTop ?? 0;
-    render();
-    const again = document.querySelector('.chord-list');
-    if (again) again.scrollTop = saved;
-    document.querySelector('.oc-stage [data-action="oc-play-arp"]')?.click();
-    return;
-  }
-  if (action === 'oc-more-open') { state.oc.chordMore = true; render(); return; }
-  if (action === 'oc-filters-open') { state.oc.filtersOpen = true; render(); return; }
-  if (action === 'oc-filters-close') { state.oc.filtersOpen = false; render(); return; }
-  if (action === 'oc-filter-root') { state.oc.root = el.dataset.root; render(); return; }
-  if (action === 'oc-toggle-count') {
-    const set = new Set(state.oc.counts ?? []);
-    if (set.has(el.dataset.count)) set.delete(el.dataset.count); else set.add(el.dataset.count);
-    state.oc.counts = [...set];
-    render();
-    return;
-  }
-  if (action === 'oc-more-close') { state.oc.chordMore = false; render(); return; }
-  if (action === 'oc-missing-toggle') {
-    // The <details> opens by itself; remember it across re-renders.
-    state.oc.missingOpen = !el.closest('details').open;
-    return;
-  }
-  if (action === 'oc-filters-clear') {
-    // The sheet's filters; the empty list's "Clear filters" also clears the root.
-    Object.assign(state.oc, { scaleFilter: 'All', category: 'All', counts: [] });
-    if (el.dataset.all) state.oc.root = 'All';
-    render();
-    return;
-  }
-  if (['oc-play-arp', 'oc-voicing', 'oc-show-playlist-picker'].includes(action)) {
-    e.stopPropagation();
-    const inst = ocCardInstrument(el.dataset.key);
-    if (!inst) return;
-    const key = el.dataset.key;
-    const card = ocCardData(inst, key);
-    if (!card) return;
-    if (action === 'oc-play-arp') {
-      const names = card.midis.map(midiToNoteName);
-      const rootName = names.find(n => notePC(n) === card.rootPC) ?? names[0];
-      const seq = arpeggioOrder(names, rootName).map(midiToNoteName);
-      playSequence(seq, (n, i) => ocHighlightStep(key, i, i === seq.length - 1));
-      return;
-    }
-    if (action === 'oc-voicing') {
-      const m = parseInt(el.dataset.midi, 10);
-      const voiced = nextVoicing(inst, card.midis, m);
-      if (voiced.join() === card.midis.join()) { showToast('No other octave of this note on the instrument'); return; }
-      state.oc.voicings[key] = voiced;
-      playNote(midiToNoteName(voiced.find(x => !card.midis.includes(x)) ?? m));
-      render();
-      return;
-    }
-    // Playlist picker, reusing the handpan one. Someone's instrument shared
-    // by code is read-only: its chords go into playlists once it's added.
-    if (inst.id === SHARED_ID && !inst.link) { showToast('Add it to My instruments to keep its chords'); return; }
-    const names = card.midis.map(midiToNoteName);
-    state.pickerChordFavId = card.entry
-      ? (card.midis.join() === card.entry.notes.map(noteToMidi).join() ? card.entry.id : ocFavId(inst, card.chordId, names, null))
-      : ocFavId(inst, card.chordId, names, card.canonical);
-    state.pickerChordObj = {
-      id: card.chordId, rootName: card.rootName, notes: names, noteCount: names.length,
-      type: { name: card.typeName, category: card.category },
-    };
-    state.pickerNewPlaylist = false;
-    state.pickerInstrumentId = inst.id;
-    render();
-    return;
-  }
-  if (action === 'oc-step') {
-    initAudio();
-    playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
-    ocHighlightStep(el.dataset.key, parseInt(el.dataset.i, 10), true);
-    return;
-  }
-  if (action === 'oc-play-note') {
-    initAudio();
-    playNote(midiToNoteName(parseInt(el.dataset.midi, 10)));
-    const stage = el.closest('.oc-pstage');
-    if (stage) ocHighlightStep(stage.closest('.oc-player').dataset.key, parseInt(stage.dataset.i, 10), true);
-    return;
-  }
-  if (action === 'oc-play-pair') {
-    initAudio();
-    playNote(midiToNoteName(parseInt(el.dataset.a, 10)));
-    playNote(midiToNoteName(parseInt(el.dataset.b, 10)));
-    return;
-  }
-  if (action === 'oc-practice-start') {
-    if (el.dataset.id) state.oc.playlistId = el.dataset.id;
-    state.oc.practice = { playlistId: state.oc.playlistId, idx: 0 };
-    playPracticeStep();
-    render();
-    return;
-  }
-  if (action === 'oc-practice-stop') { state.oc.practice = null; render(); return; }
-  if (action === 'oc-practice-restart') {
-    if (!state.oc.practice) return;
-    state.oc.practice.idx = 0;
-    state.tuner.lastAdvance = performance.now();
-    playPracticeStep();
-    render();
-    return;
-  }
-  if (action === 'oc-practice-next' || action === 'oc-practice-prev') {
-    const src = practiceSource(currentInstrument());
-    if (!src) return;
-    const n = practiceSteps(src.entries).length;
-    state.oc.practice.idx = (state.oc.practice.idx + (action === 'oc-practice-next' ? 1 : n - 1)) % n;
-    state.tuner.lastAdvance = performance.now();
-    playPracticeStep();
-    render();
-    return;
-  }
-
-  // ── Add-instrument wizard ─────────────────────────────────────────────────
-  if (action === 'wizard-family') {
-    const fams = state.wizard.families;
-    const f = el.dataset.family;
-    state.wizard.families = fams.includes(f) ? fams.filter(x => x !== f) : [...fams, f];
-    render();
-    return;
-  }
-  if (action === 'wizard-families-next') {
-    if (!state.wizard.families.length) return;
-    state.wizard.queue = INSTRUMENT_FAMILIES.map(f => f.id).filter(f => state.wizard.families.includes(f));
-    state.wizard.history = [];
-    wizardNext();
-    return;
-  }
-  if (action === 'wizard-skip') {
-    setOnboarded();
-    state.wizard = null;
-    state.view = 'selector';
-    navReplace('#scales');
-    render();
-    return;
-  }
-  if (action === 'wizard-skip-step') { wizardNext(); return; }
-  if (action === 'wizard-fl-create') {
-    const fl = state.wizard.fl;
-    if (fl.detect?.listening) stopFluteDetect(null);
-    const chart = fl.chartId === 'custom' ? null : getChart(fl.chartId) ?? chartsForFamily('flute')[0];
-    if (!chart && fl.chartId !== 'custom') return;
-    const inst = chart
-      ? instrumentFromChart(chart.id, fl.keyId ?? chartDefaultKey(chart), { name: fl.name.trim() || wizardFluteName(chart, fl.keyId) })
-      : createCustomFlute({ name: fl.name.trim(), holeCount: fl.holeCount });
-    fl.detect = null;
-    saveInstrument(inst);
-    refreshInstruments();
-    wizardAdded(inst.id, inst.name);
-    return;
-  }
-  if (action === 'wizard-pick-handpan') {
-    const scale = findTuning(el.dataset.id);
-    if (!scale) return;
-    const layout = createLayoutFromScale(scale);
-    saveLayout({
-      id: scale.id, name: scale.name,
-      noteCount: 1 + scale.top.notes.length + scale.bottom.notes.length,
-      layout, savedAt: Date.now(),
-    });
-    state.savedLayouts = getSavedLayouts();
-    scheduleSave();
-    refreshInstruments();
-    state.wizard.search = '';
-    wizardAdded(handpanInstrumentId(scale.id), scale.name);
-    return;
-  }
-  if (action === 'wizard-oc-path') {
-    if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
-    state.wizard.oc.detect = null;
-    state.wizard.oc.path = el.dataset.path || null;
-    render();
-    return;
-  }
-  if (action === 'wizard-oc-chambers') {
-    state.wizard.oc.chambers = parseInt(el.dataset.n, 10);
-    state.wizard.oc.windowStart = null;
-    render();
-    return;
-  }
-  if (action === 'wizard-oc-window') {
-    state.wizard.oc.windowStart = parseInt(el.dataset.start, 10);
-    render();
-    return;
-  }
-  if (action === 'wizard-oc-create') {
-    const oc = state.wizard.oc;
-    if (oc.detect?.listening) stopFluteDetect(null, 'oc');
-    const inst = oc.path === 'have' && oc.chartId !== 'custom' && getChart(oc.chartId)
-      ? instrumentFromChart(oc.chartId, oc.keyId ?? chartDefaultKey(getChart(oc.chartId)), { name: oc.name.trim() })
-      : oc.path === 'have'
-      ? createCustomOcarina({ name: oc.name.trim(), holeCount: oc.holeCount })
-      : Object.assign(createScaleOcarina({
-          scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu,
-          notes: wizardOcarinaPlan().notes, name: oc.name.trim(),
-        }), { design: { scaleId: oc.scaleId, transpose: oc.transpose, includeGu: oc.includeGu, chambers: oc.chambers, windowStart: oc.windowStart, excluded: [] } });
-    saveInstrument(inst);
-    refreshInstruments();
-    state.wizard.oc = newWizard(false).oc;
-    wizardAdded(inst.id, inst.name);
-    return;
-  }
-  if (action === 'wizard-back') {
-    const w = state.wizard;
-    const prev = w.history.pop();
-    if (prev) { w.queue.unshift(w.step); w.step = prev; w.notice = null; }
-    render();
-    return;
-  }
-  if (action === 'wizard-filter-notes') { state.wizard.noteFilter = el.dataset.val; render(); return; }
-  if (action === 'wizard-fl-holes-step') {
-    const fl = state.wizard.fl;
-    fl.holeCount = Math.max(3, Math.min(8, fl.holeCount + parseInt(el.dataset.delta, 10)));
-    render();
-    return;
-  }
-  if (action === 'wizard-fl-octave') {
-    const fl = state.wizard.fl;
-    const chart = getChart(fl.chartId);
-    if (!chart?.octaves) return;
-    const cur = chart.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart)));
-    fl.keyId = chartKeyFor(chart, cur.root, parseInt(el.dataset.octave, 10))?.id ?? fl.keyId;
-    render();
-    return;
-  }
-  if (action === 'wizard-fl-detect') { startFluteDetect(); return; }
-  if (action === 'listen-start') { startListen(); return; }
-  if (action === 'listen-stop') { stopListen(); return; }
-  if (action === 'listen-clear') {
-    if (!state.listen) return;
-    if (state.listen.listening) Object.assign(state.listen, { notes: [], raw: [], lastSince: null }); else state.listen = null;
-    clearMicTakes();
-    render();
-    return;
-  }
-  if (action === 'listen-remove') {
-    if (!state.listen) return;
-    const m = parseInt(el.dataset.midi, 10);
-    state.listen.notes = state.listen.notes.filter(n => n !== m);
-    if (!state.listen.notes.length && !state.listen.listening) state.listen = null;
-    render();
-    return;
-  }
-  if (action === 'wizard-oc-detect') {
-    if (state.wizard.oc.detect?.listening) stopFluteDetect(null, 'oc');
-    else startFluteDetect('oc');
-    return;
-  }
-  if (action === 'wizard-oc-holes-step') {
-    const oc = state.wizard.oc;
-    oc.holeCount = Math.max(4, Math.min(13, oc.holeCount + parseInt(el.dataset.delta, 10)));
-    render();
-    return;
-  }
-  if (action === 'wizard-oc-transpose-step') {
-    const oc = state.wizard.oc;
-    Object.assign(oc, { transpose: Math.max(-6, Math.min(6, oc.transpose + parseInt(el.dataset.delta, 10))), windowStart: null });
-    render();
-    return;
-  }
-  if (action === 'wizard-oc-gu-toggle') {
-    Object.assign(state.wizard.oc, { includeGu: !state.wizard.oc.includeGu, chambers: null, windowStart: null });
-    render();
-    return;
-  }
-
-  // ── Save sheet and Settings › Account ─────────────────────────────────────
   if (saveSheetAction(action, el)) return;
   if (accountAction(action)) return;
-
-  // ── Selector ──────────────────────────────────────────────────────────────
-  if (action === 'filter-notes') {
-    state.noteCountFilter = el.dataset.val;
-    render();
-    return;
-  }
-
-  if (action === 'select-scale') {
-    const scale = findTuning(el.dataset.id);
-    if (!scale) return;
-    state.layout = createLayoutFromScale(scale);
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = null;
-    state.shellMode = 'both';
-    state.chordFilter = { category: 'All', root: 'All' };
-    state.view = 'editor';
-    state.currentInstrumentId = null;
-    navPush(stateToHash());
-    render();
-    return;
-  }
-
-  // ── Saved layouts ─────────────────────────────────────────────────────────
-  if (action === 'save-layout') {
-    if (state.layout.isCustom && !state.layout.savedId) {
-      state.layout.savedId = 'c-' + Date.now();
-    }
-    const id = state.layout.isCustom ? state.layout.savedId : state.layout.id;
-    const total = 1 + state.layout.top.slots.filter(s => s.note).length
-                    + state.layout.bottom.slots.filter(s => s.note).length;
-    saveLayout({
-      id,
-      name: state.layout.name,
-      noteCount: total,
-      layout: JSON.parse(JSON.stringify(state.layout)),
-      savedAt: Date.now(),
-    });
-    state.savedLayouts = getSavedLayouts();
-    scheduleSave();
-    refreshInstruments();
-    state.currentInstrumentId = handpanInstrumentId(id);
-    showToast('Saved to My instruments');
-    render();
-    return;
-  }
-
-  // ── Playlist picker ───────────────────────────────────────────────────────
-  if (action === 'show-playlist-picker') {
-    e.stopPropagation();
-    const chordId = el.dataset.chordId;
-    const favId = el.dataset.chordFavId;
-    // Panel heart (matches the selected chord) preserves any voicing swap;
-    // row hearts always use the canonical chord for that row.
-    const chord = (state.selectedChord && state.selectedChord.id === chordId)
-      ? state.selectedChord
-      : state.chords.find(c => c.id === chordId);
-    if (!chord) return;
-    state.pickerChordFavId = favId;
-    state.pickerChordObj = chord;
-    state.pickerNewPlaylist = false;
-    render();
-    return;
-  }
-
-  if (action === 'update-playlist-entry') {
-    if (!state.selectedChord || !state.sourcePlaylistId || !state.sourceEntryId) return;
-    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-    const newId = favIdForChord(layoutId, state.selectedChord, state.chords);
-    const ok = updatePlaylistChordVoicing(state.sourcePlaylistId, state.sourceEntryId, {
-      id: newId, notes: state.selectedChord.notes, noteCount: state.selectedChord.notes.length,
-    });
-    if (!ok) { showToast('That playlist entry no longer exists'); return; }
-    state.sourceEntryId = newId;
-    state.playlists = getPlaylists();
-    state.favorites = getFavorites();
-    scheduleSave();
-    showToast('Saved to playlist');
-    render();
-    return;
-  }
-
-  if (action === 'close-playlist-picker') {
-    state.pickerChordFavId = null;
-    state.pickerChordObj = null;
-    state.pickerNewPlaylist = false;
-    state.pickerNewProgression = false;
-    render();
-    return;
-  }
-
-  if (action === 'toggle-playlist-chord') {
-    const playlistId = el.dataset.playlistId;
-    const favId = state.pickerChordFavId;
-    const chord = state.pickerChordObj;
-    if (!chord || !favId) return;
-    const pl = state.playlists.find(p => p.id === playlistId);
-    if (!pl) return;
-    if (pl.chords.some(c => c.id === favId)) {
-      removeChordFromPlaylist(playlistId, favId);
-    } else {
-      addChordToPlaylist(playlistId, playlistEntryFor(chord, favId));
-    }
-    state.playlists = getPlaylists();
-    state.favorites = getFavorites();
-    scheduleSave();
-    render();
-    return;
-  }
-
-  if (action === 'show-new-playlist-input') {
-    state.pickerNewPlaylist = true;
-    render();
-    setTimeout(() => document.getElementById('new-playlist-input')?.focus(), 0);
-    return;
-  }
-
-  if (action === 'confirm-new-playlist') {
-    const input = document.getElementById('new-playlist-input');
-    const name = (input?.value || '').trim();
-    if (!name) return;
-    const newId = addPlaylist(name);
-    if (state.pickerChordObj && state.pickerChordFavId) {
-      addChordToPlaylist(newId, playlistEntryFor(state.pickerChordObj, state.pickerChordFavId));
-    }
-    state.playlists = getPlaylists();
-    state.pickerChordFavId = null;
-    state.pickerChordObj = null;
-    state.pickerNewPlaylist = false;
-    scheduleSave();
-    showToast('Playlist created');
-    render();
-    return;
-  }
-
-  // ── Playlist view ─────────────────────────────────────────────────────────
-  if (action === 'open-playlist-chords') {
-    const pl = state.playlists.find(p => p.id === el.dataset.id);
-    if (!pl) return;
-    if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
-    if (pl.chords[0].instrumentId) {
-      if (openPlaylistEntryOnInstrument(pl, pl.chords[0])) render();
-      return;
-    }
-    if (!loadPlaylistChordAt(pl, 0)) { showToast('Scale not found'); return; }
-    state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
-    state.view = 'chords';
-    navPush(stateToHash());
-    render();
-    return;
-  }
-
-  // ── Playlists tab and playlist detail ─────────────────────────────────────
-  if (action === 'hp-play-playlist') {
-    const pl = state.playlists.find(p => p.id === el.dataset.id);
-    if (pl) hpPlayPlaylist(pl);
-    return;
-  }
-  if (action === 'pl-practice') {
-    const inst = currentInstrument();
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!inst || !pl) return;
-    state.view = 'instrument';
-    state.oc.tab = 'playlists';
-    state.oc.playlistId = pl.id;
-    state.oc.practice = { playlistId: pl.id, idx: 0 };
-    navPush(`#i/${inst.id}/playlists`);
-    playPracticeStep();
-    render();
-    return;
-  }
-  if (action === 'pl-go-chords') {
-    if (state.layout) {
-      state.chords = findAllChords(state.layout);
-      state.selectedChord = null;
-      state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
-      state.view = 'chords';
-      navPush(stateToHash());
-    } else if (state.currentInstrumentId) {
-      state.view = 'instrument';
-      state.oc.tab = 'chords';
-      navPush(instUrl(state.currentInstrumentId, 'chords'));
-    }
-    render();
-    return;
-  }
-  if (action === 'pl-mode') { state.plMode = el.dataset.value; render(); return; }
-  if (action === 'pl-row-menu') { e.stopPropagation(); state.plRowMenu = parseInt(el.dataset.idx, 10); render(); return; }
-  if (action === 'pl-row-close') { state.plRowMenu = null; render(); return; }
-  if (action === 'pl-new-open' || action === 'pl-rename-open') {
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    state.plName = action === 'pl-new-open' ? { mode: 'new', value: '' } : { mode: 'rename', id: pl?.id, value: pl?.name ?? '' };
-    render();
-    setTimeout(() => document.getElementById('pl-name-input')?.focus(), 0);
-    return;
-  }
-  if (action === 'pl-name-cancel') { state.plName = null; render(); return; }
-  if (action === 'pl-name-save') {
-    const n = state.plName;
-    if (!n) return;
-    const name = (document.getElementById('pl-name-input')?.value ?? n.value).trim();
-    if (!name) { n.error = true; render(); document.getElementById('pl-name-input')?.focus(); return; }
-    if (n.mode === 'prog-new' || n.mode === 'prog-rename') {
-      const id = n.mode === 'prog-new' ? addProgression(name) : n.id;
-      if (n.mode === 'prog-rename') renameProgression(id, name);
-      state.progressions = getProgressions();
-      state.plName = null;
-      if (n.mode === 'prog-new') showToast('Playlist created', { action: { label: 'Open', run: () => openProgression(id) } });
-      render();
-      return;
-    }
-    if (n.mode === 'new') addPlaylist(name);
-    else renamePlaylist(n.id, name);
-    state.playlists = getPlaylists();
-    state.plName = null;
-    scheduleSave();
-    if (n.mode === 'new') showToast('Playlist created');
-    render();
-    return;
-  }
-
-  // ── Progressions ──────────────────────────────────────────────────────────
-  if (action === 'picker-mode') {
-    state.pickerMode = el.dataset.value === 'progression' ? 'progression' : 'playlist';
-    state.pickerNewPlaylist = false;
-    state.pickerNewProgression = false;
-    render();
-    return;
-  }
-  if (action === 'add-to-progression') {
-    const chord = state.pickerChordObj;
-    const prog = progFind(el.dataset.progId);
-    if (!chord || !prog) return;
-    const no = addStepToProgression(prog.id, playlistEntryFor(chord, state.pickerChordFavId));
-    if (!no) return;
-    state.progressions = getProgressions();
-    // The sheet closes so the toast doesn't cover it; ♡ opens it again on
-    // Progression for the next chord.
-    Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
-    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${prog.name} (chord ${no})`);
-    render();
-    return;
-  }
-  if (action === 'show-new-progression-input') {
-    state.pickerNewProgression = true;
-    render();
-    setTimeout(() => document.getElementById('new-progression-input')?.focus(), 0);
-    return;
-  }
-  if (action === 'confirm-new-progression') {
-    const name = (document.getElementById('new-progression-input')?.value || '').trim();
-    const chord = state.pickerChordObj;
-    if (!name || !chord) return;
-    const id = addProgression(name, [newProgressionStep(playlistEntryFor(chord, state.pickerChordFavId))]);
-    state.progressions = getProgressions();
-    Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
-    showToast(`Added ${progStepTitle({ rootName: chord.rootName, typeName: chord.type.name })} to ${name} (chord 1)`);
-    render();
-    return;
-  }
-  if (action === 'cs-open') { csOpen(el.dataset.progId || null); return; }
-  if (action === 'cs-cancel') { state.chordSheet = null; render(); return; }
-  if (action === 'cs-next') { csNext(); return; }
-  if (action === 'cs-back') {
-    if (state.chordSheet) { state.chordSheet.name = document.getElementById('cs-name')?.value ?? state.chordSheet.name; state.chordSheet.step = 'paste'; }
-    render();
-    return;
-  }
-  if (action === 'cs-semis') {
-    if (!state.chordSheet) return;
-    state.chordSheet.name = document.getElementById('cs-name')?.value ?? state.chordSheet.name;
-    state.chordSheet.semis = parseInt(el.dataset.semis, 10) || 0;
-    render();
-    return;
-  }
-  if (action === 'cs-save') { csSave(); return; }
-  if (action === 'prog-new-open' || action === 'prog-rename-open') {
-    const prog = progFind();
-    state.plName = action === 'prog-new-open' ? { mode: 'prog-new', value: '' } : { mode: 'prog-rename', id: prog?.id, value: prog?.name ?? '' };
-    render();
-    setTimeout(() => document.getElementById('pl-name-input')?.focus(), 0);
-    return;
-  }
-  if (action === 'open-progression') {
-    if (e.target.closest('.row-trail button')) return;
-    openProgression(el.dataset.id);
-    return;
-  }
-  if (action === 'pl-copy-progression') {
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl || !pl.chords.length) return;
-    const id = addProgression(pl.name, pl.chords.map(c => newProgressionStep(c)));
-    state.progressions = getProgressions();
-    showToast(`Copied ${pl.name} as a progression`, { action: { label: 'Open', run: () => openProgression(id) } });
-    render();
-    return;
-  }
-  if (action === 'prog-delete') {
-    const prog = progFind();
-    if (!prog) return;
-    state.confirm = {
-      kind: 'progression', id: prog.id, ok: 'Delete', title: `Delete ${prog.name}?`,
-      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
-    };
-    render();
-    return;
-  }
-  if (action === 'prog-mode') { state.progMode = el.dataset.value === 'order' ? 'order' : 'steps'; render(); return; }
-  if (action === 'prog-row-menu') { e.stopPropagation(); state.progRowMenu = parseInt(el.dataset.idx, 10); render(); return; }
-  if (action === 'prog-row-close') { state.progRowMenu = null; render(); return; }
-  if (['prog-step-up', 'prog-step-down', 'prog-step-remove', 'prog-step-dup', 'prog-step-bars'].includes(action)) {
-    const prog = progFind();
-    const idx = parseInt(el.dataset.idx, 10);
-    if (!prog || !prog.steps[idx]) return;
-    if (action === 'prog-step-up') moveProgressionStep(prog.id, idx, idx - 1);
-    if (action === 'prog-step-down') moveProgressionStep(prog.id, idx, idx + 1);
-    if (action === 'prog-step-remove') removeProgressionStep(prog.id, idx);
-    if (action === 'prog-step-dup') duplicateProgressionStep(prog.id, idx);
-    if (action === 'prog-step-bars') {
-      // A part-bar step (from a chord sheet) grows to a whole bar first.
-      const st = prog.steps[idx];
-      const d = parseInt(el.dataset.delta, 10);
-      if (st.beats != null) { if (d > 0) setProgressionStepBars(prog.id, idx, 1); }
-      else setProgressionStepBars(prog.id, idx, st.bars + d);
-    }
-    state.progressions = getProgressions();
-    render();
-    return;
-  }
-  if (action === 'prog-bpm' || action === 'prog-beats') {
-    const prog = progFind();
-    if (!prog) return;
-    const d = parseInt(el.dataset.delta, 10);
-    setProgressionTiming(prog.id, action === 'prog-bpm' ? { bpm: prog.bpm + d * 5 } : { beatsPerBar: prog.beatsPerBar + d });
-    state.progressions = getProgressions();
-    progRetime(progFind());
-    render();
-    return;
-  }
-  if (action === 'prog-step-tap') {
-    if (e.target.closest('.row-trail button, .prog-bars button')) return;
-    const prog = progFind();
-    const idx = parseInt(el.dataset.idx, 10);
-    const s = prog?.steps[idx];
-    if (!s) return;
-    let ctx = progContext(prog);
-    if (s.missing) { showToast(`${s.symbol ?? 'This chord'} isn't on ${s.scaleName ?? 'this instrument'}`); return; }
-    if (!ctx || !ctx.isHere(s)) { showToast(`This chord isn’t on this instrument; it was added on ${s.scaleName ?? 'another instrument'}`); return; }
-    if (ctx.kind === 'oc') {
-      if (!ctx.open && state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, idx); return; }
-      // The step goes on show (when its instrument is the one on screen) and plays as its arpeggio.
-      if (!ctx.open) { state.progPlay = { id: prog.id, stepId: s.stepId, beat: 0, playing: false }; render(); }
-      initAudio();
-      playSequence(progWindNotes(s), n => { if (!ctx.open && state.progPlay?.stepId === s.stepId && !state.progPlay.playing) progWindShow(ctx.inst, n); });
-      return;
-    }
-    if (ctx.load) {
-      if (!progLoadHandpan(ctx.load)) { showToast('Scale not found'); return; }
-      ctx = progContext(prog);
-    }
-    if (state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, idx); return; }
-    state.progPlay = { id: prog.id, stepId: s.stepId, beat: 0, playing: false };
-    render();
-    progStrike(s);
-    return;
-  }
-  if (action === 'prog-play') {
-    const prog = progFind(el.dataset.id || state.activeProgressionId);
-    if (!prog) return;
-    if (state.view !== 'progression') {
-      // From the Playlists tab: the player lives on the progression's screen.
-      stopAutoplay();
-      Object.assign(state, { view: 'progression', activeProgressionId: prog.id, progMode: 'steps', progRowMenu: null });
-      navPush(`#prog/${encodeURIComponent(prog.id)}`);
-    }
-    // From the chord it stopped on (the button says Play from here), else the first.
-    const at = state.view === 'progression' ? progCurrentIdx(prog) : -1;
-    progStart(prog, at > 0 ? at : null);
-    return;
-  }
-  if (action === 'prog-restart') {
-    // Back to the first chord: playing goes on from there, stopped stays stopped.
-    const prog = progFind();
-    if (!prog) return;
-    const ctx = progContext(prog);
-    if (!ctx) return;
-    const first = nextProgressionStep(prog.steps, -1, ctx.isHere);
-    if (first < 0) return;
-    if (state.progPlay?.playing && state.progPlay.id === prog.id) { progStart(prog, first); return; }
-    state.progPlay = { id: prog.id, stepId: prog.steps[first].stepId, beat: 0, playing: false };
-    render();
-    progStrike(prog.steps[first]);
-    return;
-  }
-  if (action === 'prog-stop') { progStop(); render(); return; }
-  if (action === 'prog-level') {
-    const prog = progFind();
-    if (!prog || !setProgressionLevel(prog.id, el.dataset.value)) return;
-    state.progressions = getProgressions();
-    const pp = state.progPlay;
-    if (pp?.playing && pp.id === prog.id) { const at = progCurrentIdx(prog); progStart(progFind(), at >= 0 ? at : null); return; }
-    render();
-    return;
-  }
-  if (action === 'prog-practice') {
-    const prog = progFind(el.dataset.id || state.activeProgressionId);
-    if (!prog) return;
-    const ctx = state.view === 'instrument' ? progOcContext(currentInstrument()) : progContext(prog);
-    if (!ctx || ctx.kind !== 'oc') return;
-    if (!(state.view === 'instrument' && state.currentInstrumentId === ctx.inst.id)) {
-      if (ctx.open && !openInstrument(ctx.inst.id, { push: false })) { showToast('That ocarina is no longer in My instruments'); return; }
-      state.view = 'instrument';
-      state.oc.tab = 'playlists';
-      navPush(`#i/${ctx.inst.id}/playlists`);
-    }
-    state.oc.practice = { progressionId: prog.id, idx: 0 };
-    playPracticeStep();
-    render();
-    return;
-  }
-
-  if (action === 'open-playlist') {
-    stopAutoplay();
-    state.plMode = 'chords';
-    state.plRowMenu = null;
-    state.activePlaylistId = el.dataset.id;
-    state.view = 'playlist';
-    navPush(`#pl/${encodeURIComponent(el.dataset.id)}`);
-    render();
-    return;
-  }
-
-  if (action === 'delete-playlist') {
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl || pl.id === 'favorites') return;
-    state.confirm = {
-      kind: 'playlist', id: pl.id, ok: 'Delete', title: `Delete ${pl.name}?`,
-      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
-    };
-    render();
-    return;
-  }
-
-  if (action === 'move-chord-up') {
-    const idx = parseInt(el.dataset.idx, 10);
-    reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
-    state.playlists = getPlaylists();
-    scheduleSave();
-    render();
-    return;
-  }
-
-  if (action === 'move-chord-down') {
-    const idx = parseInt(el.dataset.idx, 10);
-    reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
-    state.playlists = getPlaylists();
-    scheduleSave();
-    render();
-    return;
-  }
-
-  if (action === 'remove-playlist-chord') {
-    const idx = parseInt(el.dataset.idx, 10);
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl) return;
-    const chord = pl.chords[idx];
-    if (!chord) return;
-    removeChordFromPlaylist(state.activePlaylistId, chord.id);
-    state.playlists = getPlaylists();
-    state.favorites = getFavorites();
-    scheduleSave();
-    render();
-    return;
-  }
-
-  if (action === 'open-playlist-chord') {
-    const idx = parseInt(el.dataset.idx, 10);
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl) return;
-    if (pl.chords[idx]?.instrumentId) {
-      if (openPlaylistEntryOnInstrument(pl, pl.chords[idx])) render();
-      return;
-    }
-    if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
-    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
-    state.view = 'chords';
-    navPush(stateToHash());
-    render();
-    return;
-  }
-
-  // ── Navigation ────────────────────────────────────────────────────────────
-  if (action === 'back-selector') { goSelector(); return; }
-
-  if (action === 'back-editor') {
-    stopAutoplay();
-    state.view = 'editor';
-    state.selectedChord = null;
-    state.sourcePlaylistId = null;
-    state.sourceEntryId = null;
-    navReplace(stateToHash(), { hpTab: null });
-    render();
-    return;
-  }
-
-  // ── Settings ──────────────────────────────────────────────────────────────
-  if (action === 'set-theme') { state.theme = el.dataset.value; applyTheme(); savePrefs(); render(); return; }
-  if (action === 'set-flats') { state.noteNames = ['auto', 'sharps', 'flats'].includes(el.dataset.value) ? el.dataset.value : 'auto'; savePrefs(); render(); return; }
-  if (action === 'set-solfege') { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; }
-  if (action === 'tempo-set') { setTempo(parseInt(el.dataset.value, 10), { preview: true }); render(); return; }
-  if (action === 'speed-open') { state.speedSheet = true; state.hpMore = false; state.oc.chordMore = false; render(); return; }
-  if (action === 'speed-close') { state.speedSheet = false; render(); return; }
-
-  if (action === 'set-rotation') { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; }
-  if (action === 'set-autoplay-step') {
-    const i = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
-    const next = AUTOPLAY_SECONDS[Math.max(0, Math.min(AUTOPLAY_SECONDS.length - 1, (i < 0 ? 1 : i) + parseInt(el.dataset.delta, 10)))];
-    state.autoplaySeconds = next;
-    savePrefs();
-    render();
-    return;
-  }
-  if (action === 'reset-legends') {
-    state.ocLegendSeen = false;
-    state.handLegendSeen = false;
-    savePrefs();
-    showToast('The legend will show again');
-    return;
-  }
-  if (action === 'open-clay-bodies') {
-    state.view = 'clay';
-    navPush('#settings/clay');
-    render();
-    return;
-  }
-  if (action === 'clay-edit') {
-    const c = getClayBodies().find(x => x.id === el.dataset.id);
-    state.clayEdit = c
-      ? { id: c.id, name: c.name, pct: String(c.shrinkPct), error: null }
-      : { id: '__new__', name: '', pct: '11', error: null };
-    render();
-    return;
-  }
-  if (action === 'clay-cancel') { state.clayEdit = null; render(); return; }
-  if (action === 'clay-save') {
-    const c = state.clayEdit;
-    if (!c) return;
-    c.name = (document.getElementById('clay-name-input')?.value ?? c.name).trim();
-    c.pct = document.getElementById('clay-pct-input')?.value ?? c.pct;
-    const pct = parseFloat(c.pct);
-    c.error = !c.name ? 'name' : !(pct >= 0 && pct <= 30) ? 'pct' : null;
-    if (c.error) { render(); return; }
-    const list = getClayBodies();
-    if (c.id === '__new__') list.push({ id: 'clay-' + Date.now().toString(36), name: c.name, shrinkPct: pct, builds: 0 });
-    else Object.assign(list.find(x => x.id === c.id) ?? {}, { name: c.name, shrinkPct: pct });
-    saveClayBodies(list);
-    state.clayEdit = null;
-    showToast(`${c.name} saved`);
-    render();
-    return;
-  }
-  if (action === 'check-updates') {
-    navigator.serviceWorker?.getRegistration?.().then(r => r?.update()).catch(() => {});
-    if (accountOn()) syncNow();
-    showToast(accountOn() ? 'Checked for updates and synced' : 'Checked for updates');
-    return;
-  }
-
-  // ── Pan rotation ──────────────────────────────────────────────────────────
-  if (action === 'chords-scope') { state.chordsAll = !state.chordsAll; savePrefs(); render(); return; }
-  if (action === 'ed-arrange') { state.edArrange = !edArranging(); render(); return; }
-  if (action === 'ed-arrange-reset') { delete state.layout.pos; render(); return; }
-  if (action === 'toggle-rotation') {
-    state.ringRotated = !state.ringRotated;
-    savePrefs();
-    render();
-    return;
-  }
-
-  // ── Editor ────────────────────────────────────────────────────────────────
-  if (action === 'shell-mode') {
-    state.shellMode = el.dataset.mode;
-    render();
-    return;
-  }
-
-  if (action === 'clone-layout') {
-    state.currentInstrumentId = null;
-    state.layout = {
-      ...state.layout,
-      isCustom: true,
-      id: 'custom',
-      name: `My ${state.layout.name}`,
-      top: {
-        ...state.layout.top,
-        slots: state.layout.top.slots.map(s => ({ ...s })),
-      },
-      bottom: {
-        ...state.layout.bottom,
-        slots: state.layout.bottom.slots.map(s => ({ ...s })),
-      },
-    };
-    render();
-    return;
-  }
-
-  if (action === 'go-chords') {
-    state.chords = findAllChords(state.layout);
-    state.selectedChord = null;
-    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
-    state.view = 'chords';
-    navPush(stateToHash());
-    render();
-    return;
-  }
-
-  if (action === 'ed-centre') {
-    if (layoutInstrument(state.layout) !== 'tongue-drum') return;
-    state.layout.centre = !state.layout.centre;
-    state.chords = findAllChords(state.layout);
-    navReplace(stateToHash());
-    render();
-    return;
-  }
-
-  if (action === 'adjust-capacity') {
-    const shell = el.dataset.shell;
-    const delta = parseInt(el.dataset.delta);
-    const target = state.layout[shell];
-    const newCap = Math.max(0, Math.min(layoutFamilyInfo(layoutInstrument(state.layout)).maxNotes, target.capacity + delta));
-    if (newCap === target.capacity) return;
-
-    if (delta > 0) {
-      target.slots.push({ note: null });
-    } else {
-      // Only remove last slot if it's empty
-      const lastIdx = target.slots.length - 1;
-      if (lastIdx >= 0 && target.slots[lastIdx].note === null) {
-        target.slots.pop();
-      } else {
-        showToast('Remove the last note first');
-        return;
-      }
-    }
-    target.capacity = newCap;
-    state.chords = findAllChords(state.layout);
-    render();
-    return;
-  }
-
-  // Note picker: cancel or overlay background click
-  if (action === 'close-picker') {
-    stopPickListen();
-    state.pendingSlot = null;
-    render();
-    return;
-  }
-  if (action === 'pick-listen') { startPickListen(); return; }
-  if (action === 'pick-listen-stop') { stopPickListen(); render(); return; }
-
-  // Note picker: pick a note
-  if (action === 'pick-note') { setPendingSlotNote(el.dataset.note); return; }
-
-  // ── Chord explorer ─────────────────────────────────────────────────────────
-  if (action === 'hp-filters-open') { state.hpFilters = true; render(); return; }
-  if (action === 'hp-filters-close') { state.hpFilters = false; render(); return; }
-  if (action === 'hp-more-open') { state.hpMore = true; render(); return; }
-  if (action === 'hp-more-close') { state.hpMore = false; render(); return; }
-  if (action === 'hp-filters-clear') {
-    // The sheet's filters; the empty list's "Clear filters" also clears the root.
-    state.chordCountSet.clear();
-    state.chordFilter.category = 'All';
-    if (state.autoplayOn && state.autoplayPlaylistId !== 'All') stopAutoplay();
-    state.chordFilter.playlist = 'All';
-    if (el.dataset.all) state.chordFilter.root = 'All';
-    render();
-    return;
-  }
-  if (action === 'hp-clear-playlist') {
-    if (state.autoplayOn) stopAutoplay();
-    state.chordFilter.playlist = 'All';
-    render();
-    return;
-  }
-  if (action === 'hp-edit-playlist') {
-    // Same as the old "Edit playlist" option of the playlist select.
-    stopAutoplay();
-    state.hpFilters = false;
-    state.plMode = 'chords';
-    state.activePlaylistId = state.chordFilter.playlist;
-    state.view = 'playlist';
-    navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
-    render();
-    return;
-  }
-  if (action === 'toggle-note-count') {
-    const count = el.dataset.count;
-    if (state.chordCountSet.has(count)) state.chordCountSet.delete(count);
-    else state.chordCountSet.add(count);
-    render();
-    return;
-  }
-
-  if (action === 'filter-root') {
-    state.chordFilter.root = el.dataset.root;
-    render();
-    return;
-  }
-
-  if (action === 'select-chord') {
-    const chord = state.chords.find(c => c.id === el.dataset.id);
-    if (!chord) return;
-    stopAutoplay();
-
-    // If the chord list is filtered to a playlist, clicking a row is the
-    // same as opening that entry — show its saved voicing (it may differ
-    // from canonical) and track it so a swap can be saved back.
-    const pl = state.chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === state.chordFilter.playlist) : null;
-    const entry = pl ? pl.chords.find(c => c.chordId === chord.id) : null;
-    if (pl && entry) {
-      state.selectedChord = Array.isArray(entry.notes) ? { ...chord, notes: entry.notes } : chord;
-      state.sourcePlaylistId = pl.id;
-      state.sourceEntryId = entry.id;
-    } else {
-      state.selectedChord = chord;
-      state.sourcePlaylistId = null;
-      state.sourceEntryId = null;
-    }
-
-    navReplace(stateToHash());
-    // Preserve chord list scroll position across render
-    const chordList = document.querySelector('.chord-list');
-    const savedScroll = chordList?.scrollTop ?? 0;
-    render();
-    const newChordList = document.querySelector('.chord-list');
-    if (newChordList) newChordList.scrollTop = savedScroll;
-    // Arpeggiate then play together; show playing animation at the "together" moment
-    initAudio();
-    playChord(state.selectedChord.notes,
-      note => updatePanPlaying([note]),
-      notes => updatePanPlaying(notes)
-    );
-    return;
-  }
-
-  if (action === 'autoplay-restart') {
-    // The playlist's first chord on this handpan; playing goes on from there.
-    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
-    if (!pl) return;
-    const first = pl.chords.findIndex(c => !c.instrumentId);
-    if (first < 0) return;
-    const wasOn = state.autoplayOn;
-    stopAutoplay();
-    if (!loadPlaylistChordAt(pl, first)) return;
-    navReplace(stateToHash());
-    if (wasOn) startAutoplay(pl); else { render(); playSelectedChordSound(); }
-    return;
-  }
-  if (action === 'toggle-autoplay') {
-    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
-    if (!pl) return;
-    if (state.autoplayOn) { stopAutoplay(); render(); }
-    else startAutoplay(pl);
-    return;
-  }
-
-  if (action === 'play-chord') {
-    if (!state.selectedChord) return;
-    initAudio();
-    playChord(state.selectedChord.notes,
-      note => updatePanPlaying([note]),
-      notes => updatePanPlaying(notes)
-    );
-    return;
-  }
-
-  if (action === 'play-scale') {
-    const allNotes = getAllNotes(state.layout);
-    initAudio();
-    playScale(allNotes, note => updatePanPlaying([note]));
-    return;
-  }
-
-  // ── Discover mode ────────────────────────────────────────────────────────
-  if (action === 'hear-start') { listenStart(); return; }
-  if (action === 'hear-stop') { listenStop(); return; }
-  if (action === 'hear-clear') { Object.assign(listenUi(), { history: [], stopped: '' }); render(); return; }
-  if (action === 'listen-oc-note') {
-    listenUi().ocNote = parseInt(el.dataset.midi, 10);
-    initAudio();
-    playNote(midiToNoteName(listenUi().ocNote));
-    render();
-    return;
-  }
-  if (action === 'oc-listen-mode') {
-    const want = el.dataset.value;
-    const now = state.oc.listen ? 'listen' : state.oc.identify ? 'identify' : 'browse';
-    if (want === now) return;
-    state.oc.listen = want === 'listen';
-    state.oc.identify = want === 'identify';
-    state.oc.idNotes = [];
-    render();
-    return;
-  }
-  if (action === 'oc-id-note') {
-    const m = parseInt(el.dataset.midi, 10);
-    const list = state.oc.idNotes ?? (state.oc.idNotes = []);
-    const i = list.indexOf(m);
-    if (i >= 0) list.splice(i, 1); else list.push(m);
-    if (i < 0) { initAudio(); playNote(midiToNoteName(m)); }
-    render();
-    return;
-  }
-  if (action === 'oc-id-clear') { state.oc.idNotes = []; render(); return; }
-  if (action === 'oc-id-play') {
-    const names = [...(state.oc.idNotes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
-    if (names.length >= 2) { initAudio(); playSequence(names, () => {}, 0.55); }
-    return;
-  }
-  if (action === 'oc-id-open') {
-    // The chord found, in Browse: its fingerings in playing order, playlists, octaves.
-    Object.assign(state.oc, { identify: false, idNotes: [], expanded: el.dataset.id, root: 'All', category: 'All', scaleFilter: 'All', counts: [] });
-    render();
-    return;
-  }
-  if (action === 'open-listen-debug') { state.view = 'listen-debug'; navPush('#settings/listen'); render(); return; }
-  if (action === 'listen-tune-reset') {
-    const L = listenUi();
-    Object.assign(L.tune, LISTEN_DEFAULTS);
-    _listenTrack = listenTracker(L.tune);
-    render();
-    return;
-  }
-  if (action === 'toggle-discover-mode') {
-    // From the Browse | Identify | Listen segment: only a change of mode toggles.
-    const want = el.dataset.value ?? (state.discoverMode ? 'browse' : 'identify');
-    const now = state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse';
-    if (want === now) return;
-    stopAutoplay();
-    state.hpListen = want === 'listen';
-    state.discoverMode = want === 'identify';
-    state.discoverNotes = [];
-    state.selectedChord = null;
-    state.sourcePlaylistId = null;
-    state.sourceEntryId = null;
-    render();
-    return;
-  }
-
-  if (action === 'discover-clear') {
-    state.discoverNotes = [];
-    render();
-    return;
-  }
-
-  if (action === 'discover-bookmark') {
-    const idx = parseInt(el.dataset.matchIdx, 10);
-    const chord = identifyChord(state.discoverNotes)[idx];
-    if (!chord) return;
-    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-    state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
-    state.pickerChordObj = chord;
-    state.pickerNewPlaylist = false;
-    render();
-    return;
-  }
-
-  if (action === 'discover-bookmark-custom') {
-    if (state.discoverNotes.length < 2) return;
-    const notes = [...state.discoverNotes];
-    // A shared, note-less id — the favId suffix (added below since no
-    // canonical "custom" chord type exists) is what disambiguates combos.
-    const chord = {
-      id: 'custom', rootName: getNoteName(notes[0]),
-      type: { name: 'Custom', category: 'Custom' }, notes, noteCount: notes.length,
-    };
-    const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-    state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
-    state.pickerChordObj = chord;
-    state.pickerNewPlaylist = false;
-    render();
-    return;
-  }
-
-  if (action === 'discover-play') {
-    const idx = parseInt(el.dataset.matchIdx, 10);
-    const chord = identifyChord(state.discoverNotes)[idx];
-    if (!chord) return;
-    initAudio();
-    playChord(chord.notes, note => updatePanPlaying([note]), notes => updatePanPlaying(notes));
-    return;
-  }
-
-  if (action === 'discover-play-custom') {
-    if (state.discoverNotes.length < 2) return;
-    initAudio();
-    playChord(state.discoverNotes, note => updatePanPlaying([note]), notes => updatePanPlaying(notes));
-    return;
-  }
-
-  if (action === 'copy-url') {
-    const url = location.origin + navUrl(currentPath());
-    navigator.clipboard.writeText(url).then(() => showToast('URL copied!'), () => showToast('Copy the link from the address bar'));
-    return;
-  }
 });
 
 // ── Pan note clicks (Discover mode note-picking + voicing swap) ────────────────
@@ -11255,167 +11458,7 @@ document.addEventListener('change', e => {
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const { action } = el.dataset;
-  if (action === 'select-playlist-filter') {
-    if (el.value === '__edit__') {
-      stopAutoplay();
-      state.activePlaylistId = state.chordFilter.playlist;
-      state.view = 'playlist';
-      navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
-    } else {
-      if (state.autoplayOn && el.value !== state.autoplayPlaylistId) stopAutoplay();
-      state.chordFilter.playlist = el.value;
-    }
-    render();
-  }
-  if (action === 'filter-category') { state.chordFilter.category = el.value; render(); }
-  if (action === 'ie-key') {
-    const inst = getInstrument(el.dataset.id);
-    if (!inst || inst.kind !== 'traditional') return;
-    const before = instrumentFromChart(inst.type, inst.key);
-    const fresh = instrumentFromChart(inst.type, el.value);
-    // A name the app made ("… (D4)") follows the key; one the owner typed stays.
-    if (inst.name === before.name) inst.name = fresh.name;
-    inst.key = fresh.key;
-    // Finger names the owner set stay with their holes; fingerings set by
-    // hand move with the key.
-    const shift = fresh.chambers[0].notes[0] - before.chambers[0].notes[0];
-    const holes = fresh.chambers[0].holes.map((h, i) => (inst.setup?.holes?.[i] ? { ...h, finger: inst.setup.holes[i].finger, side: inst.setup.holes[i].side } : h));
-    if (inst.setup?.fixed) {
-      inst.setup.fixed = Object.fromEntries(Object.entries(inst.setup.fixed).map(([m, st]) => [Number(m) + shift, st]));
-    }
-    inst.chambers = [withFixedFingerings({ ...fresh.chambers[0], holes }, inst.setup?.fixed)];
-    saveInstrument(inst);
-    refreshInstruments();
-    state.oc.selected = null;
-    render();
-    return;
-  }
-  if (action === 'ie-name' || action === 'ie-photo') {
-    const inst = getInstrument(el.dataset.id || state.instEdit);
-    if (!inst) return;
-    if (action === 'ie-name') {
-      inst.name = el.value.trim() || inst.name;
-      // A handpan, tongue drum or kalimba takes its name from its saved
-      // layout (instruments.js reconcileInstruments), so rename that too.
-      if (usesLayout(inst)) renameSavedLayout(inst.layoutId, inst.name);
-      saveInstrument(inst);
-      refreshInstruments();
-      render();
-      return;
-    }
-    const file = el.files?.[0];
-    if (!file) return;
-    readImageFile(file).then(img => {
-      state.photoCrop = { id: inst.id, ...img, ratio: photoRatio(inst), zoom: 1, cx: 0.5, cy: 0.5 };
-      render();
-    }).catch(() => showToast('That photo couldn\'t be read'));
-    return;
-  }
-  if (action === 'lr-photo') { listenReportPhoto(el.files?.[0]); return; }
-  if (action === 'cs-target' && state.chordSheet) { state.chordSheet.target = el.value; return; }
-  if (action === 'oc-scale-filter') { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); }
-  if (action === 'b-input' || action === 'b-shrink' || (action === 'b-window' && el.tagName === 'INPUT')
-      || action === 'b-clay' || action === 'b-from' || action === 's-finger'
-      || (action === 'b-design' && (el.tagName === 'SELECT' || el.tagName === 'INPUT'))) {
-    let inst = currentInstrument();
-    if (!inst) return;
-    const num = parseFloat(el.value);
-    if (action === 'b-input') {
-      // Record fields take a note ("D4", "Re4 +12") or a frequency; other
-      // builder inputs (the test hole in mm) stay plain numbers.
-      const v = el.dataset.kind === 'pitch' ? parsePitch(el.value) : (num > 0 ? num : null);
-      if (el.dataset.kind === 'pitch' && el.value.trim() && v == null) { showToast(`"${el.value.trim()}" isn't a note or a frequency`); render(); return; }
-      setReading(inst, el.dataset.path, v);
-    }
-    if (action === 'b-shrink' && num >= 0) inst.build.shrinkPct = num;
-    if (action === 'b-window') {
-      const ci = parseInt(el.dataset.ci, 10);
-      const per = inst.build.perChamber[ci] = inst.build.perChamber[ci] ?? {};
-      if (num > 0) per.window = { ...chamberBuild(inst, ci).window, [el.dataset.key]: num };
-    }
-    if (action === 'b-clay') {
-      if (el.value === '__new__') {
-        const name = (prompt('Name of the clay body') || '').trim();
-        if (!name) { render(); return; }
-        const pct = parseFloat(prompt('Its shrinkage in %, if known', '11')) || 11;
-        const clay = { id: 'clay-' + Date.now().toString(36), name, shrinkPct: pct, builds: 0 };
-        saveClayBodies([...getClayBodies(), clay]);
-        inst.build.clayBody = clay.id;
-        inst.build.shrinkPct = pct;
-      } else {
-        const clay = getClayBodies().find(c => c.id === el.value);
-        inst.build.clayBody = el.value;
-        if (clay) inst.build.shrinkPct = clay.shrinkPct;
-      }
-    }
-    if (action === 'b-from') {
-      const src = getInstrument(el.value);
-      inst.build.fromId = src ? src.id : null;
-      if (src) {
-        inst.design = { ...(src.design ?? { scaleId: src.scaleId, transpose: src.transpose, includeGu: src.includeGu }) };
-        applyDesign(inst);
-        inst.build.clayBody = src.build.clayBody;
-        const clay = getClayBodies().find(c => c.id === src.build.clayBody);
-        inst.build.shrinkPct = clay ? clay.shrinkPct : src.build.shrinkPct;
-        inst.build.perChamber = (src.build.perChamber ?? []).map(p => ({ window: p?.window, testHoleMm: p?.readings?.leather?.d }));
-      }
-    }
-    if (action === 's-finger') {
-      const setup = holesSetupOf(inst);
-      const h = setup.holes[parseInt(el.dataset.index, 10)];
-      h.finger = el.value;
-      h.side = el.value.endsWith('T') ? 'bottom' : 'top';
-      inst.setup = setup;
-      // The chart's holes are copies made when it was worked out: keep their
-      // finger names in step (the notes don't depend on them).
-      const ch = inst.chambers?.[0]?.holes?.[parseInt(el.dataset.index, 10)];
-      if (ch) Object.assign(ch, { finger: h.finger, side: h.side });
-    }
-    if (action === 'b-design') {
-      inst.design = inst.design ?? { scaleId: inst.scaleId, transpose: inst.transpose, includeGu: inst.includeGu };
-      const key = el.dataset.key;
-      if (key === 'scaleId') Object.assign(inst.design, { scaleId: el.value, chambers: null, windowStart: null, excluded: [] });
-      applyDesign(inst);
-      if (!inst.name || inst.name.endsWith(' ocarina')) inst.name = `${findTuning(inst.scaleId).name} ocarina`;
-    }
-    saveInstrument(inst);
-    refreshInstruments();
-    if (action === 'b-input') bAdvanceChamber(inst);
-    // The Hole fingers sheet stays as it is (and keeps focus) while it's open.
-    if (action === 's-finger' && state.oc.fingersSheet) return;
-    render();
-  }
-
-  if (action === 'oc-category') { state.oc.category = el.value; render(); }
-  if (action === 'wizard-chart') {
-    const t = el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl;
-    if (t.detect?.listening) stopFluteDetect(null, el.dataset.fam === 'oc' ? 'oc' : 'fl');
-    t.chartId = el.value; t.keyId = null;
-    t.detect = null;
-    render();
-  }
-  if (action === 'wizard-fl-root') {
-    const fl = state.wizard.fl;
-    const chart = getChart(fl.chartId);
-    const cur = chart?.keys.find(k => k.id === (fl.keyId ?? chartDefaultKey(chart)));
-    if (cur) fl.keyId = chartKeyFor(chart, el.value, cur.octave)?.id ?? fl.keyId;
-    render();
-  }
-  if (action === 'wizard-key') {
-    (el.dataset.fam === 'oc' ? state.wizard.oc : state.wizard.fl).keyId = el.value;
-  }
-  if (action === 'wizard-oc-scale') {
-    Object.assign(state.wizard.oc, { scaleId: el.value, chambers: null, windowStart: null });
-    render();
-  }
-  if (action === 'set-autoplay-seconds') {
-    state.autoplaySeconds = parseInt(el.value, 10);
-    savePrefs();
-    if (state.autoplayOn && _autoplayTimer) {
-      clearInterval(_autoplayTimer);
-      _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
-    }
-  }
+  runAction(action, el, e, CHANGE_ACTIONS);
 });
 
 // ── Input delegation ──────────────────────────────────────────────────────────

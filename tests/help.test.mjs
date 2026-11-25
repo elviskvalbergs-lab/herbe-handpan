@@ -21,7 +21,7 @@ const DIR = join(ROOT, 'help', 'en');
 const files = readdirSync(DIR).filter(f => f.endsWith('.md')).sort();
 const articles = files.map(f => ({ file: f, ...helpParse(readFileSync(join(DIR, f), 'utf8'), `help/en/${f}`) }));
 const byId = new Map(articles.map(a => [a.id, a]));
-const appSource = readdirSync(join(ROOT, 'js')).filter(f => f.endsWith('.js') && f !== 'features.js')
+const appSource = readdirSync(join(ROOT, 'js'), { recursive: true }).filter(f => f.endsWith('.js') && f !== 'features.js')
   .map(f => readFileSync(join(ROOT, 'js', f), 'utf8')).join('\n');
 const shots = JSON.parse(readFileSync(join(ROOT, 'help', 'screenshots.json'), 'utf8'));
 
@@ -92,12 +92,12 @@ test('deep links, article links and anchors all lead somewhere', () => {
 
 test('every screen with a help entry opens an article', () => {
   for (const [screen, id] of Object.entries(HELP_SCREENS)) assert.ok(byId.has(id), `HELP_SCREENS.${screen} points to "${id}", which does not exist`);
-  // The keys the app can ask for (js/app.js helpScreenKey) are all listed.
+  // The keys the app can ask for (helpScreenKey in js/app/help.js) are all listed.
   const fn = /function helpScreenKey\(\) \{[\s\S]*?\n\}/.exec(appSource)?.[0];
-  assert.ok(fn, 'helpScreenKey not found in js/app.js');
+  assert.ok(fn, 'helpScreenKey not found in js/');
   const asked = [...fn.matchAll(/(?:return|\?|:) '([a-z]+)'/g)].map(m => m[1]);
   assert.ok(asked.length >= 8);
-  for (const key of asked) assert.ok(HELP_SCREENS[key], `js/app.js helpScreenKey can return '${key}', which HELP_SCREENS (js/features.js) does not list`);
+  for (const key of asked) assert.ok(HELP_SCREENS[key], `helpScreenKey can return '${key}', which HELP_SCREENS (js/features.js) does not list`);
 });
 
 test('pictures are made by the script, and every one is used', () => {
