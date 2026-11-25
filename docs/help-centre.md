@@ -1,11 +1,12 @@
 # Help centre: design
 
+**Status: built**, except where a section says "designed, not built".
+
 Oakhum had no help beyond field hints, the install sheet and a one-time
 diagram legend. This is the design of the help "wiki": what end users read
 today at oakhum.com/help and inside the app, what an AI support assistant can
 be connected to later, and the rules that stop it drifting from the product.
 
-Status: built, except where a section says "designed, not built".
 
 ## Decisions
 

@@ -20,7 +20,7 @@ import {
 } from './makers.js';
 import {
   fetchMyMaker, saveMakerProfile, adminListMakers, reviewMaker, resolveMakerReport, reportMaker, openSharedCode, isLoggedIn,
-  fetchMakerCodes, createMakerCodes, retireMakerCode, logMakerEvent, saveCloudInstruments, fetchMakerStats,
+  fetchMakerCodes, createMakerCodes, retireMakerCode, logMakerEvent, saveCloudInstruments, fetchMakerStats, notifyMakerRequest,
 } from './auth.js';
 import { safeSetItem } from './datastore.js';
 
@@ -299,6 +299,7 @@ async function makerSaveProfile() {
   mk.busy = true;
   render();
   const first = !mk.info?.maker;
+  const wasRejected = mk.info?.maker?.status === 'rejected';
   const res = await saveMakerProfile(v.value);
   mk.busy = false;
   if (res?.ok) {
@@ -306,6 +307,8 @@ async function makerSaveProfile() {
     makerKeepAccess(mk.info);
     mk.form = null;
     logEvent('maker_profile', { first, status: res.maker.status });
+    // A new request, or one sent again after "Not now": the owner gets an email.
+    if (res.maker.status === 'pending' && (first || wasRejected)) notifyMakerRequest();
     openMaker('maker', { push: false });
     showToast(first ? 'Request sent' : res.maker.status === 'pending' ? 'Sent again' : 'Saved');
     return;

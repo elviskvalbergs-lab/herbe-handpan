@@ -1,5 +1,7 @@
 # Splitting `js/app.js`
 
+**Status: plan** (status line added 22 Nov 2026). Not started.
+
 A plan, not yet started. Nothing here is built until the open feature pull requests (navigation redesign, songs, makers, help, parity) have merged into `preview`: they all edit `js/app.js`, and a move under them would turn every one into a conflict.
 
 `js/app.js` is 10,609 lines, 551 KB, 444 top-level functions. The other 31 files in `js/` together are 8,357 lines. It has no unit tests: no file in `tests/` imports it or reads it. Everything below was measured on `review/engineering-foundations` (commit `5e38eb7`); line numbers will drift as the feature branches merge, so re-run the counts in "Re-measuring" before starting.
