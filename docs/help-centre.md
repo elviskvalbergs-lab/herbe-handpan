@@ -97,7 +97,7 @@ Intro paragraph.
 | JSON for a chatbot or RAG pipeline | `/help/index.json` | `helpExport()` in `site/src/lib/help.ts` |
 | llmstxt.org files | `/llms.txt`, `/llms-full.txt` | `llmsTxt()`, `llmsFullTxt()` |
 | JSON-LD | each article: `HowTo` (type howto) or `FAQPage`, plus `BreadcrumbList` | `helpJsonLd()` |
-| The app's help sheet, offline | Settings › Help, ⋯ › Help | `build.py` → `HELP_BUNDLE`, `helpSheet()` in `js/app.js` |
+| The app's help sheet, offline | Settings › Help, ⋯ › Help | `build.py` → `HELP_BUNDLE`, `helpSheet()` in `js/app/help.js` |
 | Sitemap entries | `/sitemap.xml` | `site/src/app/sitemap.ts` |
 
 All of the site's outputs are prerendered at build time.

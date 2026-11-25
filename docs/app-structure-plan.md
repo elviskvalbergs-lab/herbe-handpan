@@ -1,6 +1,65 @@
 # Splitting `js/app.js`
 
-A plan, not yet started. Nothing here is built until the open feature pull requests (navigation redesign, songs, makers, help, parity) have merged into `preview`: they all edit `js/app.js`, and a move under them would turn every one into a conflict.
+**Status: built in part** (25 Nov 2026). Section 2 (the action registry) and section 4 (the modules) are **built**: `js/app.js` is gone, and the app is the files in `js/app/` listed below. Section 3 (one instrument adapter), section 7 (esbuild) and section 8 (`// @ts-check`) are still **plan**. The rest of this document is the plan as written before the move (its line numbers are of the old `js/app.js`); where the build departed from it, "What was built" says so, and the code wins.
+
+## What was built
+
+One pull request (`refactor/split-app-js`), one commit per file, each built and tested (unit tests, browser tests). A script checked every step: every top-level statement of the old file is in exactly one new file, unchanged; every branch of the old click and change listeners is one registry entry with the same body; the statements that run while the page loads (calls, listeners) run in the same order.
+
+| File | Lines | What it holds |
+|---|---|---|
+| `state.js` | 127 | `state` and the note spelling |
+| `actions.js` | 28 | `registerActions`, `runAction`; tables `ACTIONS`, `EARLY_ACTIONS`, `CHANGE_ACTIONS` |
+| `render.js` | 295 | `render()`, focus across re-renders, `sheetHtml`, the ⋯ menu, confirm |
+| `util.js` | 40 | `escHtml`, the toast |
+| `ui.js` | 187 | `ui*` primitives, the app bar's buttons |
+| `picker.js` | 231 | the searchable picker |
+| `router.js` | 361 | navigation, URLs, deep links, `openInstrument`, `openStartView` |
+| `measure.js` | 58 | measurement |
+| `help.js` | 54 | the Help sheet (`helpScreenKey`) |
+| `share.js` | 118 | sharing, `currentInstrument` |
+| `settings.js` | 204 | Settings, clay bodies |
+| `tuner-ui.js` | 316 | tuner strip, record fields |
+| `views/chords.js` | 267 | the shared Chords screen parts, Goes well with |
+| `views/home.js` | 262 | My instruments, Play, the row menu |
+| `views/instrument.js` | 121 | the instrument screen's shared tabs, app bar, banner, Playlists and Songs tabs |
+| `views/listen.js` | 225 | Listen (a chord heard) |
+| `views/listen-report.js` | 208 | listening reports |
+| `views/selector.js` | 260 | scale selector, find a scale by ear |
+| `views/setup.js` | 984 | the beginner setup and its guided rounds |
+| `views/songs.js` | 328 | Songs to learn: list, open, share |
+| `views/song-tab.js` | 444 | a song's tab and practising it |
+| `views/wizard.js` | 671 | add-instrument wizard, chart key detection |
+| `views/playlists.js` | 548 | playlists, the playlist picker, playlist chord navigation and autoplay |
+| `views/progression-play.js` | 349 | playing a progression, play levels |
+| `views/progression.js` | 532 | the progression screen |
+| `views/sheet-import.js` | 214 | chord sheet → progression |
+| `views/builder.js` | 1008 | builder and set-up |
+| `views/inst-edit.js` | 554 | photo, hole layout, fingering by hand |
+| `instruments/layout-editor.js` | 359 | the layout editor (Pan / Drum / Keys tab) |
+| `instruments/layout.js` | 572 | handpan, tongue drum, kalimba: Chords tab and helpers |
+| `instruments/wind.js` | 829 | ocarina, flute, recorder: instrument screen, Chords, Practice |
+| `install.js` | 53 | add to home screen |
+| `prefs.js` | 113 | preferences, speed |
+| `sync-ui.js` | 205 | sync and offline |
+| `account.js` | 461 | the save sheet, signing in, Settings › Account |
+| `main.js` | 323 | bootstrap and the listeners |
+
+Where the build departed from the plan:
+- **One pull request**, not nineteen (the owner's choice), and no `tests/app-actions.test.mjs` / `tests/app-imports.test.mjs`: the move was checked by a script instead (above).
+- **The six sub-dispatchers stay functions** (`songAction`, `listenReportAction`, `goesWithAction`, `setupAction`, `saveSheetAction`, `accountAction`, plus `makerClick` from `js/makers-ui.js`), called from the click listener after the registry. Turning them into entries means editing their bodies (shared preambles), which is not a move. Their names do not overlap the registry's, and when they don't handle a name they change nothing, so calling them after the registry rather than in the middle of the old chain does the same.
+- **`EARLY_ACTIONS`**: `picker-open`, `menu-open`, `row-menu`, `visit-save`, `menu-close` ran before the steps that close a menu when one of its rows is tapped, so they are a table of their own, tried before those steps.
+- **Handlers are `(el, e, action)`**: the old bodies use `e` and some read `action`. A branch with an extra condition (`fg-edit-hole`, `b-window`; the change listener's builder fields, `cs-target`) has it as its first line. A key may list several names (`'a, b'`) for one shared body.
+- **Imports**: each file imports what it uses from the engine files (generated from what it uses, which also fixes the old list's missing and unused names). Names between `js/app/` files are shared through the bundle's one scope; no `export`s were added. Making them honest modules is part of section 7.
+- **The `popstate` listener and the input/keydown listeners stay in `main.js`**, after the bootstrap, as before.
+- **File order** follows where each file's load-time statements were in the old file, not the alphabetical order of section 4: `render.js` before `picker.js`, and `install.js`, `prefs.js`, `sync-ui.js`, `account.js` near the end.
+- **Files the plan did not have**: `help.js`, `views/instrument.js` (the shared instrument screen parts from the navigation redesign), `views/song-tab.js`, `views/progression-play.js`, `views/selector.js` (with finding a scale by ear), `instruments/layout-editor.js`. No `instruments/adapter.js` yet (section 3).
+
+---
+
+## The plan, as written before the move
+
+
 
 `js/app.js` is 10,609 lines, 551 KB, 444 top-level functions. The other 31 files in `js/` together are 8,357 lines. It has no unit tests: no file in `tests/` imports it or reads it. Everything below was measured on `review/engineering-foundations` (commit `5e38eb7`); line numbers will drift as the feature branches merge, so re-run the counts in "Re-measuring" before starting.
 

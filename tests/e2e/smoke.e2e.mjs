@@ -1,4 +1,4 @@
-// Browser smoke suite: the safety net for js/app.js, which has no unit
+// Browser smoke suite: the safety net for the app (js/app/), which has no unit
 // tests. It opens the built app in a real browser and walks the paths a
 // person takes most; any uncaught error, console error or missing file
 // fails it. Run by scripts/ci.sh on every pull request:

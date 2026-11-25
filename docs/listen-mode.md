@@ -199,7 +199,7 @@ mic ─▶ audio pipeline ─▶ detection ─▶ song analysis ─▶ Listen vi
 - **Detection** (`js/listen-detect.js`, pure, unit tested in Node): `chromaFromSpectrum`, `chordCandidates(chroma, bass)` → `[{ rootPC, typeId, score }]` (ids from `CHORD_TYPES`), `isSingleNote`, `noteFromYin`, and a `createChordTracker()` with smoothing and hysteresis → `{ chord, alternatives, confidence, stable }`.
 - **Song analysis** (`js/listen-song.js`, pure, unit tested): `createSong()` takes stable chords with times → timeline (chords, bars, uncertainty, corrections), `keyFromChords`, `findLoop` (chords and roots), `tempoFromChanges`, key changes over a window; `follow(loop, tempo, now, evidence)` for Play along.
 - **Instrument adapter** (existing functions): from a detected chord (root + type) to what my instrument plays: the full voicing if it can, else the closest version and the missing notes; for one-note instruments, the chord's playable notes and the key's notes it has.
-- **Listen view** (`js/app.js`, the shared Chords parts): Now card, Song section, focus view, Correct sheet, Debug view.
+- **Listen view** (`js/app/views/listen.js`, the shared Chords parts): Now card, Song section, focus view, Correct sheet, Debug view.
 - **Debug view** (Settings › Listen debug, or a long-press on the Listen title): live chroma bars, the detected pitch and its YIN confidence, the top 5 chord candidates with scores, the noise floor and the smoothing state, and sliders for the thresholds, so detection can be tuned with real instruments.
 
 ## Risks
