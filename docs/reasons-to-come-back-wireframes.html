@@ -99,44 +99,56 @@
   .oc { width: 200px; height: 96px; }
   .fgs { display: inline-flex; align-items: center; gap: 8px; }
   .fgs svg { width: 74px; height: 38px; }
+  .dots i.r { border-style: dashed; position: relative; }
+  .chiprow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fchip { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: var(--r-sm); border: 1px solid var(--border-strong); background: var(--surface-1); font: 600 13px/18px var(--font); }
+  .fchip.on { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
+  .card.tip { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 10px 8px 10px 16px; }
+  .stuck { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 8px 12px; border-radius: var(--r-md); background: var(--accent-soft); font: 500 13px/18px var(--font); }
+  .btn.on-sel { background: var(--selected-bg); border-color: var(--selected-bg); color: var(--on-selected); }
+  .ctrls { height: 72px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: var(--surface-1); border-top: 1px solid var(--border); }
+  .ctrls .ic { color: var(--text-2); font-size: 18px; width: 28px; text-align: center; }
+  .switch.on { background: var(--selected-bg); border-color: var(--selected-bg); }
+  .switch.on::after { left: 21px; background: var(--on-selected); }
 </style>
-</head>
+
 <body>
 <h1>Reasons to come back: wireframes for release 1</h1>
-<p class="intro">Phone size, 390 px wide. Colours, type and sizes are the app's own tokens (<code>styles.css</code>, light theme); every part is a shared one (<code>uiRow</code>, <code>uiSheet</code>, <code>uiSeg</code>, <code>.banner</code>, <code>.badge</code>). The instrument pictures are placeholders for the app's drawings. Songs, keys and note counts are real fits from <code>js/songs.js</code> on a D Kurd handpan and a 12-hole alto C ocarina; their order in "first five" is illustrative. The Songs tab and the wait mode come from other sessions and are drawn only as far as this design needs them. See <code>docs/reasons-to-come-back.md</code>.</p>
+<p class="intro">Revised after review round 1. Phone size, 390 px wide. Colours, type and sizes are the app's own tokens (<code>styles.css</code>, light theme); every part is a shared one (<code>uiRow</code>, <code>uiSheet</code>, <code>uiSeg</code>, <code>.banner</code>, <code>.badge</code>, the toast). The tabs, the player's pinned controls and Wait for me are as the app has them now. The instrument pictures are placeholders for the app's drawings. Songs, keys and note counts are real fits from <code>js/songs.js</code> on a D Kurd handpan and a 12-hole alto C ocarina; the order of the first five is illustrative. See <code>docs/reasons-to-come-back.md</code>.</p>
 
-<h2>The loop: play it through → songbook → next</h2>
+<h2>The loop: finish a song → songbook → next</h2>
 <div class="grid">
 
 <figure>
-  <figcaption>1 · Songs tab, "To learn" (handpan)<small>The songbook's empty state is the plan: five songs, about five minutes each. Number two waiting is the reason for the second visit.</small></figcaption>
+  <figcaption>1 · Songs tab, "To learn" (handpan, account)<small>The first five sit above Songs to learn. Number two waiting is the reason for the second visit. The streak line starts with the first song.</small></figcaption>
   <div class="phone">
-    <div class="appbar">D Kurd ▾<span class="sp"></span><span class="ic">🎤</span><span class="ic">⋯</span></div>
+    <div class="appbar">D Kurd ▾<span class="sp"></span><span class="ic">⑂</span><span class="ic">⋯</span></div>
     <div class="body">
       <div class="seg"><span class="on">To learn</span><span>I can play · 1</span></div>
+      <div class="weeks"><span class="dots"><i class="f"></i></span>Played this week</div>
       <div class="list-title">Your first five on D Kurd · 1 of 5</div>
       <div class="list">
-        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Twinkle, Twinkle, Little Star</div><div class="row-meta">In your songbook · Note by note</div></div><span class="chev">›</span></div>
+        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Twinkle, Twinkle, Little Star</div><div class="row-meta">In your songbook · Played</div></div><span class="chev">›</span></div>
         <div class="row"><span class="lead now">2</span><div><div class="row-title">London Bridge Is Falling Down</div><div class="row-meta">Next · same six notes · about 5 min</div></div><span class="btn p sm">▷ Play</span></div>
         <div class="row"><span class="lead">3</span><div><div class="row-title">Au clair de la lune</div><div class="row-meta">France · F major · same six notes</div></div><span class="chev">›</span></div>
         <div class="row"><span class="lead">4</span><div><div class="row-title">My Bonnie Lies over the Ocean</div><div class="row-meta">Scotland · F major · one new note: A3</div></div><span class="chev">›</span></div>
         <div class="row"><span class="lead">5</span><div><div class="row-title">Pūt, vējiņi</div><div class="row-meta">Latvia · C major · 3/4</div></div><span class="chev">›</span></div>
       </div>
-      <p class="meta" style="margin:0">One a day or one a week, as you like. A song is yours when you've played it through with the microphone listening.</p>
-      <div class="list-title">All songs for this handpan · 21</div>
+      <p class="meta" style="margin:0">One a day or one a week, as you like.</p>
+      <div class="list-title">Songs to learn</div>
+      <div class="chiprow"><span class="fchip on">✦ Christmas · 3</span><span class="fchip">Popular · 22</span><span class="fchip">Countries</span></div>
       <div class="list">
         <div class="row"><span class="lead">♫</span><div><div class="row-title">Tu scendi dalle stelle</div><div class="row-meta">Italy · C major · 6/8</div></div><span class="chev">›</span></div>
-        <div class="row"><span class="lead">♫</span><div><div class="row-title">Pop Goes the Weasel</div><div class="row-meta">England · C major · 6/8</div></div><span class="chev">›</span></div>
       </div>
     </div>
-    <div class="tabbar"><span>Chords</span><span>Pan</span><b>Songs</b><span>Playlists</span></div>
+    <div class="tabbar"><span>Chords</span><b>Songs</b><span>Playlists</span><span>Pan</span></div>
   </div>
 </figure>
 
 <figure>
-  <figcaption>2 · The finish, as a guest (handpan)<small>The sign-up moment moves from Save to here. "Not now" still leaves the drone and the next song.</small></figcaption>
+  <figcaption>2 · The finish, as a guest (handpan)<small>Play reached the last note without Wait for me, so the app asks. "Yes" is the sign-up; "I just listened" keeps the drone and the next song.</small></figcaption>
   <div class="phone">
-    <div class="appbar">‹&nbsp; Twinkle, Twinkle, Little Star</div>
+    <div class="appbar">‹&nbsp; Twinkle, Twinkle, Little Star<span class="sp"></span><span class="ic">⇪</span></div>
     <div class="body">
       <p class="meta" style="margin:0">France · C major · 4/4 · on your handpan</p>
       <div class="stage"><div class="pan">
@@ -146,24 +158,24 @@
     <div class="scrim"></div>
     <div class="sheet">
       <div class="grab"></div>
-      <div><div class="sheet-title">You played it through</div>
-      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">Twinkle, Twinkle, Little Star, all 42 notes, on your D Kurd.</div></div>
-      <span class="btn p block">Keep it in my songbook</span>
-      <div class="fine" style="margin-top:-6px">Free · takes seconds · your songbook on every device, and offline</div>
+      <div><div class="sheet-title">That’s the whole song</div>
+      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">Twinkle, Twinkle, Little Star, all 42 notes. Did you play along?</div></div>
+      <span class="btn p block">Yes · keep it in my songbook</span>
+      <div class="fine" style="margin-top:-6px">Free · takes seconds · your songbook and weekly streak on every device</div>
       <span class="btn s block">▷ Play it again over a drone in C</span>
       <div class="next">
         <div><div class="over">Next</div><div class="row-title">London Bridge Is Falling Down</div><div class="row-meta">Same six notes · about 5 min</div></div>
         <span class="btn s sm">Open</span>
       </div>
-      <span class="btn g block">Not now</span>
+      <span class="btn g block">I just listened</span>
     </div>
   </div>
 </figure>
 
 <figure>
-  <figcaption>3 · The finish, signed in (ocarina)<small>The same sheet. The reason for the next song is worked out, and on a wind instrument it shows the new fingering.</small></figcaption>
+  <figcaption>3 · The finish with Wait for me (ocarina, account)<small>The app heard it, so no question. The microphone adds a line about hard notes and a way to report a mishearing.</small></figcaption>
   <div class="phone">
-    <div class="appbar">‹&nbsp; Ode to Joy</div>
+    <div class="appbar">‹&nbsp; Ode to Joy<span class="sp"></span><span class="ic">⇪</span></div>
     <div class="body">
       <p class="meta" style="margin:0">Germany · D major · 4/4 · on your ocarina</p>
       <div class="stage light">
@@ -173,32 +185,33 @@
     <div class="scrim"></div>
     <div class="sheet">
       <div class="grab"></div>
-      <div><div class="sheet-title">In your songbook</div>
-      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">Ode to Joy · Note by note · on your alto C ocarina. That's 3 songs.</div></div>
-      <div class="weeks"><span class="dots"><i class="f"></i><i></i><i class="f"></i><i class="f"></i></span>Played 3 of the last 4 weeks</div>
-      <span class="btn p block">▷ Play it again over a drone in D</span>
+      <div><div class="sheet-title">Oakhum heard every note</div>
+      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">Ode to Joy is in your songbook. That’s 3 songs on your alto C ocarina.</div></div>
+      <div class="weeks"><span class="dots"><i class="f"></i><i class="r"></i><i class="f"></i><i class="f"></i></span>4 weeks in a row</div>
+      <span class="btn s block">▷ Play it again over a drone in D</span>
       <div class="next">
         <div><div class="over">Next</div><div class="row-title">Frère Jacques</div><div class="row-meta">One new fingering: B5</div>
           <div class="fgs" style="margin-top:6px"><svg viewBox="0 0 200 96"><path d="M14 22 C60 4 150 30 190 70 C170 92 120 84 96 70 C70 60 40 60 22 40 Z" fill="#EADBC3" stroke="#BBA584" stroke-width="3"/><g fill="#28271F"><circle cx="52" cy="30" r="8"/><circle cx="76" cy="38" r="9"/></g><g fill="#FBF6EC" stroke="#28271F" stroke-width="2.5"><circle cx="100" cy="46" r="8"/><circle cx="122" cy="56" r="9"/><circle cx="146" cy="64" r="8"/></g></svg><span class="badge acc">B5 · new</span></div>
         </div>
-        <span class="btn s sm">Open</span>
+        <span class="btn p sm">Open</span>
       </div>
+      <p class="meta" style="margin:0">2 notes were hard to hear: bar 3, bar 7. <u>Oakhum misheard? Send this take</u></p>
       <span class="btn g block">Done</span>
     </div>
   </div>
 </figure>
 
 <figure>
-  <figcaption>4 · Songs tab, "I can play" (ocarina)<small>The songbook. Levels are words, not scores. A song known on another instrument is offered here.</small></figcaption>
+  <figcaption>4 · Songs tab, "I can play" (ocarina)<small>The songbook. Levels are words. The hollow dot with a dash is a rest week: forgiven, never mentioned.</small></figcaption>
   <div class="phone">
-    <div class="appbar">Alto C 12-hole oc… ▾<span class="sp"></span><span class="ic">🎤</span><span class="ic">⋯</span></div>
+    <div class="appbar">Alto C 12-hole oc… ▾<span class="sp"></span><span class="ic">⑂</span><span class="ic">⋯</span></div>
     <div class="body">
       <div class="seg"><span>To learn</span><span class="on">I can play · 3</span></div>
-      <div class="weeks"><span class="dots"><i class="f"></i><i></i><i class="f"></i><i class="f"></i></span>Played 3 of the last 4 weeks<span style="flex:1"></span><span class="meta" style="text-decoration:underline">Show more</span></div>
+      <div class="weeks"><span class="dots"><i class="f"></i><i class="r"></i><i class="f"></i><i class="f"></i></span>4 weeks in a row</div>
       <div class="list">
-        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Ode to Joy</div><div class="row-meta">D major · played this week</div></div><span class="badge ok">Note by note</span></div>
-        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Twinkle, Twinkle, Little Star</div><div class="row-meta">A major · played 4 times · last in the week of 9 Nov</div></div><span class="badge ok">Note by note</span></div>
-        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Stand by Me (my chord sheet)</div><div class="row-meta">Progression · 8 steps</div></div><span class="badge ok">Played through</span></div>
+        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Ode to Joy</div><div class="row-meta">D major · this week</div></div><span class="badge ok">Heard</span></div>
+        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Twinkle, Twinkle, Little Star</div><div class="row-meta">A major · played 4 times</div></div><span class="badge">Played</span></div>
+        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Stand by Me (my chord sheet)</div><div class="row-meta">Progression · 8 steps</div></div><span class="badge">Played</span></div>
       </div>
       <div class="list-title">You play these on your D Kurd</div>
       <div class="list">
@@ -208,9 +221,9 @@
         <div><div class="over">Next</div><div class="row-title">Frère Jacques</div><div class="row-meta">One new fingering: B5 · about 5 min</div></div>
         <span class="btn p sm">▷ Play</span>
       </div>
-      <p class="meta" style="margin:0">A song is added when you play it through with the microphone listening.</p>
+      <p class="meta" style="margin:0">A song goes in when you play it to the end. With Wait for me on, Oakhum checks the notes as you go.</p>
     </div>
-    <div class="tabbar"><span>Notes</span><span>Chords</span><b>Songs</b><span>Playlists</span></div>
+    <div class="tabbar"><span>Chords</span><b>Songs</b><span>Playlists</span><span>Notes</span></div>
   </div>
 </figure>
 </div>
@@ -219,22 +232,22 @@
 <div class="grid">
 
 <figure>
-  <figcaption>5 · Home, signed in<small>One pick-up row on top. Each instrument says what you can play on it. A missed week is an empty dot and no words.</small></figcaption>
+  <figcaption>5 · Home, signed in<small>One pick-up card on top; each instrument says what you can play on it.</small></figcaption>
   <div class="phone">
-    <div class="appbar">My instruments<span class="sp"></span><span class="ic">🎤</span><span class="ic">⚙</span></div>
+    <div class="appbar">My instruments<span class="sp"></span><span class="ic">⑂</span><span class="ic">⚙</span></div>
     <div class="body">
       <div class="card" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center">
         <div><div class="over">Pick up where you left off</div><div class="card-title">London Bridge Is Falling Down</div><div class="meta">On your D Kurd · same six notes · about 5 min</div></div>
         <span class="btn p">▷ Play</span>
       </div>
-      <div class="weeks"><span class="dots"><i class="f"></i><i></i><i class="f"></i><i class="f"></i></span>Played 3 of the last 4 weeks</div>
+      <div class="weeks"><span class="dots"><i class="f"></i><i class="r"></i><i class="f"></i><i class="f"></i></span>4 weeks in a row</div>
       <div class="list">
         <div class="row"><span class="lead">◎</span><div><div class="row-title">D Kurd</div><div class="row-meta">Handpan · 1 song · 1 of your first five</div></div><span class="chev">⋯</span></div>
         <div class="row"><span class="lead">◖</span><div><div class="row-title">Alto C 12-hole ocarina</div><div class="row-meta">Ocarina · 3 songs · played this week</div></div><span class="chev">⋯</span></div>
       </div>
       <span class="btn s block">＋ Add instrument</span>
       <div class="list">
-        <div class="row"><span class="lead">⌕</span><div><div class="row-title">Play something else</div><div class="row-meta">Any handpan, tongue drum, kalimba, ocarina or flute</div></div><span class="chev">›</span></div>
+        <div class="row"><span class="lead">⌕</span><div><div class="row-title">Play something else</div><div class="row-meta">Any handpan, tongue drum, kalimba, ocarina, flute or recorder</div></div><span class="chev">›</span></div>
       </div>
       <div class="list-title">Playlists</div>
       <div class="list">
@@ -245,75 +258,87 @@
 </figure>
 
 <figure>
-  <figcaption>6 · Opening an instrument on a later day (handpan)<small>An account opens on its last screen, so the next song comes to it: one line, once a day at most, closable. The shared banner.</small></figcaption>
+  <figcaption>6 · A later day, and a nudge (handpan, Chords)<small>The Next banner shows once a day at most. The tip is a nudge from the catalogue. Drawn together to save a screen: at most one nudge shows per visit.</small></figcaption>
   <div class="phone">
-    <div class="appbar">D Kurd ▾<span class="sp"></span><span class="ic">🎤</span><span class="ic">⋯</span></div>
+    <div class="appbar">D Kurd ▾<span class="sp"></span><span class="ic">⑂</span><span class="ic">⋯</span></div>
     <div class="body">
       <div class="banner"><span><b>Next: London Bridge Is Falling Down</b><br>Same six notes as Twinkle, Twinkle · about 5 min</span><span style="display:flex;align-items:center"><span class="btn p sm">▷ Play</span><span class="x">✕</span></span></div>
       <div class="stage"><div class="pan">
         <i class="d" style="left:50%;top:50%">D</i><i style="left:50%;top:88%">A</i><i style="left:22%;top:76%">A#</i><i style="left:78%;top:76%">C</i><i style="left:12%;top:48%">D</i><i style="left:88%;top:48%">E</i><i style="left:27%;top:20%">F</i><i style="left:73%;top:20%">G</i><i style="left:50%;top:11%">A</i>
       </div></div>
-      <div class="seg"><span class="on">Browse</span><span>Identify</span><span>Listen</span></div>
-      <p class="meta" style="margin:0">6 main chords · Show all 61</p>
+      <div class="card tip"><div><div class="row-title">Your 3 favourite chords</div><div class="row-meta">Put them in order and play them as a progression, in time.</div></div><span class="btn s sm">Try it</span><span class="x">✕</span></div>
       <div class="list">
-        <div class="row"><span></span><div><div class="row-title">D Minor</div><div class="row-meta">Minor</div></div><span class="chev">♡</span></div>
-        <div class="row"><span></span><div><div class="row-title">F Major</div><div class="row-meta">Major</div></div><span class="chev">♡</span></div>
-        <div class="row"><span></span><div><div class="row-title">G Minor</div><div class="row-meta">Minor</div></div><span class="chev">♡</span></div>
-        <div class="row"><span></span><div><div class="row-title">A Minor</div><div class="row-meta">Minor</div></div><span class="chev">♡</span></div>
+        <div class="row"><span></span><div><div class="row-title">D Minor</div><div class="row-meta">Minor</div></div><span class="chev">♥</span></div>
+        <div class="row"><span></span><div><div class="row-title">F Major</div><div class="row-meta">Major</div></div><span class="chev">♥</span></div>
+        <div class="row"><span></span><div><div class="row-title">G Minor</div><div class="row-meta">Minor</div></div><span class="chev">♥</span></div>
       </div>
     </div>
-    <div class="tabbar"><b>Chords</b><span>Pan</span><span>Songs</span><span>Playlists</span></div>
+    <div class="tabbar"><b>Chords</b><span>Songs</span><span>Playlists</span><span>Pan</span></div>
   </div>
 </figure>
 
 <figure>
-  <figcaption>7 · "When do you like to play?" (ocarina)<small>Asked once, after the first song. The calendar entry stores nothing anywhere. The email switch is off until tapped; emails start with release 2.</small></figcaption>
+  <figcaption>7 · Wait for me, stuck (ocarina)<small>After about 8 seconds on one note while sound is coming in. Skip always works; Tell us opens the listening report (9).</small></figcaption>
   <div class="phone">
-    <div class="appbar">Alto C 12-hole oc… ▾<span class="sp"></span><span class="ic">🎤</span><span class="ic">⋯</span></div>
+    <div class="appbar">‹&nbsp; Frère Jacques<span class="sp"></span><span class="ic">⇪</span></div>
     <div class="body">
-      <div class="seg"><span>To learn</span><span class="on">I can play · 1</span></div>
-      <div class="list"><div class="row"><span class="lead done">✓</span><div><div class="row-title">Twinkle, Twinkle, Little Star</div><div class="row-meta">A major · played today</div></div><span class="badge ok">Note by note</span></div></div>
-    </div>
-    <div class="scrim"></div>
-    <div class="sheet">
-      <div class="grab"></div>
-      <div><div class="sheet-title">When do you like to play?</div>
-      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">A little every week keeps it going. Put 15 minutes in your calendar; the entry opens your ocarina.</div></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="field">Sunday <span>▾</span></div><div class="field">19:00 <span>▾</span></div>
+      <p class="meta" style="margin:0">France · D major · 4/4 · on your ocarina</p>
+      <div class="stage light">
+        <svg class="oc" viewBox="0 0 200 96" aria-label="ocarina picture"><path d="M14 22 C60 4 150 30 190 70 C170 92 120 84 96 70 C70 60 40 60 22 40 Z" fill="#EADBC3" stroke="#BBA584" stroke-width="2"/><g fill="#28271F"><circle cx="52" cy="30" r="7"/><circle cx="76" cy="38" r="8"/></g><g fill="#FBF6EC" stroke="#28271F" stroke-width="1.5"><circle cx="100" cy="46" r="7"/><circle cx="122" cy="56" r="8"/><circle cx="146" cy="64" r="7"/><circle cx="166" cy="72" r="5"/></g></svg>
       </div>
-      <span class="btn p block">Add to my calendar</span>
-      <div class="fine" style="margin-top:-6px">Every week, in your own calendar. Oakhum keeps nothing; delete the entry to stop.</div>
-      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border-top:1px solid var(--border);padding-top:12px">
-        <div><div class="row-title">Email me the tune of the week</div><div class="row-meta">One email a week at most. Stop any time. <u>Privacy notice</u></div></div>
-        <span class="switch"></span>
-      </div>
-      <span class="btn g block">Not now</span>
+      <div style="display:flex;align-items:baseline;gap:10px"><span style="font:700 24px/32px var(--font)">B5</span><span class="meta">Next A5</span><span style="flex:1"></span><span class="meta">14 / 32</span></div>
+      <div class="stuck"><span>🎤 Waiting for B5 · hearing A#5</span><span style="display:flex;gap:6px"><span class="btn s sm">Skip this note</span><span class="btn g sm">Tell us</span></span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><span class="btn s on-sel">🎤 Wait for me</span><span class="btn s">⟲ Loop from here</span></div>
+      <p class="meta" style="margin:0">The sound stays on your phone unless you choose to send it to us.</p>
     </div>
+    <div class="ctrls"><span class="ic">«</span><span class="ic">|◁</span><span class="btn p" style="flex:1">▷ Play</span><span class="ic">▷|</span><span class="btn s sm">1×</span></div>
   </div>
 </figure>
 
 <figure>
-  <figcaption>8 · A progression played to the end (handpan)<small>The existing play levels are the levels. Without the microphone checking chords, the mark is the quieter "Played along".</small></figcaption>
+  <figcaption>8 · A streak milestone (handpan)<small>Once, the first time the app opens after the fourth week. It names the music, and plays a short arpeggio on the instrument.</small></figcaption>
   <div class="phone">
-    <div class="appbar">‹&nbsp; Stand by Me</div>
+    <div class="appbar">D Kurd ▾<span class="sp"></span><span class="ic">⑂</span><span class="ic">⋯</span></div>
     <div class="body">
       <div class="stage"><div class="pan">
-        <i class="d" style="left:50%;top:50%">D</i><i style="left:50%;top:88%">A</i><i style="left:22%;top:76%">A#</i><i class="on" style="left:78%;top:76%">C</i><i style="left:12%;top:48%">D</i><i style="left:88%;top:48%">E</i><i class="on" style="left:27%;top:20%">F</i><i style="left:73%;top:20%">G</i><i class="on" style="left:50%;top:11%">A</i>
+        <i class="d on" style="left:50%;top:50%">D</i><i style="left:50%;top:88%">A</i><i style="left:22%;top:76%">A#</i><i style="left:78%;top:76%">C</i><i style="left:12%;top:48%">D</i><i style="left:88%;top:48%">E</i><i class="on" style="left:27%;top:20%">F</i><i style="left:73%;top:20%">G</i><i class="on" style="left:50%;top:11%">A</i>
       </div></div>
-      <div class="seg" style="font-size:13px"><span>Chord</span><span class="on">Roots</span><span>Arpeggio</span><span>Groove</span></div>
     </div>
     <div class="scrim"></div>
     <div class="sheet">
       <div class="grab"></div>
-      <div><div class="sheet-title">Played to the end</div>
-      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">Stand by Me at Roots, 8 steps at 96 BPM. It's in your songbook as <span class="badge">Played along · Roots</span></div></div>
-      <div class="next">
-        <div><div class="over">Next</div><div class="row-title">The same song at Arpeggio</div><div class="row-meta">Root on beat 1, then the chord's other notes</div></div>
-        <span class="btn p sm">▷ Play</span>
+      <div class="weeks"><span class="dots"><i class="f"></i><i class="r"></i><i class="f"></i><i class="f"></i></span></div>
+      <div><div class="sheet-title">4 weeks in a row</div>
+      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">6 songs on your D Kurd in a month, 2 of them new.</div></div>
+      <div class="list">
+        <div class="row"><span class="lead done">✓</span><div><div class="row-title">London Bridge Is Falling Down</div><div class="row-meta">New this month</div></div><span class="btn s sm">▷</span></div>
+        <div class="row"><span class="lead done">✓</span><div><div class="row-title">Au clair de la lune</div><div class="row-meta">New this month</div></div><span class="btn s sm">▷</span></div>
       </div>
-      <span class="btn s block">Add a weekly time to my calendar</span>
+      <span class="btn p block">Play one of them</span>
       <span class="btn g block">Done</span>
+      <div class="fine">Turn these off in Settings › Tips and congratulations</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption>9 · Tell us: the listening report from a song (ocarina)<small>The sheet that already exists, with the song as its context. Nothing is sent until Send.</small></figcaption>
+  <div class="phone">
+    <div class="appbar">‹&nbsp; Frère Jacques</div>
+    <div class="body"></div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="sheet-title">Help us hear it right</div>
+      <div class="meta" style="font-size:15px;line-height:22px;color:var(--text-2)">Tell us what Oakhum got wrong. We’ll listen, fix it and let you know.</div>
+      <div class="meta"><b style="color:var(--text-3)">Waiting for</b> B5 in Frère Jacques · <b style="color:var(--text-3)">Oakhum heard</b> A#5 · A#5 · A#5</div>
+      <div class="field" style="min-height:72px;align-items:flex-start;padding-top:10px;color:var(--text-3);font-weight:400">What was wrong? For example: I played B5 and it didn’t move on.</div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center">
+        <div><div class="row-title">Send the recording (48 s)</div><div class="row-meta">It helps most: we hear what Oakhum heard. It may also catch voices in the room.</div></div>
+        <span class="switch on"></span>
+      </div>
+      <div class="field">Your email (to hear back)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><span class="btn g">Cancel</span><span class="btn p">Send</span></div>
     </div>
   </div>
 </figure>
