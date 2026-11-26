@@ -30,7 +30,7 @@ The first time, Oakhum asks for your email, because playlists are kept in your f
 
 Open the playlist and tap Play. Oakhum plays the chords in order, in time, and lights the notes on your instrument. Tap a chord in the list to hear just that one. The button next to Play goes back to the first chord.
 
-On an ocarina, flute or recorder the button says {{practice}}. It takes you through the fingerings of each chord, note by note.
+On an ocarina, flute or recorder Play shows the fingering of each note in turn, in time. To go at your own pace, open the playlist and tap {{practice}}: it takes you through the fingerings of each chord, note by note.
 
 ![A playlist with four chords](img:playlist)
 

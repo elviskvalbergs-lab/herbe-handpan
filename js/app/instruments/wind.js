@@ -18,7 +18,7 @@ import { logEvent } from '../../auth.js';
 // State of the ocarina / flute views; reset when switching instrument.
 function newOcState() {
   return {
-    tab: 'notes', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
+    tab: 'chords', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
     category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
     missingOpen: false, buildChamber: 0, fingersSheet: false, chordMore: false,
     filtersOpen: false, root: 'All', counts: [],

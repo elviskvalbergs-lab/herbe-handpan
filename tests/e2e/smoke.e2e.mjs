@@ -269,6 +269,24 @@ try {
     await p.keyboard.press('Escape');
     await p.locator('[data-sheet="menu"]').waitFor({ state: 'detached' });
   });
+  await step('a handpan\'s Chords shows its first chord before one is tapped, as every instrument does', deeper, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/chords`);
+    await p.locator('.hp-card [data-action="play-chord"]').waitFor();
+    assert.equal(await p.locator('[data-action="select-chord"][aria-current="true"], [data-action="select-chord"].is-current').count(), 1, 'the first chord is the current one');
+  });
+  await step('Play on an ocarina\'s Playlists tab plays the playlist, as on a handpan', deeper, async p => {
+    const oc = catalogueLinks().find(l => l.family === 'ocarina');
+    await p.goto(`${app.base}${oc.path}/songs`);
+    await p.click('[data-action="cs-open"]');
+    await p.fill('.sheet-root textarea', 'C | F | G | C');
+    await p.click('[data-action="cs-next"]');
+    await p.click('[data-action="cs-save"]');
+    await p.locator('[data-action="prog-play"]').waitFor();
+    await p.goto(`${app.base}${oc.path}/playlists`);
+    assert.equal(await p.locator('[data-action="prog-practice"][data-id]').count(), 0, 'the list says Play, not Practice');
+    await p.locator('[data-action="prog-play"][data-id]:not([disabled])').first().click();
+    await p.locator('[data-action="prog-stop"]').first().click();
+  });
   await deeper.ctx.close();
 
   // ── Links that aren't in the catalogue ────────────────────────────────────

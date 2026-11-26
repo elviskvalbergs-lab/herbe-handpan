@@ -94,7 +94,7 @@ export const UI_LABELS = {
   'level-groove':    'Groove',
   'tempo':           'Tempo',
   'order':           'Order',
-  'practice':        'Practice',
+  'practice':        'Practice chord by chord',
   'send-code':       'Send code',
   'not-now':         'Not now',
   'sign-in':         'Sign in',

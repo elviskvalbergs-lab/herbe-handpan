@@ -121,10 +121,13 @@ function hpRelatedHtml(chord) {
 }
 
 function viewChords() {
+  const { filtered, roots, layoutId, main, all } = hpFilteredChords();
+  // A chord is always shown, as on every instrument: the first one until
+  // another is picked.
+  if (!state.selectedChord && !state.discoverMode && !state.hpListen && filtered.length) state.selectedChord = filtered[0];
   const { chords, chordFilter, selectedChord, layout } = state;
   const uf = state.useFlats;
   const us = state.useSolfege;
-  const { filtered, roots, layoutId, main, all } = hpFilteredChords();
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;

@@ -233,9 +233,7 @@ function progressionRowsHtml(inst, { home = false } = {}) {
       });
     }
     const here = hereOf(p);
-    const trail = inst
-      ? `<button type="button" class="btn btn-primary btn-sm" data-action="prog-practice" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
-      : `<button type="button" class="btn btn-primary btn-sm" data-action="prog-play" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
+    const trail = `<button type="button" class="btn btn-primary btn-sm" data-action="prog-play" data-id="${escHtml(p.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
     return uiRow({
       lead: 'list-ordered', title: p.name, chevron: true, action: 'open-progression', data: { id: p.id }, trail,
       meta: `${here === n ? `${n} chord${n !== 1 ? 's' : ''}` : `${here} of ${n} chords here`} · ${p.bpm} BPM`,
