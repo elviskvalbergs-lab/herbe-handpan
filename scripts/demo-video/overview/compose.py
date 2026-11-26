@@ -9,6 +9,7 @@
   python3 ../voiceover.py    # the voice-over from lines.py, vo/*.wav (Kokoro, free)
   python3 compose.py         # -> oakhum-overview.mp4
   python3 compose.py vo-elevenlabs   # the final voice -> oakhum-overview-elevenlabs.mp4
+  node scenes.js 9x16 && python3 compose.py vo-elevenlabs 9x16   # the 9:16 cut -> oakhum-overview-9x16-elevenlabs.mp4
 
 Shared parts in ../videokit.py. Output stays in this folder, uncommitted.
 """
@@ -18,7 +19,10 @@ sys.path.insert(0, os.path.dirname(HERE))
 os.chdir(HERE)
 from videokit import Video, Phone, VO_LEAD
 
-v = Video('oakhum-overview', sys.argv[1] if len(sys.argv) > 1 else 'vo')
+args = sys.argv[1:]
+fmt = '9x16' if '9x16' in args else '16x9'
+vo_dir = next((a for a in args if a != '9x16'), 'vo')
+v = Video('oakhum-overview', vo_dir, fmt)
 base = Phone()                    # ../record.js: the D Kurd scale, and F then C for the end card
 rec = {k: Phone(os.path.join(HERE, 'rec', k)) for k in ('o2', 'o3', 'o4', 'o5')}
 
@@ -33,7 +37,7 @@ START = {
 v.still('o1', 4.0)
 for k, (name, offset, least) in START.items():
     dur = v.fit(k, least)
-    v.phone(f'seg_{k}.mp4', [(f'scenes/{k}.png', 0)], rec[k].video, rec[k].at(name, offset), dur, {k: VO_LEAD})
+    v.phone(v.seg(k), [(v.scene(k), 0)], rec[k].video, rec[k].at(name, offset), dur, {k: VO_LEAD})
 v.still('o6', 6.0, zoom=False)
 
 # Sound: the app's own instruments under the whole video, with no gaps
@@ -44,12 +48,12 @@ def scene_sound(k):
     """A phone scene's recording, from the moment the scene starts."""
     name, offset, _ = START[k]
     return rec[k].t[name] + offset - rec[k].audio_offset
-o5_listen = at['seg_o5.mp4'] - START['o5'][1] + 0.15   # the microphone starts just after the tap on Listen
+o5_listen = at[v.seg('o5')] - START['o5'][1] + 0.15   # the microphone starts just after the tap on Listen
 v.bed([
     (base.audio, base.sound('scale'), 0.0, 0.8),                    # the D Kurd scale: "its own notes"
-    (rec['o3'].audio, scene_sound('o3'), at['seg_o3.mp4'], 1.0),    # the three chords
-    (rec['o4'].audio, scene_sound('o4'), at['seg_o4.mp4'], 1.0),    # the melody on the kalimba
+    (rec['o3'].audio, scene_sound('o3'), at[v.seg('o3')], 1.0),    # the three chords
+    (rec['o4'].audio, scene_sound('o4'), at[v.seg('o4')], 1.0),    # the melody on the kalimba
     ('guitar.wav', 0.0, o5_listen, 0.9),                            # the friend's guitar
-    (base.audio, base.sound('F Major'), at['seg_o6.mp4'] - 0.8, 0.55),  # F, then C: the ending resolves
+    (base.audio, base.sound('F Major'), at[v.seg('o6')] - 0.8, 0.55),  # F, then C: the ending resolves
 ])
 v.finish()

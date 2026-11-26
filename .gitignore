@@ -22,3 +22,5 @@ scripts/demo-video/*/vo*/
 scripts/demo-video/*/rec/
 # made by overview/guitar.py until a real guitar recording replaces it
 scripts/demo-video/overview/guitar.wav
+scripts/demo-video/*/scenes-*/
+scripts/demo-video/*/*-segments.txt
