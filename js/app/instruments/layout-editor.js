@@ -357,3 +357,9 @@ registerActions({
   // Note picker: pick a note
   'pick-note': (el, e, action) => { setPendingSlotNote(el.dataset.note); return; },
 });
+
+// ── Click: arranging the notes ──
+registerActions({
+  'ed-arrange': (el, e, action) => { state.edArrange = !edArranging(); render(); return; },
+  'ed-arrange-reset': (el, e, action) => { delete state.layout.pos; render(); return; },
+});

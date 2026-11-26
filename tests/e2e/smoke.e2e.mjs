@@ -287,6 +287,15 @@ try {
     await p.locator('[data-action="prog-play"][data-id]:not([disabled])').first().click();
     await p.locator('[data-action="prog-stop"]').first().click();
   });
+  await step('Tap notes on an ocarina: each chord found has ♡ and ▶, as on a handpan', deeper, async p => {
+    const oc = catalogueLinks().find(l => l.family === 'ocarina');
+    await p.goto(`${app.base}${oc.path}/chords`);
+    await p.click('[data-action="oc-listen-mode"][data-value="identify"]');
+    const notes = p.locator('[data-action="oc-id-note"]');
+    for (const i of [0, 2, 4]) await notes.nth(i).click();
+    await p.locator('[data-action="oc-id-chord-play"]').first().click();
+    assert.ok(await p.locator('[data-action="oc-id-bookmark"]').count() > 0, 'a ♡ on the chord found');
+  });
   await deeper.ctx.close();
 
   // ── Links that aren't in the catalogue ────────────────────────────────────

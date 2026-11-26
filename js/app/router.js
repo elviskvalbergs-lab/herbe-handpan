@@ -26,7 +26,6 @@ function navPush(url) { history.pushState({ hp: 1 }, '', navUrl(url)); }
 function navReplace(url, extra = {}) { history.replaceState({ ...(history.state ?? {}), ...extra }, '', navUrl(url)); }
 
 function goHome({ push = true } = {}) {
-  stopAutoplay();
   Object.assign(state, {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
     sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
@@ -40,7 +39,6 @@ function goHome({ push = true } = {}) {
 }
 
 function goSelector() {
-  stopAutoplay();
   state.view = 'selector';
   state.layout = null;
   state.selectedChord = null;
@@ -55,7 +53,6 @@ function goSelector() {
 function openInstrument(id, { push = true } = {}) {
   const inst = getInstrument(id);
   if (!inst) return false;
-  stopAutoplay();
   touchInstrument(id);
   if (state.currentInstrumentId !== id) state.oc = newOcState();
   state.currentInstrumentId = id;
@@ -228,7 +225,6 @@ function openScaleLayout(scale) {
 // Opens a parsed deep link (links.js) as a visiting instrument, ready to
 // play: nothing is added to My instruments until Save.
 function openLink(link) {
-  stopAutoplay();
   Object.assign(state, { selectedChord: null, pendingSlot: null, sourcePlaylistId: null, sourceEntryId: null, wizard: null, playNotice: null, songCtx: null });
   if (link.kind === 'song') { openSongAnywhere(link.song); return; }
   // A song on this instrument opens once the instrument is up (songOpenPending).
@@ -349,7 +345,6 @@ function rememberLastPath() {
 registerActions({
   'back-selector': (el, e, action) => { goSelector(); return; },
   'back-editor': (el, e, action) => {
-    stopAutoplay();
     state.view = 'editor';
     state.selectedChord = null;
     state.sourcePlaylistId = null;

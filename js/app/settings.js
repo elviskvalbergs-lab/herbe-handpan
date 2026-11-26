@@ -6,7 +6,6 @@ import { brandLogo } from '../brand.js';
 import { getClayBodies, saveClayBodies, usesLayout } from '../instruments.js';
 
 function openSettings({ push = true } = {}) {
-  stopAutoplay();
   Object.assign(state, { view: 'settings', clayEdit: null, menu: false });
   refreshAccountCounts();
   state.oc.handLegend = false;
@@ -17,7 +16,6 @@ function openSettings({ push = true } = {}) {
 // Settings (#settings): everything that is set once (docs/design-system.md
 // §6.19). Every row writes an existing pref through savePrefs(), so it
 // persists and syncs as before.
-const AUTOPLAY_SECONDS = [3, 4, 5, 6, 8, 10];
 
 // Which instrument families the person plays: the ones in My instruments and
 // the one open now. Settings shows a family's rows only to those who play it.
@@ -29,7 +27,6 @@ function settingsFamilies() {
 }
 
 function viewSettings() {
-  const secIdx = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
   const clays = getClayBodies();
   const fams = settingsFamilies();
   return `${backAppBar('Settings')}
@@ -50,10 +47,6 @@ function viewSettings() {
       <h2 class="list-title">Playing ${uiHelp('settings', 'playing')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Speed', help: 'How fast chords, scales and fingerings play, everywhere', wide: true, control: tempoControlHtml() })}
-        ${uiSetRow({ label: 'Seconds per chord in auto-play', control: uiStepper({
-          value: `${state.autoplaySeconds} s`, label: 'Seconds per chord', action: 'set-autoplay-step',
-          min: secIdx === 0, max: secIdx === AUTOPLAY_SECONDS.length - 1,
-        }) })}
       </div>
 
       ${fams.has('layout') ? `<h2 class="list-title">Handpans and drums ${uiHelp('settings', 'handpan')}</h2>
@@ -136,14 +129,6 @@ registerActions({
   'speed-open': (el, e, action) => { state.speedSheet = true; state.hpMore = false; state.oc.chordMore = false; render(); return; },
   'speed-close': (el, e, action) => { state.speedSheet = false; render(); return; },
   'set-rotation': (el, e, action) => { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; },
-  'set-autoplay-step': (el, e, action) => {
-    const i = AUTOPLAY_SECONDS.indexOf(state.autoplaySeconds);
-    const next = AUTOPLAY_SECONDS[Math.max(0, Math.min(AUTOPLAY_SECONDS.length - 1, (i < 0 ? 1 : i) + parseInt(el.dataset.delta, 10)))];
-    state.autoplaySeconds = next;
-    savePrefs();
-    render();
-    return;
-  },
   'reset-legends': (el, e, action) => {
     state.ocLegendSeen = false;
     state.handLegendSeen = false;
@@ -191,11 +176,3 @@ registerActions({
   },
 });
 
-// ── Change: Settings ──────────────────────────────────────────────────────
-registerActions({
-  'set-autoplay-seconds': (el, e, action) => {
-    state.autoplaySeconds = parseInt(el.value, 10);
-    savePrefs();
-    retimeAutoplay();
-  },
-}, CHANGE_ACTIONS);

@@ -70,8 +70,6 @@ const state = {
   guestOfflineCard: false, // "You're offline" card for a guest
   remindSignup: false,     // show the save sheet when the connection is back
   leaveWarned: false,      // the "leaving unsaved work" sheet was shown this visit
-  autoplayOn: false,
-  autoplayPlaylistId: null,
   autoplaySeconds: 4,
   tempo: 100,                // speed of arpeggios, scales and sequences, % of normal (25–150)
   discoverMode: false,

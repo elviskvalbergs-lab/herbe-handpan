@@ -25,37 +25,6 @@ function removePlaylist(id) {
   render();
 }
 
-function playlistsListHtml(inst) {
-  const newBtn = `<button type="button" class="btn btn-ghost pl-new" data-action="pl-new-open">${icon('plus')} New playlist</button>`;
-  if (state.playlists.length === 0) {
-    return uiEmpty({
-      icon: 'list-music', title: 'No playlists yet', body: 'Tap the bookmark on any chord to start one.',
-      action: `<button class="btn btn-secondary" data-action="${inst ? 'oc-tab' : 'go-chords'}" data-tab="chords">Go to Chords</button>`,
-    }) + newBtn;
-  }
-  const layoutId = !inst ? hpCurrentLayoutId() : null;
-  const hereOf = pl => pl.chords.filter(c => (inst ? entryIsFor(c, inst) : !c.instrumentId && c.layoutId === layoutId)).length;
-  // Playlists with nothing for this instrument wait behind "Show … from
-  // other instruments" (listsOtherHtml); an empty one stays in view.
-  const isOther = pl => pl.chords.length > 0 && hereOf(pl) === 0;
-  const other = state.playlists.filter(isOther).length;
-  const shown = state.playlists.filter(pl => state.listsShowOther || !isOther(pl));
-  return `
-    <div class="list">
-      ${shown.map(pl => {
-        const here = hereOf(pl);
-        const trail = inst
-          ? `<button type="button" class="btn btn-primary btn-sm" data-action="oc-practice-start" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Practice</button>`
-          : `<button type="button" class="btn btn-primary btn-sm" data-action="hp-play-playlist" data-id="${escHtml(pl.id)}" ${here ? '' : 'disabled'}>${icon('play')} Play</button>`;
-        return uiRow({
-          lead: 'list-music', title: pl.name, chevron: true, action: 'open-playlist', data: { id: pl.id }, trail,
-          meta: `${here} chord${here !== 1 ? 's' : ''} here · ${pl.chords.length} in total`,
-        });
-      }).join('')}
-      ${listsOtherHtml(other, 'playlist')}
-    </div>
-    ${newBtn}`;
-}
 // The row that shows (or hides again) the lists made on other instruments.
 function listsOtherHtml(other, word) {
   if (!other) return '';
@@ -126,7 +95,7 @@ function viewPlaylist() {
 
   const play = !here?.n ? '' : here.kind === 'oc'
     ? `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="pl-practice">${icon('play')} Practice on ${escHtml(here.name)}</button>`
-    : `<button type="button" class="btn btn-primary btn-lg btn-block" data-action="hp-play-playlist" data-id="${escHtml(pl.id)}">${icon('play')} Play</button>`;
+    : '';
 
   let entries;
   if (pl.chords.length === 0) {
@@ -202,19 +171,6 @@ function plNameSheet() {
       <button type="button" class="btn btn-ghost" data-action="pl-name-cancel">Cancel</button>
       <button type="button" class="btn btn-primary" data-action="pl-name-save">${isNew ? 'Create' : 'Save'}</button>`,
   });
-}
-
-// Plays a playlist on the handpan on screen: opens its first chord for this
-// handpan in Chords, filtered to the playlist, and turns auto-play on.
-function hpPlayPlaylist(pl) {
-  const layoutId = hpCurrentLayoutId();
-  const idx = pl.chords.findIndex(c => !c.instrumentId && c.layoutId === layoutId);
-  if (idx < 0) return;
-  if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
-  state.chordFilter = { category: 'All', root: 'All', playlist: pl.id };
-  state.view = 'chords';
-  navPush(stateToHash());
-  startAutoplay(pl);
 }
 
 // ── Playlist chord navigation (shared by manual open + autoplay) ────────────
@@ -302,21 +258,6 @@ function swapChordNoteVoicing(chord, targetNote) {
   return { ...chord, notes: newNotes };
 }
 
-let _autoplayTimer = null;
-// Autoplay running: the next chord after the new number of seconds.
-function retimeAutoplay() {
-  if (state.autoplayOn && _autoplayTimer) {
-    clearInterval(_autoplayTimer);
-    _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
-  }
-}
-
-function stopAutoplay() {
-  if (_autoplayTimer) { clearInterval(_autoplayTimer); _autoplayTimer = null; }
-  state.autoplayOn = false;
-  state.autoplayPlaylistId = null;
-}
-
 function playSelectedChordSound() {
   if (!state.selectedChord) return;
   initAudio();
@@ -324,43 +265,6 @@ function playSelectedChordSound() {
     note => updatePanPlaying([note]),
     notes => updatePanPlaying(notes)
   );
-}
-
-// Advance to the next chord in the autoplaying playlist, wrapping around.
-// Bails out (and stops the timer) if autoplay was turned off or the playlist vanished.
-function advanceAutoplay() {
-  const pl = state.playlists.find(p => p.id === state.autoplayPlaylistId);
-  if (!state.autoplayOn || state.view !== 'chords' || !pl || pl.chords.length === 0) {
-    stopAutoplay();
-    render();
-    return;
-  }
-  const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
-  const curFavId = state.selectedChord ? favIdForChord(layoutId, state.selectedChord, state.chords) : null;
-  const curIdx = pl.chords.findIndex(c => c.id === curFavId);
-  // Skip ocarina / flute entries: they play in that instrument's practice mode.
-  let nextIdx = (curIdx + 1) % pl.chords.length;
-  for (let n = 0; n < pl.chords.length && pl.chords[nextIdx].instrumentId; n++) nextIdx = (nextIdx + 1) % pl.chords.length;
-  if (!loadPlaylistChordAt(pl, nextIdx)) { stopAutoplay(); render(); return; }
-  navReplace(stateToHash());
-  render();
-  playSelectedChordSound();
-}
-
-function startAutoplay(pl) {
-  if (pl.chords.length === 0) { showToast('No chords in playlist yet'); return; }
-  stopAutoplay();
-  state.autoplayOn = true;
-  state.autoplayPlaylistId = pl.id;
-  const layoutId = state.layout?.isCustom ? (state.layout.savedId || state.layout.id) : state.layout?.id;
-  const curFavId = state.selectedChord && state.layout ? favIdForChord(layoutId, state.selectedChord, state.chords) : null;
-  let startIdx = Math.max(0, pl.chords.findIndex(c => c.id === curFavId));
-  for (let n = 0; n < pl.chords.length && pl.chords[startIdx].instrumentId; n++) startIdx = (startIdx + 1) % pl.chords.length;
-  if (!loadPlaylistChordAt(pl, startIdx)) { stopAutoplay(); return; }
-  navReplace(stateToHash());
-  render();
-  playSelectedChordSound();
-  _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
 }
 
 // ── Click: Playlist picker ────────────────────────────────────────────────
@@ -469,11 +373,6 @@ registerActions({
 
 // ── Click: Playlists tab and playlist detail ──────────────────────────────
 registerActions({
-  'hp-play-playlist': (el, e, action) => {
-    const pl = state.playlists.find(p => p.id === el.dataset.id);
-    if (pl) hpPlayPlaylist(pl);
-    return;
-  },
   'pl-practice': (el, e, action) => {
     const inst = currentInstrument();
     const pl = state.playlists.find(p => p.id === state.activePlaylistId);
@@ -538,18 +437,3 @@ registerActions({
   },
 });
 
-// ── Change: Playlists ─────────────────────────────────────────────────────
-registerActions({
-  'select-playlist-filter': (el, e, action) => {
-    if (el.value === '__edit__') {
-      stopAutoplay();
-      state.activePlaylistId = state.chordFilter.playlist;
-      state.view = 'playlist';
-      navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
-    } else {
-      if (state.autoplayOn && el.value !== state.autoplayPlaylistId) stopAutoplay();
-      state.chordFilter.playlist = el.value;
-    }
-    render();
-  },
-}, CHANGE_ACTIONS);

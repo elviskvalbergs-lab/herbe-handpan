@@ -109,7 +109,6 @@ export const UI_LABELS = {
   'finger-labels':   'Finger labels in holes',
   'which-finger':    'Which finger is which',
   'send-recording':  'Send us the recording',
-  'auto-play-secs':  'Seconds per chord in auto-play',
   'create-maker':    'Create your maker page',
 };
 

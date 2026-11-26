@@ -41,13 +41,6 @@ function hpFilteredChords() {
 
   // Apply filters — compare root by PC to handle G# ↔ Ab equivalence.
   const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
-  // Match by abstract chord identity (layoutId+chordId), not the entry's exact
-  // stored id — that id gets a notes suffix once a voicing is saved, which
-  // would otherwise make the chord silently drop out of this filtered list.
-  const playlistChordKeys = chordFilter.playlist !== 'All'
-    ? new Set((state.playlists.find(p => p.id === chordFilter.playlist)?.chords ?? []).map(c => `${c.layoutId}-${c.chordId}`))
-    : null;
-
   const filtered = chords.filter(c => {
     if (state.chordCountSet.size > 0 && !state.chordCountSet.has(chordCountKey(c.noteCount))) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
@@ -55,27 +48,13 @@ function hpFilteredChords() {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
       if (notePC(c.rootNote) !== filterPC) return false;
     }
-    if (playlistChordKeys !== null) {
-      if (!playlistChordKeys.has(`${layoutId}-${c.id}`)) return false;
-    }
     return true;
   });
-  // Preserve playlist order when a playlist filter is active
-  if (chordFilter.playlist !== 'All') {
-    const pl = state.playlists.find(p => p.id === chordFilter.playlist);
-    if (pl) {
-      const orderMap = new Map(pl.chords.map((c, i) => [`${c.layoutId}-${c.chordId}`, i]));
-      filtered.sort((a, b) =>
-        (orderMap.get(`${layoutId}-${a.id}`) ?? Infinity) - (orderMap.get(`${layoutId}-${b.id}`) ?? Infinity)
-      );
-    }
-  } else {
-    filtered.sort((a, b) => {
-      const rA = notePC(a.rootNote), rB = notePC(b.rootNote);
-      return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
-    });
-  }
-  const narrowed = playlistChordKeys !== null || chordFilter.category !== 'All' || chordFilter.root !== 'All' || state.chordCountSet.size > 0;
+  filtered.sort((a, b) => {
+    const rA = notePC(a.rootNote), rB = notePC(b.rootNote);
+    return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
+  });
+  const narrowed = chordFilter.category !== 'All' || chordFilter.root !== 'All' || state.chordCountSet.size > 0;
   const main = chordsMainOn(filtered, narrowed) && !!layout.top.ding;
   const all = filtered.length;
   return { filtered: main ? mainChordsInKey(filtered, notePC(layout.top.ding), layoutPitchClasses(layout)) : filtered, roots, layoutId, main, all };
@@ -94,7 +73,7 @@ function hpSourceEntry() {
 // Filters set in the Filters sheet (the root chips don't count).
 function hpFilterCount() {
   const f = state.chordFilter;
-  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.playlist !== 'All' ? 1 : 0) + (f.root !== 'All' ? 1 : 0);
+  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.root !== 'All' ? 1 : 0);
 }
 
 function hpChordName(c) {
@@ -136,9 +115,6 @@ function viewChords() {
   const { pl: sourcePl, canUpdate: canUpdateEntry } = hpSourceEntry();
   const saveVoicingBtn = cls => uiIconBtn('save', `Save this voicing to ${sourcePl.name}`, { action: 'update-playlist-entry', cls });
 
-  const autoplayPl = chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === chordFilter.playlist) : null;
-  const autoplayPos = autoplayPl && selectedFavId ? autoplayPl.chords.findIndex(c => c.id === selectedFavId) : -1;
-
   const discoverMatches = state.discoverMode ? identifyChord(state.discoverNotes) : [];
   // Listen: the chord heard, lit on the pan (docs/listen-mode.md).
   const heard = state.hpListen ? listenHeardOn(getAllNotes(layout).map(noteToMidi)) : null;
@@ -175,29 +151,9 @@ function viewChords() {
       <button type="button" class="btn btn-secondary" data-action="play-scale">${icon('play')} Scale</button>
     </div>`;
 
-  const nowPlaying = autoplayPl ? `
-    <div class="hp-now">
-      <div class="hp-now-top">
-        ${icon('list-music')}
-        <span class="hp-now-name">${escHtml(autoplayPl.name)}</span>
-        ${autoplayPos >= 0 ? `<span class="hp-now-pos num">${autoplayPos + 1} / ${autoplayPl.chords.length}</span>` : ''}
-        <button type="button" class="btn btn-ghost btn-sm" data-action="hp-edit-playlist">Edit</button>
-        ${uiIconBtn('x', 'Show all chords', { action: 'hp-clear-playlist', cls: 'is-dense' })}
-      </div>
-      <div class="hp-now-ctl">
-        ${uiIconBtn('rewind', 'Back to the first chord', { action: 'autoplay-restart', disabled: autoplayPos <= 0 })}
-        <button type="button" class="btn btn-primary" data-action="toggle-autoplay">
-          ${state.autoplayOn ? icon('pause') + ' Pause' : icon('play') + ' Auto-play'}
-        </button>
-        <select class="select hp-secs" data-action="set-autoplay-seconds" aria-label="Seconds per chord" title="Seconds per chord">
-          ${AUTOPLAY_SECONDS.map(s => `<option value="${s}" ${state.autoplaySeconds === s ? 'selected' : ''}>${s} s</option>`).join('')}
-        </select>
-      </div>
-    </div>` : '';
 
   const nFilters = hpFilterCount();
   const browseHead = `
-    ${nowPlaying}
     ${chordListLineHtml({ shown: filtered.length, all, main, open: 'hp-filters-open', count: nFilters })}`;
 
   const rows = filtered.length === 0
@@ -253,19 +209,13 @@ function viewChords() {
   })}`;
 }
 
-// A handpan's Filters: the shared sheet, with its playlist.
+// A handpan's Filters: the shared sheet.
 function hpFiltersSheet() {
   const f = state.chordFilter;
-  const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
   return chordFiltersSheet({
     help: uiHelp('chords', 'filters'), key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
     roots: chordRootsOf(state.chords), root: f.root, rootAction: 'filter-root',
     counts: state.chordCountSet, countAction: 'toggle-note-count', category: f.category, categoryAction: 'filter-category',
-    extra: `${!state.playlists.length ? '' : uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
-        id: 'hp-playlist-filter', value: f.playlist, label: 'Playlist', action: 'select-playlist-filter',
-        options: [{ value: 'All', label: 'All chords' }, ...state.playlists.map(p => ({ value: p.id, label: p.name, meta: `${p.chords.length} chord${p.chords.length !== 1 ? 's' : ''}` }))],
-      }) })}
-      ${pl ? `<div class="list">${uiRow({ lead: 'pencil', title: 'Edit playlist', meta: escHtml(pl.name), chevron: true, action: 'hp-edit-playlist' })}</div>` : ''}`,
   });
 }
 
@@ -323,8 +273,6 @@ registerActions({
 // ── Click: Pan rotation ───────────────────────────────────────────────────
 registerActions({
   'chords-scope': (el, e, action) => { state.chordsAll = !state.chordsAll; savePrefs(); render(); return; },
-  'ed-arrange': (el, e, action) => { state.edArrange = !edArranging(); render(); return; },
-  'ed-arrange-reset': (el, e, action) => { delete state.layout.pos; render(); return; },
   'toggle-rotation': (el, e, action) => {
     state.ringRotated = !state.ringRotated;
     savePrefs();
@@ -343,26 +291,7 @@ registerActions({
     // The sheet's filters; the empty list's "Clear filters" also clears the root.
     state.chordCountSet.clear();
     state.chordFilter.category = 'All';
-    if (state.autoplayOn && state.autoplayPlaylistId !== 'All') stopAutoplay();
-    state.chordFilter.playlist = 'All';
     if (el.dataset.all) state.chordFilter.root = 'All';
-    render();
-    return;
-  },
-  'hp-clear-playlist': (el, e, action) => {
-    if (state.autoplayOn) stopAutoplay();
-    state.chordFilter.playlist = 'All';
-    render();
-    return;
-  },
-  'hp-edit-playlist': (el, e, action) => {
-    // Same as the old "Edit playlist" option of the playlist select.
-    stopAutoplay();
-    state.hpFilters = false;
-    state.plMode = 'chords';
-    state.activePlaylistId = state.chordFilter.playlist;
-    state.view = 'playlist';
-    navPush(`#pl/${encodeURIComponent(state.activePlaylistId)}`);
     render();
     return;
   },
@@ -381,7 +310,6 @@ registerActions({
   'select-chord': (el, e, action) => {
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
-    stopAutoplay();
 
     // If the chord list is filtered to a playlist, clicking a row is the
     // same as opening that entry — show its saved voicing (it may differ
@@ -413,26 +341,6 @@ registerActions({
     );
     return;
   },
-  'autoplay-restart': (el, e, action) => {
-    // The playlist's first chord on this handpan; playing goes on from there.
-    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
-    if (!pl) return;
-    const first = pl.chords.findIndex(c => !c.instrumentId);
-    if (first < 0) return;
-    const wasOn = state.autoplayOn;
-    stopAutoplay();
-    if (!loadPlaylistChordAt(pl, first)) return;
-    navReplace(stateToHash());
-    if (wasOn) startAutoplay(pl); else { render(); playSelectedChordSound(); }
-    return;
-  },
-  'toggle-autoplay': (el, e, action) => {
-    const pl = state.playlists.find(p => p.id === state.chordFilter.playlist);
-    if (!pl) return;
-    if (state.autoplayOn) { stopAutoplay(); render(); }
-    else startAutoplay(pl);
-    return;
-  },
   'play-chord': (el, e, action) => {
     if (!state.selectedChord) return;
     initAudio();
@@ -455,50 +363,11 @@ registerActions({
   'hear-start': (el, e, action) => { listenStart(); return; },
   'hear-stop': (el, e, action) => { listenStop(); return; },
   'hear-clear': (el, e, action) => { Object.assign(listenUi(), { history: [], stopped: '' }); render(); return; },
-  'listen-oc-note': (el, e, action) => {
-    listenUi().ocNote = parseInt(el.dataset.midi, 10);
-    initAudio();
-    playNote(midiToNoteName(listenUi().ocNote));
-    render();
-    return;
-  },
-  'oc-listen-mode': (el, e, action) => {
-    const want = el.dataset.value;
-    const now = state.oc.listen ? 'listen' : state.oc.identify ? 'identify' : 'browse';
-    if (want === now) return;
-    state.oc.listen = want === 'listen';
-    state.oc.identify = want === 'identify';
-    state.oc.idNotes = [];
-    render();
-    return;
-  },
-  'oc-id-note': (el, e, action) => {
-    const m = parseInt(el.dataset.midi, 10);
-    const list = state.oc.idNotes ?? (state.oc.idNotes = []);
-    const i = list.indexOf(m);
-    if (i >= 0) list.splice(i, 1); else list.push(m);
-    if (i < 0) { initAudio(); playNote(midiToNoteName(m)); }
-    render();
-    return;
-  },
-  'oc-id-clear': (el, e, action) => { state.oc.idNotes = []; render(); return; },
-  'oc-id-play': (el, e, action) => {
-    const names = [...(state.oc.idNotes ?? [])].sort((a, b) => a - b).map(midiToNoteName);
-    if (names.length >= 2) { initAudio(); playSequence(names, () => {}, 0.55); }
-    return;
-  },
-  'oc-id-open': (el, e, action) => {
-    // The chord found, in Browse: its fingerings in playing order, playlists, octaves.
-    Object.assign(state.oc, { identify: false, idNotes: [], expanded: el.dataset.id, root: 'All', category: 'All', scaleFilter: 'All', counts: [] });
-    render();
-    return;
-  },
   'toggle-discover-mode': (el, e, action) => {
     // From the Browse | Identify | Listen segment: only a change of mode toggles.
     const want = el.dataset.value ?? (state.discoverMode ? 'browse' : 'identify');
     const now = state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse';
     if (want === now) return;
-    stopAutoplay();
     state.hpListen = want === 'listen';
     state.discoverMode = want === 'identify';
     state.discoverNotes = [];

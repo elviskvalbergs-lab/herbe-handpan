@@ -242,7 +242,6 @@ function progressionRowsHtml(inst, { home = false } = {}) {
 }
 
 function openProgression(id, { push = true } = {}) {
-  stopAutoplay();
   progStop();
   Object.assign(state, { view: 'progression', activeProgressionId: id, progMode: 'steps', progRowMenu: null, menu: false });
   if (state.progPlay?.id !== id) state.progPlay = null;
@@ -418,7 +417,6 @@ registerActions({
     if (!prog) return;
     if (state.view !== 'progression') {
       // From the Playlists tab: the player lives on the progression's screen.
-      stopAutoplay();
       Object.assign(state, { view: 'progression', activeProgressionId: prog.id, progMode: 'steps', progRowMenu: null });
       navPush(`#prog/${encodeURIComponent(prog.id)}`);
     }
@@ -468,7 +466,6 @@ registerActions({
     return;
   },
   'open-playlist': (el, e, action) => {
-    stopAutoplay();
     state.plMode = 'chords';
     state.plRowMenu = null;
     state.activePlaylistId = el.dataset.id;

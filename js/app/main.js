@@ -163,7 +163,6 @@ document.addEventListener('click', e => {
   }
 
   if (noteEl.classList.contains('alt-highlight') && state.selectedChord) {
-    stopAutoplay();
     state.selectedChord = swapChordNoteVoicing(state.selectedChord, note);
     navReplace(stateToHash());
     render();

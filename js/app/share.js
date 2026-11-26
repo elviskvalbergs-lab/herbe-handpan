@@ -16,7 +16,6 @@ function currentInstrument() {
 }
 
 function openSharedLink(code, tab = null) {
-  stopAutoplay();
   Object.assign(state, {
     view: 'instrument', layout: null, currentInstrumentId: SHARED_ID,
     shared: null, sharedStatus: 'loading', oc: newOcState(),

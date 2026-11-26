@@ -285,7 +285,6 @@ registerActions({
     return;
   },
   'hp-playlists, hp-songs': (el, e, action) => {
-    stopAutoplay();
     state.pendingSlot = null;
     state.view = action;
     // Remembered on the history entry, so coming back to it reopens this tab.

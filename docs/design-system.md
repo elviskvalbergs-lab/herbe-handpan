@@ -183,7 +183,6 @@ Settings opens from the gear icon on Home and from the ⋯ menu on any instrumen
 | | Note names | segmented: Sharps (C#) · Flats (D♭) | `useFlats` |
 | | Note style | segmented: Letters (C D E) · Solfège (Do Re Mi) | `useSolfege` |
 | **Handpan** | Ring orientation | segmented: Standard · Rotated | `ringRotated` (also on the pan itself, see §6) |
-| | Seconds per chord in autoplay | stepper (3, 4, 5, 6, 8, 10 s) | `autoplaySeconds` (also in the Now playing bar) |
 | **Fingering diagrams** | Finger labels in holes (R4, L1, LT) | switch | `showFingers` |
 | | Hole sizes in mm | switch | `showSizes` |
 | | Which finger is which | row › opens the hand sheet | (`oc-hand-open`) |
@@ -213,7 +212,6 @@ In the brief's terms: scale filter, chord filters, voicing, play and tuner stay 
 | `toggle-discover-mode`, `discover-*` | Chords › "Identify" segment |
 | `toggle-note-count`, `filter-category`, `select-playlist-filter` (incl. "Edit playlist") | Chords › Filters sheet (plus an "Edit" link in the Now playing bar) |
 | `filter-root` | Chords › root chip row |
-| `toggle-autoplay`, `set-autoplay-seconds` | Chords › Now playing bar |
 | `select-chord`, `play-chord`, `play-scale`, `show-playlist-picker`, `update-playlist-entry`, related chips | Chords › selected-chord bar and its "More" sheet (inline on desktop) |
 | `move-chord-up/down`, `remove-playlist-chord`, rename, `delete-playlist`, `open-playlist-chord` | Playlist detail |
 | `toggle-playlist-chord`, `show-new-playlist-input`, `confirm-new-playlist` | Add to playlist sheet |
@@ -311,7 +309,7 @@ Class names are new, short and unique. Write the render helpers in `js/app/ui.js
 - **Field wrapper** `.field`: a column with a 6px gap. Label 13/600 `--text-2`, helper 13/400 `--text-3`, error 13/500 `--danger` (and the input border turns `--danger`).
 - **Input and select** `.input`, `.select`: height `--field-h` (48px; 44px at ≥1024), padding 0 12px, bg `--surface-2`, 1px `--border-strong`, radius `--r-sm`, text `--text-1` 16px (15px at ≥1024). Placeholder `--text-3`. Hover border `--text-3`. Focus: border `--focus` plus the global ring. Disabled: bg `--surface-1`, text `--text-disabled`. A select gets a custom 16px chevron-down at the right (`appearance: none`, `padding-right: 36px`). The name field (currently a bare underline, `.name-input`) becomes a normal `.input`.
 - **Unit suffix** `.input-unit`: the input sits in a wrapper with the unit ("Hz", "mm", "%") absolutely placed at the right in 13px `--text-3`, and the input gets `padding-right: 40px`.
-- **Number stepper** `.stepper-num` (transpose, shell capacity, autoplay seconds): `[−] value [+]`. The buttons are 44×44 `.icon-btn.tonal`, and the value is 20/700 `--text-1`, centred, min-width 56px, tabular. Below that, a 13px helper ("semitones", "9 notes incl. ding · 0 empty"). The − and + buttons are disabled at their limits (existing logic).
+- **Number stepper** `.stepper-num` (transpose, shell capacity): `[−] value [+]`. The buttons are 44×44 `.icon-btn.tonal`, and the value is 20/700 `--text-1`, centred, min-width 56px, tabular. Below that, a 13px helper ("semitones", "9 notes incl. ding · 0 empty"). The − and + buttons are disabled at their limits (existing logic).
 - **Record field** `.rec` (every Hz input: builder readings and Set up). One joined control: `[ input (flex 1, min 96px) Hz ][ mic 48×48 ]`, outer corners `--r-sm`, a shared 1px `--border-strong`, and the button separated by a 1px left border. Render it from `uiHzField(path, value)`, which replaces `hzField`. States:
 
 | State | Look | Behaviour |
@@ -649,7 +647,7 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 - **Main chords first**: every Chords list opens on the instrument's main chords, the plain major and minor chords (`mainChordsInKey` in `js/chords.js`), from its home note up (a handpan's ding, an ocarina's or whistle's key note). An instrument with every semitone (more than 7 pitch classes) shows the six of the major key on its home note. The count line says "6 main chords · Show all 61"; "Main chords only" goes back (`chords-scope`, the `chordsAll` preference, synced). A filter, a root chip or a playlist shows every chord they match.
 - **Goes well with** (`js/harmony.js`, on every instrument's chord card): the instrument's key is its home note, major or minor from its third. The chord's role in the key (I, vi, VII…) gives the chords that usually come next, as chips that select them, and "Progressions with this chord" in the ⋯ sheet opens a sheet of well-known progressions with this chord (Pop, Fifties, Epic, Folk…, by role). It only suggests chords the instrument can play. Each progression has ▶ (its chords one after another) and Save (a new progression; the toast's Open goes to it). A chord outside the key gets no line.
 - **Filters sheet** (`chordFiltersSheet`): Starts on, as chips ("Any note", then the roots the chords have; `filter-root`); Notes in chord as count chips (2)(3)(4)(5+) (`toggle-note-count`, multi-select); Type select (`filter-category`); Playlist select (`select-playlist-filter`, with "Edit playlist" as a row link when a playlist is chosen). The footer has [Clear all] ghost and [Done] primary. The Filters button shows the number of active filters, the root included.
-- **Now playing bar** (shown instead of the Filters row when a playlist filter is active, like today's `.autoplay-bar`): `[⏸ Pause | ▶ Auto-play]` primary, a seconds select (3–10 s), "2 / 7" tabular, an "Edit" link (opens the playlist detail), and a ✕ icon button that clears the playlist filter.
+- **Now playing bar**: removed (26 Nov 2026). Playlists play from their own screen on every instrument; the Chords screen has no playlist filter or auto-play.
 - **Identify mode:** the list area shows the hint "Tap notes on the pan to build a chord. Tap again to remove one.", the selected notes as static chips, [Clear], and the matches as `.row`s (name, category · notes, the bookmark `discover-bookmark`, ▶ `discover-play`). The custom combination row has the bookmark and ▶ as today. The sticky selected-chord bar hides in this mode.
 - The Starts on chips use the display note naming from Settings.
 - **Tablet (600–1023):** two columns, `grid-template-columns: 300px 1fr`. Left: the list section (its own sticky scroll area, `height: calc(100dvh - appbar - tabbar)`, `overflow: auto`). Right: the pan (max `min(100%, 60dvh)`), then the selected-chord card with Related chips inline (no More sheet).
