@@ -284,6 +284,8 @@ If the account already has an item with the same id, both are kept.
 |---|---|---|
 | `open` | path (the deep link), referrer domain, utm | which links bring people in |
 | `first_play` | instrument family, seconds from landing | how short landing → playing is |
+| `setup_screen` | screen (what, how, count, listen, match, know, scales, windtype, windkey, done; `left` when Back leaves setup), family, from (the screen before), back, first (nothing saved yet) | which setup screen people leave on |
+| `setup_finish` | family, how (play or save), listened (whether they let the app listen) | how many finish setup, and which path |
 | `feature` | name (chords, arpeggio, listen, play-along, tuner, chord-sheet, custom-notes), account | which features guests use |
 | `save_tap` | what (chord, playlist, instrument, progression, song, share, leave-unsaved), account | how many tap save |
 | `signup_shown` / `signup_method` | what · method (google, email, apple) | where they drop |
