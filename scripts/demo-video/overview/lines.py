@@ -4,6 +4,11 @@ Used by ../voiceover.py; the video's compose.py fits each scene to its line.
 First cuts are voiced with Kokoro (free); once the owner agrees the words and
 timing, the same lines go to ElevenLabs "Liam" (eleven_v4), one take each,
 kept in takes-elevenlabs/ like the makers video's.
+The ElevenLabs takes (26 Nov, "Liam", one take each) are in takes-elevenlabs/;
+the last line was sent as "... Oakhum. [excited] Find the music hiding in your
+instrument!". Rebuild without spending credits:
+  python3 ../voiceover.py --from takes-elevenlabs --out vo-elevenlabs
+  python3 compose.py vo-elevenlabs
 
 These lines replace the first cut's (19 Nov), which opened with "It started
 with a sound". Scene 1 opens with the owner's line (26 Nov): "You don't need
