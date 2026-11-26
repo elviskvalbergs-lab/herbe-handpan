@@ -30,6 +30,10 @@ export const home: HomePage = {
   heroCta: "Start playing free",
   heroListen: "Try it here first",
   heroTry: "Try it right here: tap a chord",
+  // Version b of the home page experiment (src/lib/experiment.ts): the overview video in the demo's place.
+  heroWatch: "Watch how it works",
+  videoTitle: "What can your instrument play?",
+  videoText: "Under a minute: Oakhum finds your instrument, shows its chords and a song to learn, and joins in when a friend plays guitar.",
   demoCaption: "D Kurd handpan. Tap a chord to hear it and see where it lives.",
   howTitle: "From “now what?” to playing in three steps",
   // Each step is shown with the app's own screen for it (src/lib/pictures.ts).

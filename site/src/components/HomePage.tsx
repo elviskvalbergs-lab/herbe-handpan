@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Faq } from "@/components/Faq";
 import { Features } from "@/components/Features";
 import { HandpanDemo } from "@/components/HandpanDemo";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { JsonLd } from "@/components/JsonLd";
 import { InstrumentList } from "@/components/InstrumentList";
 import { Reasons } from "@/components/Reasons";
@@ -17,6 +18,8 @@ import * as seed from "@/content/seed";
 import { getFeatures, getHome, getInstruments, getSettings } from "@/sanity/lib/data";
 
 const DEMO_SCALE = "d-kurd";
+// The overview video, "What can your instrument play?" (scripts/demo-video/overview), with burned-in captions.
+const VIDEO = { src: "/video/oakhum-overview.mp4", poster: "/video/oakhum-overview.jpg" };
 
 // The hero's picture, art-directed: brand/hero-sky-wide.webp (2:1) from
 // 768px, brand/hero-sky-tall.webp (2:3) on phones. Decorative, so alt="".
@@ -24,8 +27,8 @@ const { props: { srcSet: heroWide } } = getImageProps({ src: "/brand/hero-sky-wi
 const { props: heroImg } = getImageProps({ src: "/brand/hero-sky-tall.webp", alt: "", width: 1024, height: 1536, sizes: "100vw", priority: true });
 
 // The home page. `variant` is the home page experiment (src/lib/experiment.ts):
-// "a" is the page with the playable handpan demo, "b" the same page without
-// the demo, with one button into the app. app/(site)/page.tsx serves "a" and
+// "a" is the page with the playable handpan demo, "b" the same page with the
+// overview video of the real app in the demo's place. app/(site)/page.tsx serves "a" and
 // app/(site)/home-b/page.tsx "b"; src/proxy.ts sends each visit to one of them.
 export async function HomePage({ variant = "a" }: { variant?: HomeVariant }) {
   const demo = variant === "a";
@@ -52,10 +55,12 @@ export async function HomePage({ variant = "a" }: { variant?: HomeVariant }) {
           <div className="max-w-[80%] md:max-w-[min(54%,720px)]">
             <h1 className="m-0 mb-5 text-[clamp(36px,4.9vw,70px)] font-bold leading-[1.03] tracking-[-0.03em] text-text">{home.heroTitle}</h1>
             <p className="m-0 mb-8 max-w-[620px] text-[clamp(17px,1.5vw,21px)] leading-[1.5] text-body">{home.heroText}</p>
-            {/* With the demo: two buttons, two places (the app, and the playable handpan just below). Without it: the app only. */}
+            {/* Two buttons, two places: the app, and just below it the playable handpan (a) or the video (b). */}
             <div data-loc="hero" className="flex flex-wrap gap-3.5">
               <a href={APP_URL} className={btnPrimary}>{cta}</a>
-              {demo ? <a href="#demo" className={btnOnPicture}><span aria-hidden="true">↓</span> {home.heroListen ?? seed.home.heroListen}</a> : null}
+              {demo
+                ? <a href="#demo" className={btnOnPicture}><span aria-hidden="true">↓</span> {home.heroListen ?? seed.home.heroListen}</a>
+                : <a href="#video" className={btnOnPicture}><span aria-hidden="true">↓</span> {home.heroWatch ?? seed.home.heroWatch}</a>}
             </div>
           </div>
         </div>
@@ -73,7 +78,19 @@ export async function HomePage({ variant = "a" }: { variant?: HomeVariant }) {
             </div>
           </div>
         </section>
-      ) : null}
+      ) : (
+        <section id="video" className="on-dark scroll-mt-4 bg-dark text-on-dark">
+          <div className={`${container} flex flex-wrap items-center gap-10 py-16 lg:py-20`}>
+            <div className="min-w-0 flex-[1_1_320px]">
+              <h2 className={`${h2} m-0 mb-4`}>{home.videoTitle ?? seed.home.videoTitle}</h2>
+              <p className="m-0 text-[17px] text-on-dark-muted">{home.videoText ?? seed.home.videoText}</p>
+            </div>
+            <div className="min-w-0 flex-[1_1_520px]">
+              <VideoPlayer src={VIDEO.src} poster={VIDEO.poster} label={home.videoTitle ?? seed.home.videoTitle ?? ""} />
+            </div>
+          </div>
+        </section>
+      )}
 
       <Steps id="how" title={home.howTitle} steps={home.steps} shots={[appShot("setup"), appShot("handpan"), appShot("song")]} />
 

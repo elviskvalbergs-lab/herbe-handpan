@@ -1,7 +1,8 @@
 // The home page experiment: does the playable handpan demo help people get to
-// playing in the app, or is one button into the app better? (Owner, 2026-11-26.)
+// playing in the app, or does a video of the real app do better, since the
+// demo isn't how the app works? (Owner, 2026-11-26.)
 //
-// Each visit to "/" is put in "a" (with the demo) or "b" (without) at random by
+// Each visit to "/" is put in "a" (with the demo) or "b" (the overview video in its place) at random by
 // src/proxy.ts. Nothing is stored on the device, so a visitor who reloads can
 // see the other version; that is the price of staying cookie-free. The site's
 // analytics send `home_view` with the variant, and every later site event on
