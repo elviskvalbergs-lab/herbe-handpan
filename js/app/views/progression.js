@@ -3,12 +3,12 @@
 // the other js/app/ files are shared through the bundle's one scope (build.py).
 import { displayNote, noteToMidi } from '../../data.js';
 import { icon } from '../../icons.js';
+import { findAllChords } from '../../chords.js';
 import { PLAY_LEVELS, WIND_PLAY_LEVELS, strikeNumbers, windPlayLevel } from '../../chordsheet.js';
 import { initAudio, playSequence } from '../../audio.js';
 import { renderPan } from '../../pan.js';
 import { playableMidis } from '../../ocarina-ui.js';
-import { PROG_LIMITS, addProgression, addStepToProgression, deleteProgression, duplicateProgressionStep, getFavorites, getPlaylists, getProgressions, moveProgressionStep, newProgressionStep, nextProgressionStep, progressionLevel, progressionTotals, removeChordFromPlaylist, removeProgressionStep, reorderChordInPlaylist, setProgressionLevel, setProgressionStepBars, setProgressionTiming } from '../../storage.js';
-import { scheduleSave } from '../../auth.js';
+import { PROG_LIMITS, addProgression, addStepToProgression, deleteProgression, duplicateProgressionStep, getProgressions, moveProgressionStep, newProgressionStep, nextProgressionStep, progressionLevel, progressionTotals, removeProgressionStep, setProgressionLevel, setProgressionStepBars, setProgressionTiming } from '../../storage.js';
 
 // ── The screen ──
 // A step's length: "2 bars", or "2 beats" for part of a bar.
@@ -401,7 +401,7 @@ registerActions({
     if (state.layout) {
       state.chords = findAllChords(state.layout);
       state.selectedChord = null;
-      state.chordFilter = { category: 'All', root: 'All' };
+      clearChordFilters();
       state.view = 'chords';
       navPush(stateToHash());
     } else if (state.currentInstrumentId) {

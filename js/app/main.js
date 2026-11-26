@@ -2,7 +2,6 @@
 // Part of the app split out of js/app.js (docs/app-structure-plan.md). Names from
 // the other js/app/ files are shared through the bundle's one scope (build.py).
 import { findAllChords } from '../chords.js';
-import { listenTracker } from '../listen-detect.js';
 import { initAudio, playNote, setVoice } from '../audio.js';
 import { updatePanPlaying } from '../pan.js';
 import { initSupabase, logEvent } from '../auth.js';
@@ -130,7 +129,7 @@ document.addEventListener('click', e => {
   if (makerClick(action, el)) return; // makers and "Made by" (js/makers-ui.js)
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
-  if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
+  if (state.chordsUi.moreOpen && el.closest('.sheet-hpmore') && action !== 'chords-more-close') { state.chordsUi.moreOpen = false; render(); }
   if (state.progRowMenu != null && el.closest('.sheet-progrow') && action !== 'prog-row-close') { state.progRowMenu = null; render(); }
   if (runAction(action, el, e)) return;
   // Screens that handle a group of actions in one function.
@@ -151,7 +150,7 @@ document.addEventListener('click', e => {
   const note = noteEl.dataset.note;
   if (!note) return; // empty slot
 
-  if (state.discoverMode) {
+  if (state.chordsUi.mode === 'identify') {
     const idx = state.discoverNotes.indexOf(note);
     if (idx >= 0) state.discoverNotes.splice(idx, 1);
     else state.discoverNotes.push(note);
@@ -303,9 +302,9 @@ window.addEventListener('popstate', () => {
   Object.assign(state, {
     view: 'home', layout: null, selectedChord: null,
     pendingSlot: null, chords: [], shellMode: 'both',
-    chordFilter: { category: 'All', root: 'All' },
     currentInstrumentId: null, wizard: null, chordSheet: null,
   });
+  clearChordFilters();
   refreshInstruments();
   if (urlIsLink()) loadFromUrl();
   else state.view = state.instruments.length ? 'home' : 'play';

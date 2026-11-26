@@ -18,7 +18,7 @@ function currentInstrument() {
 function openSharedLink(code, tab = null) {
   Object.assign(state, {
     view: 'instrument', layout: null, currentInstrumentId: SHARED_ID,
-    shared: null, sharedStatus: 'loading', oc: newOcState(),
+    shared: null, sharedStatus: 'loading', oc: newOcState(), chordsUi: newChordsUi(),
   });
   // Supabase is initialised just after the first render, so fetch next tick.
   setTimeout(async () => {

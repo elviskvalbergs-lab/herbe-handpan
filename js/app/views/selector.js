@@ -250,7 +250,7 @@ registerActions({
     state.chords = findAllChords(state.layout);
     state.selectedChord = null;
     state.shellMode = 'both';
-    state.chordFilter = { category: 'All', root: 'All' };
+    clearChordFilters();
     state.view = 'editor';
     state.currentInstrumentId = null;
     navPush(stateToHash());

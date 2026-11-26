@@ -37,7 +37,7 @@ function measureOpen() {
 }
 
 const MEASURE_FEATURES = {
-  'go-chords': 'chords', 'play-chord': 'chords', 'toggle-discover-mode': 'identify', 'oc-play-arp': 'arpeggio',
+  'go-chords': 'chords', 'play-chord': 'chords', 'chords-mode': 'identify', 'oc-play-arp': 'arpeggio',
   'tuner-toggle': 'tuner', 'listen-start': 'listen-scale', 'cs-open': 'chord-sheet',
   'prog-practice': 'practice', 'prog-play': 'playlist-play',
   'play-custom-handpan': 'custom-notes', 'clone-layout': 'custom-notes', 'add-instrument': 'add-instrument',

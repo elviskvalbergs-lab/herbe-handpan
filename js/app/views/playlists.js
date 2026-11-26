@@ -1,16 +1,11 @@
 // Playlists: lists, the playlist picker, a playlist, playing its chords.
 // Part of the app split out of js/app.js (docs/app-structure-plan.md). Names from
 // the other js/app/ files are shared through the bundle's one scope (build.py).
-import { createLayoutFromScale, displayNote, notePC } from '../../data.js';
+import { notePC } from '../../data.js';
 import { icon } from '../../icons.js';
-import { findAllChords } from '../../chords.js';
-import { findTuning } from '../../layoutfamilies.js';
-import { getInstrument, handpanInstrumentId, usesLayout } from '../../instruments.js';
 import { initAudio, playChord } from '../../audio.js';
 import { updatePanPlaying } from '../../pan.js';
-import { playableMidis } from '../../ocarina-ui.js';
-import { addChordToPlaylist, addPlaylist, addProgression, deletePlaylist, getFavorites, getPlaylists, getProgressions, removeChordFromPlaylist, renamePlaylist, renameProgression, updatePlaylistChordVoicing } from '../../storage.js';
-import { scheduleSave } from '../../auth.js';
+import { addProgression, getProgressions, renameProgression } from '../../storage.js';
 
 // The row that shows (or hides again) the lists made on other instruments.
 function listsOtherHtml(other, word) {

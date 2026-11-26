@@ -4,10 +4,9 @@
 import { NOTE_NAMES, displayNote, getAllNotes, getNoteName, notePC, noteToMidi } from '../../data.js';
 import { icon } from '../../icons.js';
 import { getRelatedChords, identifyChord, mainChordsInKey } from '../../chords.js';
-import { LISTEN_DEFAULTS, listenTracker } from '../../listen-detect.js';
 import { layoutFamilyInfo, layoutInstrument } from '../../layoutfamilies.js';
-import { handpanInstrumentId, midiToNoteName } from '../../instruments.js';
-import { initAudio, playChord, playNote, playScale, playSequence } from '../../audio.js';
+import { handpanInstrumentId } from '../../instruments.js';
+import { initAudio, playChord, playScale } from '../../audio.js';
 import { renderPan, updatePanPlaying } from '../../pan.js';
 import { getSavedLayouts, isChordBookmarkedAnyVoicing, saveLayout } from '../../storage.js';
 import { scheduleSave } from '../../auth.js';
@@ -34,7 +33,8 @@ function viewHandpanSongs() {
 // playlist's order while a playlist filter is on, otherwise by root, then
 // the bigger chords first.
 function hpFilteredChords() {
-  const { chords, chordFilter, layout } = state;
+  const { chords, layout } = state;
+  const chordFilter = state.chordsUi;
   // Root options: NOTE_NAMES[i] is at PC i — filter by which PCs have chords.
   const ROOT_ORDER = NOTE_NAMES;
   const roots = chordRootsOf(chords);
@@ -42,7 +42,7 @@ function hpFilteredChords() {
   // Apply filters — compare root by PC to handle G# ↔ Ab equivalence.
   const layoutId = layout.isCustom ? (layout.savedId || layout.id) : layout.id;
   const filtered = chords.filter(c => {
-    if (state.chordCountSet.size > 0 && !state.chordCountSet.has(chordCountKey(c.noteCount))) return false;
+    if (chordFilter.counts.size > 0 && !chordFilter.counts.has(chordCountKey(c.noteCount))) return false;
     if (chordFilter.category !== 'All' && c.type.category !== chordFilter.category) return false;
     if (chordFilter.root !== 'All') {
       const filterPC = ROOT_ORDER.indexOf(chordFilter.root);
@@ -54,16 +54,10 @@ function hpFilteredChords() {
     const rA = notePC(a.rootNote), rB = notePC(b.rootNote);
     return rA !== rB ? rA - rB : b.noteCount - a.noteCount;
   });
-  const narrowed = chordFilter.category !== 'All' || chordFilter.root !== 'All' || state.chordCountSet.size > 0;
+  const narrowed = chordFilter.category !== 'All' || chordFilter.root !== 'All' || chordFilter.counts.size > 0;
   const main = chordsMainOn(filtered, narrowed) && !!layout.top.ding;
   const all = filtered.length;
   return { filtered: main ? mainChordsInKey(filtered, notePC(layout.top.ding), layoutPitchClasses(layout)) : filtered, roots, layoutId, main, all };
-}
-
-// Filters set in the Filters sheet (the root chips don't count).
-function hpFilterCount() {
-  const f = state.chordFilter;
-  return (state.chordCountSet.size > 0 ? 1 : 0) + (f.category !== 'All' ? 1 : 0) + (f.root !== 'All' ? 1 : 0);
 }
 
 function hpChordName(c) {
@@ -93,24 +87,26 @@ function viewChords() {
   const { filtered, roots, layoutId, main, all } = hpFilteredChords();
   // A chord is always shown, as on every instrument: the first one until
   // another is picked.
-  if (!state.selectedChord && !state.discoverMode && !state.hpListen && filtered.length) state.selectedChord = filtered[0];
-  const { chords, chordFilter, selectedChord, layout } = state;
+  const ui = state.chordsUi;
+  const discoverMode = ui.mode === 'identify', hpListen = ui.mode === 'listen';
+  if (!state.selectedChord && ui.mode === 'browse' && filtered.length) state.selectedChord = filtered[0];
+  const { chords, selectedChord, layout } = state;
   const uf = state.useFlats;
   const us = state.useSolfege;
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
 
-  const discoverMatches = state.discoverMode ? identifyChord(state.discoverNotes) : [];
+  const discoverMatches = discoverMode ? identifyChord(state.discoverNotes) : [];
   // Listen: the chord heard, lit on the pan (docs/listen-mode.md).
-  const heard = state.hpListen ? listenHeardOn(getAllNotes(layout).map(noteToMidi)) : null;
+  const heard = hpListen ? listenHeardOn(getAllNotes(layout).map(noteToMidi)) : null;
 
   // Discover mode's clicked notes get the same treatment as a selected chord's
   // notes: exact matches highlighted, other same-pitch-class positions dimmed.
   const panName = m => getAllNotes(layout).find(n => noteToMidi(n) === m);
   // The root first, so it gets the root's colour on the pan.
   const activeNotes = heard ? (heard.fit ? [...heard.fit.voicing].sort((a, b) => ((a - heard.chord.rootPC) % 12 === 0 ? 0 : 1) - ((b - heard.chord.rootPC) % 12 === 0 ? 0 : 1)).map(panName) : [])
-    : state.discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : null);
+    : discoverMode ? state.discoverNotes : (selectedChord ? selectedChord.notes : null);
   const highlightNotes = activeNotes || [];
   const chordPCs = activeNotes ? new Set(activeNotes.map(n => notePC(n))) : new Set();
   const altHighlightNotes = activeNotes
@@ -120,7 +116,7 @@ function viewChords() {
 
   // The selected chord: a bar on phones (More opens a sheet), a full card
   // with every action and the related chords from 600px.
-  const card = state.hpListen ? listenCardHtml(heard) : state.discoverMode ? '' : selectedChord ? chordCardHtml({
+  const card = hpListen ? listenCardHtml(heard) : discoverMode ? '' : selectedChord ? chordCardHtml({
     title: escHtml(hpChordName(selectedChord)),
     metas: [[escHtml(hpNotesText(selectedChord.notes))], [`${escHtml(selectedChord.type.category)} · ${chordNotesWord(selectedChord.noteCount)}`, 'hp-wide']],
     actions: `
@@ -128,7 +124,7 @@ function viewChords() {
           ${speedBtnHtml()}
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
           ${chordSaveBtn(selectedInAny, { action: 'show-playlist-picker', data: { 'chord-id': selectedChord.id, 'chord-fav-id': selectedFavId } })}
-          ${uiIconBtn('ellipsis', 'More: the scale, progressions', { action: 'hp-more-open', attrs: 'aria-haspopup="dialog"' })}`,
+          ${uiIconBtn('ellipsis', 'More: the scale, progressions', { action: 'chords-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     below: `${goesWithLineHtml()}<div class="hp-related hp-wide">${hpRelatedHtml(selectedChord)}</div>`,
   }) : `
     <div class="hp-card is-empty">
@@ -137,14 +133,14 @@ function viewChords() {
     </div>`;
 
 
-  const nFilters = hpFilterCount();
+  const nFilters = chordFilterCount();
   const browseHead = `
-    ${chordListLineHtml({ shown: filtered.length, all, main, open: 'hp-filters-open', count: nFilters })}`;
+    ${chordListLineHtml({ shown: filtered.length, all, main, count: nFilters })}`;
 
   const rows = filtered.length === 0
     ? uiEmpty({
       icon: 'sliders-horizontal', title: 'No chords match these filters',
-      action: '<button type="button" class="btn btn-secondary" data-action="hp-filters-clear" data-all="1">Clear filters</button>',
+      action: '<button type="button" class="btn btn-secondary" data-action="chords-filters-clear" data-all="1">Clear filters</button>',
     })
     : `<div class="list chord-rows">${filtered.map(c => {
       return chordRowHtml({
@@ -185,23 +181,18 @@ function viewChords() {
 
   return `
     ${instrumentAppBar(null, 'chords')}${chordsScreenHtml({
-    cls: state.discoverMode ? ' is-identify' : '',
+    cls: discoverMode ? ' is-identify' : '',
     picture: `<div class="pan-wrap hp-pan">${panRotateBtn()}${panSvg}</div>`,
     card,
-    listHead: `${chordModeSegHtml(state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse', 'toggle-discover-mode')}
-          ${state.discoverMode || state.hpListen ? '' : browseHead}`,
-    list: state.hpListen ? listenHistoryHtml() : state.discoverMode ? identify : rows,
+    listHead: `${chordModeSegHtml()}
+          ${discoverMode || hpListen ? '' : browseHead}`,
+    list: hpListen ? listenHistoryHtml() : discoverMode ? identify : rows,
   })}`;
 }
 
 // A handpan's Filters: the shared sheet.
 function hpFiltersSheet() {
-  const f = state.chordFilter;
-  return chordFiltersSheet({
-    help: uiHelp('chords', 'filters'), key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
-    roots: chordRootsOf(state.chords), root: f.root, rootAction: 'filter-root',
-    counts: state.chordCountSet, countAction: 'toggle-note-count', category: f.category, categoryAction: 'filter-category',
-  });
+  return chordFiltersSheet({ roots: chordRootsOf(state.chords) });
 }
 
 // A handpan chord's ⋯: the shared sheet, with the scale, the link and the
@@ -209,7 +200,7 @@ function hpFiltersSheet() {
 function hpMoreSheet() {
   const chord = state.selectedChord;
   return chordMoreSheet({
-    help: uiHelp('chords', 'more'), key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
+    variant: 'hpmore', title: hpChordName(chord),
     rows: [
       uiRow({ lead: 'play', title: 'Play the scale', meta: 'Every note, from the lowest up', action: 'play-scale' }),
       uiRow({ lead: 'link', title: 'Copy link to this chord', action: 'copy-url' }),
@@ -266,30 +257,6 @@ registerActions({
 
 // ── Click: Chord explorer ─────────────────────────────────────────────────
 registerActions({
-  'hp-filters-open': (el, e, action) => { state.hpFilters = true; render(); return; },
-  'hp-filters-close': (el, e, action) => { state.hpFilters = false; render(); return; },
-  'hp-more-open': (el, e, action) => { state.hpMore = true; render(); return; },
-  'hp-more-close': (el, e, action) => { state.hpMore = false; render(); return; },
-  'hp-filters-clear': (el, e, action) => {
-    // The sheet's filters; the empty list's "Clear filters" also clears the root.
-    state.chordCountSet.clear();
-    state.chordFilter.category = 'All';
-    if (el.dataset.all) state.chordFilter.root = 'All';
-    render();
-    return;
-  },
-  'toggle-note-count': (el, e, action) => {
-    const count = el.dataset.count;
-    if (state.chordCountSet.has(count)) state.chordCountSet.delete(count);
-    else state.chordCountSet.add(count);
-    render();
-    return;
-  },
-  'filter-root': (el, e, action) => {
-    state.chordFilter.root = el.dataset.root;
-    render();
-    return;
-  },
   'select-chord': (el, e, action) => {
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
@@ -333,18 +300,6 @@ registerActions({
   'hear-start': (el, e, action) => { listenStart(); return; },
   'hear-stop': (el, e, action) => { listenStop(); return; },
   'hear-clear': (el, e, action) => { Object.assign(listenUi(), { history: [], stopped: '' }); render(); return; },
-  'toggle-discover-mode': (el, e, action) => {
-    // From the Browse | Identify | Listen segment: only a change of mode toggles.
-    const want = el.dataset.value ?? (state.discoverMode ? 'browse' : 'identify');
-    const now = state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'browse';
-    if (want === now) return;
-    state.hpListen = want === 'listen';
-    state.discoverMode = want === 'identify';
-    state.discoverNotes = [];
-    state.selectedChord = null;
-    render();
-    return;
-  },
   'discover-clear': (el, e, action) => {
     state.discoverNotes = [];
     render();
@@ -398,5 +353,4 @@ registerActions({
 
 // ── Change: Chord explorer ────────────────────────────────────────────────
 registerActions({
-  'filter-category': (el, e, action) => { state.chordFilter.category = el.value; render(); },
 }, CHANGE_ACTIONS);

@@ -1,7 +1,7 @@
 // Ocarina, flute and recorder: the instrument screen, Chords, Practice.
 // Part of the app split out of js/app.js (docs/app-structure-plan.md). Names from
 // the other js/app/ files are shared through the bundle's one scope (build.py).
-import { NOTE_NAMES, createLayoutFromScale, displayNote, notePC, noteToMidi } from '../../data.js';
+import { NOTE_NAMES, createLayoutFromScale, displayNote, getNoteName, notePC, noteToMidi } from '../../data.js';
 import { HELP_SCREENS } from '../../features.js';
 import { icon } from '../../icons.js';
 import { findAllChords, identifyChord, mainChordsInKey } from '../../chords.js';
@@ -19,9 +19,8 @@ import { logEvent } from '../../auth.js';
 function newOcState() {
   return {
     tab: 'chords', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
-    category: 'All', expanded: null, voicings: {}, practice: null,
-    missingOpen: false, buildChamber: 0, fingersSheet: false, chordMore: false,
-    filtersOpen: false, root: 'All', counts: [],
+    expanded: null, voicings: {}, practice: null,
+    missingOpen: false, buildChamber: 0, fingersSheet: false,
     holeMap: null,         // { sel } while marking where the holes are on the photo
     fgEdit: null,          // { midi, states } while changing a note's fingering by hand
   };
@@ -69,17 +68,17 @@ function ocFavId(inst, chordId, noteNames, canonicalNames) {
 // its current voicing as MIDI notes, plus the source scale's chords that
 // don't fit. Source scale = the filter, or the scale an ocarina was built from.
 function ocChordModel(inst) {
-  const oc = state.oc;
+  const oc = state.oc, ui = state.chordsUi;
   const pcs = oc.scaleFilter !== 'All' ? scalePitchClasses(oc.scaleFilter) : null;
   const layout = ocarinaToLayout(inst, pcs);
   const chords = layout.top.ding ? findAllChords(layout) : [];
-  const counts = new Set(oc.counts ?? []);
+  const counts = ui.counts;
   const listed = chords
-    .filter(c => oc.category === 'All' || c.type.category === oc.category)
+    .filter(c => ui.category === 'All' || c.type.category === ui.category)
     .filter(c => !counts.size || counts.has(chordCountKey(c.noteCount)))
-    .filter(c => !oc.root || oc.root === 'All' || notePC(c.rootNote) === NOTE_NAMES.indexOf(oc.root))
+    .filter(c => ui.root === 'All' || notePC(c.rootNote) === NOTE_NAMES.indexOf(ui.root))
     .sort((a, b) => notePC(a.rootNote) - notePC(b.rootNote) || b.noteCount - a.noteCount);
-  const main = chordsMainOn(listed, oc.category !== 'All' || counts.size > 0 || (oc.root && oc.root !== 'All'));
+  const main = chordsMainOn(listed, ui.category !== 'All' || counts.size > 0 || ui.root !== 'All');
   const all = listed.length;
   const items = (main ? mainChordsInKey(listed, notePC(layout.top.ding), layoutPitchClasses(layout)) : listed)
     .map(c => ({ chord: c, midis: oc.voicings[c.id] ?? c.notes.map(noteToMidi).sort((a, b) => a - b) }));
@@ -88,7 +87,7 @@ function ocChordModel(inst) {
   const have = new Set(chords.map(c => `${notePC(c.rootNote)}-${c.type.id}`));
   const missing = !source ? [] : findAllChords(createLayoutFromScale(source))
     .filter(c => !have.has(`${notePC(c.rootNote)}-${c.type.id}`))
-    .filter(c => oc.category === 'All' || c.type.category === oc.category)
+    .filter(c => ui.category === 'All' || c.type.category === ui.category)
     .map(c => ({ chord: c, fit: fitChordToInstrument(inst, c.notes) }))
     .filter(x => x.fit.missing.length > 0);
   return { chords, items, missing, source, main, all };
@@ -171,7 +170,7 @@ function viewOcarinaChords(inst) {
   const selected = model.items.find(x => x.chord.id === oc.expanded) ?? model.items[0] ?? null;
   if (selected && oc.expanded !== selected.chord.id) oc.expanded = selected.chord.id;
   const rows = model.items.length === 0
-    ? uiEmpty({ icon: 'music', title: 'No chords match these filters', action: oc.category !== 'All' || oc.scaleFilter !== 'All' || oc.counts?.length || (oc.root && oc.root !== 'All') ? '<button type="button" class="btn btn-secondary" data-action="oc-filters-clear" data-all="1">Clear filters</button>' : '' })
+    ? uiEmpty({ icon: 'music', title: 'No chords match these filters', action: chordFilterCount(oc.scaleFilter !== 'All' ? 1 : 0) ? '<button type="button" class="btn btn-secondary" data-action="chords-filters-clear" data-all="1">Clear filters</button>' : '' })
     : `<div class="list chord-rows">${model.items.map(x => {
       const a = cardArgs(x);
       const parts = ocChordParts(inst, a);
@@ -192,17 +191,18 @@ function viewOcarinaChords(inst) {
         })).join('')}
       </div>
     </details>` : '';
-  const nFilters = (oc.counts?.length ? 1 : 0) + (oc.category !== 'All' ? 1 : 0) + (oc.scaleFilter !== 'All' ? 1 : 0) + (oc.root && oc.root !== 'All' ? 1 : 0);
-  const listHead = chordListLineHtml({ shown: model.items.length, all: model.all, main: model.main, open: 'oc-filters-open', count: nFilters });
-  const stage = oc.listen ? listenOcStageParts(inst)
-    : oc.identify ? ocIdentifyParts(inst, model)
+  const nFilters = chordFilterCount(oc.scaleFilter !== 'All' ? 1 : 0);
+  const mode = state.chordsUi.mode;
+  const listHead = chordListLineHtml({ shown: model.items.length, all: model.all, main: model.main, count: nFilters });
+  const stage = mode === 'listen' ? listenOcStageParts(inst)
+    : mode === 'identify' ? ocIdentifyParts(inst, model)
     : selected ? ocChordStageParts(inst, cardArgs(selected)) : { picture: '', card: '', key: '' };
-  const modeSeg = chordModeSegHtml(oc.listen ? 'listen' : oc.identify ? 'identify' : 'browse', 'oc-listen-mode');
+  const modeSeg = chordModeSegHtml();
   return `${instrumentAppBar(inst, 'chords')}${chordsScreenHtml({
-    cls: ` oc-chords${oc.identify ? ' is-identify' : ''}`, stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
+    cls: ` oc-chords${mode === 'identify' ? ' is-identify' : ''}`, stageCls: ' oc-stage oc-player', stageAttrs: ` data-key="${stage.key}"`,
     picture: stage.picture, card: stage.card,
-    listHead: `${modeSeg}${oc.listen || oc.identify ? '' : listHead}`,
-    list: oc.listen ? listenHistoryHtml() : oc.identify ? stage.list : rows + missing,
+    listHead: `${modeSeg}${mode !== 'browse' ? '' : listHead}`,
+    list: mode === 'listen' ? listenHistoryHtml() : mode === 'identify' ? stage.list : rows + missing,
   })}`;
 }
 
@@ -278,7 +278,7 @@ function ocChordStageParts(inst, a) {
           <button type="button" class="btn btn-primary hp-play" data-action="oc-play-arp" data-key="${key}">${icon('play')} Chord</button>
           ${speedBtnHtml()}
           ${chordSaveBtn(parts.inAny, { action: 'oc-show-playlist-picker', data: { key: a.key } })}
-          ${uiIconBtn('ellipsis', 'More: octaves, what the holes mean', { action: 'oc-more-open', attrs: 'aria-haspopup="dialog"' })}`,
+          ${uiIconBtn('ellipsis', 'More: octaves, what the holes mean', { action: 'chords-more-open', attrs: 'aria-haspopup="dialog"' })}`,
     // One note at a time: the notes in playing order, and what to change
     // for the one on show.
     below: `
@@ -298,12 +298,9 @@ function ocChordStageParts(inst, a) {
 // An ocarina's or flute's Filters: the shared sheet, with the handpan-scale
 // filter in place of the playlist.
 function ocFiltersSheet() {
-  const oc = state.oc;
   const inst = currentInstrument();
   return chordFiltersSheet({
-    help: uiHelp('chords', 'filters'), key: 'oc-filters', close: 'oc-filters-close', clear: 'oc-filters-clear',
-    roots: chordRootsOf(inst ? ocChordModel(inst).chords : []), root: oc.root ?? 'All', rootAction: 'oc-filter-root',
-    counts: new Set(oc.counts ?? []), countAction: 'oc-toggle-count', category: oc.category, categoryAction: 'oc-category',
+    roots: chordRootsOf(inst ? ocChordModel(inst).chords : []),
     extra: uiField({ label: 'Scale', id: 'oc-scale-filter', control: ocScaleSelect('Only chords made of this scale\'s notes'), help: 'Only chords made of the scale\'s notes.' }),
   });
 }
@@ -321,7 +318,7 @@ function ocChordMoreSheet() {
   const pairs = inst.chambers.length > 1 ? playablePairs(inst.chambers, card.midis) : [];
   const hasHalf = card.midis.some(m => fingeringFor(inst, m)?.states?.includes('h'));
   return chordMoreSheet({
-    help: uiHelp('chords', 'more'), key: 'oc-more', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
+    title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`,
     extra: `
       <div class="field oc-more-octaves">
         <span class="field-label">Octaves</span>
@@ -614,7 +611,7 @@ registerActions({
   'oc-toggle-sizes': (el, e, action) => { state.showSizes = !state.showSizes; savePrefs(); render(); return; },
   'toggle-closeup': (el, e, action) => { state.closeUp = !state.closeUp; savePrefs(); render(); return; },
   'oc-legend-dismiss': (el, e, action) => { state.ocLegendSeen = true; savePrefs(); render(); return; },
-  'oc-hand-open': (el, e, action) => { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; },
+  'oc-hand-open': (el, e, action) => { state.oc.handLegend = true; state.chordsUi.moreOpen = false; render(); return; },
   'oc-hand-close': (el, e, action) => { state.oc.handLegend = false; render(); return; },
   'tuner-toggle': (el, e, action) => { toggleTuner(); return; },
   'install-help-close': (el, e, action) => { state.installHelp = false; render(); return; },
@@ -678,28 +675,9 @@ registerActions({
     document.querySelector('.oc-stage [data-action="oc-play-arp"]')?.click();
     return;
   },
-  'oc-more-open': (el, e, action) => { state.oc.chordMore = true; render(); return; },
-  'oc-filters-open': (el, e, action) => { state.oc.filtersOpen = true; render(); return; },
-  'oc-filters-close': (el, e, action) => { state.oc.filtersOpen = false; render(); return; },
-  'oc-filter-root': (el, e, action) => { state.oc.root = el.dataset.root; render(); return; },
-  'oc-toggle-count': (el, e, action) => {
-    const set = new Set(state.oc.counts ?? []);
-    if (set.has(el.dataset.count)) set.delete(el.dataset.count); else set.add(el.dataset.count);
-    state.oc.counts = [...set];
-    render();
-    return;
-  },
-  'oc-more-close': (el, e, action) => { state.oc.chordMore = false; render(); return; },
   'oc-missing-toggle': (el, e, action) => {
     // The <details> opens by itself; remember it across re-renders.
     state.oc.missingOpen = !el.closest('details').open;
-    return;
-  },
-  'oc-filters-clear': (el, e, action) => {
-    // The sheet's filters; the empty list's "Clear filters" also clears the root.
-    Object.assign(state.oc, { scaleFilter: 'All', category: 'All', counts: [] });
-    if (el.dataset.all) state.oc.root = 'All';
-    render();
     return;
   },
   'oc-play-arp, oc-voicing, oc-show-playlist-picker': (el, e, action) => {
@@ -783,7 +761,6 @@ registerActions({
 // ── Change: Ocarina chords ────────────────────────────────────────────────
 registerActions({
   'oc-scale-filter': (el, e, action) => { state.oc.scaleFilter = el.value; state.oc.voicings = {}; render(); },
-  'oc-category': (el, e, action) => { state.oc.category = el.value; render(); },
 }, CHANGE_ACTIONS);
 
 // ── Click: Tap notes and Listen on an ocarina, flute or recorder ──
@@ -792,16 +769,6 @@ registerActions({
     listenUi().ocNote = parseInt(el.dataset.midi, 10);
     initAudio();
     playNote(midiToNoteName(listenUi().ocNote));
-    render();
-    return;
-  },
-  'oc-listen-mode': (el, e, action) => {
-    const want = el.dataset.value;
-    const now = state.oc.listen ? 'listen' : state.oc.identify ? 'identify' : 'browse';
-    if (want === now) return;
-    state.oc.listen = want === 'listen';
-    state.oc.identify = want === 'identify';
-    state.oc.idNotes = [];
     render();
     return;
   },
@@ -842,7 +809,8 @@ registerActions({
   },
   'oc-id-open': (el, e, action) => {
     // The chord found, in Browse: its fingerings in playing order, playlists, octaves.
-    Object.assign(state.oc, { identify: false, idNotes: [], expanded: el.dataset.id, root: 'All', category: 'All', scaleFilter: 'All', counts: [] });
+    Object.assign(state.oc, { idNotes: [], expanded: el.dataset.id, scaleFilter: 'All' });
+    Object.assign(state.chordsUi, { mode: 'browse', root: 'All', category: 'All', counts: new Set() });
     render();
     return;
   },

@@ -3,7 +3,7 @@
 // the other js/app/ files are shared through the bundle's one scope (build.py).
 import { APP_NAME } from '../links.js';
 import { DATA_KEYS, accountMatch, accountUserOnDevice, carryOverVisit, clearAccountData, hasAccountOnDevice, safeSetItem, setAccountUserOnDevice, visitHasWork } from '../datastore.js';
-import { addChordToPlaylist, getFavorites, getPlaylists, getProgressions, getSavedLayouts, mergePlaylistsIntoProgressions } from '../storage.js';
+import { addChordToPlaylist, getFavorites, getProgressions, getSavedLayouts, mergePlaylistsIntoProgressions } from '../storage.js';
 import { deleteMyAccount, exportAccountRows, fetchAccess, fetchAccountCounts, getAuthProviders, getUserEmail, hasStoredSession, importLegacyData, isLoggedIn, logEvent, scheduleSave, sendOtp, signInWithProvider, signOut, touchLastSeen, verifyOtp } from '../auth.js';
 import { syncBases } from '../localdb.js';
 import { offline } from '../offline.js';

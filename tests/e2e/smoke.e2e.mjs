@@ -73,7 +73,7 @@ try {
     assert.equal(await first.getAttribute('role'), 'button');
     assert.equal(await first.getAttribute('tabindex'), '0');
     assert.match(await first.getAttribute('aria-label'), /^[A-G]/);
-    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Tap notes' }).click();
+    await p.locator('[data-action="chords-mode"]', { hasText: 'Tap notes' }).click();
     await notes.nth(1).focus();
     await p.keyboard.press('Enter');
     await p.keyboard.press('Tab');
@@ -82,7 +82,7 @@ try {
     // Tap notes marks the picked notes; the focus stayed in the picture.
     assert.equal(await p.locator('.pan-wrap .pan-note.highlight').count(), 2, 'Enter and Space each picked a note');
     assert.ok(await p.evaluate(() => document.activeElement?.classList?.contains('pan-note')), 'focus is still on a note');
-    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'All chords' }).click();
+    await p.locator('[data-action="chords-mode"]', { hasText: 'All chords' }).click();
   });
   await step('the Playlists tab opens, with New playlist', first, async p => {
     await p.click('[data-action="hp-playlists"]');
@@ -226,14 +226,14 @@ try {
   await step('handpan: Filters, a note count, the chord\'s More sheet, the Pan tab', deeper, async p => {
     await p.goto(`${app.base}/handpan/d-kurd/chords`);
     await p.locator('[data-action="select-chord"]').nth(1).click();
-    await p.click('[data-action="hp-filters-open"]');
-    await p.locator('[data-sheet="hp-filters"] [data-action="toggle-note-count"]').first().click();
-    await p.locator('[data-sheet="hp-filters"] [data-action="hp-filters-close"][data-sheet-close]').click();
-    await p.locator('[data-sheet="hp-filters"]').waitFor({ state: 'detached' });
-    await p.click('[data-action="hp-more-open"]');
-    await p.locator('[data-sheet="hp-more"]').waitFor();
+    await p.click('[data-action="chords-filters-open"]');
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-count"]').first().click();
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-filters-close"][data-sheet-close]').click();
+    await p.locator('[data-sheet="chord-filters"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="chords-more-open"]');
+    await p.locator('[data-sheet="chord-more"]').waitFor();
     await p.keyboard.press('Escape');
-    await p.locator('[data-sheet="hp-more"]').waitFor({ state: 'detached' });
+    await p.locator('[data-sheet="chord-more"]').waitFor({ state: 'detached' });
     await p.click('[data-action="back-editor"]');
     await p.locator('.ed-pan, .pan-wrap').first().waitFor();
     await p.click('[data-action="go-chords"]');
@@ -244,17 +244,17 @@ try {
     await p.goto(`${app.base}${oc.path}/chords`);
     await p.locator('[data-action="oc-chord-select"]').nth(1).click();
     await p.locator('[data-action="oc-play-arp"]').first().click();
-    await p.click('[data-action="oc-filters-open"]');
-    await p.locator('[data-sheet="oc-filters"] [data-action="oc-toggle-count"]').first().click();
-    await p.locator('[data-sheet="oc-filters"] [data-action="picker-open"]').click();
+    await p.click('[data-action="chords-filters-open"]');
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-count"]').first().click();
+    await p.locator('[data-sheet="chord-filters"] [data-action="picker-open"]').click();
     await p.keyboard.type('ma');
     await p.keyboard.press('Enter');
-    await p.locator('[data-sheet="oc-filters"] [data-action="oc-filters-close"][data-sheet-close]').click();
-    await p.locator('[data-sheet="oc-filters"]').waitFor({ state: 'detached' });
-    await p.click('[data-action="oc-more-open"]');
-    await p.locator('[data-sheet="oc-more"]').waitFor();
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-filters-close"][data-sheet-close]').click();
+    await p.locator('[data-sheet="chord-filters"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="chords-more-open"]');
+    await p.locator('[data-sheet="chord-more"]').waitFor();
     await p.keyboard.press('Escape');
-    await p.locator('[data-sheet="oc-more"]').waitFor({ state: 'detached' });
+    await p.locator('[data-sheet="chord-more"]').waitFor({ state: 'detached' });
   });
   await step('a guest\'s New progression opens the save sheet, and Not now closes it', deeper, async p => {
     await p.goto(`${app.base}/handpan/d-kurd/playlists`);
@@ -290,7 +290,7 @@ try {
   await step('Tap notes on an ocarina: each chord found has ♡ and ▶, as on a handpan', deeper, async p => {
     const oc = catalogueLinks().find(l => l.family === 'ocarina');
     await p.goto(`${app.base}${oc.path}/chords`);
-    await p.click('[data-action="oc-listen-mode"][data-value="identify"]');
+    await p.click('[data-action="chords-mode"][data-value="identify"]');
     const notes = p.locator('[data-action="oc-id-note"]');
     for (const i of [0, 2, 4]) await notes.nth(i).click();
     await p.locator('[data-action="oc-id-chord-play"]').first().click();

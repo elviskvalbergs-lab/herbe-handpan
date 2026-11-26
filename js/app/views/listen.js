@@ -30,8 +30,8 @@ function listenUi() { return (state.listenUi ??= newListenUi()); }
 
 // Is a Listen screen showing? (The mic turns off as soon as it isn't.)
 function listenScreenOn() {
-  return (state.view === 'chords' && state.hpListen)
-    || (state.view === 'instrument' && state.oc.tab === 'chords' && state.oc.listen)
+  return state.chordsUi.mode === 'listen'
+    && (state.view === 'chords' || (state.view === 'instrument' && state.oc.tab === 'chords'))
     || state.view === 'listen-debug';
 }
 

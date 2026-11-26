@@ -126,7 +126,7 @@ registerActions({
   'set-flats': (el, e, action) => { state.noteNames = ['auto', 'sharps', 'flats'].includes(el.dataset.value) ? el.dataset.value : 'auto'; savePrefs(); render(); return; },
   'set-solfege': (el, e, action) => { state.useSolfege = el.dataset.value === 'solfege'; savePrefs(); render(); return; },
   'tempo-set': (el, e, action) => { setTempo(parseInt(el.dataset.value, 10), { preview: true }); render(); return; },
-  'speed-open': (el, e, action) => { state.speedSheet = true; state.hpMore = false; state.oc.chordMore = false; render(); return; },
+  'speed-open': (el, e, action) => { state.speedSheet = true; state.chordsUi.moreOpen = false; render(); return; },
   'speed-close': (el, e, action) => { state.speedSheet = false; render(); return; },
   'set-rotation': (el, e, action) => { state.ringRotated = el.dataset.value === 'rotated'; savePrefs(); render(); return; },
   'reset-legends': (el, e, action) => {

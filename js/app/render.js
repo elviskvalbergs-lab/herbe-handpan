@@ -186,13 +186,13 @@ function sheetHtml() {
   if (state.songsCountries && ['hp-playlists', 'hp-songs', 'instrument'].includes(state.view)) return songsCountriesSheet();
   if (state.chordSheet && ['hp-playlists', 'hp-songs', 'instrument', 'progression'].includes(state.view)) return chordSheetSheet();
   if (state.progRowMenu != null && state.view === 'progression') return progRowMenuSheet();
-  if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
-  if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
+  if (state.chordsUi.filtersOpen && state.view === 'chords') return hpFiltersSheet();
+  if (state.chordsUi.moreOpen && state.view === 'chords' && state.selectedChord && state.chordsUi.mode !== 'identify') return hpMoreSheet();
   if (state.pendingSlot && state.view === 'editor') return renderNotePicker();
   if (state.oc.handLegend && (state.view === 'instrument' || state.view === 'settings')) return handLegendModal();
   if (state.oc.fingersSheet && state.view === 'instrument' && state.oc.tab === 'setup') return setupFingersSheet();
-  if (state.oc.chordMore && state.view === 'instrument' && state.oc.tab === 'chords') return ocChordMoreSheet();
-  if (state.oc.filtersOpen && state.view === 'instrument' && state.oc.tab === 'chords') return ocFiltersSheet();
+  if (state.chordsUi.moreOpen && state.view === 'instrument' && state.oc.tab === 'chords') return ocChordMoreSheet();
+  if (state.chordsUi.filtersOpen && state.view === 'instrument' && state.oc.tab === 'chords') return ocFiltersSheet();
   if (state.clayEdit && state.view === 'clay') return clayEditSheet();
   return '';
 }

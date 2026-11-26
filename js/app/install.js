@@ -2,6 +2,7 @@
 // Part of the app split out of js/app.js (docs/app-structure-plan.md). Names from
 // the other js/app/ files are shared through the bundle's one scope (build.py).
 import { icon } from '../icons.js';
+import { logEvent } from '../auth.js';
 
 // ── Add to home screen ─────────────────────────────────────────────────────
 // The app works best installed: full screen, its own icon, offline. A slim

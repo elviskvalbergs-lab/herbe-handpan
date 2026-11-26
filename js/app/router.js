@@ -26,11 +26,12 @@ function navPush(url) { history.pushState({ hp: 1 }, '', navUrl(url)); }
 function navReplace(url, extra = {}) { history.replaceState({ ...(history.state ?? {}), ...extra }, '', navUrl(url)); }
 
 function goHome({ push = true } = {}) {
+  Object.assign(state.chordsUi, { mode: 'browse', filtersOpen: false, moreOpen: false });
   Object.assign(state, {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
     currentInstrumentId: null,
-    wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
-    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false, pendingSong: null,
+    wizard: null, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
+    menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, pendingSong: null,
   });
   refreshInstruments();
   if (!push) return;
@@ -52,7 +53,7 @@ function openInstrument(id, { push = true } = {}) {
   const inst = getInstrument(id);
   if (!inst) return false;
   touchInstrument(id);
-  if (state.currentInstrumentId !== id) state.oc = newOcState();
+  if (state.currentInstrumentId !== id) { state.oc = newOcState(); state.chordsUi = newChordsUi(); }
   state.currentInstrumentId = id;
   state.selectedChord = null;
   if (usesLayout(inst)) {
@@ -61,7 +62,7 @@ function openInstrument(id, { push = true } = {}) {
     state.layout = JSON.parse(JSON.stringify(saved.layout));
     state.chords = findAllChords(state.layout);
     state.shellMode = 'both';
-    state.chordFilter = { category: 'All', root: 'All' };
+    clearChordFilters();
     state.view = 'chords';
     if (push) navPush(stateToHash());
   } else {
@@ -178,7 +179,7 @@ function windTabOf(tab) {
 function openChartLink({ chartId, keyId }) {
   const inst = instrumentFromChart(chartId, keyId, { name: linkTitle(parseLink(linkFor({ chartId, keyId }))) });
   Object.assign(state, {
-    view: 'instrument', layout: null, currentInstrumentId: SHARED_ID, sharedStatus: null, oc: newOcState(),
+    view: 'instrument', layout: null, currentInstrumentId: SHARED_ID, sharedStatus: null, oc: newOcState(), chordsUi: newChordsUi(),
     shared: { ...inst, id: SHARED_ID, link: { chartId, keyId } },
   });
 }
@@ -193,7 +194,7 @@ function openSharedLayout(data, tab) {
   if (layout.isCustom || !findTuning(layout.id)) { layout.isCustom = true; delete layout.savedId; layout.id = 'custom'; }
   Object.assign(state, {
     layout, currentInstrumentId: null, shared: null, sharedStatus: null, selectedChord: null,
-    chords: findAllChords(layout), shellMode: 'both', chordFilter: { category: 'All', root: 'All' },
+    chords: findAllChords(layout), shellMode: 'both',
     view: layoutTabView(tab),
   });
   navReplace(stateToHash());
@@ -253,7 +254,7 @@ function openLink(link) {
     state.chords = findAllChords(state.layout);
   }
   state.shellMode = 'both';
-  state.chordFilter = { category: 'All', root: 'All' };
+  clearChordFilters();
   state.view = link.chord ? 'chords' : layoutTabView(link.tab);
   if (link.chord) state.selectedChord = state.chords.find(c => linkSlug(c.id) === link.chord) || null;
 }

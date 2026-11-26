@@ -307,7 +307,7 @@ registerActions({
   'go-chords': (el, e, action) => {
     state.chords = findAllChords(state.layout);
     state.selectedChord = null;
-    state.chordFilter = { category: 'All', root: 'All' };
+    clearChordFilters();
     state.view = 'chords';
     navPush(stateToHash());
     render();

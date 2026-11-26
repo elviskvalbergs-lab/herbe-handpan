@@ -122,7 +122,7 @@ function playGoesWith(chords) {
 }
 
 function goesWithAction(action, el) {
-  if (action === 'gw-open') { state.goesWith = true; state.hpMore = false; state.oc.chordMore = false; render(); return true; }
+  if (action === 'gw-open') { state.goesWith = true; state.chordsUi.moreOpen = false; render(); return true; }
   if (!state.goesWith) return false;
   if (action === 'gw-close') { state.goesWith = null; render(); return true; }
   const ctx = goesWithContext();
@@ -174,9 +174,10 @@ function chordNotesWord(n) { return `${n} note${n !== 1 ? 's' : ''}`; }
 
 // All chords · Tap notes · Listen: the three ways to find a chord, the same
 // switch on every instrument.
-function chordModeSegHtml(mode, action) {
+function chordModeSegHtml() {
+  const mode = state.chordsUi.mode;
   const seg = uiSeg([{ value: 'browse', label: 'All chords' }, { value: 'identify', label: 'Tap notes' }, { value: 'listen', label: 'Listen' }],
-    mode, { action, label: 'Find a chord' });
+    mode, { action: 'chords-mode', label: 'Find a chord' });
   const help = mode === 'identify' ? uiHelp('identify-a-chord', 'steps') : mode === 'listen' ? uiHelp('listen', 'steps') : uiHelp('chords', 'play');
   return `<div class="chord-mode-row">${seg}${help}</div>`;
 }
@@ -192,14 +193,14 @@ function layoutPitchClasses(layout) { return new Set(getAllNotes(layout).map(not
 // The count under the filters, with the switch between main chords and all.
 // With Filters (how many are on) at the end of the same line: the list head
 // is this one line under the switch.
-function chordListLineHtml({ shown, all, main, open, count }) {
+function chordListLineHtml({ shown, all, main, count }) {
   const n = (k, w) => `${k} ${w}${k !== 1 ? 's' : ''}`;
   const sw = main
     ? `<button type="button" class="link-btn" data-action="chords-scope">Show all ${all}</button>`
     : all > shown || !state.chordsAll ? '' : `<button type="button" class="link-btn" data-action="chords-scope">Main chords only</button>`;
   return `<div class="hp-list-line">
       <div class="hp-count">${main ? n(shown, 'main chord') : n(shown, 'chord')}${sw ? ` · ${sw}` : ''}</div>
-      <button type="button" class="btn btn-secondary btn-sm hp-filter-btn" data-action="${open}" aria-haspopup="dialog">
+      <button type="button" class="btn btn-secondary btn-sm hp-filter-btn" data-action="chords-filters-open" aria-haspopup="dialog">
         ${icon('sliders-horizontal')} Filters${count ? ` · ${count}` : ''}
       </button>
     </div>`;
@@ -232,38 +233,92 @@ function chordTypeField(value, action) {
 function chordCountKey(n) { return n >= 5 ? '5+' : String(n); }
 
 // The Filters sheet of every instrument's Chords: the note the chord starts
-// on, how many notes, the type, then the instrument's own field (a
-// handpan's playlist, an ocarina's or flute's scale).
-function chordFiltersSheet({ key, help = '', close, clear, roots, root, rootAction, counts, countAction, category, categoryAction, extra = '' }) {
+// on, how many notes, the type, then the instrument's own field (an
+// ocarina's or flute's scale). roots: the chord roots this instrument has.
+function chordFiltersSheet({ roots, extra = '' }) {
   const uf = state.useFlats, us = state.useSolfege;
-  return uiSheet({ help,
-    key, title: 'Filters', close,
+  const { root, counts, category } = state.chordsUi;
+  return uiSheet({ help: uiHelp('chords', 'filters'),
+    key: 'chord-filters', title: 'Filters', close: 'chords-filters-close',
     body: `
     <div class="hp-sheet-form">
       <div class="field">
         <span class="field-label">Starts on</span>
         <div class="chips" role="group" aria-label="The note the chord starts on">
           ${roots.map(r => `<button type="button" class="chip" aria-pressed="${root === r ? 'true' : 'false'}"
-            data-action="${rootAction}" data-root="${r}">${r === 'All' ? 'Any note' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
+            data-action="chords-root" data-root="${r}">${r === 'All' ? 'Any note' : escHtml(displayNote(r, uf, us))}</button>`).join('')}
         </div>
       </div>
-      ${chordCountField(counts, countAction)}
-      ${chordTypeField(category, categoryAction)}
+      ${chordCountField(counts, 'chords-count')}
+      ${chordTypeField(category, 'chords-category')}
       ${extra}
     </div>`,
     footer: `
-      <button type="button" class="btn btn-ghost" data-action="${clear}" data-all="1">Clear all</button>
-      <button type="button" class="btn btn-primary" data-action="${close}">Done</button>`,
+      <button type="button" class="btn btn-ghost" data-action="chords-filters-clear" data-all="1">Clear all</button>
+      <button type="button" class="btn btn-primary" data-action="chords-filters-close">Done</button>`,
   });
 }
 
 // ⋯ of the chord on top, the same sheet on every instrument: the
 // instrument's own rows, the well-known progressions with this chord, then
 // whatever else the instrument shows (related chords, octaves, the legend).
-function chordMoreSheet({ key, help = '', variant = 'menu', title, close, rows = [], extra = '' }) {
+function chordMoreSheet({ variant = 'menu', title, rows = [], extra = '' }) {
   const all = [
     ...rows,
     goesWithHasProgressions() ? uiRow({ lead: 'list-ordered', title: 'Progressions with this chord', meta: 'Well-known ones, to hear and to save', chevron: true, action: 'gw-open' }) : '',
   ].join('');
-  return uiSheet({ help, key, variant, title, close, body: `<div class="list">${all}</div>${extra}` });
+  return uiSheet({ help: uiHelp('chords', 'more'), key: 'chord-more', variant, title, close: 'chords-more-close', body: `<div class="list">${all}</div>${extra}` });
 }
+
+// ── The Chords screen's state, the same on every instrument ───────────────
+// What the Chords screen of the instrument on screen shows: Browse (All
+// chords), Tap notes or Listen, its filters, and whether its Filters or More
+// sheet is open. A new instrument starts with a fresh one.
+function newChordsUi() {
+  return { mode: 'browse', category: 'All', root: 'All', counts: new Set(), filtersOpen: false, moreOpen: false };
+}
+// Back to every chord type and root (the Chords tab opened again).
+function clearChordFilters() { Object.assign(state.chordsUi, { category: 'All', root: 'All' }); }
+// How many filters are on; extra: the instrument's own (an ocarina's scale).
+function chordFilterCount(extra = 0) {
+  const u = state.chordsUi;
+  return (u.counts.size ? 1 : 0) + (u.category !== 'All' ? 1 : 0) + (u.root !== 'All' ? 1 : 0) + extra;
+}
+
+// ── Click: the Chords screen, every instrument ────────────────────────────
+registerActions({
+  'chords-filters-open': (el, e, action) => { state.chordsUi.filtersOpen = true; render(); return; },
+  'chords-filters-close': (el, e, action) => { state.chordsUi.filtersOpen = false; render(); return; },
+  'chords-more-open': (el, e, action) => { state.chordsUi.moreOpen = true; render(); return; },
+  'chords-more-close': (el, e, action) => { state.chordsUi.moreOpen = false; render(); return; },
+  'chords-root': (el, e, action) => { state.chordsUi.root = el.dataset.root; render(); return; },
+  'chords-count': (el, e, action) => {
+    const counts = state.chordsUi.counts;
+    if (counts.has(el.dataset.count)) counts.delete(el.dataset.count); else counts.add(el.dataset.count);
+    render();
+    return;
+  },
+  'chords-filters-clear': (el, e, action) => {
+    // The sheet's filters (an ocarina's scale too); the empty list's "Clear
+    // filters" also clears the root.
+    Object.assign(state.chordsUi, { category: 'All', counts: new Set() });
+    if (state.view === 'instrument') state.oc.scaleFilter = 'All';
+    if (el.dataset.all) state.chordsUi.root = 'All';
+    render();
+    return;
+  },
+  'chords-mode': (el, e, action) => {
+    // From the All chords | Tap notes | Listen switch: only a change of mode counts.
+    const ui = state.chordsUi;
+    const want = el.dataset.value ?? (ui.mode === 'identify' ? 'browse' : 'identify');
+    if (want === ui.mode) return;
+    ui.mode = want;
+    if (state.view === 'instrument') state.oc.idNotes = [];
+    else { state.discoverNotes = []; state.selectedChord = null; }
+    render();
+    return;
+  },
+});
+registerActions({
+  'chords-category': (el, e, action) => { state.chordsUi.category = el.value; render(); },
+}, CHANGE_ACTIONS);

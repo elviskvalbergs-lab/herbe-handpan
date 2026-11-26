@@ -4,7 +4,7 @@
 import { getAllNotes, preferFlats } from '../data.js';
 import { midiToNoteName } from '../instruments.js';
 import { playableMidis } from '../ocarina-ui.js';
-import { getFavorites, getPlaylists, getProgressions, getSavedLayouts, mergePlaylistsIntoProgressions } from '../storage.js';
+import { getFavorites, getProgressions, getSavedLayouts, mergePlaylistsIntoProgressions } from '../storage.js';
 
 // ── State ────────────────────────────────────────────────────────────────────
 // Old playlists become the one kind of list before anything reads them.
@@ -41,14 +41,13 @@ const state = {
   scaleSearch: '',            // filter text for scale selector
   selectedChord: null,        // ChordResult or null
   chords: [],                 // computed from layout
-  chordFilter: { category: 'All', root: 'All' },
+  chordsUi: newChordsUi(),  // the Chords screen of the instrument on screen (views/chords.js)
   noteNames: 'auto',         // 'auto' (as the instrument's scale is written), 'sharps' (C#) or 'flats' (Db); state.useFlats reads it
   useSolfege: false,         // false = letters (C, D, E…); true = solfège (Do, Re, Mi…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
   pickerChordFavId: null,
   pickerChordObj: null,
-  chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
   pickListen: null,        // the note picker's "Play it": { listening, startedTuner, startedAt, heardAt, error }
   authEmail: '',
@@ -69,12 +68,8 @@ const state = {
   leaveWarned: false,      // the "leaving unsaved work" sheet was shown this visit
   autoplaySeconds: 4,
   tempo: 100,                // speed of arpeggios, scales and sequences, % of normal (25–150)
-  discoverMode: false,
-  hpListen: false,         // handpan Chords: the Listen segment (Browse / Identify / Listen)
   listenUi: null,          // the Listen session, see newListenUi()
   discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
-  hpFilters: false,        // the handpan Chords Filters sheet is open
-  hpMore: false,           // the selected chord's More sheet is open (phones)
   pickerInstrumentId: null, // instrument of the ocarina card whose ♡ opened the picker
   instEdit: null,          // id of the instrument in the Edit instrument sheet
   photoCrop: null,
