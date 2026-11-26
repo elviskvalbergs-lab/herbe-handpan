@@ -70,17 +70,21 @@ const OUT = __dirname + '/';
   await page.getByRole('button', { name: 'Scale' }).click();
   await page.waitForTimeout(6000);
 
-  // Filter by root first, so the chord's row is on screen without scrolling the page.
+  // Filter by root first, so the chord's row is on screen without scrolling the
+  // page, where the root chips are on screen (they have since moved into the
+  // Filters sheet); otherwise the row is scrolled into view and tapped.
   const chord = async (root, label, wait = 4200) => {
-    await page.locator(`[data-action="chords-root"][data-root="${root}"]`).click();
-    await page.waitForTimeout(700);
-    const row = page.locator('[data-action="select-chord"]', { hasText: label }).first();
+    const chip = page.locator(`[data-action="chords-root"][data-root="${root}"] >> visible=true`);
+    if (await chip.count()) { await chip.first().click(); await page.waitForTimeout(700); }
+    const row = page.locator('[data-action="select-chord"] >> visible=true', { hasText: label }).first();
+    await row.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(400);
     mark(label);
     await row.click();
     await page.waitForTimeout(wait);
   };
   await chord('D', /^\s*D Minor\s*Minor/);
-  await chord('Bb', /^\s*A# Major\s*Major/);
+  await chord('Bb', /^\s*A# Major\s*Major|^\s*Bb Major\s*Major/);
   await chord('F', /^\s*F Major\s*Major/);
   await chord('C', /^\s*C Major\s*Major/, 5000);
   mark('end');

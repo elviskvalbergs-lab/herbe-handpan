@@ -58,7 +58,7 @@ oakhum.com
 
 | # | Video | Audience | Length | Idea | Where it goes |
 |---|---|---|---|---|---|
-| A | **What can your instrument play?** (overview) | Jammers | 40 s | It starts from the instrument you own | Home page hero, every launch post, 9:16 for Reels/Shorts/TikTok |
+| A | **What can your instrument play?** (overview) | Jammers | 40 s | It starts from the instrument you own | Home page (for now only version B of the home page test, in the playable demo's place: `site/src/components/HomePage.tsx`, file `site/public/video/oakhum-overview.mp4`), every launch post, 9:16 for Reels/Shorts/TikTok |
 | B | **Play my notes** | Jammers who don't know their tuning | 25 s | Play its notes and Oakhum works out your instrument | Home page "how it works", kalimba and tongue drum posts, the help centre's setup page |
 | C | **Songs you can play today** | Jammers who want tunes | 26 s | The songs your notes can play, with the tab | Home page Songs section, r/kalimba, r/ocarina, r/tinwhistle posts |
 | D | **Play along with a guitarist** | Jammers who play with friends | 28 s | A song's chords, in order, on your instrument | Handpan posts, the handpan instrument page |

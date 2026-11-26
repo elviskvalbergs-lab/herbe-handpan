@@ -21,6 +21,10 @@ export type HomePage = {
   heroCta?: string;
   heroListen?: string;
   heroTry?: string;
+  /** Version b of the home page experiment: the button down to the video, its heading and text. */
+  heroWatch?: string;
+  videoTitle?: string;
+  videoText?: string;
   demoCaption?: string;
   howTitle?: string;
   steps?: Point[];

@@ -525,6 +525,20 @@ const FIXES: Fix[] = [
       return notes.join("; ");
     },
   },
+  {
+    // The home page experiment's version b shows the overview video (owner,
+    // 2026-11-26): its button, title and text, filled only while empty.
+    name: "2026-11-26-home-video",
+    async run() {
+      const home = await client.fetch<{ heroWatch?: string; videoTitle?: string; videoText?: string } | null>(`*[_id == "homePage"][0]{heroWatch, videoTitle, videoText}`);
+      if (!home) return "no home page";
+      const set: Record<string, unknown> = {};
+      for (const key of ["heroWatch", "videoTitle", "videoText"] as const) if (!home[key]) set[key] = seed.home[key];
+      if (!Object.keys(set).length) return "left as edited in the Studio";
+      await client.patch("homePage").set(set).commit();
+      return `set ${Object.keys(set).join(", ")}`;
+    },
+  },
 ];
 
 type FeatureStart = (typeof seed.features)[number];
