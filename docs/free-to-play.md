@@ -5,7 +5,7 @@ Wireframes: `docs/free-to-play-wireframes.html` (as reviewed; not updated since)
 
 **Review round 1 is done:** the owner's answers are in "Owner's decisions" at the end, and the sections below are updated to match.
 
-Everything in the app stays free. Anyone can try every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. (One consequence, checked 21 Nov 2026: a guest can paste a chord sheet and see how it fits, but playing it means "Save playlist", which asks for the account.) Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
+Everything in the app stays free. Anyone can try every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. (Since 25 Nov 2026, by the owner's decision, a pasted chord sheet is not a save action: a guest taps "Play it", the playlist lives in this tab like any guest work and shows "Not saved · gone when you close this page"; its Save, `prog-keep`, is the save moment. `cs-save` in the tables below is history.) Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
 
 ---
 

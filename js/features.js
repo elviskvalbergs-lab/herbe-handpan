@@ -41,7 +41,7 @@ export const FEATURES = [
   { id: 'song-wait',        name: 'Wait for me',           where: 'A song',                                      instruments: FEATURE_FAMILIES, account: false, help: 'songs-to-learn' },
   { id: 'song-loop',        name: 'Loop from here',        where: 'A song',                                      instruments: FEATURE_FAMILIES, account: false, help: 'songs-to-learn' },
   { id: 'playlists',        name: 'Playlists',             where: 'The third tab of every instrument',           instruments: FEATURE_FAMILIES, account: true,  help: 'playlists', link: 'playlists' },
-  { id: 'chord-sheet',      name: 'Paste a chord sheet',   where: 'Playlists tab, and the end of the Songs tab', instruments: FEATURE_FAMILIES, account: true,  help: 'chord-sheets', link: 'playlists' },
+  { id: 'chord-sheet',      name: 'Paste a chord sheet',   where: 'Playlists tab, and the end of the Songs tab', instruments: FEATURE_FAMILIES, account: false, help: 'chord-sheets', link: 'playlists' },
   { id: 'pan',              name: 'Pan',                   where: 'The last tab of a handpan you have not saved (Drum on a tongue drum, Keys on a kalimba)', instruments: FEATURE_PANS, account: false, help: 'change-your-notes', link: 'pan' },
   { id: 'set-up-tab',       name: 'Set up',                where: 'The last tab of an instrument in My instruments', instruments: FEATURE_FAMILIES, account: true, help: 'change-your-notes' },
   { id: 'notes',            name: 'Notes',                 where: 'The last tab of an ocarina, flute or recorder', instruments: FEATURE_WINDS,  account: false, help: 'fingerings', link: 'notes' },
@@ -63,6 +63,7 @@ export const FEATURES = [
 // Words on buttons, tabs and rows that the help articles mention but that
 // are not features of their own. Same rule: exactly as the app shows them.
 export const UI_LABELS = {
+  'play-it':         'Play it',
   'know-key':        'I know my key',
   'not-sure-listen': 'Not sure · play my notes',
   'thats-all':       'That’s all my notes',

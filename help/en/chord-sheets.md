@@ -8,7 +8,7 @@ audience: players
 instruments: all
 features: chord-sheet
 app: /handpan/d-kurd/playlists
-verified: 2026-11-25
+verified: 2026-11-26
 order: 40
 ---
 A chord sheet is the words of a song with the chords written above them or between square brackets. Many websites have them.
@@ -20,7 +20,11 @@ A chord sheet is the words of a song with the chords written above them or betwe
 3. Paste it into the box and tap Next. Only the chords are used. The words are left out.
 4. Oakhum shows how well the song fits your instrument, as a percentage.
 5. Choose a key. As written is the song as you pasted it. The other choices move the whole song up or down, and each one says how many of its chords your instrument can play.
-6. Save it. It is now in your playlists.
+6. Tap {{play-it}}. The song opens as a playlist and you can play along. If you are signed in, the button says Save playlist and the song is kept straight away.
+
+## Do I need an account? {#account}
+
+Not to play it. Without an account the playlist shows Not saved at the top, and it is gone when you close the page. Tap {{save}} there to keep it. See [Saving and accounts](/help/accounts-and-saving).
 
 ## What does "missing" mean? {#missing}
 

@@ -49,6 +49,9 @@ test('the save gate: only guests, only saving actions', () => {
   assert.equal(store.saveIntentFor('save-layout', { guest: true }), 'instrument');
   assert.equal(store.saveIntentFor('save-layout', { guest: false }), null);
   assert.equal(store.saveIntentFor('play-chord', { guest: true }), null);
+  // A pasted chord sheet plays for a guest; keeping it is the save moment.
+  assert.equal(store.saveIntentFor('cs-save', { guest: true }), null);
+  assert.equal(store.saveIntentFor('prog-keep', { guest: true }), 'song');
   for (const what of Object.values(store.SAVE_ACTIONS)) assert.ok(store.SAVE_TEXTS[what], `text for ${what}`);
 });
 

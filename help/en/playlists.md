@@ -8,7 +8,7 @@ audience: players
 instruments: all
 features: playlists, add-to-playlist
 app: /handpan/d-kurd/playlists
-verified: 2026-11-25
+verified: 2026-11-26
 order: 20
 ---
 Most songs are a few chords going round and round. A playlist keeps such a row of chords: in order, and the same chord can come back as often as you like.
@@ -24,7 +24,7 @@ There are four ways.
 3. On the {{playlists}} tab, tap {{new-playlist}}.
 4. Paste the chords of a song. See [Paste a chord sheet](/help/chord-sheets).
 
-The first time, Oakhum asks for your email, because playlists are kept in your free account. See [Saving and accounts](/help/accounts-and-saving).
+The first time, Oakhum asks for your email, because playlists are kept in your free account. See [Saving and accounts](/help/accounts-and-saving). The one exception is a pasted chord sheet: you can play it straight away, and it is gone when you close the page unless you save it.
 
 ## Play along {#play}
 

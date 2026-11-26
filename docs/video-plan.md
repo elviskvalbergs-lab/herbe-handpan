@@ -38,7 +38,7 @@ Scene **kinds**: *still* (a picture made by `scenes.js`), *phone* (a still with 
 
 **Voice.** ElevenLabs "Liam" (eleven_v4), one take per scene key, kept in the video's `takes-elevenlabs/`. First cuts use the free Kokoro voice to check words and timing; only agreed text goes to ElevenLabs. Characters (about 1 credit each) are given per script.
 
-**Where to record.** `record.js` records `https://oakhum.com`. Record on the preview deployment when production is behind `preview`. Shots of saved instruments, Share and playing a chord sheet need **a signed-in demo account**: sign in once in a persistent Playwright profile with a test address, and save the demo instruments there ("Elvis's D Kurd", "Anna's kalimba").
+**Where to record.** `record.js` records `https://oakhum.com`. Record on the preview deployment when production is behind `preview`. Shots of saved instruments and Share need **a signed-in demo account**: sign in once in a persistent Playwright profile with a test address, and save the demo instruments there ("Elvis's D Kurd", "Anna's kalimba").
 
 **"Play my notes" needs sound in the microphone.** Launch Chromium with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-audio-capture=<notes.wav>`: the app then hears the WAV as its microphone. The WAV is each note of the instrument, one by one, with a second of silence between; best a phone recording of a real instrument, otherwise the app's own sound for that instrument rendered to a file.
 
@@ -142,13 +142,13 @@ A is the only one that tries to say everything. B, C and D each take one sentenc
 - **Audience:** jammers who play with friends, mostly handpan and tongue drum.
 - **Hook (0–3 s):** "Your friend has a guitar and a song. You have nine notes."
 - **Folder:** `scripts/demo-video/play-along/`. Voice: 49 words, about 250 characters.
-- **Needs a signed-in demo account** for scenes 3–4: a guest can paste a chord sheet and see how it fits, but "Save playlist" (which is what opens the play screen) asks for the free account. The video shows the saved song, so the voice says "save it".
+- **No account needed:** a guest pastes a chord sheet and taps **Play it**; the playlist opens with "Not saved · gone when you close this page" and a **Save** button, which is the honest picture for a video whose end card says "No sign-up to try".
 
 | # | Key · kind | Picture: link and taps | Voice-over | Caption (big / sub) | App sound |
 |---|---|---|---|---|---|
 | 1 | `d1` · still, 4 s | The brand handpan picture and a guitar chord chart of the song ("Dm  B♭  F  C" written over two lines of lyrics). | "Your friend has a guitar, and a song." / "You have nine notes." | **Play along with a guitarist** | One guitar strum (the recorded D minor from video A), then silence |
-| 2 | `d2` · phone, 7 s | Signed in, `/handpan/d-kurd/songs`, under "Chords of a song" tap **Paste a chord sheet** (`cs-open`; the same button is on the Playlists tab), paste `{title: Campfire song}` / `Dm | Bb | F | C` / `Dm | Bb | F | C`, tap **Next** (`cs-next`): "Fit to D Kurd · As written · 100% · 8 of 8 steps · Plays". | "Paste the song's chords." / "Oakhum fits them to the notes you have." | **Paste the chords** / It fits them to your notes | — |
-| 3 | `d3` · phone, 8 s | Tap **Save playlist** (`cs-save`); the song opens. Tap **Play**: Dm, B♭, F, C light on the pan one after another, in the song's order. | "Save it, and you get the chords in order," / "each one lit on your handpan." | **The chords, in order** / On your own instrument | The four chords, from the recording |
+| 2 | `d2` · phone, 7 s | `/handpan/d-kurd/songs`, under "Chords of a song" tap **Paste a chord sheet** (`cs-open`; the same button is on the Playlists tab), paste `{title: Campfire song}` / `Dm | Bb | F | C` / `Dm | Bb | F | C`, tap **Next** (`cs-next`): "Fit to D Kurd · As written · 100% · 8 of 8 steps · Plays". | "Paste the song's chords." / "Oakhum fits them to the notes you have." | **Paste the chords** / It fits them to your notes | — |
+| 3 | `d3` · phone, 8 s | Tap **Play it** (`cs-save`); the song opens as a playlist. Tap **Play** (`prog-play`): Dm, B♭, F, C light on the pan one after another, in the song's order. | "Tap Play it, and you get the chords in order," / "each one lit on your handpan." | **The chords, in order** / On your own instrument | The four chords, from the recording |
 | 4 | `d4` · phone, 6 s | Change **Level** (`prog-level`) to **Roots**: one note per chord. Hold two chords. | "Start with one note per chord." / "That's already playing along." | **Start with one note per chord** | The root notes |
 | 5 | `d5` · card, 3 s | The end card, last line "Free. No sign-up to try. A free account keeps your songs. · oakhum.com" | — | **Join in** / Free. No sign-up to try. · oakhum.com | Final chord rings |
 
@@ -256,7 +256,7 @@ Checked against `preview` on 21 Nov 2026.
 | A · Overview | **Yes.** Needs a recorded guitar chord for scene 5. | — |
 | B · Play my notes | **Yes.** Needs a WAV of kalimba notes (and one of handpan notes for the variant). | — |
 | C · Songs | **Yes.** | — |
-| D · Play along | **Yes**, with a signed-in demo account. | — |
+| D · Play along | **Yes.** Needs the recorded guitar strum for scene 1. | — |
 | E · Makers v2 | **Yes, every scene**, with a signed-in demo maker account that an admin has approved and that has a few scans on its codes. See `docs/video-script-makers.md`. | — |
 | F1–F6 · Instruments | **Yes**, all six. | — |
 | G1 · Set up | **Yes** (handpan WAV). | — |

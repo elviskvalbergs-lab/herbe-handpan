@@ -95,6 +95,17 @@ try {
     await p.locator('[data-action="song-open"]').first().waitFor();
     await p.locator('[data-action="cs-open"]').waitFor();
   });
+  await step('a guest pastes a chord sheet and plays it, not saved', first, async p => {
+    await p.click('[data-action="cs-open"]');
+    await p.fill('.sheet-root textarea', 'Dm | Bb | F | C');
+    await p.click('[data-action="cs-next"]');
+    await p.click('[data-action="cs-save"]'); // "Play it": no sign-in sheet for a guest
+    await p.locator('[data-action="prog-play"]').waitFor();
+    assert.equal(await p.locator('#save-email-input').count(), 0, 'playing a pasted chord sheet does not ask for an account');
+    await p.locator('.banner [data-action="prog-keep"]').waitFor(); // Not saved · Save
+    await p.goBack();
+    await p.waitForURL(/\/songs$/);
+  });
   await step('a song opens and plays', first, async p => {
     await p.locator('[data-action="song-open"]').first().click();
     await p.locator('[data-action="song-play"]').waitFor();
