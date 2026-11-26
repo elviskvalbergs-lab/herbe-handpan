@@ -1824,8 +1824,20 @@ function setupScaleNotes(scale) {
   return [scale.top.ding, ...scale.top.notes, ...scale.bottom.notes].sort((a, b) => noteToMidi(a) - noteToMidi(b));
 }
 
+// One `setup_screen` event each time a different setup screen comes up, so a
+// funnel can show which screen people leave on (PostHog): screen is the step
+// ('what', 'how', 'count', 'listen', 'match', 'know', 'scales', 'windtype',
+// 'windkey', 'done'), from the one before, back when Back brought them there.
+function setupScreenEvent(st) {
+  if (st.loggedStep === st.step) return;
+  logEvent('setup_screen', { screen: st.step, family: st.step === 'what' ? null : st.family, from: st.loggedStep ?? null, back: !!st.wentBack, first: homeIsEmpty() });
+  st.loggedStep = st.step;
+  st.wentBack = false;
+}
+
 function viewBeginnerSetup() {
   const st = state.setup ?? (state.setup = newSetup());
+  setupScreenEvent(st);
   const first = homeIsEmpty();
   const header = st.step === 'what'
     ? (first ? uiAppBar({ title: 'Welcome', actions: [settingsAppBtn()] }) : backAppBar('Add instrument'))
@@ -2331,14 +2343,16 @@ function setupAction(action, el) {
   if (action === 'setup-back') {
     stopListen();
     const prev = st.history.pop();
-    if (!prev) { goHome(); return true; }
+    if (!prev) { logEvent('setup_screen', { screen: 'left', family: st.family, from: st.step, back: true, first: homeIsEmpty() }); goHome(); return true; }
     st.step = prev;
+    st.wentBack = true;
     render();
     return true;
   }
   if (action === 'setup-first-chord' || action === 'setup-save') {
     const s = setupFindTuning(st, st.scaleId);
     if (!s) return true;
+    logEvent('setup_finish', { family: st.family, how: action === 'setup-save' ? 'save' : 'play', listened: st.history.includes('listen') });
     const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
     if (s.chartId) {
       // An ocarina or flute: it opens on its Chords tab, the first chord
@@ -3013,8 +3027,9 @@ function instrumentTabBar(inst, current) {
 // instrument (a handpan scale or custom notes, an ocarina or flute opened
 // from a link), with its Save.
 function notSavedBannerHtml(action) {
-  // visit-save: a guest's own instrument, built in this visit (§2).
-  const text = action === 'visit-save' ? 'Not saved · gone when you close this page' : 'Not saved · try it, then keep it in My instruments';
+  // visit-save: a guest's own instrument, built in this visit (§2);
+  // prog-keep: a guest's playlist, from a pasted chord sheet.
+  const text = action === 'visit-save' || action === 'prog-keep' ? 'Not saved · gone when you close this page' : 'Not saved · try it, then keep it in My instruments';
   return `
       <div class="banner">
         <span>${text}</span>
@@ -7958,6 +7973,7 @@ function viewProgression() {
 
   return `
     ${backAppBar(prog.name, { actions: [tunerAppBtn(), menuAppBtn()] })}
+    ${accountOn() ? '' : notSavedBannerHtml('prog-keep')}
     <div class="prog-view${/prog-pan|prog-wind/.test(player) ? ' has-pan' : ''}">
       <div class="prog-side">${player}</div>
       <div class="prog-main">
@@ -8052,7 +8068,9 @@ function csOcTarget(inst) {
 function csTargets() {
   const out = [];
   const add = t => { if (t && !out.some(x => x.key === t.key)) out.push(t); };
-  const cur = state.currentInstrumentId && state.currentInstrumentId !== SHARED_ID ? getInstrument(state.currentInstrumentId) : null;
+  // currentInstrument: an ocarina, flute or recorder being tried (opened from
+  // a link, not saved) is a target too, as a handpan scale being tried is.
+  const cur = state.currentInstrumentId ? currentInstrument() : null;
   if (cur && !usesLayout(cur) && playableMidis(cur).length) add(csOcTarget(cur));
   if (state.layout && (!cur || usesLayout(cur))) add(csHpTarget(hpCurrentLayoutId(), state.layout));
   for (const inst of getInstruments()) {
@@ -8188,7 +8206,7 @@ function chordSheetSheet() {
     </div>`,
     footer: `
       <button type="button" class="btn btn-ghost" data-action="cs-back">Back</button>
-      <button type="button" class="btn btn-primary" data-action="cs-save">Save playlist</button>`,
+      <button type="button" class="btn btn-primary" data-action="cs-save">${accountOn() ? 'Save playlist' : 'Play it'}</button>`,
   });
 }
 
@@ -8231,7 +8249,10 @@ function csSave() {
   const cov = sheetCoverage(sheet.steps, chords, cs.semis);
   if (state.view === 'progression' && state.activeProgressionId === id) render();
   else openProgression(id);
-  showToast(cov.playable === cov.total ? `Saved: all ${cov.total} steps play on ${target.name}` : `Saved: ${cov.playable} of ${cov.total} steps play on ${target.name}`);
+  // A guest plays it straight away; it is in this tab only until they save.
+  const done = accountOn() ? 'Saved: ' : '';
+  const plays = cov.playable === cov.total ? `all ${cov.total} steps play on ${target.name}` : `${cov.playable} of ${cov.total} steps play on ${target.name}`;
+  showToast(done + (done ? plays : plays[0].toUpperCase() + plays.slice(1)));
 }
 
 // ── Playlist chord navigation (shared by manual open + autoplay) ────────────
@@ -10627,6 +10648,9 @@ document.addEventListener('click', e => {
     render();
     return;
   }
+  // Save on a guest's playlist: by the time this runs they have signed in
+  // and the visit's playlists are in the account (carryOverVisit).
+  if (action === 'prog-keep') { showToast('Saved to Playlists'); render(); return; }
   if (action === 'prog-delete') {
     const prog = progFind();
     if (!prog) return;

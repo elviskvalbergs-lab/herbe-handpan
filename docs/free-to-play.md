@@ -5,7 +5,7 @@ Wireframes: `docs/free-to-play-wireframes.html` (as reviewed; not updated since)
 
 **Review round 1 is done:** the owner's answers are in "Owner's decisions" at the end, and the sections below are updated to match.
 
-Everything in the app stays free. Anyone can try every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. (One consequence, checked 21 Nov 2026: a guest can paste a chord sheet and see how it fits, but playing it means "Save playlist", which asks for the account.) Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
+Everything in the app stays free. Anyone can try every feature without an account. A free account is needed for three things: **saving**, **syncing across devices** and **offline use**. (Since 25 Nov 2026, by the owner's decision, a pasted chord sheet is not a save action: a guest taps "Play it", the playlist lives in this tab like any guest work and shows "Not saved · gone when you close this page"; its Save, `prog-keep`, is the save moment. `cs-save` in the tables below is history.) Right now the goal is to measure real uptake, so the path from a link on the website to playing must be as short as possible.
 
 ---
 
@@ -284,6 +284,8 @@ If the account already has an item with the same id, both are kept.
 |---|---|---|
 | `open` | path (the deep link), referrer domain, utm | which links bring people in |
 | `first_play` | instrument family, seconds from landing | how short landing → playing is |
+| `setup_screen` | screen (what, how, count, listen, match, know, scales, windtype, windkey, done; `left` when Back leaves setup), family, from (the screen before), back, first (nothing saved yet) | which setup screen people leave on |
+| `setup_finish` | family, how (play or save), listened (whether they let the app listen) | how many finish setup, and which path |
 | `feature` | name (chords, arpeggio, listen, play-along, tuner, chord-sheet, custom-notes), account | which features guests use |
 | `save_tap` | what (chord, playlist, instrument, progression, song, share, leave-unsaved), account | how many tap save |
 | `signup_shown` / `signup_method` | what · method (google, email, apple) | where they drop |

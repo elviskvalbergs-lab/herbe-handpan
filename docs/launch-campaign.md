@@ -46,7 +46,7 @@ Item 3 (the videos) is what still gates week 1.
 | **Accounts** | Supabase: `profiles.last_seen_on` | Exact return counts for people with an account | — |
 | **Makers** | A hand-kept list (who was written to, who replied, who said no), and the makers programme's own numbers (scans, saves and chords played per code; the admin's list of maker requests) | Replies, maker pages requested and approved, instruments with a code, scans per code | Counts only: nobody is identified. |
 
-**App events that exist today:** `open` (path, referrer, utm) · `setup` (the setup steps and which path: listen or know) · `first_play` (family, seconds from landing) · `feature` (name: chords, arpeggio, listen, tuner, chord-sheet, song-play, song-print, …) · `save_tap` · `signup_shown` · `signup_method` · `signup_done` · `save_completed` · `install` · `offline_session` · `guest_offline` · `listen_check`.
+**App events that exist today:** `open` (path, referrer, utm) · `setup` (the setup steps and which path: listen or know) · `setup_screen` (each setup screen shown, with the one before) · `setup_finish` (setup done: play or save) · `first_play` (family, seconds from landing) · `feature` (name: chords, arpeggio, listen, tuner, chord-sheet, song-play, song-print, …) · `save_tap` · `signup_shown` · `signup_method` · `signup_done` · `save_completed` · `install` · `offline_session` · `guest_offline` · `listen_check`.
 
 ### Tracked links
 

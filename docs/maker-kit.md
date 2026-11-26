@@ -78,9 +78,9 @@ This only works if the instrument really was set up: do it before sending (two m
 
 **If they ask "what's the catch?":**
 
-> There isn't one yet, and I'd rather say that than pretend. Oakhum is one person's project and it's free. If it ever has paid parts, the code in your buyer's case will keep opening their instrument for free.
+> There isn't one. Oakhum is a personal passion project and it's free. If it ever has paid parts, the code in your buyer's case will keep opening their instrument for free.
 
-(Send that second sentence only once the owner has decided it is a promise he will keep.)
+(The last sentence is a promise the owner made on 25 Nov 2026: a code that is in a buyer's case keeps opening that instrument for free. It may be said on `/makers` too.)
 
 **If they say no:** "Understood, thank you for telling me. I won't write again." Add them to the no-list.
 

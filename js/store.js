@@ -19,10 +19,13 @@ export const SAVE_ACTIONS = {
   'confirm-new-progression': 'progression',
   'add-to-progression': 'progression',
   'pl-copy-progression': 'progression',
-  'cs-save': 'song',
+  'prog-keep': 'song',
   'share-instrument': 'share',
   'maker-start': 'maker',
 };
+// A pasted chord sheet is not here: a guest plays it straight away (it
+// lives in this tab, like an instrument being tried), and 'prog-keep', the
+// Save on its "Not saved" banner, is the save moment.
 // Chords (☆ / add to playlist, Identify's bookmark) all open the playlist
 // picker; for a guest the app turns that into the save sheet, and after
 // sign-in the chord goes into Favourites (the picker's entry is plain data,
