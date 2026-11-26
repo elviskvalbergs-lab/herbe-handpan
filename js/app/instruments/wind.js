@@ -638,19 +638,6 @@ registerActions({
   'oc-hand-open': (el, e, action) => { state.oc.handLegend = true; state.oc.chordMore = false; render(); return; },
   'oc-hand-close': (el, e, action) => { state.oc.handLegend = false; render(); return; },
   'tuner-toggle': (el, e, action) => { toggleTuner(); return; },
-  'install-app': (el, e, action) => {
-    if (_installEvent) {
-      const ev = _installEvent;
-      _installEvent = null;
-      ev.prompt();
-      ev.userChoice?.then(c => { logEvent('install', { outcome: c?.outcome ?? 'unknown' }); render(); });
-    } else {
-      state.installHelp = true;
-      logEvent('install', { outcome: 'help' });
-      render();
-    }
-    return;
-  },
   'install-help-close': (el, e, action) => { state.installHelp = false; render(); return; },
   'help-close': (el, e, action) => { state.help = null; render(); return; },
   'help-open': (el, e, action) => {

@@ -196,9 +196,6 @@ registerActions({
   'set-autoplay-seconds': (el, e, action) => {
     state.autoplaySeconds = parseInt(el.value, 10);
     savePrefs();
-    if (state.autoplayOn && _autoplayTimer) {
-      clearInterval(_autoplayTimer);
-      _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
-    }
+    retimeAutoplay();
   },
 }, CHANGE_ACTIONS);

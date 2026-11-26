@@ -11,6 +11,7 @@ import { logEvent } from '../auth.js';
 // features get used: event names and a few properties, no ids (auth.js
 // logEvent). Each feature is counted once per visit.
 const MEASURE_START = Date.now();
+let _heardSound = false; // a sound has played (the install banner waits for it)
 
 function measureFamily() {
   if (state.layout) return layoutInstrument(state.layout);

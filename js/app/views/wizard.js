@@ -363,7 +363,7 @@ function startFluteDetect(fam = 'fl') {
     stopFluteDetect({ error: 'No steady note: blow a little longer' }, fam);
   }, 10000);
   if (t.detect.startedTuner) {
-    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    if (state.tuner.error) { stopTunerMic(); state.tuner.on = false; }
     toggleTuner().then(() => {
       if (state.tuner.error && wizardChartTarget(fam)?.detect?.listening) stopFluteDetect({ error: state.tuner.error }, fam);
     });

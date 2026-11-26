@@ -42,12 +42,26 @@ js_bundle = '\n\n'.join(js_parts)
 # The bundle is one script scope, so a top-level name used in two files would
 # break the whole app (a duplicate const stops the script; a duplicate function
 # silently replaces the first). Checked here so it never deploys.
+# A `let a = 1, b = 2;` line declares both names: brackets and strings are
+# taken out first, so only the names the declaration itself lists are read.
+def _top_names(part):
+    for m in re.finditer(r'^(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)(.*)$', part, flags=re.MULTILINE):
+        yield m.group(1)
+        if not re.match(r'(?:const|let)\s', m.group(0)):
+            continue
+        rest = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", '', m.group(2))
+        while True:
+            flat = re.sub(r'\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}', '', rest)
+            if flat == rest:
+                break
+            rest = flat
+        yield from re.findall(r',\s*([A-Za-z_$][\w$]*)\s*=', rest)
 _seen = {}
 for f, part in zip(js_files, js_parts):
-    for m in re.finditer(r'^(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)', part, flags=re.MULTILINE):
-        if m.group(1) in _seen and _seen[m.group(1)] != f:
-            raise SystemExit(f'Build stopped: top-level name "{m.group(1)}" is in both {_seen[m.group(1)]} and {f}.')
-        _seen.setdefault(m.group(1), f)
+    for name in _top_names(part):
+        if name in _seen and _seen[name] != f:
+            raise SystemExit(f'Build stopped: top-level name "{name}" is in both {_seen[name]} and {f}.')
+        _seen.setdefault(name, f)
 
 # Preview builds can point at a separate Supabase test project (see
 # supabase/README.md). Only set these for Vercel's Preview environment.

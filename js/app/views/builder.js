@@ -644,7 +644,7 @@ registerActions({
     if (state.rec.armed === el.dataset.path) { disarmRecord(); render(); return; }
     armRecord(el.dataset.path);
     if (!state.tuner.on || state.tuner.error) {
-      if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+      if (state.tuner.error) { stopTunerMic(); state.tuner.on = false; }
       toggleTuner();
       return;
     }

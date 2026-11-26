@@ -14,7 +14,10 @@ import { playableMidis, renderFingering } from '../../ocarina-ui.js';
 // Step 1 of the plan: one chord at a time with its confidence, on the
 // handpan and on ocarinas and flutes, plus the debug view. Detection lives
 // in js/listen-detect.js (no instrument), the mic in js/listen-audio.js.
-let _listenStopFn = null, _listenTrack = null;
+let _listenStopFn = null;
+let _listenTrack = null;
+// The chord tracker again, with the tuning the debug screen set.
+function listenRetrack(L) { _listenTrack = listenTracker(L.tune); }
 const LISTEN_SILENCE_MS = 60000;
 const LISTEN_MIN_MS = 700;
 const LISTEN_SUFFIX = { maj: '', min: 'm', dom7: '7', maj7: 'maj7', min7: 'm7', sus2: 'sus2', sus4: 'sus4', dim: 'dim' };
@@ -223,3 +226,14 @@ function listenDebugUpdate(frame, r) {
   set('ld-peaks', String(frame.peaks ?? 0));
   set('ld-cands', `<tbody>${(r.candidates || []).map(x => `<tr><td>${escHtml(listenChordLabel(x))}</td><td>${x.score.toFixed(2)}</td></tr>`).join('') || '<tr><td>—</td></tr>'}</tbody>`);
 }
+
+registerActions({
+  'open-listen-debug': (el, e, action) => { state.view = 'listen-debug'; navPush('#settings/listen'); render(); return; },
+  'listen-tune-reset': (el, e, action) => {
+    const L = listenUi();
+    Object.assign(L.tune, LISTEN_DEFAULTS);
+    listenRetrack(L);
+    render();
+    return;
+  },
+});

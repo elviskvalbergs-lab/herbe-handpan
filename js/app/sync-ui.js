@@ -115,6 +115,7 @@ async function pendingCount() {
 // A shared code is read from the instruments table, so shared instruments
 // are written there as well after they change (docs/free-to-play.md, data model).
 let _sharedPushed = new Map();
+function forgetSharedPushed() { _sharedPushed = new Map(); }
 function pushSharedInstruments() {
   const shared = getInstrumentsRaw().filter(i => i.publicId && _sharedPushed.get(i.id) !== i.updatedAt);
   if (!shared.length) return;

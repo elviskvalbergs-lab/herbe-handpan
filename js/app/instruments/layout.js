@@ -490,14 +490,6 @@ registerActions({
     render();
     return;
   },
-  'open-listen-debug': (el, e, action) => { state.view = 'listen-debug'; navPush('#settings/listen'); render(); return; },
-  'listen-tune-reset': (el, e, action) => {
-    const L = listenUi();
-    Object.assign(L.tune, LISTEN_DEFAULTS);
-    _listenTrack = listenTracker(L.tune);
-    render();
-    return;
-  },
   'toggle-discover-mode': (el, e, action) => {
     // From the Browse | Identify | Listen segment: only a change of mode toggles.
     const want = el.dataset.value ?? (state.discoverMode ? 'browse' : 'identify');

@@ -303,6 +303,13 @@ function swapChordNoteVoicing(chord, targetNote) {
 }
 
 let _autoplayTimer = null;
+// Autoplay running: the next chord after the new number of seconds.
+function retimeAutoplay() {
+  if (state.autoplayOn && _autoplayTimer) {
+    clearInterval(_autoplayTimer);
+    _autoplayTimer = setInterval(advanceAutoplay, state.autoplaySeconds * 1000);
+  }
+}
 
 function stopAutoplay() {
   if (_autoplayTimer) { clearInterval(_autoplayTimer); _autoplayTimer = null; }

@@ -20,7 +20,6 @@ function runningInstalled() {
 }
 // Not before the visitor got something out of the app: it shows once a sound
 // was played in this visit, or an instrument is saved.
-let _heardSound = false;
 function installBannerHtml() {
   if (runningInstalled()) return '';
   if (!_heardSound && !state.instruments.length) return '';
@@ -51,3 +50,19 @@ function installHelpSheet() {
     footer: '<button type="button" class="btn btn-primary" data-action="install-help-close">Done</button>',
   });
 }
+
+registerActions({
+  'install-app': (el, e, action) => {
+    if (_installEvent) {
+      const ev = _installEvent;
+      _installEvent = null;
+      ev.prompt();
+      ev.userChoice?.then(c => { logEvent('install', { outcome: c?.outcome ?? 'unknown' }); render(); });
+    } else {
+      state.installHelp = true;
+      logEvent('install', { outcome: 'help' });
+      render();
+    }
+    return;
+  },
+});

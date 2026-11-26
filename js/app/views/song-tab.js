@@ -310,7 +310,7 @@ async function songWaitToggle() {
   songWaitArm();
   logEvent('feature', { name: 'song-wait', family: measureFamily() });
   if (state.songWait.startedTuner) {
-    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    if (state.tuner.error) { stopTunerMic(); state.tuner.on = false; }
     await toggleTuner();
     // Refused: the switch goes back off, the tuner's own message stays on show.
     if (state.tuner.error) { state.songWait = null; render(); return; }

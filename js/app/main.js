@@ -123,7 +123,7 @@ document.addEventListener('click', e => {
   const saveWhat = saveIntentFor(action, { guest: !accountOn() });
   if (saveWhat) { guestSave({ what: saveWhat, action, data: plainDataset(el.dataset) }); return; }
   if (el.matches('.tab[aria-selected="true"]')) return; // already on that tab
-  if (!el.closest('.sheet-root')) _lastTrigger = focusKeyOf(el);
+  if (!el.closest('.sheet-root')) rememberTrigger(el);
   // The actions each screen registers (js/app/actions.js). These come before
   // the steps below that close a sheet when one of its rows is tapped.
   if (runAction(action, el, e, EARLY_ACTIONS)) return;
@@ -191,7 +191,7 @@ document.addEventListener('input', e => {
     L.tune[key] = parseFloat(e.target.value);
     const v = document.getElementById(`ld-v-${key}`);
     if (v) v.textContent = e.target.value;
-    _listenTrack = listenTracker(L.tune);   // the chroma side reads L.tune live
+    listenRetrack(L);   // the chroma side reads L.tune live
     return;
   }
   if (e.target.classList?.contains('crop-zoom') && state.photoCrop) {

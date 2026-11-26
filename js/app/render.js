@@ -122,6 +122,7 @@ function watchChordsStage(app) {
 // element afterwards. A sheet that opens takes focus; when it closes, focus
 // returns to the control that opened it.
 let _lastTrigger = null;     // focus key of the last clicked control
+function rememberTrigger(el) { _lastTrigger = focusKeyOf(el); }
 let _sheetReturnFocus = null;
 
 function focusKeyOf(el) {

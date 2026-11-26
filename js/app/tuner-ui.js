@@ -15,6 +15,8 @@ import { ensureAudioOutput } from '../audio.js';
 // re-renders the page.
 
 let _tunerStop = null;
+// Stops the microphone the tuner holds, if it holds one.
+function stopTunerMic() { if (_tunerStop) { _tunerStop(); _tunerStop = null; } }
 
 // The record field armed to take the tuner's next steady reading (§5.3).
 // auto: armed by itself after a capture on Set up, so it waits for a new note.

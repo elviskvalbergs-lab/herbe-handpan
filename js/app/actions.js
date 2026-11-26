@@ -1,4 +1,4 @@
-// The action registry: every control carries data-action="name", and the
+// The action registry: every control carries data-action="…", and the
 // screen that owns the control registers what the name does. One listener per
 // event (js/app/main.js) looks the name up. Handlers are (el, e, action):
 // el is the element with data-action, e the DOM event, action its name.

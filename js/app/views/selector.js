@@ -102,7 +102,7 @@ function startListen() {
   recordMic(true);
   armListenIdle();
   if (state.listen.startedTuner) {
-    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    if (state.tuner.error) { stopTunerMic(); state.tuner.on = false; }
     toggleTuner().then(() => {
       if (state.tuner.error && state.listen?.listening) stopListen({ error: state.tuner.error });
     });

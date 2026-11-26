@@ -246,7 +246,7 @@ async function switchAccountOnDevice() {
   for (const key of DATA_KEYS) { try { localStorage.removeItem(key); } catch { /* no storage */ } }
   try { localStorage.removeItem('hp-can-build'); } catch { /* no storage */ }
   await syncBases.clear();
-  _sharedPushed = new Map();
+  forgetSharedPushed();
   Object.assign(state, { syncPending: 0, lastSynced: null, syncError: null, accountCounts: null });
   reloadSaved();
   if (state.view !== 'settings') { goHome({ push: false }); navReplace('/'); }

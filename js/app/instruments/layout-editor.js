@@ -186,7 +186,7 @@ function startPickListen() {
   const startedTuner = !state.tuner.on || !!state.tuner.error;
   state.pickListen = { listening: true, startedTuner, startedAt: performance.now(), heardAt: null, error: null };
   if (startedTuner) {
-    if (state.tuner.error) { if (_tunerStop) { _tunerStop(); _tunerStop = null; } state.tuner.on = false; }
+    if (state.tuner.error) { stopTunerMic(); state.tuner.on = false; }
     toggleTuner().then(() => {
       if (state.tuner.error && state.pickListen?.listening) { stopPickListen(); state.pickListen = { error: state.tuner.error }; render(); }
     });
