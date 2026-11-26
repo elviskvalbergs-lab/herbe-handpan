@@ -76,7 +76,7 @@ const PLAY_POPULAR = {
 
 // Home has nothing on it yet: show Play instead.
 function homeIsEmpty() {
-  return state.instruments.length === 0 && !state.playlists.some(p => p.chords.length) && state.progressions.length === 0;
+  return state.instruments.length === 0 && state.progressions.length === 0;
 }
 
 function playRowHtml(target) {
@@ -130,15 +130,6 @@ function viewPlay() {
 
 function viewHome() {
   const insts = state.instruments;
-  const playlists = state.playlists.map(pl => {
-    const n = pl.chords.length;
-    const where = new Set(pl.chords.map(c => c.instrumentId || c.layoutId)).size;
-    return uiRow({
-      lead: 'list-music', title: pl.name, chevron: true, action: 'open-playlist', data: { id: pl.id },
-      meta: `Playlist · ${n} chord${n !== 1 ? 's' : ''}${n ? ` · ${where} instrument${where !== 1 ? 's' : ''}` : ''}`,
-      trail: n ? uiIconBtn('play', `Play ${pl.name}`, { action: 'open-playlist-chords', data: { id: pl.id } }) : '',
-    });
-  }).join('');
   // A guest's instruments are this visit's only (§2): say so, and offer Save.
   const tip = !accountOn() && visitHasWork() ? `
     <div class="card tip-card">
@@ -164,7 +155,6 @@ function viewHome() {
         </div>
       </section>
       <section class="home-side" aria-label="Playlists">
-        ${state.playlists.length ? `<h2 class="list-title">Playlists</h2><div class="list">${playlists}</div>` : ''}
         ${state.progressions.length ? `<h2 class="list-title">Playlists</h2><div class="list">${progressionRowsHtml(null, { home: true })}</div>` : ''}
         ${tip}
       </section>

@@ -19,7 +19,7 @@ import { logEvent } from '../../auth.js';
 function newOcState() {
   return {
     tab: 'chords', selected: null, previous: null, scaleFilter: 'All', handLegend: false,
-    category: 'All', playlistId: 'All', expanded: null, voicings: {}, practice: null,
+    category: 'All', expanded: null, voicings: {}, practice: null,
     missingOpen: false, buildChamber: 0, fingersSheet: false, chordMore: false,
     filtersOpen: false, root: 'All', counts: [],
     holeMap: null,         // { sel } while marking where the holes are on the photo
@@ -347,21 +347,15 @@ function ocChordMoreSheet() {
 // arpeggio note at a time. The large diagram shows the current note with
 // arrows for what to lift or cover to reach the next one; tap to move on.
 
-// What is being practised (state.oc.practice is { playlistId, idx } or
-// { progressionId, idx }): its name, what one entry is called, and the
+// What is being practised (state.oc.practice is { progressionId, idx }): its name, what one entry is called, and the
 // entries for this instrument, each with an id (a progression step's id is
 // its stepId, so a repeated chord is still its own entry). null when gone.
 function practiceSource(inst, pr = state.oc.practice) {
   if (!inst || !pr) return null;
-  if (pr.progressionId) {
-    const raw = state.progressions.find(p => p.id === pr.progressionId);
-    if (!raw) return null;
-    const prog = progVoiced(raw, progOcContext(inst));
-    return { name: prog.name, unit: 'Chord', entries: prog.steps.filter(s => entryIsFor(s, inst) && !s.missing).map(s => ({ ...s, id: s.stepId })) };
-  }
-  const pl = state.playlists.find(p => p.id === pr.playlistId);
-  if (!pl) return null;
-  return { name: pl.name, unit: 'Chord', entries: pl.chords.filter(c => entryIsFor(c, inst)) };
+  const raw = pr.progressionId && state.progressions.find(p => p.id === pr.progressionId);
+  if (!raw) return null;
+  const prog = progVoiced(raw, progOcContext(inst));
+  return { name: prog.name, unit: 'Chord', entries: prog.steps.filter(s => entryIsFor(s, inst) && !s.missing).map(s => ({ ...s, id: s.stepId })) };
 }
 
 function practiceSteps(entries) {
@@ -532,25 +526,13 @@ function legendHole(state) {
 }
 
 
-// Everything a chord card's buttons need, looked up by its key: a chord id
-// in the plain list, or 'e:' + entry id when a playlist is selected.
-// The instrument a chord card belongs to: an entry's own (cards in a
-// playlist), otherwise the instrument on screen.
+// The instrument a chord card belongs to: the one on screen.
 function ocCardInstrument(key) {
-  const en = key?.startsWith('e:') ? state.playlists.flatMap(p => p.chords).find(c => 'e:' + c.id === key) : null;
-  return (en?.instrumentId && entryInstrument(en)) || currentInstrument();
+  return currentInstrument();
 }
 
+// Everything a chord card's buttons need, looked up by its key (the chord id).
 function ocCardData(inst, key) {
-  if (key.startsWith('e:')) {
-    const en = state.playlists.flatMap(p => p.chords).find(c => 'e:' + c.id === key);
-    if (!en) return null;
-    return {
-      entry: en, chordId: en.chordId, rootName: en.rootName, typeName: en.typeName, category: en.category,
-      midis: (state.oc.voicings[key] ?? en.notes.map(noteToMidi)).sort((a, b) => a - b),
-      rootPC: notePC(en.rootName + '4'), canonical: null,
-    };
-  }
   const item = ocChordModel(inst).items.find(x => x.chord.id === key);
   if (!item) return null;
   const c = item.chord;
@@ -565,14 +547,14 @@ function ocCardData(inst, key) {
 // handpan screens included, keeps the handpan sound.
 function voiceForState() {
   // A handpan, tongue drum or kalimba on screen sounds like itself.
-  if (state.layout && ['editor', 'chords', 'hp-playlists', 'hp-songs', 'progression', 'playlist'].includes(state.view)) return layoutInstrument(state.layout);
+  if (state.layout && ['editor', 'chords', 'hp-playlists', 'hp-songs', 'progression'].includes(state.view)) return layoutInstrument(state.layout);
   if (state.view === 'setup') return setupFamilyInfo(state.setup?.family).voice;
   if (state.view === 'song') {
     const inst = songInstrument();
     if (!inst) return state.layout ? layoutInstrument(state.layout) : 'handpan';
     return windVoice(inst);
   }
-  if (!['instrument', 'progression', 'playlist'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
+  if (!['instrument', 'progression'].includes(state.view) || !state.currentInstrumentId) return 'handpan';
   const inst = currentInstrument();
   if (!inst) return 'handpan';
   if (usesLayout(inst)) return inst.family;
@@ -592,20 +574,6 @@ function playPracticeStep() {
   const steps = practiceSteps(src.entries);
   const step = steps[state.oc.practice.idx % steps.length];
   if (step) { initAudio(); playNote(midiToNoteName(step.midi)); }
-}
-
-// An ocarina or flute entry opens its instrument, showing the playlist with
-// that instrument's chord cards (entry expanded) and Practice.
-function openPlaylistEntryOnInstrument(pl, entry) {
-  const inst = entryInstrument(entry);
-  if (inst?.id === SHARED_ID) openChartLink(inst.link);
-  else if (!inst || !openInstrument(inst.id, { push: false })) { showToast('That instrument is no longer in My instruments'); return false; }
-  // Like a handpan entry: the chord opens on the instrument's Chords screen,
-  // in the voicing saved in the playlist, with the filters cleared so it's there.
-  Object.assign(state.oc, { tab: 'chords', scaleFilter: 'All', category: 'All', expanded: entry.chordId, chordStep: {}, practice: null });
-  state.oc.voicings[entry.chordId] = entry.notes.map(noteToMidi).sort((a, b) => a - b);
-  navPush(instUrl(state.currentInstrumentId, 'chords'));
-  return true;
 }
 
 // ── Click: Ocarina Notes view ─────────────────────────────────────────────
@@ -768,7 +736,6 @@ registerActions({
       id: card.chordId, rootName: card.rootName, notes: names, noteCount: names.length,
       type: { name: card.typeName, category: card.category },
     };
-    state.pickerNewPlaylist = false;
     state.pickerInstrumentId = inst.id;
     render();
     return;
@@ -869,7 +836,6 @@ registerActions({
     if (inst.id === SHARED_ID && !inst.link) { showToast('Add it to My instruments to keep its chords'); return; }
     state.pickerChordFavId = ocFavId(inst, chord.id, names, chord.id === 'custom' ? null : chord.notes);
     state.pickerChordObj = { id: chord.id, rootName: chord.rootName, notes: names, noteCount: names.length, type: { name: chord.type.name, category: chord.type.category } };
-    state.pickerNewPlaylist = false;
     state.pickerInstrumentId = inst.id;
     render();
     return;

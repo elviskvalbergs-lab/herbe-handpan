@@ -43,7 +43,6 @@ function reloadSaved() {
   // A playlist that came in from sync (another device, an older version of
   // the app) moves into the one kind of list too.
   mergePlaylistsIntoProgressions();
-  state.playlists = getPlaylists();
   state.favorites = getFavorites();
   state.progressions = getProgressions();
   refreshInstruments();
@@ -74,7 +73,7 @@ function openSaveSheet(what) {
 function guestPickerToSave() {
   if (accountOn() || !state.pickerChordFavId || !state.pickerChordObj || state.saveSheet) return;
   const entry = playlistEntryFor(state.pickerChordObj, state.pickerChordFavId);
-  Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewPlaylist: false, pickerNewProgression: false });
+  Object.assign(state, { pickerChordFavId: null, pickerChordObj: null, pickerNewProgression: false });
   guestSave({ what: 'chord', entry });
 }
 

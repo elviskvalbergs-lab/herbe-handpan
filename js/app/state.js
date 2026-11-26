@@ -11,7 +11,7 @@ import { getFavorites, getPlaylists, getProgressions, getSavedLayouts, mergePlay
 mergePlaylistsIntoProgressions();
 
 const state = {
-  view: 'selector',        // 'home' | 'wizard' | 'instrument' | 'selector' | 'editor' | 'chords' | 'playlist'
+  view: 'selector',        // 'home' | 'wizard' | 'instrument' | 'selector' | 'editor' | 'chords'
   instruments: [],         // My instruments (instruments.js), most recently played first
   currentInstrumentId: null, // instrument being played; null = browsing the catalogue
   wizard: null,            // add-instrument wizard state, see viewWizard()
@@ -25,7 +25,7 @@ const state = {
   help: null,              // the help sheet: { id, anchor } for an article, { id: null } for the list (js/helpdoc.js)
   installHelp: false,      // the "Add to home screen" steps sheet (no install prompt on this browser)
   menu: false,             // the instrument's ⋯ menu is open
-  confirm: null,           // { kind: 'instrument' | 'playlist', id, title, body, ok } while confirming
+  confirm: null,           // { kind: 'instrument' | 'progression', id, title, body, ok } while confirming
   oc: newOcState(),        // ocarina / flute views, see newOcState()
   showFingers: false,      // finger labels (R4, L1…) inside ocarina holes
   showSizes: false,        // hole sizes in mm on ocarina diagrams
@@ -41,16 +41,13 @@ const state = {
   scaleSearch: '',            // filter text for scale selector
   selectedChord: null,        // ChordResult or null
   chords: [],                 // computed from layout
-  chordFilter: { category: 'All', root: 'All', playlist: 'All' },
+  chordFilter: { category: 'All', root: 'All' },
   noteNames: 'auto',         // 'auto' (as the instrument's scale is written), 'sharps' (C#) or 'flats' (Db); state.useFlats reads it
   useSolfege: false,         // false = letters (C, D, E…); true = solfège (Do, Re, Mi…)
   savedLayouts: getSavedLayouts(),
   favorites: getFavorites(),
-  playlists: getPlaylists(),
-  activePlaylistId: null,
   pickerChordFavId: null,
   pickerChordObj: null,
-  pickerNewPlaylist: false,
   chordCountSet: new Set(), // empty = all; values: '2','3','4','5+'
   pendingSlot: null,       // { shell: 'top'|'bottom'|'ding', index: number }
   pickListen: null,        // the note picker's "Play it": { listening, startedTuner, startedAt, heardAt, error }
@@ -76,13 +73,9 @@ const state = {
   hpListen: false,         // handpan Chords: the Listen segment (Browse / Identify / Listen)
   listenUi: null,          // the Listen session, see newListenUi()
   discoverNotes: [],       // ordered note-with-octave strings clicked on the pan
-  sourcePlaylistId: null,  // playlist the current chord was opened from, if any
-  sourceEntryId: null,     // that entry's id at load time — lets "update" find it after a swap
   hpFilters: false,        // the handpan Chords Filters sheet is open
   hpMore: false,           // the selected chord's More sheet is open (phones)
   pickerInstrumentId: null, // instrument of the ocarina card whose ♡ opened the picker
-  plMode: 'chords',        // playlist detail: 'chords' (cards) | 'order' (reorder rows)
-  plRowMenu: null,         // index of the playlist entry whose ⋯ menu is open
   instEdit: null,          // id of the instrument in the Edit instrument sheet
   photoCrop: null,
   recLast: null,           // { path, label, text, at }: the set-up reading just recorded, for the guide         // { id, src, iw, ih, ratio, zoom, cx, cy } while fitting a new photo
@@ -92,7 +85,6 @@ const state = {
   progMode: 'steps',       // progression detail: 'steps' | 'order' (reorder rows)
   progRowMenu: null,       // index of the step whose ⋯ menu is open
   progPlay: null,          // { id, idx, beat } while a progression plays on the handpan
-  pickerMode: 'playlist',  // the ♡ sheet adds to a 'playlist' or a 'progression'
   pickerNewProgression: false, // the ♡ sheet's "New progression" field is open
   chordSheet: null,        // the "Paste a chord sheet" sheet: { step: 'paste' | 'fit', text, target, semis, name, progId, error }
   listen: null,            // Listen (find a scale by ear): { where: 'selector' | 'wizard', listening, notes: [midi], lastSince, startedTuner, error, stopped }

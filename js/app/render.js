@@ -45,7 +45,6 @@ function render() {
   else if (state.view === 'chords') html = viewChords();
   else if (state.view === 'hp-playlists') html = viewHandpanPlaylists();
   else if (state.view === 'hp-songs') html = viewHandpanSongs();
-  else if (state.view === 'playlist') html = viewPlaylist();
   else if (state.view === 'progression') html = viewProgression();
   else if (state.view === 'song') html = viewSong();
   else if (state.view === 'settings') html = viewSettings();
@@ -182,11 +181,10 @@ function sheetHtml() {
   if (state.instEdit) return instEditSheet();
   if (state.shareModal) return shareModalHtml();
   if (state.linkSheet) return linkSheetHtml();
-  if (state.pickerChordFavId && ['chords', 'instrument', 'playlist'].includes(state.view)) return renderPlaylistPicker();
+  if (state.pickerChordFavId && ['chords', 'instrument'].includes(state.view)) return renderPlaylistPicker();
   if (state.plName) return plNameSheet();
   if (state.songsCountries && ['hp-playlists', 'hp-songs', 'instrument'].includes(state.view)) return songsCountriesSheet();
   if (state.chordSheet && ['hp-playlists', 'hp-songs', 'instrument', 'progression'].includes(state.view)) return chordSheetSheet();
-  if (state.plRowMenu != null && state.view === 'playlist') return plRowMenuSheet();
   if (state.progRowMenu != null && state.view === 'progression') return progRowMenuSheet();
   if (state.hpFilters && state.view === 'chords') return hpFiltersSheet();
   if (state.hpMore && state.view === 'chords' && state.selectedChord && !state.discoverMode) return hpMoreSheet();
@@ -204,13 +202,7 @@ function menuSheet() {
   if (state.menu?.id) return rowMenuSheet(state.menu.id);
   const rows = [];
   let title = 'Menu';
-  if (state.view === 'playlist') {
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    title = pl?.name ?? title;
-    if (pl) rows.push(uiRow({ lead: 'pencil', title: 'Rename', action: 'pl-rename-open' }));
-    if (pl && pl.chords.length) rows.push(uiRow({ lead: 'list-ordered', title: 'Copy as progression', meta: 'Same chords in order, then repeat any of them', action: 'pl-copy-progression' }));
-    if (pl && pl.id !== 'favorites') rows.push(uiRow({ lead: 'trash-2', title: 'Delete playlist', action: 'delete-playlist', cls: 'is-danger' }));
-  } else if (state.view === 'progression') {
+  if (state.view === 'progression') {
     const prog = progFind();
     title = prog?.name ?? title;
     if (prog) {
@@ -240,7 +232,7 @@ function menuSheet() {
       rows.push(uiRow({ lead: 'trash-2', title: 'Remove instrument', action: 'delete-instrument', data: { id: state.currentInstrumentId }, cls: 'is-danger' }));
     }
   }
-  if (state.view === 'playlist' || state.view === 'progression') rows.push(helpMenuRow());
+  if (state.view === 'progression') rows.push(helpMenuRow());
   return uiSheet({ key: 'menu', variant: 'menu', title, close: 'menu-close', body: `<div class="list">${rows.join('')}</div>` });
 }
 
@@ -279,7 +271,6 @@ registerActions({
     const c = state.confirm;
     state.confirm = null;
     if (c?.kind === 'instrument') removeInstrument(c.id);
-    else if (c?.kind === 'playlist') removePlaylist(c.id);
     else if (c?.kind === 'progression') removeProgression(c.id);
     else render();
     return;

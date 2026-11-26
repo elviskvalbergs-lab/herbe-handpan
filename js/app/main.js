@@ -131,7 +131,6 @@ document.addEventListener('click', e => {
   // A menu row closes the menu, then does what it says.
   if (state.menu && el.closest('.sheet-menu, .sheet-rowmenu')) { state.menu = false; render(); }
   if (state.hpMore && el.closest('.sheet-hpmore') && action !== 'hp-more-close') { state.hpMore = false; render(); }
-  if (state.plRowMenu != null && el.closest('.sheet-plrow') && action !== 'pl-row-close') { state.plRowMenu = null; render(); }
   if (state.progRowMenu != null && el.closest('.sheet-progrow') && action !== 'prog-row-close') { state.progRowMenu = null; render(); }
   if (runAction(action, el, e)) return;
   // Screens that handle a group of actions in one function.
@@ -281,12 +280,6 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     document.querySelector('[data-action="confirm-new-progression"]')?.click();
   }
-  if (e.key === 'Enter' && e.target.id === 'new-playlist-input') {
-    // preventDefault: focus moves back to the heart button as the sheet
-    // closes, and Enter's default action would press it again.
-    e.preventDefault();
-    document.querySelector('[data-action="confirm-new-playlist"]')?.click();
-  }
   const sheet = document.querySelector('.sheet-root .sheet');
   if (!sheet) return;
   if (e.key === 'Escape') {
@@ -310,7 +303,7 @@ window.addEventListener('popstate', () => {
   Object.assign(state, {
     view: 'home', layout: null, selectedChord: null,
     pendingSlot: null, chords: [], shellMode: 'both',
-    chordFilter: { category: 'All', root: 'All', playlist: 'All' },
+    chordFilter: { category: 'All', root: 'All' },
     currentInstrumentId: null, wizard: null, chordSheet: null,
   });
   refreshInstruments();

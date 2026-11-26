@@ -60,16 +60,6 @@ function hpFilteredChords() {
   return { filtered: main ? mainChordsInKey(filtered, notePC(layout.top.ding), layoutPitchClasses(layout)) : filtered, roots, layoutId, main, all };
 }
 
-// The playlist entry the selected chord was opened from, and whether its
-// voicing has since changed (then "Save this voicing" is offered).
-function hpSourceEntry() {
-  const chord = state.selectedChord;
-  const pl = state.sourcePlaylistId ? state.playlists.find(p => p.id === state.sourcePlaylistId) : null;
-  const entry = pl ? pl.chords.find(c => c.id === state.sourceEntryId) : null;
-  const canUpdate = !!(chord && entry && entry.chordId === chord.id && entry.notes.join(',') !== chord.notes.join(','));
-  return { pl, canUpdate };
-}
-
 // Filters set in the Filters sheet (the root chips don't count).
 function hpFilterCount() {
   const f = state.chordFilter;
@@ -110,10 +100,6 @@ function viewChords() {
 
   const selectedFavId = selectedChord ? favIdForChord(layoutId, selectedChord, chords) : null;
   const selectedInAny = selectedChord ? isChordBookmarkedAnyVoicing(layoutId, selectedChord.id) : false;
-  // Show a "save voicing" button only when the selected chord came from a
-  // playlist entry (same abstract chord) and its notes have since diverged.
-  const { pl: sourcePl, canUpdate: canUpdateEntry } = hpSourceEntry();
-  const saveVoicingBtn = cls => uiIconBtn('save', `Save this voicing to ${sourcePl.name}`, { action: 'update-playlist-entry', cls });
 
   const discoverMatches = state.discoverMode ? identifyChord(state.discoverNotes) : [];
   // Listen: the chord heard, lit on the pan (docs/listen-mode.md).
@@ -138,7 +124,6 @@ function viewChords() {
     title: escHtml(hpChordName(selectedChord)),
     metas: [[escHtml(hpNotesText(selectedChord.notes))], [`${escHtml(selectedChord.type.category)} · ${chordNotesWord(selectedChord.noteCount)}`, 'hp-wide']],
     actions: `
-          ${canUpdateEntry ? saveVoicingBtn('hp-wide') : ''}
           <button type="button" class="btn btn-primary hp-play" data-action="play-chord">${icon('play')} Chord</button>
           ${speedBtnHtml()}
           <button type="button" class="btn btn-secondary hp-wide" data-action="play-scale">${icon('play')} Scale</button>
@@ -223,12 +208,10 @@ function hpFiltersSheet() {
 // related chords.
 function hpMoreSheet() {
   const chord = state.selectedChord;
-  const { pl, canUpdate } = hpSourceEntry();
   return chordMoreSheet({
     help: uiHelp('chords', 'more'), key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
     rows: [
       uiRow({ lead: 'play', title: 'Play the scale', meta: 'Every note, from the lowest up', action: 'play-scale' }),
-      canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',
       uiRow({ lead: 'link', title: 'Copy link to this chord', action: 'copy-url' }),
     ],
     extra: `<div class="hp-related">${hpRelatedHtml(chord)}</div>`,
@@ -311,20 +294,7 @@ registerActions({
     const chord = state.chords.find(c => c.id === el.dataset.id);
     if (!chord) return;
 
-    // If the chord list is filtered to a playlist, clicking a row is the
-    // same as opening that entry — show its saved voicing (it may differ
-    // from canonical) and track it so a swap can be saved back.
-    const pl = state.chordFilter.playlist !== 'All' ? state.playlists.find(p => p.id === state.chordFilter.playlist) : null;
-    const entry = pl ? pl.chords.find(c => c.chordId === chord.id) : null;
-    if (pl && entry) {
-      state.selectedChord = Array.isArray(entry.notes) ? { ...chord, notes: entry.notes } : chord;
-      state.sourcePlaylistId = pl.id;
-      state.sourceEntryId = entry.id;
-    } else {
-      state.selectedChord = chord;
-      state.sourcePlaylistId = null;
-      state.sourceEntryId = null;
-    }
+    state.selectedChord = chord;
 
     navReplace(stateToHash());
     // Preserve chord list scroll position across render
@@ -372,8 +342,6 @@ registerActions({
     state.discoverMode = want === 'identify';
     state.discoverNotes = [];
     state.selectedChord = null;
-    state.sourcePlaylistId = null;
-    state.sourceEntryId = null;
     render();
     return;
   },
@@ -389,7 +357,6 @@ registerActions({
     const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
     state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
     state.pickerChordObj = chord;
-    state.pickerNewPlaylist = false;
     render();
     return;
   },
@@ -405,7 +372,6 @@ registerActions({
     const layoutId = state.layout.isCustom ? (state.layout.savedId || state.layout.id) : state.layout.id;
     state.pickerChordFavId = favIdForChord(layoutId, chord, state.chords);
     state.pickerChordObj = chord;
-    state.pickerNewPlaylist = false;
     render();
     return;
   },

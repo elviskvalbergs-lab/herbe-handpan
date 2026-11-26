@@ -93,7 +93,7 @@ Wizard (ocarina and flute, note by note)    full screen, own bottom action bar
 Home = My instruments                        #  (empty hash)
  ├─ Try a scale (catalogue, unsaved)         (existing selector view)
  ├─ Settings                                 #settings
- ├─ Playlist detail                          (existing playlist view)
+ ├─ A playlist's screen                      (#prog/<id>)
  └─ Instrument ─ tabs (bottom tab bar)
      Handpan:  Chords · Songs · Playlists · Pan         /handpan/<slug>[/chords|/songs|/playlists]
      Ocarina:  Chords · Songs · Playlists · Notes · Build | Set up      #i/<id>/<tab>
@@ -107,7 +107,7 @@ Tuner: docked strip, can be switched on from any instrument or builder screen
 
 One sticky bar, `--appbar-h` 56px plus the top safe area, background `--bg`, with a 1px `--border` bottom edge. It has three slots:
 
-| Slot | Home | Instrument (any tab) | Deeper screen (Settings, Playlist detail, Try a scale) |
+| Slot | Home | Instrument (any tab) | Deeper screen (Settings, a playlist, Try a scale) |
 | --- | --- | --- | --- |
 | Left | title "My instruments" | **instrument switcher**: name + chevron-down, opens Home | back icon button (chevron-left) + title |
 | Right | tuner icon button, settings icon button | tuner icon button, ⋯ menu icon button | tuner (except Settings), ⋯ where the screen has actions |
@@ -213,12 +213,10 @@ In the brief's terms: scale filter, chord filters, voicing, play and tuner stay 
 | `toggle-note-count`, `filter-category`, `select-playlist-filter` (incl. "Edit playlist") | Chords › Filters sheet (plus an "Edit" link in the Now playing bar) |
 | `filter-root` | Chords › root chip row |
 | `select-chord`, `play-chord`, `play-scale`, `show-playlist-picker`, `update-playlist-entry`, related chips | Chords › selected-chord bar and its "More" sheet (inline on desktop) |
-| `move-chord-up/down`, `remove-playlist-chord`, rename, `delete-playlist`, `open-playlist-chord` | Playlist detail |
 | `toggle-playlist-chord`, `show-new-playlist-input`, `confirm-new-playlist` | Add to playlist sheet |
 | `oc-scale-filter`, `oc-play-scale`, `oc-select-note`, `oc-play-selected`, `oc-legend-dismiss` | Ocarina Notes |
 | `oc-hand-open/close` | ⋯ menu, Settings, and the hand icon beside the moves line when finger labels are on |
 | `oc-category`, `oc-chord-toggle`, `oc-voicing`, `oc-play-arp`, `oc-play-note`, `oc-play-pair`, `oc-show-playlist-picker` | Ocarina Chords |
-| `oc-playlist` (playlist filter on ocarina Chords) | Playlists tab › playlist detail (shows the same chord cards) |
 | `oc-practice-start/next/prev/stop` | Playlists tab ▶ Practice; Practice screen |
 | `share-instrument`, `share-copy`, `share-close`, `shared-add` | ⋯ menu / Home row ⋯ → Share sheet; shared banner |
 | `tuner-toggle` | App bar mic |
@@ -682,41 +680,9 @@ Tab bar
 - Desktop: two columns, as today: the pan left and a 320px side panel right (the Shells card and buttons).
 - The note picker (`renderNotePicker`) becomes a sheet titled "Add a note". Its octave rows of note chips (40px) are kept, with in-use notes `.is-static`.
 
-### 6.9 Playlists tab (new) and playlist detail (phone-09, desktop-09)
+### 6.9 Playlists tab and a playlist's screen
 
-Playlists tab, on any instrument:
-
-```
-App bar: Blue D Kurd ▾            🎤  ⋯
-┌ .list ──────────────────────────────┐
-│[≡] Favorites            [▶ Practice]│ ocarina: btn-sm primary "Practice" (oc-practice-start
-│    3 chords here · 7 in total     › │ with this playlist); handpan: "▶ Play"
-├─────────────────────────────────────┤ (open-playlist-chords + autoplay on)
-│[≡] Jam set                 [▶ Play] │ disabled when no entry belongs to this
-│    0 here · 4 in total            › │ instrument (meta says so)
-└─────────────────────────────────────┘
-[+ New playlist]                        ghost
-Empty: "No playlists yet. Tap ♡ on any chord to start one." [Go to Chords]
-```
-
-Playlist detail (opened from a row's › or from Home):
-
-```
-App bar: ← | Favorites                    ⋯  (Rename, Delete playlist (danger → confirm))
-[▶ Practice on Blue D Kurd]  btn-lg primary block (ocarina) / [▶ Play] (handpan)
-                             hidden when no entry belongs to the current instrument
-( Chords | Order )           seg: Order shows reorder controls
-Handpan entries, and ocarina entries in Order mode:
-│ D Minor                               ⋯ │ .row: title; meta "Blue D Kurd · D3 F4 A3";
-│ Blue D Kurd · D3 · F4 · A3              │ tap = open-playlist-chord; ⋯ = Move up / Move down /
-                                          │ Remove
-Order mode: trailing [▲][▼] 44px icon-btns + [✕]
-Ocarina entries in Chords mode: ocChordCard rows (expandable, as in §6.11) for this
-instrument — this replaces the ocarina "All chords ▾" playlist filter.
-```
-
-- Rename is a field in a sheet ("Rename playlist" with an input and Save). The always-visible underline input goes.
-- Delete has a confirm sheet. "Favorites" can't be deleted (unchanged), so its ⋯ shows only Rename.
+**Current (26 Nov 2026).** A playlist is one kind of list (stored as a progression). The Playlists tab lists them with ▶ Play on every instrument (`progressionRowsHtml`, action `prog-play`); a row's › opens the playlist's screen (`viewProgression`, `#prog/<id>`), where Play runs it in time on the instrument on screen and a wind instrument also has "Practice chord by chord". The old playlist detail (`viewPlaylist`, `#pl/<id>`, Chords | Order, ocarina entry cards) and the handpan's playlist filter on Chords are removed; an old `#pl/<id>` link opens the playlist it was turned into.
 
 ### 6.10 Ocarina: Notes tab (phone-10, desktop-10)
 

@@ -28,7 +28,7 @@ function navReplace(url, extra = {}) { history.replaceState({ ...(history.state 
 function goHome({ push = true } = {}) {
   Object.assign(state, {
     view: 'home', layout: null, selectedChord: null, pendingSlot: null,
-    sourcePlaylistId: null, sourceEntryId: null, currentInstrumentId: null,
+    currentInstrumentId: null,
     wizard: null, discoverMode: false, discoverNotes: [], shared: null, sharedStatus: null, shareModal: null,
     menu: false, confirm: null, pickerChordFavId: null, pickerChordObj: null, hpFilters: false, hpMore: false, pendingSong: null,
   });
@@ -43,8 +43,6 @@ function goSelector() {
   state.layout = null;
   state.selectedChord = null;
   state.pendingSlot = null;
-  state.sourcePlaylistId = null;
-  state.sourceEntryId = null;
   state.currentInstrumentId = null;
   navPush('#scales');
   render();
@@ -57,15 +55,13 @@ function openInstrument(id, { push = true } = {}) {
   if (state.currentInstrumentId !== id) state.oc = newOcState();
   state.currentInstrumentId = id;
   state.selectedChord = null;
-  state.sourcePlaylistId = null;
-  state.sourceEntryId = null;
   if (usesLayout(inst)) {
     const saved = state.savedLayouts.find(l => l.id === inst.layoutId);
     if (!saved) return false;
     state.layout = JSON.parse(JSON.stringify(saved.layout));
     state.chords = findAllChords(state.layout);
     state.shellMode = 'both';
-    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+    state.chordFilter = { category: 'All', root: 'All' };
     state.view = 'chords';
     if (push) navPush(stateToHash());
   } else {
@@ -197,7 +193,7 @@ function openSharedLayout(data, tab) {
   if (layout.isCustom || !findTuning(layout.id)) { layout.isCustom = true; delete layout.savedId; layout.id = 'custom'; }
   Object.assign(state, {
     layout, currentInstrumentId: null, shared: null, sharedStatus: null, selectedChord: null,
-    chords: findAllChords(layout), shellMode: 'both', chordFilter: { category: 'All', root: 'All', playlist: 'All' },
+    chords: findAllChords(layout), shellMode: 'both', chordFilter: { category: 'All', root: 'All' },
     view: layoutTabView(tab),
   });
   navReplace(stateToHash());
@@ -225,7 +221,7 @@ function openScaleLayout(scale) {
 // Opens a parsed deep link (links.js) as a visiting instrument, ready to
 // play: nothing is added to My instruments until Save.
 function openLink(link) {
-  Object.assign(state, { selectedChord: null, pendingSlot: null, sourcePlaylistId: null, sourceEntryId: null, wizard: null, playNotice: null, songCtx: null });
+  Object.assign(state, { selectedChord: null, pendingSlot: null, wizard: null, playNotice: null, songCtx: null });
   if (link.kind === 'song') { openSongAnywhere(link.song); return; }
   // A song on this instrument opens once the instrument is up (songOpenPending).
   if (link.song) state.pendingSong = link.song;
@@ -257,7 +253,7 @@ function openLink(link) {
     state.chords = findAllChords(state.layout);
   }
   state.shellMode = 'both';
-  state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
+  state.chordFilter = { category: 'All', root: 'All' };
   state.view = link.chord ? 'chords' : layoutTabView(link.tab);
   if (link.chord) state.selectedChord = state.chords.find(c => linkSlug(c.id) === link.chord) || null;
 }
@@ -277,7 +273,6 @@ function loadFromHash() {
   if (makerOpenHash(hash)) return; // #maker… (js/makers-ui.js)
   if (hash.startsWith('#pl/')) {
     const id = decodeURIComponent(hash.slice(4));
-    if (state.playlists.some(p => p.id === id)) { state.activePlaylistId = id; state.view = 'playlist'; state.plMode = 'chords'; return; }
     // A playlist moved into the one kind of list opens as that list.
     const moved = state.progressions.find(p => p.fromPlaylist === id || p.id === `pr-from-${id}`);
     if (moved) { state.activeProgressionId = moved.id; state.view = 'progression'; state.progMode = 'steps'; }
@@ -347,8 +342,6 @@ registerActions({
   'back-editor': (el, e, action) => {
     state.view = 'editor';
     state.selectedChord = null;
-    state.sourcePlaylistId = null;
-    state.sourceEntryId = null;
     navReplace(stateToHash(), { hpTab: null });
     render();
     return;

@@ -265,13 +265,6 @@ function removeProgression(id) {
 
 // ── Click: Progressions ───────────────────────────────────────────────────
 registerActions({
-  'picker-mode': (el, e, action) => {
-    state.pickerMode = el.dataset.value === 'progression' ? 'progression' : 'playlist';
-    state.pickerNewPlaylist = false;
-    state.pickerNewProgression = false;
-    render();
-    return;
-  },
   'add-to-progression': (el, e, action) => {
     const chord = state.pickerChordObj;
     const prog = progFind(el.dataset.progId);
@@ -329,15 +322,6 @@ registerActions({
   'open-progression': (el, e, action) => {
     if (e.target.closest('.row-trail button')) return;
     openProgression(el.dataset.id);
-    return;
-  },
-  'pl-copy-progression': (el, e, action) => {
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl || !pl.chords.length) return;
-    const id = addProgression(pl.name, pl.chords.map(c => newProgressionStep(c)));
-    state.progressions = getProgressions();
-    showToast(`Copied ${pl.name} as a progression`, { action: { label: 'Open', run: () => openProgression(id) } });
-    render();
     return;
   },
   // Save on a guest's playlist: by the time this runs they have signed in
@@ -412,6 +396,22 @@ registerActions({
     progStrike(s);
     return;
   },
+  // "Go to Chords" on a playlist's screen: the instrument's Chords.
+  'pl-go-chords': (el, e, action) => {
+    if (state.layout) {
+      state.chords = findAllChords(state.layout);
+      state.selectedChord = null;
+      state.chordFilter = { category: 'All', root: 'All' };
+      state.view = 'chords';
+      navPush(stateToHash());
+    } else if (state.currentInstrumentId) {
+      state.view = 'instrument';
+      state.oc.tab = 'chords';
+      navPush(instUrl(state.currentInstrumentId, 'chords'));
+    }
+    render();
+    return;
+  },
   'prog-play': (el, e, action) => {
     const prog = progFind(el.dataset.id || state.activeProgressionId);
     if (!prog) return;
@@ -462,69 +462,6 @@ registerActions({
     }
     state.oc.practice = { progressionId: prog.id, idx: 0 };
     playPracticeStep();
-    render();
-    return;
-  },
-  'open-playlist': (el, e, action) => {
-    state.plMode = 'chords';
-    state.plRowMenu = null;
-    state.activePlaylistId = el.dataset.id;
-    state.view = 'playlist';
-    navPush(`#pl/${encodeURIComponent(el.dataset.id)}`);
-    render();
-    return;
-  },
-  'delete-playlist': (el, e, action) => {
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl || pl.id === 'favorites') return;
-    state.confirm = {
-      kind: 'playlist', id: pl.id, ok: 'Delete', title: `Delete ${pl.name}?`,
-      body: 'The playlist is removed on this device and from sync. The chords stay on your instruments.',
-    };
-    render();
-    return;
-  },
-  'move-chord-up': (el, e, action) => {
-    const idx = parseInt(el.dataset.idx, 10);
-    reorderChordInPlaylist(state.activePlaylistId, idx, idx - 1);
-    state.playlists = getPlaylists();
-    scheduleSave();
-    render();
-    return;
-  },
-  'move-chord-down': (el, e, action) => {
-    const idx = parseInt(el.dataset.idx, 10);
-    reorderChordInPlaylist(state.activePlaylistId, idx, idx + 1);
-    state.playlists = getPlaylists();
-    scheduleSave();
-    render();
-    return;
-  },
-  'remove-playlist-chord': (el, e, action) => {
-    const idx = parseInt(el.dataset.idx, 10);
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl) return;
-    const chord = pl.chords[idx];
-    if (!chord) return;
-    removeChordFromPlaylist(state.activePlaylistId, chord.id);
-    state.playlists = getPlaylists();
-    state.favorites = getFavorites();
-    scheduleSave();
-    render();
-    return;
-  },
-  'open-playlist-chord': (el, e, action) => {
-    const idx = parseInt(el.dataset.idx, 10);
-    const pl = state.playlists.find(p => p.id === state.activePlaylistId);
-    if (!pl) return;
-    if (pl.chords[idx]?.instrumentId) {
-      if (openPlaylistEntryOnInstrument(pl, pl.chords[idx])) render();
-      return;
-    }
-    if (!loadPlaylistChordAt(pl, idx)) { showToast('Scale not found'); return; }
-    state.chordFilter = { category: 'All', root: 'All', playlist: 'All' };
-    state.view = 'chords';
-    navPush(stateToHash());
     render();
     return;
   },

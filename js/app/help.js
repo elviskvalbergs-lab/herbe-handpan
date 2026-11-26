@@ -22,7 +22,6 @@ function helpScreenKey() {
     if (oc.tab === 'setup') return 'pan';
     return oc.tab === 'playlists' ? 'playlists' : oc.tab === 'practice' ? 'practice' : 'notes';
   }
-  if (v === 'playlist') return 'playlist';
   if (v === 'progression') return 'progression';
   if (v === 'song') return 'song';
   if (v === 'setup' || v === 'wizard') return 'setup';
