@@ -2,8 +2,9 @@
 
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { isAppPath, loadAnalytics, track, utmParams, withUtm } from "@/lib/analytics";
+import { isAppPath, loadAnalytics, setHomeVariant, track, utmParams, withUtm } from "@/lib/analytics";
 
 // Measurement for every page (src/lib/analytics.ts): Vercel Web Analytics and
 // Speed Insights, PostHog, and the funnel events that come from plain links
@@ -26,6 +27,15 @@ function locationOf(el: Element): string {
 }
 
 export function Measure() {
+  const pathname = usePathname();
+  // The home page experiment (src/lib/experiment.ts): which version this page
+  // is, read again on every page change (the layout, and so this, stays mounted).
+  useEffect(() => {
+    const variant = document.querySelector<HTMLElement>("[data-home-variant]")?.dataset.homeVariant ?? null;
+    setHomeVariant(variant);
+    if (variant) track("home_view", { variant });
+  }, [pathname]);
+
   useEffect(() => {
     landingUtm ??= utmParams(window.location.search);
     // After the page has settled, so it never competes with the first paint.
