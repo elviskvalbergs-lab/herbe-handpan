@@ -26,7 +26,9 @@ function csOcTarget(inst) {
 function csTargets() {
   const out = [];
   const add = t => { if (t && !out.some(x => x.key === t.key)) out.push(t); };
-  const cur = state.currentInstrumentId && state.currentInstrumentId !== SHARED_ID ? getInstrument(state.currentInstrumentId) : null;
+  // currentInstrument: an ocarina, flute or recorder being tried (opened from
+  // a link, not saved) is a target too, as a handpan scale being tried is.
+  const cur = state.currentInstrumentId ? currentInstrument() : null;
   if (cur && !usesLayout(cur) && playableMidis(cur).length) add(csOcTarget(cur));
   if (state.layout && (!cur || usesLayout(cur))) add(csHpTarget(hpCurrentLayoutId(), state.layout));
   for (const inst of getInstruments()) {
@@ -162,7 +164,7 @@ function chordSheetSheet() {
     </div>`,
     footer: `
       <button type="button" class="btn btn-ghost" data-action="cs-back">Back</button>
-      <button type="button" class="btn btn-primary" data-action="cs-save">Save playlist</button>`,
+      <button type="button" class="btn btn-primary" data-action="cs-save">${accountOn() ? 'Save playlist' : 'Play it'}</button>`,
   });
 }
 
@@ -205,7 +207,10 @@ function csSave() {
   const cov = sheetCoverage(sheet.steps, chords, cs.semis);
   if (state.view === 'progression' && state.activeProgressionId === id) render();
   else openProgression(id);
-  showToast(cov.playable === cov.total ? `Saved: all ${cov.total} steps play on ${target.name}` : `Saved: ${cov.playable} of ${cov.total} steps play on ${target.name}`);
+  // A guest plays it straight away; it is in this tab only until they save.
+  const done = accountOn() ? 'Saved: ' : '';
+  const plays = cov.playable === cov.total ? `all ${cov.total} steps play on ${target.name}` : `${cov.playable} of ${cov.total} steps play on ${target.name}`;
+  showToast(done + (done ? plays : plays[0].toUpperCase() + plays.slice(1)));
 }
 
 // ── Change: Chord sheet ───────────────────────────────────────────────────

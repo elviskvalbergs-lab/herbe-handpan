@@ -51,8 +51,9 @@ function instrumentTabBar(inst, current) {
 // instrument (a handpan scale or custom notes, an ocarina or flute opened
 // from a link), with its Save.
 function notSavedBannerHtml(action) {
-  // visit-save: a guest's own instrument, built in this visit (§2).
-  const text = action === 'visit-save' ? 'Not saved · gone when you close this page' : 'Not saved · try it, then keep it in My instruments';
+  // visit-save: a guest's own instrument, built in this visit (§2);
+  // prog-keep: a guest's playlist, from a pasted chord sheet.
+  const text = action === 'visit-save' || action === 'prog-keep' ? 'Not saved · gone when you close this page' : 'Not saved · try it, then keep it in My instruments';
   return `
       <div class="banner">
         <span>${text}</span>

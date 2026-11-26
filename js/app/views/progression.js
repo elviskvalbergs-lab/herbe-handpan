@@ -189,6 +189,7 @@ function viewProgression() {
 
   return `
     ${backAppBar(prog.name, { actions: [tunerAppBtn(), menuAppBtn()] })}
+    ${accountOn() ? '' : notSavedBannerHtml('prog-keep')}
     <div class="prog-view${/prog-pan|prog-wind/.test(player) ? ' has-pan' : ''}">
       <div class="prog-side">${player}</div>
       <div class="prog-main">
@@ -342,6 +343,9 @@ registerActions({
     render();
     return;
   },
+  // Save on a guest's playlist: by the time this runs they have signed in
+  // and the visit's playlists are in the account (carryOverVisit).
+  'prog-keep': (el, e, action) => { showToast('Saved to Playlists'); render(); return; },
   'prog-delete': (el, e, action) => {
     const prog = progFind();
     if (!prog) return;

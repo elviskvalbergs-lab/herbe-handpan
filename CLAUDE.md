@@ -51,7 +51,7 @@ Every instrument gets the same experience, in the app and on the website. A new 
 ## Help and docs
 The help centre (oakhum.com/help, the app's Help sheet, and the exports an AI assistant reads) is built from `help/en/*.md` and the feature registry `js/features.js`. Design: `docs/help-centre.md`.
 - Every pull request that adds, renames, moves or removes something a user sees updates, in the same pull request: its entry in `js/features.js`, its help article (new feature: new article or a new `##` section; removed feature: remove both), and the article's `verified` date once you have re-read it against the running app.
-- A new screen, section or sheet gets a "?" (`uiHelp('article', 'anchor')` in `js/app.js`, or `uiSheet({ help })`) next to its heading, pointing at the section of the article that explains it.
+- A new screen, section or sheet gets a "?" (`uiHelp('article', 'anchor')` in `js/app/ui.js`, or `uiSheet({ help })`) next to its heading, pointing at the section of the article that explains it.
 - Names live in one place. Articles never spell a tab, button or feature name: they write `{{id}}` and `js/features.js` holds the text exactly as the app shows it.
 - Never describe a screen you have not opened. Walk the built app (`python3 build.py`, served with the deep-link fallback) before writing or re-verifying an article.
 - Pictures are made by `node scripts/help-screenshots.mjs` from `help/screenshots.json`, never by hand. Re-run it when a pictured screen changes.
