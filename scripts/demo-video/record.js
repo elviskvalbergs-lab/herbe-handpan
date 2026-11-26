@@ -72,7 +72,7 @@ const OUT = __dirname + '/';
 
   // Filter by root first, so the chord's row is on screen without scrolling the page.
   const chord = async (root, label, wait = 4200) => {
-    await page.locator(`[data-action="filter-root"][data-root="${root}"]`).click();
+    await page.locator(`[data-action="chords-root"][data-root="${root}"]`).click();
     await page.waitForTimeout(700);
     const row = page.locator('[data-action="select-chord"]', { hasText: label }).first();
     mark(label);
