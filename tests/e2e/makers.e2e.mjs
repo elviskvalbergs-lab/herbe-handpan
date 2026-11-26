@@ -78,6 +78,17 @@ const server = {
 // production's headers, with the Content-Security-Policy enforced, so a logo,
 // the QR library or a card the policy would block fails the run.
 const app = await serveApp();
+// The website's /api/maker-request (site/src/app/api/maker-request) isn't
+// served here: a stand-in does what it does, as the maker who called it,
+// and keeps the email it would send.
+const notices = [];
+app.intercept = (path, res) => {
+  if (path !== '/api/maker-request') return false;
+  const r = server.rpc(users.get('ilze@example.com'), 'claim_maker_request_notice', {}, {});
+  if (r.data) notices.push(r.data);
+  res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ sent: !!r.data }));
+  return true;
+};
 const BASE = app.base;
 
 // The page side: a tiny supabase-js with the calls the app makes.
@@ -186,6 +197,10 @@ try {
   await step('sending the request shows it as waiting', async () => {
     await m.click('[data-action="maker-save"]');
     await toast(m).filter({ hasText: 'Request sent' }).waitFor();
+    for (let i = 0; i < 20 && !notices.length; i++) await m.waitForTimeout(100);
+    assert.equal(notices.length, 1, 'the owner is told about the request, once');
+    assert.equal(notices[0].name, 'Ilze Pans');
+    assert.equal(notices[0].email, 'ilze@example.com');
     await m.locator('.maker-status.is-wait').waitFor();
     assert.match(await m.locator('.maker-status-title').innerText(), /looking at your request/);
     assert.equal(sql("select status || '|' || website || '|' || country from public.makers where slug = 'ilze-pans';"), 'pending|https://ilzepans.example|LV');

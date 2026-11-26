@@ -18,9 +18,11 @@ Oakhum shows the chords and songs that your own instrument can play. So the firs
 ## Set it up in four steps {#steps}
 
 1. Open the app. Under {{setup}}, tap your instrument.
-2. Choose how to tell Oakhum its notes: {{setup-listen}} lets the app listen while you play each note. {{setup-know}} lets you pick the scale from a list.
+2. Choose how to tell Oakhum its notes. {{setup-listen}} lets the app listen while you play each note. {{setup-know}} lets you pick the scale from a list.
 3. Check the result. Oakhum shows your instrument with its notes and a first chord to try.
-4. Tap {{first-chord}} to start, or {{save-next-time}} (with the kind of instrument after it, as in "Keep this kalimba") to keep the instrument.
+4. Tap {{first-chord}} to start. Or tap the button that starts with {{keep-this}}, as in Keep this handpan, to keep the instrument for next time.
+
+The dots at the top show how far you are: Instrument, How, Your notes and Ready.
 
 ## Which way should I choose? {#which-way}
 
@@ -30,7 +32,7 @@ Oakhum shows the chords and songs that your own instrument can play. So the firs
 
 ## Do I need an account? {#account}
 
-No. You can set up and play without one. An account is free and is only needed to keep your instrument for next time. See [Saving and accounts](/help/accounts-and-saving).
+No. You can set up and play without one. Without an account, your instrument is gone when you close the page. An account is free and keeps it for next time. See [Saving and accounts](/help/accounts-and-saving).
 
 ## My instrument is not in the list {#not-listed}
 

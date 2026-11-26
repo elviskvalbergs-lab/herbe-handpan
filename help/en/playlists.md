@@ -6,9 +6,9 @@ section: songs
 type: howto
 audience: players
 instruments: all
-features: playlists
+features: playlists, add-to-playlist
 app: /handpan/d-kurd/playlists
-verified: 2026-11-25
+verified: 2026-11-26
 order: 20
 ---
 Most songs are a few chords going round and round. A playlist keeps such a row of chords: in order, and the same chord can come back as often as you like.
@@ -19,18 +19,18 @@ Most songs are a few chords going round and round. A playlist keeps such a row o
 
 There are four ways.
 
-1. The quickest: on the {{chords}} tab, tap a chord, then the three dots, then {{ready-progressions}}, then Save on one you like.
-2. Tap the bookmark on a chord ({{add-to-playlist}}), then {{new-playlist}}. Later, the bookmark adds more chords to the end of it.
+1. The quickest: on the {{chords}} tab, tap a chord, then its three dots, then {{ready-progressions}}, then Save on one you like.
+2. Tap the bookmark on the chosen chord ({{add-to-playlist}}), then {{new-playlist}}. Later, the bookmark adds more chords to the end of it.
 3. On the {{playlists}} tab, tap {{new-playlist}}.
 4. Paste the chords of a song. See [Paste a chord sheet](/help/chord-sheets).
 
-The first time, Oakhum asks for your email, because playlists are kept in your free account. See [Saving and accounts](/help/accounts-and-saving). The one exception is a pasted chord sheet: you can play it straight away without an account, and it is gone when you close the page unless you save it.
+The first time, Oakhum asks for your email, because playlists are kept in your free account. See [Saving and accounts](/help/accounts-and-saving). The one exception is a pasted chord sheet: you can play it straight away, and it is gone when you close the page unless you save it.
 
 ## Play along {#play}
 
 Open the playlist and tap Play. Oakhum plays the chords in order, in time, and lights the notes on your instrument. Tap a chord in the list to hear just that one. The button next to Play goes back to the first chord.
 
-On an ocarina, flute or recorder there is also a Practice button. It takes you through the fingerings of each chord, note by note.
+On an ocarina, flute or recorder the button says {{practice}}. It takes you through the fingerings of each chord, note by note.
 
 ![A playlist with four chords](img:playlist)
 

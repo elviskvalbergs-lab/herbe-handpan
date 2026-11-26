@@ -16,12 +16,14 @@ You do not need theory to find chords that fit. Choose one chord and Oakhum sugg
 ## Try the suggestions {#steps}
 
 1. On the {{chords}} tab, tap a chord.
-2. Under {{goes-with}}, tap any of the small chord buttons. Each is a chord that sounds good after the one you chose.
+2. Next to {{goes-with}}, tap any of the small chord buttons. Each is a chord that sounds good after the one you chose.
 3. Go back and forth between them. That is already music.
 
 ## Ready made progressions {#progressions}
 
-Tap the three dots on the chosen chord, then {{ready-progressions}}. Oakhum lists well known chord orders in the key of your instrument, all playable on it. Tap play to hear one. Tap Save to keep it as a playlist. See [Playlists](/help/playlists).
+1. Tap the three dots on the chosen chord.
+2. Tap {{ready-progressions}}. Oakhum lists well known chord orders in the key of your instrument, all playable on it.
+3. Tap play to hear one. Tap Save to keep it as a playlist. See [Playlists](/help/playlists).
 
 ## What do the letters mean? {#letters}
 

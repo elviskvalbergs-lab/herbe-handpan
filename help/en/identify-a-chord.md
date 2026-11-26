@@ -8,7 +8,7 @@ audience: players
 instruments: all
 features: chords-identify
 app: /handpan/d-kurd/chords
-verified: 2026-11-21
+verified: 2026-11-25
 order: 20
 ---
 Found a few notes that sound good together? {{chords-identify}} tells you what they are called.
@@ -16,11 +16,11 @@ Found a few notes that sound good together? {{chords-identify}} tells you what t
 ## Name a chord {#steps}
 
 1. Open the {{chords}} tab.
-2. Tap {{chords-identify}}.
+2. Under the picture, tap {{chords-identify}}.
 3. Tap the notes you are playing on the picture. Tap a note again to take it away.
 4. With two or more notes chosen, Oakhum shows the name of the chord.
 
-Tap {{browse}} to go back to the list of chords.
+Tap {{chords-all}} to go back to the list of chords.
 
 ## Can it listen instead? {#listen}
 

@@ -6,8 +6,8 @@ section: trouble
 type: faq
 audience: players
 instruments: all
-features: setup-listen, listen, tuner
-verified: 2026-11-21
+features: setup-listen, listen, tuner, song-wait
+verified: 2026-11-25
 order: 10
 ---
 Hearing a real instrument through a phone microphone is hard, and Oakhum does not always get it right. These things help most.
@@ -31,6 +31,10 @@ Low notes on a handpan or tongue drum ring with higher sounds inside them, and s
 ## During set-up it skips or repeats a note {#setup}
 
 If you play a different note than the lit one, tap the one you are playing on the picture. If it will not hear a note at all, use the button at the bottom left to choose your scale from the list instead.
+
+## A song does not move on in Wait for me {#wait}
+
+{{song-wait}} moves on only when it hears the lit note. Play it once, clearly, and let it ring before the next. If it still does not move on, tap the arrow for the next note yourself.
 
 ## Send us the recording {#report}
 

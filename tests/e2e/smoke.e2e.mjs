@@ -139,6 +139,24 @@ try {
     await p.waitForURL(/\/songs$/);
     await p.locator('[data-action="song-open"]').first().waitFor();
   });
+  await step('help: a "?" opens its article at the right place, the list and the ⋯ menu\'s Help too', first, async p => {
+    // The article is built into the page (js/helpdoc.js HELP_BUNDLE), so this works offline too.
+    await p.click('.song-almost-title [data-action="help-open"], #pl-sec-songs [data-action="help-open"]');
+    const sheet = p.locator('.sheet-root[data-sheet="help"]');
+    await sheet.waitFor();
+    assert.match(await sheet.locator('.sheet-title').innerText(), /Songs to learn/);
+    assert.ok(await sheet.locator('.help-doc h3').count() > 2, 'the article has its sections');
+    await sheet.locator('[data-action="help-open"][data-id=""]').click();
+    await sheet.locator('.help-doc .row').first().waitFor();
+    assert.ok(await sheet.locator('.help-doc .row').count() > 20, 'the list shows every article');
+    await p.click('.sheet-root[data-sheet="help"] [data-sheet-close]');
+    await p.click('[data-action="menu-open"]');
+    await p.locator('.sheet-root [data-action="help-open"]').click();
+    await sheet.waitFor();
+    assert.match(await sheet.locator('.sheet-title').innerText(), /Songs to learn/);
+    await p.click('.sheet-root[data-sheet="help"] [data-sheet-close]');
+    assert.equal(await sheet.count(), 0);
+  });
   await first.ctx.close();
 
   // ── Song links (docs/songs-next.md §1) ────────────────────────────────────

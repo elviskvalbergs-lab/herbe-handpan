@@ -11,7 +11,7 @@ app: /handpan/d-kurd
 verified: 2026-11-25
 order: 50
 ---
-You can open any handpan scale, tongue drum, kalimba, ocarina, flute or recorder and try it. Nothing is saved and you do not need an account.
+You can open any handpan scale, tongue drum, kalimba, ocarina, flute or recorder and try it. You do not need an account.
 
 ## Open a tuning {#steps}
 

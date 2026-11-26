@@ -130,7 +130,7 @@
           "tap": "hp-more-open"
         },
         {
-          "tap": "gw-open"
+          "text": "Progressions with this chord"
         },
         {
           "css": ".sheet-root button:has-text('Save')"
@@ -162,7 +162,7 @@
           "tap": "hp-more-open"
         },
         {
-          "tap": "gw-open"
+          "text": "Progressions with this chord"
         },
         {
           "css": ".sheet-root button:has-text('Save')"

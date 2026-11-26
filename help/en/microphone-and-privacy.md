@@ -6,11 +6,11 @@ section: listening
 type: faq
 audience: players
 instruments: all
-features: listen, tuner, setup-listen
-verified: 2026-11-21
+features: listen, tuner, setup-listen, song-wait
+verified: 2026-11-25
 order: 30
 ---
-Oakhum uses the microphone in three places: setting up by playing your notes, the tuner, and {{listen}}.
+Oakhum uses the microphone in four places: {{setup-listen}} during set-up, the {{tuner}}, {{listen}} on the {{chords}} tab, and {{song-wait}} in a song.
 
 ## Is the sound sent to Oakhum? {#sent}
 
