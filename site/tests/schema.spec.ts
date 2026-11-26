@@ -25,3 +25,8 @@ it("the footer story can carry a verse, its translation and its source", () => {
   const settings = schemaTypes.find((t) => t.name === "siteSettings") as unknown as { fields: { name: string }[] };
   expect(settings.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["story", "storyVerse", "storyVerseTranslation", "storyVerseSource"]));
 });
+
+it("listening reports keep what the app heard, the recordings and where the fix is", () => {
+  const r = schemaTypes.find((t) => t.name === "listenReport") as unknown as { fields: { name: string }[] };
+  expect(r.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["status", "comment", "email", "recordings", "heard", "jiraKey", "fixNotes", "meta", "createdAt"]));
+});

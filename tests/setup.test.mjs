@@ -45,24 +45,132 @@ test('listening stops by itself once every note of the best match was heard', ()
 });
 
 test('ocarinas and flutes in the same setup: every chart key a tuning, matched by the notes heard', async () => {
-  const { chartSetupTunings, setupRoots, setupScalesFor, setupFirstChord, setupKeyNote } = await import('../js/setup.js');
+  const { chartSetupTunings, setupRoots, setupScalesFor, setupFirstChord, setupKeyNote, preferCommonChart } = await import('../js/setup.js');
   const { rankScalesByNotes } = await import('../js/scalefinder.js');
   const { findAllChords } = await import('../js/chords.js');
   const { createLayoutFromScale } = await import('../js/data.js');
   const oc = chartSetupTunings('ocarina');
-  assert.equal(oc.length, 36);
-  assert.ok(oc.every(t => t.id.startsWith('chart:ocarina-12-stl-c/') && t.chartId && t.keyId));
+  assert.equal(oc.filter(t => t.chartId === 'ocarina-12-stl-c').length, 36);
+  assert.ok(oc.every(t => t.id.startsWith('chart:ocarina-') && t.chartId && t.keyId));
   // An alto C ocarina: the lowest note (every hole closed) A4, then up the scale.
-  const alto = rankScalesByNotes([69, 71, 72, 74, 76, 77, 79, 81], oc)[0].scale;
+  // A 6-hole pendant in A plays these notes too: the more common 12-hole goes first.
+  const alto = preferCommonChart(rankScalesByNotes([69, 71, 72, 74, 76, 77, 79, 81], oc), 'ocarina')[0].scale;
   assert.equal(alto.id, 'chart:ocarina-12-stl-c/C-A4');
   assert.equal(alto.name, 'Alto C 12-hole ocarina');
   // "I know my key": C first, and C's three ocarinas.
   assert.equal(setupRoots(oc, { first: 0 })[0].pc, 0);
-  assert.deepEqual(setupScalesFor(oc, 0).map(t => t.keyId).sort(), ['C-A3', 'C-A4', 'C-A5']);
+  assert.deepEqual(setupScalesFor(oc, 0).filter(t => t.chartId === 'ocarina-12-stl-c').map(t => t.keyId).sort(), ['C-A3', 'C-A4', 'C-A5']);
   // A tin whistle in D, told from a Native American flute in D by its F#.
   const fl = chartSetupTunings('flute');
   assert.equal(rankScalesByNotes([62, 64, 66, 67, 69, 71, 73, 74], fl)[0].scale.id, 'chart:tin-whistle-d/D');
   // The first chord on an instrument in a major key is its major chord.
   const c = setupFirstChord(findAllChords(createLayoutFromScale(alto)), setupKeyNote(alto), { prefer: 'maj' });
   assert.equal(c.id, 'C-maj');
+});
+
+test('the 6-hole pendant ocarina: STL\'s chart, chromatic over 16 semitones, drawn as a pendant', async () => {
+  const { getChart, instrumentFromChart } = await import('../js/charts.js');
+  const { renderFingering } = await import('../js/ocarina-ui.js');
+  const { linkFor, parseLink } = await import('../js/links.js');
+  const chart = getChart('ocarina-6-stl-c');
+  assert.ok(chart.source.every(u => /^https:\/\//.test(u)));
+  assert.deepEqual(chart.fingerings.map(f => f.offset), [...Array(17).keys()]);
+  assert.ok(chart.fingerings.every(f => f.states.length === 6));
+  const inst = instrumentFromChart(chart.id, 'C-C6');
+  assert.equal(inst.name, '6-hole pendant ocarina in C (C6)');
+  assert.equal(inst.chambers[0].notes.length, 17);
+  // C D E on top of the scale: D lifts the right middle finger, E the right index.
+  const f = midi => inst.chambers[0].fingerings[midi].join('');
+  assert.equal(f(84), 'cccccc');
+  assert.equal(f(86), 'cocccc');
+  assert.equal(f(88), 'ccocc'.slice(0, 2) + 'coc' + 'c');
+  assert.match(renderFingering(inst, 84), /fg-body/);
+  const path = linkFor({ chartId: chart.id, keyId: 'C-C6' });
+  assert.equal(path, '/ocarina/pendant-6-c-c6');
+  assert.deepEqual([parseLink(path).chartId, parseLink(path).keyId], [chart.id, 'C-C6']);
+});
+
+test('an instrument tuned to A = 432 Hz: its lowest note, struck a little low, still gets its name', async () => {
+  const { tuningOffsetCents, noteOnTuning, a4ForOffset } = await import('../js/setup.js');
+  // A user's tongue drum, as the tuner reads its recording: 252.4, 288.7, 342.1, 385.8, 433.8, 486.8 Hz.
+  const raw = [252.4, 288.7, 342.1, 385.8, 433.8, 486.8].map(hz => 69 + 12 * Math.log2(hz / 440));
+  assert.equal(Math.round(raw[0]), 59, 'on A = 440 the lowest reads as B3');
+  const off = tuningOffsetCents(raw);
+  assert.ok(off <= -25 && off >= -40, `offset ${off}`);
+  assert.equal(a4ForOffset(off), 432);
+  assert.deepEqual(raw.map(m => noteOnTuning(m, off)), [60, 62, 65, 67, 69, 71], 'C4 D4 F4 G4 A4 B4');
+  // In tune on 440, or too few notes to tell: nothing moves.
+  assert.equal(tuningOffsetCents([60.02, 62.0, 64.05, 67.0]), 0);
+  assert.equal(tuningOffsetCents([59.45, 62.7]), 0);
+});
+
+test('listening freely on a 432 Hz drum: notes heard before the tuning was clear are renamed', async () => {
+  const { collectHeardNote } = await import('../js/setup.js');
+  const midi = hz => 69 + 12 * Math.log2(hz / 440);
+  let L = { raw: [], notes: [] };
+  const named = [];
+  for (const hz of [252.4, 288.7, 342.1, 385.8, 433.8, 486.8]) {
+    L = collectHeardNote(L, midi(hz));
+    named.push(L.notes.join(' '));
+  }
+  // The lowest is B3 on its own, and becomes C4 once three notes agree on the tuning.
+  assert.equal(named[0], '59');
+  assert.deepEqual(L.notes, [60, 62, 65, 67, 69, 71]);
+  assert.ok(L.offset < -25 && L.offset > -40);
+  // A note heard again isn't taken twice; on A = 440 nothing is renamed.
+  assert.equal(collectHeardNote(L, midi(343)), null);
+  assert.deepEqual(collectHeardNote({ raw: [], notes: [] }, midi(252.4), { tuned: false }).notes, [59]);
+});
+
+test('a guided round of 8 notes is only matched to an 8-note tuning with all of them', async () => {
+  const { setupMatch } = await import('../js/setup.js');
+  const { TONGUE_DRUMS } = await import('../js/tonguedrums.js');
+  const midis = t => [t.top.ding, ...t.top.notes, ...t.bottom.notes].map(noteToMidi);
+  const c8 = TONGUE_DRUMS.find(t => t.id === 'TD-C-Major-8');
+  const heard8 = midis(c8);
+  assert.equal(setupMatch(rankScalesByNotes(heard8, TONGUE_DRUMS), { count: 8, heard: 8 }).best.scale.id, 'TD-C-Major-8');
+  // 8 notes of a 10-note drum: the 10-note one isn't offered as an 8-note drum.
+  for (const t10 of TONGUE_DRUMS.filter(t => midis(t).length === 10)) {
+    const heard = midis(t10).slice(0, 8);
+    const m = setupMatch(rankScalesByNotes(heard, TONGUE_DRUMS), { count: 8, heard: 8 });
+    assert.ok(!m.best || m.best.total === 8, `${t10.id} offered for 8 notes`);
+    if (m.best) assert.deepEqual([...new Set(midis(m.best.scale))].sort(), [...new Set(heard)].sort());
+  }
+  // Without a count (just listening): the best as ranked.
+  assert.ok(setupMatch(rankScalesByNotes(heard8, TONGUE_DRUMS)).best);
+});
+
+test('notes that are almost a known scale: which scale, and which notes are off', async () => {
+  const { scaleFits } = await import('../js/setup.js');
+  const m = n => noteToMidi(n);
+  // An 8-note drum, said to be pentatonic, as the app read it.
+  const heard = ['Ab3', 'B3', 'Db4', 'Eb4', 'E4', 'Gb4', 'Ab4', 'Bb4'].map(m);
+  const f = scaleFits(heard);
+  assert.equal(f.seven.off.length, 0, 'all seven names: G# minor');
+  assert.equal(f.seven.root, 8);
+  assert.equal(f.seven.type.id, 'minor');
+  assert.equal(f.five.root, 8, 'G# minor pentatonic: its root is the lowest note');
+  assert.equal(f.five.type.id, 'minor-pentatonic');
+  assert.deepEqual(f.five.off, [m('E4'), m('Bb4')]);
+  assert.equal(f.five.instead[m('Bb4')], m('B4'), 'Bb4 is probably B4');
+  assert.equal(f.five.instead[m('E4')], undefined, 'E4: both neighbours are already there');
+  // A real pentatonic fits with nothing off; two notes are too few to tell.
+  const dKurdPent = ['D3', 'A3', 'C4', 'D4', 'E4', 'G4', 'A4', 'C5'].map(m);
+  assert.deepEqual(scaleFits(dKurdPent).five.off, []);
+  assert.equal(scaleFits([m('C4'), m('C5'), m('G4')]), null);
+});
+
+test('a handpan with one note between its ding and the next: close to the minor of its ding', async () => {
+  const { scaleFits } = await import('../js/setup.js');
+  const m = n => noteToMidi(n);
+  // The owner's handpan as heard: a 142 Hz note (C#3, sounding +46 cents) after the C3 ding.
+  const heard = ['C3', 'C#3', 'Eb3', 'F3', 'G3', 'Ab3', 'Bb3', 'C4', 'Eb4', 'F4', 'G4', 'Ab4', 'Bb4', 'C5'].map(m);
+  const f = scaleFits(heard, { devCents: { [m('C#3')]: 46 } });
+  assert.equal(f.seven.root, 0, 'C, the ding, over F minor with nothing off');
+  assert.equal(f.seven.type.id, 'minor');
+  assert.deepEqual(f.seven.off, [m('C#3')]);
+  assert.equal(f.seven.instead[m('C#3')], m('D3'), 'it sounded high: probably D3');
+  assert.equal(f.seven.repeated, false);
+  // The pentatonic misses Ab in two octaves: that's the drum's, not a slip.
+  assert.equal(f.five.repeated, true);
 });

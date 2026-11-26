@@ -219,3 +219,41 @@ test('a delete travels to the other device', async () => {
   await tablet.sync();
   assert.equal(tablet.lists.playlist[0].deletedAt, T(5));
 });
+
+// ── The server's limits ─────────────────────────────────────────────────────
+import { readAllRows } from '../js/auth.js';
+
+test('reads go on past the server\'s 1,000-row page', async () => {
+  const all = Array.from({ length: 2500 }, (_, i) => ({ id: i }));
+  const asked = [];
+  const build = () => ({ range(a, b) { asked.push([a, b]); return Promise.resolve({ data: all.slice(a, b + 1), error: null }); } });
+  const { data, error } = await readAllRows(build);
+  assert.equal(error, null);
+  assert.equal(data.length, 2500);
+  assert.deepEqual(asked, [[0, 999], [1000, 1999], [2000, 2999]]);
+  const exact = await readAllRows(() => ({ range: (a, b) => Promise.resolve({ data: all.slice(0, 1000).slice(a, b + 1), error: null }) }));
+  assert.equal(exact.data.length, 1000, 'a full last page asks once more and stops');
+  const failed = await readAllRows(() => ({ range: () => Promise.resolve({ data: null, error: { message: 'no' } }) }));
+  assert.equal(failed.data, null);
+});
+
+test('an item the server refuses for good does not hold up the rest of the outbox', async () => {
+  const items = new Map([
+    ['instrument:big', { kind: 'instrument', id: 'big', data: { id: 'big', name: 'Big one', updatedAt: '2026-11-21T10:00:00Z' } }],
+    ['instrument:ok', { kind: 'instrument', id: 'ok', data: { id: 'ok', name: 'Fine', updatedAt: '2026-11-21T10:00:00Z' } }],
+  ]);
+  const baseMap = new Map();
+  const saved = [];
+  const r = await syncRound({
+    local: { items: () => items, write() {}, add() {} },
+    bases: { getAll: async () => baseMap, put: async (k, v) => { baseMap.set(k, v); }, getMeta: async () => ({}), setMeta: async () => {} },
+    api: {
+      pull: async () => [],
+      saveItem: async ({ id }) => { if (id === 'big') return { ok: false, rejected: 'too-large' }; saved.push(id); return { ok: true, version: 1 }; },
+    },
+  });
+  assert.deepEqual(saved, ['ok']);
+  assert.equal(r.pushed, 1);
+  assert.deepEqual(r.rejected.map(x => x.name), ['Big one']);
+  assert.equal(r.pending, 1, 'it still counts as waiting');
+});

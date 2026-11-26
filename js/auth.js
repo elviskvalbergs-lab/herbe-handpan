@@ -12,9 +12,25 @@ export function initSupabase(onAuthChange) {
     _session = session;
     onAuthChange(event, session);
   });
-  _sb.auth.getSession().then(({ data: { session } }) => {
+  _sb.auth.getSession().then(({ data: { session }, error }) => {
     if (session) { _session = session; onAuthChange('INITIAL_SESSION', session); }
-  });
+    // No session and nothing went wrong reading it: the app is told too, so
+    // an account whose session ended can offer "Sign in again".
+    else if (!error) onAuthChange('INITIAL_SESSION', null);
+  }).catch(() => {});
+}
+
+// Is a session still kept on this device (supabase-js stores it under
+// sb-…-auth-token)? While it is, a missing session may come back by itself
+// (offline, a token being refreshed). Once it is gone, only signing in again
+// brings one back.
+export function hasStoredSession() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      if (/^sb-.*-auth-token$/.test(localStorage.key(i) || '')) return true;
+    }
+  } catch { /* no storage */ }
+  return false;
 }
 
 // ── Measurement: PostHog EU (docs/free-to-play.md §9) ───────────────────────
@@ -126,6 +142,22 @@ export function deviceKind(ua = typeof navigator !== 'undefined' ? navigator.use
   return 'computer';
 }
 
+// Every row of a query, a page at a time. Supabase answers with at most
+// 1,000 rows per request (the project's "Max rows"), and says nothing when
+// there were more: a pull, the account's counts or an export would just be
+// short. build() must return a fresh query with a stable order each time.
+// Resolves to { data: rows, error: null } or { data: null, error }.
+export const READ_PAGE = 1000;
+export async function readAllRows(build, page = READ_PAGE) {
+  const rows = [];
+  for (let from = 0; ; from += page) {
+    const { data, error } = await build().range(from, from + page - 1);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < page) return { data: rows, error: null };
+  }
+}
+
 // ── Sync by item (supabase/migrations/20261116_accounts.sql) ────────────────
 // The api js/sync.js's syncRound talks to. pull() throws when the server
 // can't be reached (the round stops, nothing changes); saveItem() returns
@@ -133,11 +165,12 @@ export function deviceKind(ua = typeof navigator !== 'undefined' ? navigator.use
 export const syncApi = {
   async pull(since) {
     if (!_sb || !_session) throw new Error('signed out');
-    let q = _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at,device_kind').order('updated_at');
-    if (since) q = q.gt('updated_at', since);
-    const { data, error } = await q;
+    const { data, error } = await readAllRows(() => {
+      const q = _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at,device_kind').order('updated_at').order('kind').order('id');
+      return since ? q.gt('updated_at', since) : q;
+    });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    return data;
   },
   async saveItem({ kind, id, data, baseVersion, deleted, editedAt }) {
     if (!_sb || !_session) return null;
@@ -145,6 +178,9 @@ export const syncApi = {
       p_kind: kind, p_id: id, p_data: data, p_base_version: baseVersion, p_deleted: !!deleted,
       p_edited_at: editedAt, p_device_id: deviceId(), p_device_kind: deviceKind(),
     });
+    // The server's size cap (supabase/migrations/20261121_saved_item_size.sql):
+    // trying again won't help, so sync is told to leave this item and go on.
+    if (error && /item_too_large|item_id_too_long/.test(error.message || '')) return { ok: false, rejected: 'too-large' };
     if (error) { console.warn('Sync error:', error.message); return null; }
     return res;
   },
@@ -184,10 +220,10 @@ export async function fetchAccess() {
 // shows it next to what this device holds, to see where things are.
 export async function fetchAccountCounts() {
   if (!_sb || !_session) return null;
-  const { data, error } = await _sb.from('saved_items').select('kind,deleted_at');
+  const { data, error } = await readAllRows(() => _sb.from('saved_items').select('kind,id,deleted_at').order('kind').order('id'));
   if (error) return null;
   const counts = {};
-  for (const r of data ?? []) if (!r.deleted_at) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
+  for (const r of data) if (!r.deleted_at) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
   return counts;
 }
 
@@ -195,7 +231,7 @@ export async function fetchAccountCounts() {
 export async function exportAccountRows() {
   if (!_sb || !_session) return null;
   const [items, profile] = await Promise.all([
-    _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at'),
+    readAllRows(() => _sb.from('saved_items').select('kind,id,data,version,updated_at,deleted_at').order('kind').order('id')),
     _sb.from('profiles').select('created_at,privacy_version,signup_source,signup_intent,last_seen_on').maybeSingle(),
   ]);
   if (items.error) return null;
@@ -237,4 +273,78 @@ export async function fetchSharedInstrument(publicId) {
   const { data, error } = await _sb.rpc('get_shared_instrument', { p_public_id: publicId });
   if (error) { console.warn('Shared instrument unavailable:', error.message); return null; }
   return data;
+}
+
+// ── Makers (docs/makers-programme.md; supabase/migrations/20261121_makers.sql) ──
+// The project's public address and key, for the parts that run outside the
+// app (the link-preview middleware). Never a secret key.
+export function supabasePublic() { return { url: _SUPA_URL, key: _SUPA_KEY }; }
+
+// A database function, failing soft: { data } or { error } (the message), and
+// { error: 'offline' } when there is no connection or no session it needs.
+async function makerRpc(name, args, { guest = false } = {}) {
+  if (!_sb || (!guest && !_session)) return { error: 'offline' };
+  try {
+    const { data, error } = await _sb.rpc(name, args);
+    if (error) { console.warn(`${name}:`, error.message); return { error: error.message || 'error', code: error.code }; }
+    return { data };
+  } catch (e) { return { error: 'offline' }; }
+}
+
+// The caller's maker state: { is_maker, is_admin, maker, waiting }, or null
+// when it can't be read (offline, signed out, or before the migration).
+export async function fetchMyMaker() { return (await makerRpc('my_maker')).data ?? null; }
+// { ok, maker } | { ok: false, error: 'slug-taken' | 'slug-reserved' } | { error }.
+export async function saveMakerProfile(profile) { const r = await makerRpc('save_maker_profile', { p: profile }); return r.data ?? r; }
+export async function adminListMakers() { return (await makerRpc('admin_list_makers')).data ?? null; }
+export async function reviewMaker(id, status, note = null) { const r = await makerRpc('review_maker', { p_maker_id: id, p_status: status, p_note: note }); return r.data ?? r; }
+export async function resolveMakerReport(id) { return (await makerRpc('resolve_maker_report', { p_report_id: id })).data === true; }
+export async function reportMaker(slug, reason, detail = null) { return (await makerRpc('report_maker', { p_slug: slug, p_reason: reason, p_detail: detail }, { guest: true })).data === true; }
+export async function fetchMaker(slug) { return (await makerRpc('get_maker', { p_slug: slug }, { guest: true })).data ?? null; }
+
+// An instrument opened by its code, with who made it: open_shared_instrument's
+// { data, code, model_code, serial, maker }. A server from before the makers
+// migration answers through get_shared_instrument, as { data }. null when
+// the code opens nothing or there is no connection.
+export async function openSharedCode(code) {
+  if (!_sb) return null;
+  const r = await makerRpc('open_shared_instrument', { p_code: code }, { guest: true });
+  if (!r.error) return r.data ?? null;
+  const data = await fetchSharedInstrument(code);
+  return data ? { data, code } : null;
+}
+
+// Codes of individual instruments and scan counting
+// (supabase/migrations/20261122_maker_codes_scans.sql).
+// Every serial code of the account: [{ code, instrument_id, serial, created_at, retired_at }], or null.
+export async function fetchMakerCodes() {
+  if (!_sb || !_session) return null;
+  try {
+    const { data, error } = await _sb.from('maker_codes').select('code,instrument_id,serial,created_at,retired_at').order('created_at');
+    return error ? null : data ?? [];
+  } catch { return null; }
+}
+// { ok, codes } | { ok: false, error: 'not-shared' | 'too-many' } | { error }.
+export async function createMakerCodes(instrumentId, serials) { const r = await makerRpc('create_maker_codes', { p_instrument_id: instrumentId, p_serials: serials }); return r.data ?? r; }
+export async function retireMakerCode(code, retired = true) { return (await makerRpc('retire_maker_code', { p_code: code, p_retired: retired })).data === true; }
+// One thing that happened with a code ('open' | 'save' | 'chords' | 'songs').
+// Counted on the server, nothing kept here; never in the way of playing.
+export function logMakerEvent(code, event, { via = null, count = 1, first = false } = {}) {
+  if (!_sb || !code) return;
+  try { _sb.rpc('log_maker_event', { p_code: code, p_event: event, p_via: via, p_count: count, p_first: first }).then(() => {}, () => {}); } catch { /* never in the way */ }
+}
+// A maker's totals for the last `days` days (maker_stats), or null.
+export async function fetchMakerStats(days = 30) { return (await makerRpc('maker_stats', { p_days: days })).data ?? null; }
+
+// Tells the owner a maker sent their request: the website emails them
+// (site/src/app/api/maker-request) after checking with the database, with
+// this maker's own sign-in, that there is a request it hasn't told them
+// about. Same domain as the app (it lives at /play). Fails silently: the
+// owner's Settings shows waiting requests either way.
+export function notifyMakerRequest() {
+  const token = _session?.access_token;
+  if (!token || typeof fetch === 'undefined') return;
+  try {
+    fetch('/api/maker-request', { method: 'POST', headers: { authorization: `Bearer ${token}` }, keepalive: true }).catch(() => {});
+  } catch { /* never in the way */ }
 }

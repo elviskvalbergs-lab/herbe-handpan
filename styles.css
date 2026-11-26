@@ -524,7 +524,64 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 }
 .editor-main { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ed-pan svg { width: min(100%, 55dvh); max-width: none; height: auto; }
+/* Speed (tempoControlHtml, speedBtnHtml in js/app.js). */
+.tempo { display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+.tempo-row { display: flex; align-items: center; gap: var(--space-3); }
+.tempo-slider { flex: 1; min-width: 0; accent-color: var(--accent); height: 32px; }
+.tempo-value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; font-weight: var(--fw-semibold); color: var(--text-1); }
+.speed-btn { min-width: 44px; padding-inline: 6px; font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+/* Songs to learn (viewSong in js/app.js). */
+.song { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--gutter) var(--space-6); max-width: 720px; margin: 0 auto; width: 100%; }
+.song-meta { margin: 0; color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
+.song-stage { display: flex; justify-content: center; align-items: center; min-height: 120px; }
+.song-stage.pan-wrap svg { max-height: 42dvh; width: auto; max-width: 100%; }
+.song-stage .fingering { width: 100%; height: auto; max-height: 36dvh; }
+.song-rest { color: var(--text-3); font-size: var(--fs-17); }
+.song-now { display: flex; align-items: baseline; gap: var(--space-3); }
+.song-now-note { font: var(--fw-semibold) 28px/1.1 var(--font); color: var(--text-1); }
+.song-now-next { color: var(--text-2); }
+.song-now-pos { margin-left: auto; color: var(--text-3); font-size: var(--fs-13); font-variant-numeric: tabular-nums; }
+.song-controls { display: flex; align-items: center; gap: var(--space-2); }
+/* With the tab on screen the controls are the shared bottom action bar, so
+   Play, Stop and rewind stay in reach while the tab follows the music. */
+.song-controls.actionbar { justify-content: center; }
+.song-controls.actionbar > * { flex: none; }
+.song-controls.actionbar .song-play { flex: 1; max-width: 360px; }
+@media print { body.printing-song .song-controls.actionbar { display: none; } }
+.song-play { flex: 1; }
+.song-notes { flex-wrap: wrap; gap: var(--space-1); }
+.song-note { min-height: 32px; height: 32px; padding: 0 var(--space-2); font-size: var(--fs-13); }
+.song-practice { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
+.song-practice .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
+.song-practice-status { margin: 0; color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); text-align: center; }
+.song-note.is-loop, .tab-name.is-loop { box-shadow: 0 -3px 0 0 var(--accent); }
+.tab-note.is-loop { box-shadow: 0 0 0 2px var(--accent-soft), 0 -4px 0 0 var(--accent); }
+.song-note.is-heard, .tab-note.is-heard { background: var(--success-soft); border-color: var(--success); color: var(--success); }
+.tab-name.is-heard { color: var(--success); }
+@media print { .song-practice, .song-practice-status { display: none; } }
+.song-note.is-gone, .tab-name.is-gone { color: var(--warning); text-decoration: line-through; }
+.song-note.is-gone { border-color: var(--warning); background: var(--warning-soft); }
+.song-gone-text { color: var(--warning); }
+.song-gone-note { margin: 0; color: var(--warning); font-size: var(--fs-13); line-height: var(--lh-13); text-align: center; }
+.song-almost-title { margin-top: var(--space-4); }
+.tab-note.tab-note-gone { background: var(--warning-soft); color: var(--warning); border-color: var(--warning); }
+.tab-gone { color: var(--warning); font-weight: var(--fw-semibold); }
+.song-note.is-current { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.song-licence { font-size: var(--fs-13); color: var(--text-3); }
+.songs-filter { margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2); }
+.songs-filter .chip { gap: 6px; }
+.songs-filter .chip svg { width: 16px; height: 16px; }
+.chip.is-spotlight { border-color: var(--accent); color: var(--accent); }
+.chip.is-spotlight[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.song-licence a { color: inherit; text-decoration: underline; }
 .ed-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); text-align: center; }
+.ed-template { text-align: left; max-width: 60ch; }
+.editor-sidebar .ie-card { margin-bottom: var(--space-3); }
+/* Move notes: the handpan's tone fields dragged to where they are. */
+.ed-arrange { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.ed-pan.is-arranging svg { touch-action: none; }
+.ed-pan.is-arranging .pan-note { cursor: grab; }
+.ed-pan.is-arranging .pan-note.is-dragging { cursor: grabbing; opacity: 0.85; }
 .editor-sidebar { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .ed-card { display: flex; flex-direction: column; gap: var(--space-4); }
 .ed-shell .overline { margin-bottom: var(--space-2); }
@@ -546,6 +603,34 @@ body.has-tabbar .main { padding-bottom: calc(var(--tabbar-h) + env(safe-area-ins
 .install-banner > span:first-child { display: flex; align-items: center; gap: var(--space-2); }
 .install-banner > span:first-child .icon { flex-shrink: 0; }
 .install-banner-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+/* "?": opens a help article (uiHelp in js/app.js). Small and quiet next to a
+   heading or control, with a 44px tap area. */
+.help-q {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  width: 24px; height: 24px; margin: -4px 0 -4px var(--space-1); padding: 0; flex: none;
+  border: 0; border-radius: 50%; background: none; color: var(--text-3, var(--text-2)); cursor: pointer;
+  text-transform: none; letter-spacing: normal;
+}
+.help-q::after { content: ''; position: absolute; inset: -10px; }
+.help-q svg { width: 20px; height: 20px; }
+.help-q:hover, .help-q:focus-visible { color: var(--accent-text); }
+.chord-mode-row, .wizard-stage-row { display: flex; align-items: center; gap: var(--space-2); }
+.chord-mode-row > .seg { flex: 1; min-width: 0; }
+.wizard-stage-row > .wizard-count { margin-bottom: 0; }
+.wizard-stage-row { margin-bottom: var(--space-2); }
+.sheet-head .help-q { margin-right: var(--space-1); }
+.prog-level { display: flex; align-items: center; gap: var(--space-2); }
+.prog-level > .seg { flex: 1; min-width: 0; }
+.song-practice, .fg-legend { align-items: center; }
+
+/* Help articles in the help sheet (js/helpdoc.js helpHtml). */
+.help-doc { color: var(--text-1); }
+.help-doc p, .help-doc .help-list { margin: 0 0 var(--space-3); }
+.help-doc .help-list { padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.help-doc .help-h { margin: var(--space-5) 0 var(--space-2); font-size: var(--text-lg, 1.125rem); font-weight: 600; scroll-margin-top: var(--space-3); }
+.help-doc .help-h4 { margin: var(--space-4) 0 var(--space-2); font-weight: 600; }
+.help-doc .help-note { padding: var(--space-3); border-radius: var(--radius-md, 8px); background: var(--surface-2, var(--surface)); color: var(--text-2); }
+.help-doc .list-title:first-child, .help-doc .help-h:first-child { margin-top: 0; }
 .install-steps { margin: 0 0 var(--space-3); padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); color: var(--text-1); }
 
 /* Pan SVG container */
@@ -660,7 +745,7 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .playlist-view { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--reading-max); margin: 0 auto; }
 .pl-entries { display: flex; flex-direction: column; gap: var(--space-2); }
 .pl-new { margin-top: var(--space-3); }
-.pl-new-row { display: flex; flex-wrap: wrap; column-gap: var(--space-2); }
+.pl-new-row { display: flex; flex-wrap: wrap; column-gap: var(--space-2); margin-bottom: var(--space-3); }
 .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-4); }
 .empty-actions .btn { margin-top: 0; }
 /* Paste a chord sheet */
@@ -690,6 +775,9 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
 .prog-player { display: flex; flex-direction: column; gap: var(--space-3); }
 .prog-pan { padding: var(--space-2); }
 .prog-pan svg { width: min(100%, 34dvh); max-width: none; height: auto; }
+/* One note at a time (ocarina, flute): the fingering of the note being blown, where the pan is. */
+.prog-wind { padding: 6px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-1); }
+.prog-wind .fingering { display: block; width: 100%; height: auto; max-height: 38dvh; margin: 0 auto; }
 .prog-timing .set-row:not([role="switch"]) { grid-template-columns: minmax(0, 1fr) auto; padding-bottom: var(--space-2); }
 .prog-timing .set-row:not([role="switch"]) .set-control { width: auto; justify-content: flex-end; }
 .prog-timing .stepper-num-row { gap: var(--space-1); }
@@ -799,6 +887,8 @@ body:has(.sheet-foot) { --toast-base: var(--actionbar-h); }
   display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-sm); color: inherit;
 }
 .fg-stage .fingering { max-height: 36dvh; }
+/* Close-up of a flute's holes (renderFingering closeUp): what's cropped stays out. */
+svg.fingering.is-closeup { overflow: hidden; }
 .fg-moves-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; min-height: 44px; }
 .fg-moves {
   min-height: 24px; text-align: center; color: var(--text-1);
@@ -1194,6 +1284,21 @@ button.set-row[role="switch"] { cursor: pointer; }
 .listen.is-idle .btn { flex: none; }
 .listen.is-idle .listen-hint { flex: 1 1 200px; margin: 0; }
 .listen-hint { margin: var(--space-3) 0 0; font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.listen .lr-link { margin: var(--space-2) 0 0; }
+/* The listening report sheet (listenReportSheet in js/app.js). */
+.setup-fit { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); margin: var(--space-3) 0; padding: var(--space-3); border-radius: var(--r-md); background: var(--surface-2); }
+.setup-fit-line { margin: 0; color: var(--text-2); text-align: center; }
+.setup-fit-line b { color: var(--text-1); }
+.lr-heard { margin: 0 0 var(--space-4); color: var(--text-1); font-weight: var(--fw-semibold); }
+.lr-heard-label { color: var(--text-3); font-weight: var(--fw-medium); font-size: var(--fs-13); }
+.lr-takes { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-2) 0 var(--space-4); }
+.lr-audio { width: 100%; height: 40px; }
+.lr-photo { display: flex; align-items: center; gap: var(--space-3); }
+.lr-photo img { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-sm); border: 1px solid var(--border); }
+.lr-photo-add { align-self: flex-start; cursor: pointer; }
+[data-sheet="listen-report"] .set-row { padding-inline: 0; }
+[data-sheet="listen-report"] .field-help a { color: inherit; text-decoration: underline; }
+.sheet-body .field + .field, .sheet-body .set-row + .field, .sheet-body .lr-takes + .field { margin-top: var(--space-4); }
 .listen-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); }
 .listen-status { margin: 0; flex: 1 1 200px; min-width: 0; color: var(--text-1); font-weight: var(--fw-semibold); display: flex; align-items: center; gap: var(--space-2); }
 .listen-status .is-danger { color: var(--danger); font-weight: var(--fw-medium); }
@@ -1230,6 +1335,11 @@ button.set-row[role="switch"] { cursor: pointer; }
 /* Add-instrument wizard (§6.1–6.4) */
 .wizard { max-width: var(--reading-max); margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
 .wizard-count { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); margin-bottom: calc(-1 * var(--space-3)); }
+/* The beginner setup's stage: four dots and the stage's name (stageDotsHtml). */
+.wizard-stage { display: flex; align-items: center; gap: var(--space-2); }
+.wizard-dots { display: inline-flex; gap: 6px; }
+.wizard-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }
+.wizard-dots i.is-on { background: var(--accent); }
 .wizard .wizard-title { font: var(--fw-semibold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); }
 .wizard-sub { color: var(--text-2); }
 .wizard-title + .wizard-sub { margin-top: calc(-1 * var(--space-3)); }
@@ -1312,17 +1422,30 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
 }
 .hp-card-actions { display: flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
 .hp-play { padding: 0 var(--space-3); }
+/* Goes well with (goesWithLineHtml / goesWithSheet in js/app.js). */
+.gw-line { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+@media (min-width: 600px) { .gw-line { margin-top: var(--space-2); } }
+.gw-label { flex: none; font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.gw-chips { display: flex; gap: var(--space-1); min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.gw-chips::-webkit-scrollbar { display: none; }
+.gw-chip { flex: none; min-height: 32px; height: 32px; padding: 0 var(--space-3); }
+.gw-list .row-trail { gap: var(--space-2); }
+.gw-list .row-meta strong { color: var(--text-1); }
 .hp-related .overline { margin: var(--space-3) 0 var(--space-2); }
 .hp-card .hp-related { margin-top: var(--space-2); }
 .hp-related .overline:first-child { margin-top: 0; }
 .sheet .hp-related { padding: var(--space-4) 0 var(--space-2); }
-.hp-heart.is-on { color: var(--accent-text); }
-.hp-heart.is-on .ico { fill: currentColor; }
+.chord-save.is-on { color: var(--accent-text); }
+.chord-save.is-on .ico { fill: currentColor; }
+/* A chord in the list that is in a playlist: a small filled bookmark, no button. */
+.chord-saved { display: inline-flex; padding: 0 var(--space-2); color: var(--accent-text); }
+.chord-saved .ico { width: 16px; height: 16px; fill: currentColor; }
 .hp-list { min-width: 0; }
 .hp-list-head { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-3); }
-.hp-filter-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+/* The list head's one line: the count (and Show all) with Filters at its end. */
+.hp-list-line { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-width: 0; }
 .hp-filter-btn { flex-shrink: 0; padding: 0 var(--space-3); }
-.hp-roots { flex: 1; min-width: 0; margin-left: 0; padding-left: 0; }
+.oc-more-octaves { padding-top: var(--space-4); }
 .hp-count, .hp-hint { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
 .hp-hint { color: var(--text-2); }
 .hp-identify { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -1359,9 +1482,6 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
     max-height: var(--hp-list-h); overflow-y: auto; overscroll-behavior: contain;
   }
   .hp-list-head { position: sticky; top: 0; z-index: 2; background: var(--bg); padding-bottom: var(--space-3); margin-bottom: 0; }
-  .hp-filter-row { flex-direction: column; align-items: stretch; }
-  .hp-filter-btn { align-self: flex-start; }
-  .hp-roots { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
   .hp-stage {
     grid-column: 2; grid-row: 1; top: var(--hp-top); z-index: 1;
     margin: 0; padding: 0; border: 0; background: none; gap: var(--space-4);
@@ -1397,8 +1517,6 @@ body.has-actionbar .main { padding-bottom: calc(var(--actionbar-h) + env(safe-ar
   .hp-card-title { font-size: var(--fs-17); line-height: var(--lh-17); }
   /* The list head scrolls away with the list, roots on one scrolling line. */
   .hp-list-head { position: static; gap: var(--space-2); }
-  .hp-filter-row { flex-direction: row; align-items: center; }
-  .hp-roots { flex-wrap: nowrap; overflow-x: auto; }
 }
 @media (max-width: 599px) {
   /* Keyboard focus and in-page scrolling keep list rows clear of the sticky stage and the tab bar. */
@@ -1563,10 +1681,6 @@ html { touch-action: manipulation; }
   .hp-list-head .seg { height: 36px; }
   .hp-list-head .seg button, .hp-list-head .seg [role="radio"] { min-height: 30px; }
   .hp-list-head .btn, .hp-list-head .chip, .hp-list-head .select { height: 38px; min-height: 38px; }
-  .hp-count { font-size: 12px; line-height: 14px; margin-top: -2px; }
-  .oc-chords .hp-list-head { flex-direction: row; flex-wrap: wrap; align-items: center; }
-  .oc-chords .oc-filters { flex: 1; min-width: 0; }
-  .oc-chords .hp-count { flex-basis: 100%; }
 
   .chord-row { min-height: 50px; padding-top: 4px; padding-bottom: 4px; }
   .chord-row .row-title { font-size: var(--fs-15); line-height: 20px; }
@@ -1682,6 +1796,15 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 }
 .brand-hero .brand-horizontal { height: 40px; }
 .brand-hero-line { color: var(--text-2); max-width: 36ch; }
+/* First run on a phone: a short brand strip, so every instrument tile is on
+   the first screen; the picture is for wider screens. */
+@media (max-width: 599px) {
+  .brand-hero { gap: var(--space-2); margin-bottom: var(--space-4); }
+  .brand-hero-art { display: none; }
+  .brand-hero .brand-horizontal { height: 32px; }
+  .setup-tiles { gap: var(--space-2); }
+  .setup-tile-pic { width: 56px; height: 56px; }
+}
 .brand-about { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4); }
 .brand-about .brand-horizontal { height: 28px; }
 .brand-about-line { color: var(--text-3); font-size: var(--fs-13); line-height: var(--lh-13); }
@@ -1732,6 +1855,13 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 /* The guided round: how many notes, then the place to play lit. */
 .setup-count { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .setup-guide-pan .pan-note { cursor: pointer; }
+.setup-wind-steps { justify-content: center; margin-bottom: var(--space-2); }
+/* Identify on an ocarina or flute: the fingering of the last note tapped, then its notes to tap. */
+.oc-id { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; }
+.oc-id-fg { width: min(100%, 260px); }
+.oc-id-notes { justify-content: center; }
+.setup-wind-steps .chip.is-done { color: var(--text-2); }
+.setup-wind-finger { padding: var(--space-2) 0; }
 /* The place to play next: over the empty-place style (pan-drawing.css uses !important). */
 .setup-guide-pan .pan-note[data-next] rect, .setup-guide-pan .pan-note[data-next] circle {
   stroke: var(--accent) !important; stroke-width: 4 !important; stroke-dasharray: none !important;
@@ -1766,3 +1896,180 @@ body.rec-guide-on .main { padding-bottom: calc(var(--tabbar-h) + var(--tuner-h) 
 @media (display-mode: standalone) {
   :root { --safe-top: calc(env(safe-area-inset-top) + 10px); }
 }
+/* A song's tab (songTabHtml in js/app.js): bars of "1 + 2 +" columns, an R
+   row and an L row, numbers coloured like the pan's strike badges. */
+.song-view-row { display: flex; align-items: center; gap: var(--space-2); }
+.song-view-row .seg { flex: 1; }
+.song-tab { display: flex; flex-direction: column; gap: 20px; }
+/* The instrument stays in view while the tab follows (songTabFollow): the
+   picture, the current note and the words stick under the app bar, smaller,
+   and the tab moves beneath them as in a frame. */
+.song-top { display: flex; flex-direction: column; gap: var(--space-3); }
+.song-top.is-framed {
+  position: sticky; top: calc(var(--appbar-h) + var(--safe-top)); z-index: 3;
+  background: var(--bg); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border);
+  margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter);
+}
+.song-top.is-framed .song-stage { min-height: 0; }
+.song-top.is-framed .song-stage.pan-wrap svg { max-height: 28dvh; }
+.song-top.is-framed .song-stage .fingering { max-height: 24dvh; }
+.song-top.is-framed .song-now-note { font-size: 22px; }
+.tab-line { display: flex; align-items: stretch; }
+.tab-hands { display: grid; grid-template-rows: 18px 32px 32px; width: 18px; flex: none; font-size: var(--fs-13); font-weight: var(--fw-semibold); color: var(--text-3); }
+.tab-hands span { display: flex; align-items: center; }
+.tab-bar { flex: var(--cols) 1 0; min-width: 0; display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-template-rows: 18px 32px 32px; border-left: 2px solid var(--border-strong); }
+.tab-bar:last-child { border-right: 2px solid var(--border-strong); }
+.tab-bar.is-pickup { border-left-style: dashed; }
+.tab-bar { position: relative; }
+.tab-time { position: absolute; left: 3px; top: -15px; font-size: 10px; font-weight: var(--fw-semibold); color: var(--accent); line-height: 1; }
+.tab-count { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tab-count.is-beat { color: var(--text-2); font-weight: var(--fw-semibold); }
+.tab-cell { position: relative; display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--border); min-width: 0; }
+.tab-note { position: relative; z-index: 1; min-width: 24px; height: 24px; padding: 0 3px; border-radius: 12px; border: 1.5px solid #060f0c; font: var(--fw-semibold) 13px/1 var(--font); font-variant-numeric: tabular-nums; cursor: pointer; }
+.tab-note-r { background: #F2E6D3; color: #0B1A14; }
+.tab-note-l { background: #8CC8C4; color: #04211f; }
+.tab-note.is-current { outline: 3px solid var(--accent); outline-offset: 1px; }
+.tab-hold { position: absolute; left: -50%; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: var(--text-3); opacity: 0.45; border-radius: 2px; }
+.song-tab-key { margin: 0; font-size: var(--fs-13); }
+/* Flute and ocarina tabs (songTabRows): note names on top; a flute's hole
+   lines with dots (Grey Larsen's staff tablature); an ocarina's pictures. */
+.tab-hands { width: 22px; }
+.tab-flute .tab-hands span { font-size: 10px; }
+.tab-cell.tab-names { border-top: 0; }
+.tab-name { min-width: 0; padding: 0 1px; border: 0; background: none; font: var(--fw-semibold) 12px/1 var(--font); color: var(--text-1); cursor: pointer; white-space: nowrap; }
+.tab-name.is-current { color: var(--accent); }
+.tab-cell.tab-plus { border-top: 0; font: var(--fw-semibold) 12px/1 var(--font); color: var(--text-2); }
+.tab-cell.tab-gap { border-top: 0; }
+.tab-cell.tab-hole { border-top: 0; background: linear-gradient(var(--text-3), var(--text-3)) center / 100% 1px no-repeat; }
+.tab-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-1); }
+.tab-dot.is-half { background: linear-gradient(90deg, var(--text-1) 50%, var(--bg) 50%); border: 1.5px solid var(--text-1); }
+.tab-allopen { position: relative; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text-1); background: var(--bg); }
+.tab-allopen::after { content: ''; position: absolute; left: 50%; top: 9px; width: 1.5px; height: 16px; margin-left: -0.75px; background: var(--text-1); }
+.tab-cell.tab-fgs { border-top: 0; align-items: flex-start; justify-content: flex-start; overflow: visible; }
+.tab-fg { position: relative; z-index: 1; flex: none; width: 200%; height: 54px; padding: 0; border: 0; background: none; cursor: pointer; }
+.tab-fg.is-lane2 { margin-top: 56px; }
+.tab-fg.is-last { margin-left: -100%; }
+.tab-fg .fingering { width: 100%; height: 100%; }
+.tab-cell.tab-names .tab-hold { left: 0; top: 78%; }
+.tab-cell.is-current-col { background-color: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tab-cell.tab-hole.is-current-col { background: linear-gradient(var(--text-3), var(--text-3)) center / 100% 1px no-repeat, color-mix(in srgb, var(--accent) 14%, transparent); }
+/* Lyrics (songLyrics in js/songs.js): a row under the tab, a line under the
+   note on screen, a syllable under each note chip. */
+.tab-line.has-lyrics .tab-hands, .tab-line.has-lyrics .tab-bar { grid-template-rows: 18px 32px 32px 22px; }
+.tab-lyric { display: flex; align-items: center; min-width: 0; white-space: nowrap; overflow: visible; font-size: var(--fs-13); color: var(--text-1); padding-left: 2px; }
+.tab-lyric.is-current { font-weight: var(--fw-semibold); color: var(--accent); }
+.song-lyric-line { margin: 0; font-size: var(--fs-17); line-height: 1.4; color: var(--text-2); }
+.song-lyric-line mark { background: none; color: var(--accent); font-weight: var(--fw-semibold); }
+.song-lyrics-btn { flex: none; }
+.song-note.has-lyric { flex-direction: column; height: auto; min-height: 44px; padding-block: 2px; line-height: 1.15; }
+.song-note-lyric { font-size: 11px; color: var(--text-3); min-height: 13px; }
+.song-note.is-current .song-note-lyric { color: inherit; }
+.song-print-title { display: none; }
+@media print {
+  body.printing-song { background: #fff; }
+  body.printing-song * { visibility: hidden; }
+  body.printing-song .song, body.printing-song .song * { visibility: visible; }
+  body.printing-song .song { position: absolute; left: 0; top: 0; width: 100%; max-width: none; padding: 0; color: #000; }
+  body.printing-song .song-print-title { display: block; margin: 0; font-size: 20px; }
+  body.printing-song .song-now, body.printing-song .song-controls, body.printing-song .song-view-row,
+  body.printing-song .song .list, body.printing-song .song .list-title { display: none; }
+  body.printing-song .song-stage.pan-wrap svg { max-height: 70mm; }
+  body.printing-song .song-stage.fg-stage { display: none; }
+  body.printing-song .tab-line { break-inside: avoid; }
+  body.printing-song .tab-note, body.printing-song .tab-hold, body.printing-song .tab-dot, body.printing-song .tab-hole { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+/* The playlist player's buttons: back to the first chord, then Play/Stop. */
+.prog-play-row { display: flex; gap: var(--space-2); align-items: stretch; }
+.prog-play-row .btn-block { flex: 1; }
+/* ── Makers and shops (js/makers-ui.js; docs/makers-programme.md) ─────────── */
+/* "Made by" under the app bar of an instrument opened by a maker's code. */
+.made-by {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 40px;
+  padding: var(--space-1) var(--space-2); margin-bottom: var(--space-3);
+  background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+  font: var(--fs-13)/var(--lh-13) var(--font); color: var(--text-2); text-align: left; cursor: pointer;
+}
+.made-by strong { color: var(--text-1); font-weight: var(--fw-semibold); }
+.made-by-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.made-by .ico { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-3); }
+.made-by:active { background: var(--surface-2); }
+
+.maker-logo { display: block; flex-shrink: 0; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
+.maker-logo.is-initials { display: grid; place-items: center; color: var(--text-1); font-weight: var(--fw-semibold); }
+.maker-logo-sm { width: 24px; height: 24px; border-radius: 6px; font-size: 10px; }
+.maker-logo-md { width: 40px; height: 40px; font-size: var(--fs-13); }
+.maker-logo-lg { width: 64px; height: 64px; border-radius: 14px; font-size: var(--fs-17); }
+
+.maker-pitch-title { font: var(--fw-semibold) var(--fs-20)/var(--lh-20) var(--font); color: var(--text-1); margin-bottom: var(--space-2); }
+.maker-cta { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+.maker-cta .field-help { text-align: center; }
+.maker-form-error { margin-top: var(--space-3); text-align: center; }
+
+.maker-status { padding: var(--space-3) var(--space-4); border-radius: var(--r-md); background: var(--accent-soft); margin-bottom: var(--space-4); }
+.maker-status.is-ok { background: var(--success-soft); }
+.maker-status.is-wait, .maker-status.is-warn { background: var(--warning-soft); }
+.maker-status-title { font-weight: var(--fw-semibold); color: var(--text-1); }
+.maker-status-body { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2); margin-top: 2px; }
+.maker-status-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+
+.maker-slug { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.maker-slug-pre { flex-shrink: 0; color: var(--text-3); font-size: var(--fs-13); }
+.maker-slug .input { flex: 1; min-width: 0; }
+.maker-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.maker-two > .field { min-width: 0; }
+@media (max-width: 419px) { .maker-two { grid-template-columns: 1fr; } .maker-slug { flex-direction: column; align-items: stretch; gap: var(--space-1); } }
+.maker-logo-pick { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.input.maker-text { height: auto; min-height: 72px; padding: var(--space-3); resize: vertical; line-height: 1.5; }
+
+.maker-card { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.maker-card-name { font: var(--fw-semibold) var(--fs-17)/var(--lh-17) var(--font); color: var(--text-1); }
+.maker-card-story { white-space: pre-line; }
+.maker-card-links { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
+.maker-report-link { display: block; margin: 0 auto; color: var(--text-3); }
+
+.maker-review-card { margin-bottom: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.maker-review-head { display: flex; align-items: center; gap: var(--space-3); }
+.maker-review-name { font-weight: var(--fw-semibold); color: var(--text-1); }
+.maker-review-link { color: var(--accent-text); font-size: var(--fs-13); word-break: break-all; }
+.maker-review-note { color: var(--text-1); }
+.maker-review-story { color: var(--text-2); font-size: var(--fs-13); line-height: var(--lh-13); white-space: pre-line; }
+.maker-review-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.ed-card[hidden] { display: none; }
+/* Makers, phase 2: instruments, codes, the printed card, importing a list */
+.maker-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.maker-code-card { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-4); }
+.maker-code { font: var(--fw-bold) var(--fs-24)/var(--lh-24) ui-monospace, Menlo, Consolas, monospace; letter-spacing: 0.12em; color: var(--text-1); }
+.maker-code-url { font: var(--fs-13)/var(--lh-13) ui-monospace, Menlo, Consolas, monospace; color: var(--text-2); word-break: break-all; margin-bottom: var(--space-1); }
+.maker-code-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.row.is-retired .row-title { color: var(--text-3); text-decoration: line-through; }
+.row.is-bad .row-lead { color: var(--danger); }
+.maker-card-preview { display: flex; justify-content: center; align-items: center; min-height: 120px; padding: var(--space-3); margin-bottom: var(--space-4); background: var(--qr-bg); border-radius: var(--r-sm); }
+.maker-card-preview svg { width: 100%; max-width: 340px; height: auto; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+.maker-steps { margin: var(--space-3) 0; padding-left: var(--space-5); color: var(--text-2); font-size: var(--fs-13); line-height: var(--lh-13); }
+.maker-steps li + li { margin-top: var(--space-1); }
+.input.maker-import-text { min-height: 160px; font: var(--fs-13)/1.5 ui-monospace, Menlo, Consolas, monospace; white-space: pre; overflow-x: auto; }
+/* Makers, phase 3: stats. Tiles for the headline numbers; one bar a day. */
+.maker-period { margin-bottom: var(--space-4); }
+.maker-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-4); }
+.maker-tile { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); min-width: 0; }
+.maker-tile-value { font: var(--fw-bold) var(--fs-24)/var(--lh-24) var(--font); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.maker-tile-label { font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-2); }
+.maker-chart { padding: var(--space-3); background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--r-md); margin-bottom: var(--space-2); }
+.maker-chart-head, .maker-chart-axis { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-13); line-height: var(--lh-13); color: var(--text-3); }
+.maker-chart-head span:first-child { color: var(--text-1); font-weight: var(--fw-semibold); }
+.maker-bars { display: flex; align-items: flex-end; gap: 2px; height: 120px; margin: var(--space-3) 0 var(--space-1); border-bottom: 1px solid var(--border); }
+.maker-bar { position: relative; flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; outline: none; }
+.maker-bar i { display: block; width: 100%; height: var(--h); min-height: 3px; background: var(--accent); border-radius: 3px 3px 0 0; }
+.maker-bar.is-zero i { min-height: 0; height: 0; }
+.maker-bar:hover i, .maker-bar:focus-visible i { background: var(--accent-text); }
+.maker-bar:hover::after, .maker-bar:focus-visible::after {
+  content: attr(data-tip); position: absolute; bottom: calc(var(--h) + 6px); left: 50%; transform: translateX(-50%); z-index: 2;
+  padding: 2px 8px; border-radius: var(--r-sm); background: var(--text-1); color: var(--bg); font-size: var(--fs-13); line-height: var(--lh-13); white-space: nowrap; pointer-events: none;
+}
+.maker-bar:nth-child(-n+3):hover::after, .maker-bar:nth-child(-n+3):focus-visible::after { left: 0; transform: none; }
+.maker-bar:nth-last-child(-n+3):hover::after, .maker-bar:nth-last-child(-n+3):focus-visible::after { left: auto; right: 0; transform: none; }
+.maker-num { font-weight: var(--fw-semibold); color: var(--text-1); font-variant-numeric: tabular-nums; }
+.maker-share { display: block; height: 6px; width: max(var(--w), 2px); max-width: 100%; margin-top: 4px; background: var(--accent); border-radius: 3px; }
+.maker-note { margin-top: var(--space-3); }
+.maker-code-stat { color: var(--text-1); font-weight: var(--fw-medium); }

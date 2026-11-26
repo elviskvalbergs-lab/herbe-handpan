@@ -58,3 +58,56 @@ test('the live tuner hears a quiet drum: a note at −50 dB is found, silence is
   assert.ok(res && Math.abs(res.hz - 146.83) < 1, `heard ${res?.hz}`);
   assert.equal(yinPitch(new Float32Array(4096), sr, { minRms: TUNER_MIN_RMS }), null);
 });
+
+test('a drum played without damping: the spectrum keeps each note where it is', async () => {
+  const { yinPitch, refinePitch } = await import('../js/tuner.js');
+  const sr = 48000, n = 4096;
+  // F4 (342 Hz, just struck) over D4 (289 Hz, still ringing), as in a user's recording.
+  const buf = new Float32Array(n).map((_, i) => 0.5 * Math.sin(2 * Math.PI * 342 * i / sr) + 0.3 * Math.sin(2 * Math.PI * 289 * i / sr + 1));
+  const f = refinePitch(buf, sr, 335); // a YIN estimate pulled towards the old note
+  assert.ok(f && Math.abs(f - 342) < 2, `refined to ${f}`);
+  // An estimate with no peak near it is not a note.
+  assert.equal(refinePitch(buf, sr, 307), null);
+  // A clean note stays where YIN put it.
+  const clean = new Float32Array(n).map((_, i) => Math.sin(2 * Math.PI * 261.6 * i / sr));
+  const y = yinPitch(clean, sr);
+  assert.ok(Math.abs(refinePitch(clean, sr, y.hz) - 261.6) < 1);
+});
+
+test('a note read a whole number of periods too long is moved up to the note', async () => {
+  const { refinePitch } = await import('../js/tuner.js');
+  const sr = 48000, n = 4096;
+  // A user's tongue drum (B4, 483 Hz) with other tongues ringing along
+  // quietly: YIN read 161 and 242 Hz, where there is nothing.
+  const parts = [[483.2, 1], [288.2, 0.16], [318, 0.23], [339.5, 0.17], [430.8, 0.12]];
+  const buf = new Float32Array(n);
+  for (let i = 0; i < n; i++) for (const [f, a] of parts) buf[i] += 0.3 * a * Math.sin(2 * Math.PI * f * i / sr);
+  for (const yin of [161, 242]) {
+    const hz = refinePitch(buf, sr, yin);
+    assert.ok(hz && Math.abs(cents(hz, 483.2)) < 10, `${yin} → ${hz}`);
+  }
+  // A low note whose octave is stronger than it stays where it is.
+  const low = tone(130.81, { harmonics: [0.6, 1, 0.3] });
+  assert.ok(Math.abs(cents(refinePitch(low, sr, 130.81), 130.81)) < 10);
+});
+
+test('a handpan Eb3 next to a ringing 142 Hz tone: read on the long window, not as its octave', async () => {
+  const { refinePitch, tunerFrame, TUNER_LONG_WINDOW } = await import('../js/tuner.js');
+  const sr = 48000;
+  const mix = (n, parts) => {
+    const buf = new Float32Array(n);
+    for (let i = 0; i < n; i++) for (const [f, a] of parts) buf[i] += 0.2 * a * Math.sin(2 * Math.PI * f * i / sr);
+    return buf;
+  };
+  // The owner's handpan: Eb3 (156.6 Hz) weaker than its octave partial, and
+  // a 142 Hz tone ringing on from the note before. YIN reads about 153 Hz.
+  const parts = [[156.6, 0.45], [313.2, 1], [141.8, 1]];
+  const hz = refinePitch(mix(TUNER_LONG_WINDOW, parts), sr, 153.5);
+  assert.ok(hz && Math.abs(cents(hz, 156.6)) < 15, `got ${hz}`);
+  // An Eb4 played while the Eb3 rings on quietly stays Eb4.
+  const eb4 = refinePitch(mix(TUNER_LONG_WINDOW, [[313.2, 1], [626.4, 0.3], [156.6, 0.15]]), sr, 313);
+  assert.ok(Math.abs(cents(eb4, 313.2)) < 10, `got ${eb4}`);
+  // The live frame takes a long buffer and still reads a clean note.
+  const f = tunerFrame(mix(TUNER_LONG_WINDOW, [[261.63, 1], [523.25, 0.3]]), sr);
+  assert.ok(Math.abs(cents(f.hz, 261.63)) < 10 && f.level > 0);
+});

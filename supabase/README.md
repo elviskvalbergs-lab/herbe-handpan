@@ -28,6 +28,12 @@ never changes to existing ones. Name new files `YYYYMMDD_short_name.sql`.
 | `20261111_progressions.sql` | nullable `progressions` jsonb column on `user_data` (sync of chord progressions, read and written in requests of their own) |
 | `20261116_accounts.sql` | `profiles` (signup source and intent, last seen date), `saved_items` (sync by item, owner reads; writes only through `save_item`, which bumps a version and returns the current row on a conflict), `touch_last_seen()`, `delete_my_account()` (deletes the user and every row they own) |
 | `20261117_legacy_import.sql` | `profiles.legacy_imported_at` and `import_legacy_data()`: once per account, copies what the first app versions kept (`user_data` layouts, playlists, progressions and prefs; ocarinas and flutes in `instruments`) into `saved_items`, adding only what isn't there yet |
+| `20261121_makers.sql` | The makers programme (docs/makers-programme.md): `profiles.is_maker` and `profiles.is_admin`; `makers` (the public profile and its status), `maker_codes` (a code per serial number), `maker_reports`; `my_maker()`, `save_maker_profile()`, `review_maker()`, `admin_list_makers()`, `resolve_maker_report()` for accounts, and `get_maker()`, `list_makers()`, `report_maker()`, `open_shared_instrument()`, `shared_instrument_card()` for everyone. No table can be written directly |
+| `20261121_saved_item_size.sql` | `saved_items_check_size()` and the `saved_items_size` trigger: an item's data may be at most 1 MB and its id 200 characters; a larger write is refused with `item_too_large`, which the app reports and keeps on the device |
+| `20261122_maker_codes_scans.sql` | Makers, phase 2: `create_maker_codes()` (a code per serial number of a shared instrument), `retire_maker_code()`; `maker_scan_days` (per code, day, country and source: opens, devices, saves, chords, songs), `maker_scan_seen` and `maker_scan_salts` (a daily hash to count a device once, deleted after two days), written only by `log_maker_event()`. No IP address is stored |
+| `20261122_makers_recorder.sql` | Makers can say they make recorders: the `makers.families` check is replaced by the same check with `recorder` added (the one owner-approved exception to additive-only, allowed by name in `tests/makers-sql.test.mjs`) |
+| `20261123_maker_stats.sql` | Makers, phase 3: `maker_stats(days)`, the only way to read the scan counts, and only the caller's own codes: totals, per day, per source, per country (from five devices up) and per code |
+| `20261124_maker_request_notice.sql` | `makers.notified_at` and `claim_maker_request_notice()`: one email to the owner per maker request (the website's `/api/maker-request`) |
 
 Until a migration has been applied, the features that need it fail quietly:
 the app keeps working, instruments and progressions stay on the device and
@@ -105,3 +111,53 @@ row), then in Supabase → Table Editor → `profiles` tick **can_build** on
 their row (find it by `user_id`, which Authentication → Users shows next to
 their email). The app picks it up at their next start or sign-in. Untick it
 to hide building again; their instruments stay, they just play them.
+
+## Makers: who approves, and how
+
+Makers and shops ask for the maker role in the app (Settings › Makers and
+shops). Nothing of theirs is public until a request is approved.
+
+1. **Once:** make yourself the reviewer. Sign in to the app, then in Supabase
+   → Table Editor → `profiles` tick **is_admin** on your row (find it by
+   `user_id`, shown next to your email under Authentication → Users).
+2. **Each request:** in the app, Settings › Makers and shops › Requests and
+   reports: Approve, or "Not now…" with a sentence the maker will see.
+   Approving sets `makers.status` to `approved` and gives the account
+   `profiles.is_maker`. Editing the `status` cell in Supabase does the same
+   (a trigger keeps the role in step).
+3. **Taking a page down:** "Suspend…" in the same list. The maker's page,
+   directory entry and "Made by" disappear at once; their codes keep opening
+   the instruments.
+
+
+**Email about new requests.** When a maker sends a request, the website
+emails you (one email per request). Set it up once:
+
+1. Make a free account at resend.com with the address you want the emails
+   at (oakhummusic@gmail.com), and create an API key (Sending access).
+2. In Vercel → the **website** project → Settings → Environment Variables,
+   add `RESEND_API_KEY` with that key, for Production. Redeploy.
+3. That's all while the emails go to the address the Resend account was
+   made with: they come from Resend's own sender. To send to another
+   address, verify your domain in Resend and set `MAKER_NOTIFY_FROM`
+   (e.g. `Oakhum <makers@oakhum.com>`) and `MAKER_NOTIFY_EMAIL`.
+
+Without `RESEND_API_KEY` the request becomes a Jira issue (label
+`maker-request`) if Jira is set up for feedback; with neither, only the
+count in the app's Settings tells you.
+## Testing the SQL
+
+`tests/makers-sql.test.mjs` applies every migration to a throwaway database
+(after `supabase/tests/stubs.sql`, which stands in for what Supabase
+provides: the `anon` and `authenticated` roles, `auth.users`, `auth.uid()`),
+runs each migration a second time, then runs `supabase/tests/*.sql`, which
+act as a guest, a maker, another maker and an admin.
+
+It needs `psql` and a local Postgres, and is skipped without them:
+
+```
+HP_TEST_DATABASE_URL=postgresql://postgres:<password>@localhost:5432/postgres node --test
+```
+
+The same variable runs the browser check of the maker screens against the
+real functions: `python3 build.py && node tests/e2e/makers.e2e.mjs`.

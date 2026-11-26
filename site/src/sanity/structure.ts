@@ -1,7 +1,7 @@
 import type { StructureResolver } from "sanity/structure";
 
 /** One fixed document each, shown as a single item. */
-export const SINGLETON_TYPES = new Set(["siteSettings", "homePage", "makersPage"]);
+export const SINGLETON_TYPES = new Set(["siteSettings", "homePage", "makersPage", "songsPage"]);
 
 export const structure: StructureResolver = (S) =>
   S.list()
@@ -9,10 +9,15 @@ export const structure: StructureResolver = (S) =>
     .items([
       S.listItem().title("Home page").id("homePage").child(S.document().schemaType("homePage").documentId("homePage").title("Home page")),
       S.listItem().title("Makers page").id("makersPage").child(S.document().schemaType("makersPage").documentId("makersPage").title("Makers page")),
+      S.listItem().title("Songs pages").id("songsPage").child(S.document().schemaType("songsPage").documentId("songsPage").title("Songs pages")),
       S.listItem().title("Site settings").id("siteSettings").child(S.document().schemaType("siteSettings").documentId("siteSettings").title("Site settings")),
       S.divider(),
       S.documentTypeListItem("instrument").title("Instruments"),
       S.documentTypeListItem("feature").title("Features"),
       S.documentTypeListItem("request").title("Requests"),
+      // Under the "listenReports." id path, so listed by type rather than the default list.
+      S.listItem().title("Listening reports").id("listenReports").schemaType("listenReport").child(
+        S.documentList().title("Listening reports").schemaType("listenReport").filter('_type == "listenReport"').defaultOrdering([{ field: "createdAt", direction: "desc" }]),
+      ),
       S.documentTypeListItem("page").title("Pages"),
     ]);

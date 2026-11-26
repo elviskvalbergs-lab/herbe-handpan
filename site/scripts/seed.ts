@@ -36,6 +36,7 @@ async function main() {
     _id: "makersPage", _type: "makersPage", ...seed.makers,
     why: withKeys(seed.makers.why), steps: withKeys(seed.makers.steps), offer: withKeys(seed.makers.offer), faqs: withKeys(seed.makers.faqs),
   });
+  put({ _id: "songsPage", _type: "songsPage", ...seed.songsPage });
   for (const i of seed.instruments) {
     put({ ...i, _type: "instrument", slug: { _type: "slug", current: i.slug }, faqs: withKeys(i.faqs) });
   }

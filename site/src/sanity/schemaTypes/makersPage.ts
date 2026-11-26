@@ -1,8 +1,10 @@
 import { defineArrayMember, defineField, defineType } from "sanity";
 
-// The words of /makers, the page for people who make or sell instruments.
-// The layout, the playable demo, the video file and the contact address come
-// from the site.
+// The words of /makers, the page for people who make or sell instruments,
+// and the fixed words around a maker's own page (/makers/<slug>).
+// The layout, the playable demo and the video file come from the site. The
+// makers themselves (name, logo, story, instruments) are never here: they
+// edit those in the app (docs/makers-programme.md in the repository root).
 export const makersPage = defineType({
   name: "makersPage",
   title: "Makers page",
@@ -12,12 +14,14 @@ export const makersPage = defineType({
     { name: "why", title: "Why" },
     { name: "how", title: "How" },
     { name: "offer", title: "What they get" },
+    { name: "directory", title: "Makers on Oakhum" },
+    { name: "maker", title: "A maker's page" },
     { name: "contact", title: "Contact and questions" },
   ],
   fields: [
     defineField({ name: "heroTitle", type: "string", group: "hero", validation: (r) => r.required().max(70) }),
     defineField({ name: "heroText", type: "text", rows: 3, group: "hero", validation: (r) => r.required().max(320) }),
-    defineField({ name: "heroCta", title: "Main button", type: "string", group: "hero", description: "Writes an email to the site's contact address.", validation: (r) => r.max(40) }),
+    defineField({ name: "heroCta", title: "Main button", type: "string", group: "hero", description: "Opens the app on \"Create your maker page\".", validation: (r) => r.max(40) }),
     defineField({ name: "heroSecondary", title: "Second button", type: "string", group: "hero", description: "Goes to the playable instrument below.", validation: (r) => r.max(40) }),
     defineField({ name: "videoTitle", title: "Video title", type: "string", group: "hero", description: "Above the makers video, under the top of the page.", validation: (r) => r.max(70) }),
     defineField({ name: "videoText", title: "Video text", type: "text", rows: 2, group: "hero", validation: (r) => r.max(240) }),
@@ -35,6 +39,19 @@ export const makersPage = defineType({
     defineField({ name: "emailSubject", type: "string", group: "contact", description: "Subject of the email the buttons start." }),
     defineField({ name: "faqTitle", type: "string", group: "contact" }),
     defineField({ name: "faqs", type: "array", group: "contact", of: [defineArrayMember({ type: "qa" })] }),
+    defineField({ name: "heroNote", title: "Under the main button", type: "string", group: "hero", description: "What it costs and how long it takes.", validation: (r) => r.max(90) }),
+    defineField({ name: "talkCta", title: "Write to us first", type: "string", group: "contact", description: "The quieter link at the end: opens the request form on \"Maker or shop\".", validation: (r) => r.max(50) }),
+    defineField({ name: "directoryTitle", type: "string", group: "directory", validation: (r) => r.max(60) }),
+    defineField({ name: "directoryText", type: "text", rows: 2, group: "directory", validation: (r) => r.max(240) }),
+    defineField({ name: "directoryJoinTitle", title: "The last card: title", type: "string", group: "directory", validation: (r) => r.max(40) }),
+    defineField({ name: "directoryJoinText", title: "The last card: text", type: "string", group: "directory", validation: (r) => r.max(60) }),
+    defineField({ name: "makerInstrumentsTitle", title: "Instruments: title", type: "string", group: "maker", validation: (r) => r.max(60) }),
+    defineField({ name: "makerInstrumentsText", title: "Instruments: text", type: "text", rows: 2, group: "maker", validation: (r) => r.max(240) }),
+    defineField({ name: "makerPlayCta", title: "Button on each instrument", type: "string", group: "maker", validation: (r) => r.max(30) }),
+    defineField({ name: "makerTuningLink", title: "Link to the scale's page", type: "string", group: "maker", validation: (r) => r.max(40) }),
+    defineField({ name: "makerNoInstruments", title: "When a maker has shared no instruments yet", type: "string", group: "maker", validation: (r) => r.max(160) }),
+    defineField({ name: "makerReport", title: "Report link", type: "string", group: "maker", validation: (r) => r.max(40) }),
+    defineField({ name: "makerJoinText", title: "The band at the end", type: "text", rows: 2, group: "maker", validation: (r) => r.max(240) }),
     defineField({ name: "seo", type: "seo", group: "hero" }),
   ],
   preview: { prepare: () => ({ title: "Makers page" }) },

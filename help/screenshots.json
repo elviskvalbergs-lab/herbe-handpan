@@ -1,0 +1,193 @@
+{
+  "about": "The pictures in the help articles. scripts/help-screenshots.mjs opens the built app and makes help/img/<name>.jpg for each entry, so pictures are never taken by hand and never go stale. Steps: go (a path), tap (a data-action, the first one on screen), text (exact visible text), css (a selector), signIn (through the open save sheet, with a stand-in account), wait (milliseconds).",
+  "viewport": {
+    "width": 390,
+    "height": 760
+  },
+  "shots": [
+    {
+      "name": "setup-start",
+      "steps": [
+        {
+          "go": "/play"
+        }
+      ]
+    },
+    {
+      "name": "setup-listen",
+      "steps": [
+        {
+          "go": "/play"
+        },
+        {
+          "text": "Handpan"
+        },
+        {
+          "tap": "setup-listen"
+        },
+        {
+          "tap": "setup-guide-start"
+        },
+        {
+          "wait": 1500
+        }
+      ]
+    },
+    {
+      "name": "setup-scale",
+      "steps": [
+        {
+          "go": "/play"
+        },
+        {
+          "text": "Handpan"
+        },
+        {
+          "tap": "setup-know"
+        },
+        {
+          "text": "D"
+        }
+      ]
+    },
+    {
+      "name": "my-instruments",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd"
+        },
+        {
+          "tap": "save-layout"
+        },
+        {
+          "signIn": true
+        },
+        {
+          "tap": "back-home"
+        },
+        {
+          "wait": 3500
+        }
+      ]
+    },
+    {
+      "name": "pan-tab",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd"
+        }
+      ]
+    },
+    {
+      "name": "notes-tab",
+      "steps": [
+        {
+          "go": "/ocarina/alto-c-12"
+        }
+      ]
+    },
+    {
+      "name": "chords",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd/chords/d-min"
+        }
+      ]
+    },
+    {
+      "name": "song",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd/songs"
+        },
+        {
+          "css": "[data-action=songs-filter][data-value=popular]"
+        },
+        {
+          "tap": "song-open"
+        },
+        {
+          "tap": "song-next"
+        }
+      ]
+    },
+    {
+      "name": "playlists",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd"
+        },
+        {
+          "tap": "save-layout"
+        },
+        {
+          "signIn": true
+        },
+        {
+          "go": "/handpan/d-kurd/chords/d-min"
+        },
+        {
+          "tap": "hp-more-open"
+        },
+        {
+          "text": "Progressions with this chord"
+        },
+        {
+          "css": ".sheet-root button:has-text('Save')"
+        },
+        {
+          "go": "/handpan/d-kurd/playlists"
+        },
+        {
+          "wait": 3500
+        }
+      ]
+    },
+    {
+      "name": "playlist",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd"
+        },
+        {
+          "tap": "save-layout"
+        },
+        {
+          "signIn": true
+        },
+        {
+          "go": "/handpan/d-kurd/chords/d-min"
+        },
+        {
+          "tap": "hp-more-open"
+        },
+        {
+          "text": "Progressions with this chord"
+        },
+        {
+          "css": ".sheet-root button:has-text('Save')"
+        },
+        {
+          "text": "Open"
+        },
+        {
+          "wait": 3500
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "steps": [
+        {
+          "go": "/handpan/d-kurd"
+        },
+        {
+          "tap": "menu-open"
+        },
+        {
+          "tap": "open-settings"
+        }
+      ]
+    }
+  ]
+}

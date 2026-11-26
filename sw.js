@@ -21,22 +21,54 @@ self.addEventListener('message', e => { if (e.data?.type === 'oakhum-off') off =
 // Pages that are the app. '/' is the app on its own Vercel address and the
 // website's home on the shared domain: online the network answers either
 // way, and offline the app is the best we have.
-const APP_PAGES = /^\/(play|handpan|tongue-drum|kalimba|ocarina|flute|s)?(\/|$)/;
+const APP_PAGES = /^\/(play|handpan|tongue-drum|kalimba|ocarina|flute|recorder|s)?(\/|$)/;
 function isAppPage(url) { return url.origin === self.location.origin && APP_PAGES.test(url.pathname); }
 // Files of the app (not the website's /_next/… or images).
 const APP_FILES = /^\/(manifest\.json|icon[^/]*|fonts\/[^/]+|og\/[^/]+)$/;
 
+// Install succeeds only when the app's page is in the cache: without it there
+// is nothing to open offline, and a worker that claimed otherwise would say
+// "Ready" over an empty cache. A failed install is dropped by the browser and
+// tried again at the next start (js/offline.js enable). Everything else in
+// PRECACHE is best effort: the app opens without an icon or a font weight.
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => Promise.all(PRECACHE.map(url =>
-    c.add(new Request(url, { cache: 'reload', mode: url.startsWith('http') ? 'cors' : 'same-origin' })).catch(() => {}),
-  ))));
-  self.skipWaiting();
+  const request = url => new Request(url, { cache: 'reload', mode: url.startsWith('http') ? 'cors' : 'same-origin' });
+  e.waitUntil(caches.open(CACHE).then(async c => {
+    await c.add(request(APP_HOME)); // rejects on a network error or a response that isn't ok
+    await Promise.all(PRECACHE.filter(url => url !== APP_HOME).map(url => c.add(request(url)).catch(() => {})));
+    await self.skipWaiting();
+  }));
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
   self.clients.claim();
 });
+
+// A connection that is there but going nowhere (a train, a lift, a captive
+// portal) must not leave a blank page while the app sits in the cache: the
+// network gets this long, then the cached app opens. With nothing cached the
+// network is all there is, however long it takes.
+const NAV_TIMEOUT_MS = 4000;
+async function openApp(req, url) {
+  const cached = await caches.match(APP_HOME);
+  const network = fetch(req).then(res => {
+    if (res.ok && url.pathname === APP_HOME) {
+      const copy = res.clone();
+      caches.open(CACHE).then(c => c.put(APP_HOME, copy)).catch(() => {});
+    }
+    return res;
+  });
+  if (!cached) return network;
+  const slow = new Promise(resolve => setTimeout(resolve, NAV_TIMEOUT_MS, null));
+  try {
+    return (await Promise.race([network, slow])) ?? cached;
+  } catch {
+    return cached; // offline
+  } finally {
+    network.catch(() => {}); // a late failure after the cached app was served
+  }
+}
 
 self.addEventListener('fetch', e => {
   const req = e.request;
@@ -47,17 +79,7 @@ self.addEventListener('fetch', e => {
   // own pages on the same domain are left alone.
   if (req.mode === 'navigate') {
     if (!isAppPage(url)) return;
-    e.respondWith(
-      fetch(req)
-        .then(res => {
-          if (res.ok && url.pathname === APP_HOME) {
-            const copy = res.clone();
-            caches.open(CACHE).then(c => c.put(APP_HOME, copy));
-          }
-          return res;
-        })
-        .catch(() => caches.match(APP_HOME)),
-    );
+    e.respondWith(openApp(req, url));
     return;
   }
   // The app's own files, fonts and the pinned supabase-js: cache first.

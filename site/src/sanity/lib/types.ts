@@ -13,6 +13,8 @@ export type SiteSettings = {
 };
 
 export type HomePage = {
+  /** Set by Sanity: when the document last changed (the sitemap's date). */
+  _updatedAt?: string;
   heroTitle: string;
   heroText: string;
   heroNote?: string;
@@ -22,7 +24,11 @@ export type HomePage = {
   demoCaption?: string;
   howTitle?: string;
   steps?: Point[];
+  songsTitle?: string;
+  songsText?: string;
+  instrumentsTitle?: string;
   instrumentsText?: string;
+  instrumentsAsk?: string;
   whyTitle?: string;
   why?: Point[];
   accountTitle?: string;
@@ -36,11 +42,26 @@ export type HomePage = {
   featuresTitle?: string;
   requestTitle?: string;
   requestText?: string;
+  requestCta?: string;
   faqTitle?: string;
   faqs?: QA[];
 };
 
+export type SongsPage = {
+  heroTitle: string;
+  heroText: string;
+  fitTitle?: string;
+  fitText?: string;
+  almostText?: string;
+  demoText?: string;
+  appTitle?: string;
+  appText?: string;
+  appCta?: string;
+  seo?: { title?: string; description?: string };
+};
+
 export type MakersPage = {
+  _updatedAt?: string;
   heroTitle: string;
   heroText: string;
   heroCta?: string;
@@ -62,13 +83,31 @@ export type MakersPage = {
   faqTitle?: string;
   faqs?: QA[];
   seo?: { title?: string; description?: string };
+  /** Under the main button: what it costs and how long it takes. */
+  heroNote?: string;
+  /** The quieter link for someone who would rather write first. */
+  talkCta?: string;
+  /** The directory of makers on /makers. */
+  directoryTitle?: string;
+  directoryText?: string;
+  directoryJoinTitle?: string;
+  directoryJoinText?: string;
+  /** The fixed words of a maker's own page, /makers/<slug>. */
+  makerInstrumentsTitle?: string;
+  makerInstrumentsText?: string;
+  makerPlayCta?: string;
+  makerTuningLink?: string;
+  makerNoInstruments?: string;
+  makerReport?: string;
+  makerJoinText?: string;
 };
 
 export type InstrumentDoc = {
   _id: string;
+  _updatedAt?: string;
   name: string;
   slug: string;
-  family: "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute" | "none";
+  family: "handpan" | "tongue-drum" | "kalimba" | "ocarina" | "flute" | "recorder" | "none";
   status: "available" | "soon";
   order: number;
   tuningsLine?: string;

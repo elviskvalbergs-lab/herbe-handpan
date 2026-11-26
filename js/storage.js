@@ -1,4 +1,4 @@
-import { dataStore } from './datastore.js';
+import { dataStore, safeSetItem } from './datastore.js';
 
 const LAYOUTS_KEY = 'hp-layouts';
 const FAVS_KEY = 'hp-favorites'; // legacy, migrated into hp-playlists on first access
@@ -26,7 +26,7 @@ export function saveLayout(entry) {
   const stamped = { ...entry, updatedAt: now() };
   if (idx >= 0) all[idx] = stamped;
   else all.unshift(stamped);
-  dataStore().setItem(LAYOUTS_KEY, JSON.stringify(all));
+  safeSetItem(dataStore(), LAYOUTS_KEY, JSON.stringify(all));
 }
 
 export function deleteLayout(id) {
@@ -36,7 +36,7 @@ export function deleteLayout(id) {
     const ts = now();
     layout.deletedAt = ts;
     layout.updatedAt = ts;
-    dataStore().setItem(LAYOUTS_KEY, JSON.stringify(all));
+    safeSetItem(dataStore(), LAYOUTS_KEY, JSON.stringify(all));
   }
 }
 
@@ -51,26 +51,60 @@ function getAllPlaylistsRaw() {
   // First run: create default Favorites playlist, migrate old favorites if any
   const old = safeParse(FAVS_KEY);
   const playlists = [{ id: 'favorites', name: 'Favorites', chords: old, updatedAt: now() }];
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return playlists;
 }
 
+// Playlists that haven't been moved into the one kind of list yet
+// (mergePlaylistsIntoProgressions): none, once the app has started.
 export function getPlaylists() {
-  return getAllPlaylistsRaw().filter(p => !p.deletedAt);
+  return getAllPlaylistsRaw().filter(p => !p.deletedAt && !p.mergedInto);
+}
+
+// One kind of list (the owner, 2026-11): playlists and progressions were two
+// ways to keep chords; a playlist is now what a progression was (chords in
+// order, the same one as often as you like, played in time), called a
+// playlist. Each old playlist with chords is copied once into one, same
+// name, chords and order; the old record stays, marked mergedInto, as a
+// backup (additive: nothing is deleted). The copy's ids come from the old
+// playlist's, so two devices copying the same playlist make the same list
+// and sync keeps one. Returns how many lists it made.
+export function mergePlaylistsIntoProgressions() {
+  const playlists = getAllPlaylistsRaw();
+  const progs = getProgressionsRaw();
+  let made = 0, touched = false;
+  for (const pl of playlists) {
+    if (pl.deletedAt || pl.mergedInto) continue;
+    touched = true;
+    if (!pl.chords?.length) { pl.mergedInto = '-'; pl.updatedAt = now(); continue; }
+    const id = `pr-from-${pl.id}`;
+    if (!progs.some(p => p.id === id)) {
+      progs.push(normalizeProgression({
+        bpm: PROG_DEFAULTS.bpm, beatsPerBar: PROG_DEFAULTS.beatsPerBar, id, name: pl.name, fromPlaylist: pl.id,
+        steps: pl.chords.map((c, i) => newProgressionStep(c, { stepId: `st-${pl.id}-${i}` })), updatedAt: now(),
+      }));
+      made++;
+    }
+    pl.mergedInto = id;
+    pl.updatedAt = now();
+  }
+  if (made) writeProgressionsRaw(progs);
+  if (touched) dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  return made;
 }
 
 export function addPlaylist(name) {
   const playlists = getAllPlaylistsRaw();
   const id = 'pl-' + Date.now();
   playlists.push({ id, name, chords: [], updatedAt: now() });
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return id;
 }
 
 export function renamePlaylist(id, name) {
   const playlists = getAllPlaylistsRaw();
   const pl = playlists.find(p => p.id === id);
-  if (pl) { pl.name = name; pl.updatedAt = now(); dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists)); }
+  if (pl) { pl.name = name; pl.updatedAt = now(); safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists)); }
 }
 
 export function deletePlaylist(id) {
@@ -81,7 +115,7 @@ export function deletePlaylist(id) {
     const ts = now();
     pl.deletedAt = ts;
     pl.updatedAt = ts;
-    dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+    safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   }
 }
 
@@ -91,7 +125,7 @@ export function addChordToPlaylist(playlistId, chord) {
   if (!pl || pl.chords.some(c => c.id === chord.id)) return false;
   pl.chords.unshift(chord);
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
@@ -106,7 +140,7 @@ export function updatePlaylistChordVoicing(playlistId, oldFavId, updates) {
   if (idx < 0) return false;
   pl.chords[idx] = { ...pl.chords[idx], ...updates };
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
   return true;
 }
 
@@ -116,7 +150,7 @@ export function removeChordFromPlaylist(playlistId, chordFavId) {
   if (!pl) return;
   pl.chords = pl.chords.filter(c => c.id !== chordFavId);
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 export function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
@@ -126,7 +160,7 @@ export function reorderChordInPlaylist(playlistId, fromIdx, toIdx) {
   const [item] = pl.chords.splice(fromIdx, 1);
   pl.chords.splice(toIdx, 0, item);
   pl.updatedAt = now();
-  dataStore().setItem(PLAYLISTS_KEY, JSON.stringify(playlists));
+  safeSetItem(dataStore(), PLAYLISTS_KEY, JSON.stringify(playlists));
 }
 
 export function isChordInPlaylist(playlistId, chordFavId) {
@@ -144,7 +178,8 @@ export function isChordInAnyPlaylist(chordFavId) {
 // unlike the exact-id match above, which the playlist picker needs to decide
 // whether to add or remove THIS specific voicing.
 export function isChordBookmarkedAnyVoicing(layoutId, chordId) {
-  return getPlaylists().some(p => p.chords.some(c => c.layoutId === layoutId && c.chordId === chordId));
+  return getPlaylists().some(p => p.chords.some(c => c.layoutId === layoutId && c.chordId === chordId))
+    || getProgressionsRaw().some(p => !p.deletedAt && p.steps?.some(s => s.layoutId === layoutId && s.chordId === chordId));
 }
 
 // Legacy compat — keep old callers working
@@ -263,7 +298,7 @@ export function getProgressionsRaw() {
 }
 
 export function writeProgressionsRaw(list) {
-  dataStore().setItem(PROGRESSIONS_KEY, JSON.stringify(list));
+  safeSetItem(dataStore(), PROGRESSIONS_KEY, JSON.stringify(list));
   if (typeof window !== 'undefined') window.dispatchEvent(new Event('hp-progressions-changed'));
 }
 

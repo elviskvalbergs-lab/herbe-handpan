@@ -8,7 +8,7 @@ import { SCALES } from '../js/data.js';
 import { TRADITIONAL_CHARTS } from '../js/charts.js';
 import {
   parseLink, linkFor, linkSlug, linkTitle, linkPreview, withLinkPreview, catalogueLinks, closestLinks,
-  layoutFromCustomParams,
+  layoutFromCustomParams, LINK_TABS, LINK_FAMILIES,
 } from '../js/links.js';
 
 test('slugs: lower case, # as s, dashes', () => {
@@ -59,6 +59,38 @@ test('tabs and chords in the path', () => {
   assert.deepEqual([l.scaleId, l.tab, l.chord], ['D-Kurd', 'chords', 'a-min']);
   assert.equal(parseLink('/handpan/d-kurd/nonsense').tab, null, 'unknown tabs are ignored');
   assert.equal(parseLink('/ocarina/alto-c-12/listen').tab, 'listen');
+});
+
+test('Songs and Playlists tabs on every family', () => {
+  for (const fam of LINK_FAMILIES) {
+    assert.ok(LINK_TABS[fam].includes('songs') && LINK_TABS[fam].includes('playlists'), fam);
+  }
+  assert.equal(linkFor({ scaleId: 'D-Kurd' }, { tab: 'songs' }), '/handpan/d-kurd/songs');
+  assert.equal(linkFor({ chartId: 'ocarina-12-stl-c', keyId: 'C-A4' }, { tab: 'playlists' }), '/ocarina/alto-c-12/playlists');
+  for (const { path } of catalogueLinks()) {
+    for (const tab of ['songs', 'playlists']) {
+      const l = parseLink(`${path}/${tab}`);
+      assert.equal(l.tab, tab, path);
+      assert.equal(l.path, `${path}/${tab}`, path);
+    }
+  }
+  assert.equal(linkPreview('/handpan/d-kurd/songs').description.startsWith('Songs to learn'), true);
+});
+
+test('every family has the same tabs in its links: playlists and listen too', () => {
+  for (const fam of LINK_FAMILIES) {
+    assert.ok(LINK_TABS[fam].includes('chords') && LINK_TABS[fam].includes('playlists') && LINK_TABS[fam].includes('listen'), fam);
+  }
+  assert.equal(linkFor({ chartId: 'ocarina-12-stl-c', keyId: 'C-A4' }, { tab: 'playlists' }), '/ocarina/alto-c-12/playlists');
+  assert.equal(parseLink('/flute/tin-whistle-d/playlists').tab, 'playlists');
+});
+
+test('the Listen preview card promises what Listen does: one chord heard nearby, not a song', () => {
+  for (const path of ['/handpan/d-kurd/listen', '/ocarina/alto-c-12/listen']) {
+    const d = linkPreview(path).description;
+    assert.match(d, /^Hear a chord someone plays nearby and find it on the /);
+    assert.doesNotMatch(d, /song|play along/i);
+  }
 });
 
 test('aliases open the canonical instrument', () => {
@@ -145,4 +177,15 @@ test('custom handpan link: each shell has one slot per capacity, empty ones null
   const over = layoutFromCustomParams(new URLSearchParams({ top: 'A3,C4,D4', tc: '2' }));
   assert.equal(over.top.capacity, 3);
   assert.equal(over.bottom.slots.length, 3);
+});
+
+test('a handpan with its tone fields moved keeps them in its link', async () => {
+  const { panPosToParam, panPosFromParam, layoutFromCustomParams } = await import('../js/links.js');
+  const pos = { ding: { x: 250, y: 250 }, 'ring-0': { x: 120, y: 300 }, 'gu-1': { x: 40, y: 460 } };
+  const params = new URLSearchParams({ ding: 'C3', top: 'Eb3,F3', tc: '2', bottom: 'G2,Ab2', bc: '2', pos: panPosToParam(pos) });
+  assert.deepEqual(layoutFromCustomParams(params).pos, pos);
+  // Nonsense is dropped; a tongue drum has no moved places.
+  assert.deepEqual(panPosFromParam('ring-1:10:20,evil:1:1,ring-2:900:1,gu-x:1:1'), { 'ring-1': { x: 10, y: 20 } });
+  assert.equal(panPosFromParam(''), null);
+  assert.equal(layoutFromCustomParams(params, 'tongue-drum').pos, undefined);
 });

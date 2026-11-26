@@ -1,0 +1,35 @@
+# The same checks as .github/workflows/ci.yml (both run scripts/ci.sh), ready
+# for when the repository moves to Bitbucket. Checked against Bitbucket's
+# documentation on 2026-11-21: see docs/moving-to-bitbucket.md, section 13.
+image: node:22
+
+definitions:
+  caches:
+    # pnpm's package store, rebuilt when the website's lockfile changes.
+    # Bitbucket's predefined `node` cache only saves node_modules at the
+    # repository root, and this repository has none there (the website's is
+    # site/node_modules, filled by pnpm).
+    pnpm-store:
+      key:
+        files:
+          - site/pnpm-lock.yaml
+      path: ~/.pnpm-store
+  steps:
+    - step: &checks
+        name: Tests and builds
+        # The default is 120 minutes; a stuck step would use up the plan's
+        # build minutes.
+        max-time: 20
+        caches:
+          - pnpm-store
+        script:
+          - apt-get update && apt-get install -y python3
+          - pnpm_config_store_dir="$HOME/.pnpm-store" scripts/ci.sh
+
+pipelines:
+  pull-requests:
+    '**':
+      - step: *checks
+  branches:
+    preview:
+      - step: *checks

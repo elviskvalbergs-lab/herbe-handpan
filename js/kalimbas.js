@@ -150,4 +150,56 @@ export function kalimbaOrder(notes) {
   return out;
 }
 
+// ── Kalimba numbers (a song's tab, js/app.js) ───────────────────────────
+// Kalimba players read numbered notation (jianpu): the steps of the major
+// scale 1 to 7 from the key's first note, a dot above for each octave up and
+// a dot below for each octave down; a note outside the scale gets # or b
+// before the step (https://en.wikipedia.org/wiki/Numbered_musical_notation).
+// The plain octave starts on the key's first note at or above the lowest key,
+// so a C kalimba from C4 counts C4 = 1, C5 = 1̇, and a 21-key one from F3
+// starts on 4̣. A minor tuning counts from its relative major (A = 6).
+
+const KL_PC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
+const klMidi = n => { const m = /^([A-G][#b]?)(-?\d+)$/.exec(n); return m ? (Number(m[2]) + 1) * 12 + KL_PC[m[1]] : null; };
+const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+
+/** The major key (pitch class 0–11) a kalimba's numbers count from: the key
+ *  it is sold in when the notes are one of the tunings above, else the major
+ *  key that holds all its notes (the lowest key's first, then C, G, F…). */
+export function kalimbaKeyPc(notes) {
+  const sorted = [...notes].map(klMidi).filter(m => m != null).sort((a, b) => a - b);
+  const known = KALIMBAS.find(k => {
+    const ns = [k.top.ding, ...k.top.notes].map(klMidi).sort((a, b) => a - b);
+    return ns.length === sorted.length && ns.every((m, i) => m === sorted[i]);
+  });
+  if (known) {
+    const pc = KL_PC[known.key];
+    return /minor/i.test(known.family + ' ' + known.name) ? (pc + 3) % 12 : pc;
+  }
+  const pcs = new Set(sorted.map(m => m % 12));
+  const fits = k => [...pcs].every(pc => MAJOR.includes((pc - k + 12) % 12));
+  const order = [sorted[0] % 12, 0, 7, 5, 2, 10, 9, 3, 4, 8, 11, 1, 6];
+  return order.find(fits) ?? (sorted[0] ?? 0) % 12;
+}
+
+/** Each note's number in kalimba notation: Map(note name → "1", "5̇", "#4", …). */
+export function kalimbaNumbers(notes, keyPc = kalimbaKeyPc(notes)) {
+  const ms = notes.map(klMidi).filter(m => m != null);
+  const low = Math.min(...ms);
+  const base = low + ((keyPc - low % 12 + 12) % 12); // the first tonic at or above the lowest key
+  const above = ['', '\u0307', '\u0308'], below = ['', '\u0323', '\u0324'];
+  const out = new Map();
+  for (const n of notes) {
+    const m = klMidi(n);
+    if (m == null) continue;
+    const rel = m - base;
+    const oct = Math.floor(rel / 12), step = ((rel % 12) + 12) % 12;
+    let i = MAJOR.indexOf(step), acc = '';
+    if (i < 0) { i = MAJOR.indexOf(step - 1); acc = '#'; }
+    const dots = oct > 0 ? above[Math.min(oct, 2)] : oct < 0 ? below[Math.min(-oct, 2)] : '';
+    out.set(n, `${acc}${i + 1}${dots}`);
+  }
+  return out;
+}
+
 export { KM_LAYOUT };

@@ -11,4 +11,8 @@ for (const dir of ["fonts", "brand"]) {
   mkdirSync(join(site, "public", dir), { recursive: true });
   cpSync(join(root, dir), join(site, "public", dir), { recursive: true });
 }
-console.log("sync-assets: copied ../fonts and ../brand into public/");
+// The help articles' pictures (../help/img, made by ../scripts/help-screenshots.mjs),
+// at the same address the app's own server gives them: /help/img/<name>.jpg.
+mkdirSync(join(site, "public", "help", "img"), { recursive: true });
+cpSync(join(root, "help", "img"), join(site, "public", "help", "img"), { recursive: true });
+console.log("sync-assets: copied ../fonts, ../brand and ../help/img into public/");

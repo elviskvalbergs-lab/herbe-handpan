@@ -1,0 +1,25 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [preview]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The database tests (tests/makers-sql.test.mjs) use the runner's own
+      # Postgres for a throwaway database; without it they are skipped.
+      - name: Start Postgres for the SQL tests
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "alter user postgres password 'postgres'"
+      - run: scripts/ci.sh
+        env:
+          HP_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres

@@ -7,6 +7,7 @@
 // Pure helpers, unit tested in Node. The screens are in js/app.js (viewBeginnerSetup).
 
 import { notePC } from './data.js';
+import { addHeardNote } from './scalefinder.js';
 import { midiToNoteName } from './instruments.js';
 import { chartsForFamily, instrumentFromChart } from './charts.js';
 import { linkFor, linkTitle, parseLink } from './links.js';
@@ -110,4 +111,138 @@ export function chartSetupTunings(family) {
   }));
   chartTuningCache.set(family, list);
   return list;
+}
+
+// Two charts that explain the notes heard equally well (both chromatic from
+// the same lowest note: a 12-hole alto C and a 6-hole pendant in A) can't be
+// told apart by ear; the more common type, listed first, goes first.
+export function preferCommonChart(ranked, family) {
+  const order = chartsForFamily(family).map(c => c.id);
+  const tie = (a, b) => a.scale.chartId && b.scale.chartId && a.matched.length === b.matched.length
+    && a.ding === b.ding && a.missing.length === b.missing.length;
+  return [...ranked].sort((a, b) => (tie(a, b) ? order.indexOf(a.scale.chartId) - order.indexOf(b.scale.chartId) : b.score - a.score));
+}
+
+// ── Instruments not tuned to A = 440 Hz ─────────────────────────────────────
+// Many tongue drums, handpans and kalimbas are tuned to A = 432 Hz: every
+// note about 32 cents low, so a note struck a little low (a drum's lowest
+// tongue, before it settles) is nearer the semitone below and gets the wrong
+// name. From the notes heard (fractional MIDI, as the tuner reads them) this
+// is how far the instrument sits from 440, in cents, when at least three
+// notes agree on it; 0 otherwise. A circular mean, so -30 and +45 cents
+// (a note just past the halfway point) count as the same offset.
+export function tuningOffsetCents(raw) {
+  // Each note's distance from the nearest semitone, in cents (-50..50).
+  const devs = raw.filter(Number.isFinite).map(m => (m - Math.round(m)) * 100);
+  if (devs.length < 3) return 0;
+  // Circular distance in cents (−62 and +38 are the same place).
+  const dist = (a, b) => { const d = Math.abs(a - b) % 100; return Math.min(d, 100 - d); };
+  // The offset most notes agree on (within 20 cents); one badly tuned note
+  // doesn't move it.
+  let best = 0, bestN = -1;
+  for (let c = -50; c < 50; c++) {
+    const n = devs.filter(d => dist(d, c) <= 20).length;
+    if (n > bestN || (n === bestN && Math.abs(c) < Math.abs(best))) { best = c; bestN = n; }
+  }
+  if (bestN < 3 || bestN < devs.length * 0.6) return 0;
+  // The mean of the notes that agree, around that offset.
+  const near = devs.filter(d => dist(d, best) <= 20).map(d => best + (((d - best + 150) % 100) - 50));
+  const cents = Math.round(near.reduce((a, b) => a + b, 0) / near.length);
+  return Math.abs(cents) < 12 ? 0 : cents;
+}
+
+// A note heard, named on the instrument's own tuning.
+export function noteOnTuning(rawMidi, offsetCents) { return Math.round(rawMidi - offsetCents / 100); }
+
+// What A is tuned to, for "Tuned to A = 432 Hz".
+// The common references (432 Hz, 442 Hz…) when it's within 2 Hz of one:
+// makers sell drums "in 432 Hz".
+export function a4ForOffset(offsetCents) {
+  const hz = 440 * 2 ** (offsetCents / 1200);
+  const common = [432, 435, 440, 442, 443, 444].find(c => Math.abs(c - hz) <= 2);
+  return common ?? Math.round(hz);
+}
+
+// One steady note heard while listening freely ({ raw, notes } so far; raw
+// are the fractional MIDI numbers as heard). Returns the next { raw, notes,
+// offset }, or null when it isn't a new note. With `tuned`, notes are named
+// on the instrument's own tuning (tuningOffsetCents) and the ones heard before
+// are renamed with it. Shared by the app (onListenReading) and
+// scripts/replay-listen.mjs, so a recording replays exactly as the app hears it.
+export function collectHeardNote({ raw = [], notes = [] } = {}, midi, { tuned = true } = {}) {
+  const offset = tuned ? tuningOffsetCents([...raw, midi]) : 0;
+  const next = addHeardNote(notes, midi - offset / 100);
+  if (!next) return null;
+  const all = [...raw, midi];
+  if (!tuned) return { raw: all, notes: next, offset };
+  const renamed = [];
+  for (const x of all) { const n = noteOnTuning(x, offset); if (!renamed.includes(n)) renamed.push(n); }
+  return { raw: all, notes: renamed, offset };
+}
+
+// What the setup offers after listening (ranked: rankScalesByNotes, best
+// first). With the number of notes known (the guided round: `count` places,
+// `heard` of them played), only a tuning with exactly that many notes, its
+// ding the lowest note played and every note played in it, is offered as
+// theirs: a 10-note scale that merely contains 8 notes heard isn't an 8-note
+// drum. Without one, best is null and the setup offers the notes as played,
+// with the same-size tunings that came closest. Without a count (just
+// listening), the best match as ranked.
+export function setupMatch(ranked, { count = null, heard = 0 } = {}) {
+  const withDing = ranked.filter(r => r.ding !== 'none');
+  if (!count) return { best: withDing[0] ?? null, close: [] };
+  const sameSize = withDing.filter(r => r.total === count);
+  const best = sameSize.find(r => r.ding === 'exact' && r.matched.length === heard) ?? null;
+  return { best, close: sameSize.filter(r => r !== best && r.matched.length >= heard - 2).slice(0, 2) };
+}
+
+// The common scales a drum, kalimba or handpan is sold in, as steps from the
+// root (music theory, the same in every key). The pentatonic ones first.
+export const SETUP_SCALE_TYPES = [
+  { id: 'minor-pentatonic', name: 'minor pentatonic', steps: [0, 3, 5, 7, 10] },
+  { id: 'major-pentatonic', name: 'major pentatonic', steps: [0, 2, 4, 7, 9] },
+  { id: 'akebono', name: 'Akebono', steps: [0, 2, 3, 7, 8] },
+  { id: 'kumoi', name: 'Kumoi', steps: [0, 2, 3, 7, 9] },
+  { id: 'egyptian', name: 'Egyptian', steps: [0, 2, 5, 7, 10] },
+  { id: 'minor', name: 'minor', steps: [0, 2, 3, 5, 7, 8, 10] },
+  { id: 'major', name: 'major', steps: [0, 2, 4, 5, 7, 9, 11] },
+];
+
+// Which common scale the notes heard (MIDI numbers) are, or are closest to,
+// in any key: the best five-note and the best seven-note fit, each
+// { root (pitch class), type, off: [midi], instead: { midi: suggested midi } }.
+// Fewest notes off first, but a root that is the first note (the ding or
+// the lowest note: an instrument's key) over one note fewer off, then the order above. A note off by a semitone from a
+// scale note the drum doesn't already have is probably that note, misheard
+// or out of tune: `instead`, leaning the way it sounded (devCents: { midi:
+// cents from the named note }). Null with fewer than three different notes.
+export function scaleFits(notes, { devCents = {}, types = SETUP_SCALE_TYPES } = {}) {
+  const pc = m => ((m % 12) + 12) % 12;
+  if (new Set(notes.map(pc)).size < 3) return null;
+  const low = pc(notes[0]); // the ding, or the lowest note: listed first
+  const best = {};
+  types.forEach((type, order) => {
+    for (let root = 0; root < 12; root++) {
+      const set = new Set(type.steps.map(s => (root + s) % 12));
+      const off = notes.filter(m => !set.has(pc(m)));
+      // A root that isn't the lowest note counts for more than one note off.
+      const rank = off.length * 100 + (root === low ? 0 : 150) + order;
+      const size = type.steps.length;
+      if (!best[size] || rank < best[size].rank) best[size] = { rank, root, type, off, set };
+    }
+  });
+  const finish = f => {
+    if (!f) return null;
+    const instead = {};
+    for (const m of f.off) {
+      const lean = devCents[m] ?? 0;
+      const tries = lean < 0 ? [m - 1, m + 1] : [m + 1, m - 1];
+      const s = tries.find(x => f.set.has(pc(x)) && !notes.includes(x));
+      if (s != null) instead[m] = s;
+    }
+    // A note off the scale heard in two octaves is the drum's, not a slip.
+    const repeated = f.off.some(m => notes.some(x => x !== m && pc(x) === pc(m)));
+    return { root: f.root, type: f.type, off: f.off, instead, repeated };
+  };
+  return { five: finish(best[5]), seven: finish(best[7]) };
 }

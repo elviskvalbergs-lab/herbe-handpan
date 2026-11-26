@@ -1,6 +1,9 @@
 import { displayNote, noteToMidi, notePC } from './data.js';
 import { kalimbaOrder } from './kalimbas.js';
 
+// Everything written into the picture goes through this, whatever its source.
+function panEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
 export const PAN_SVG_ID = 'handpan-svg';
 
 // Physical handpan ring layout (confirmed from klangzeug.de for all scales).
@@ -47,11 +50,20 @@ function circlePositions(count, cx, cy, r, rotationOffset = 0) {
   });
 }
 
+// A note of the picture is a button: reachable with Tab, named for screen
+// readers ("D3", or "Empty place" for a free slot), and pressed with Enter
+// or Space (the page turns the key into the same click a tap gives: the
+// keydown handler in js/app.js, onKeyDown in the website's demo).
+function panNoteA11y(note, useFlats, useSolfege) {
+  const label = note ? displayNote(note, useFlats, useSolfege) : 'Empty place';
+  return ` role="button" tabindex="0" aria-label="${panEsc(label)}"`;
+}
+
 // All tone fields are circles. r controls size; lower notes get larger circles.
 function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false, useSolfege = false) {
   const isEmpty = !note;
   const allClasses = ['pan-note', ...extraClasses.split(' ').filter(Boolean)].join(' ');
-  const noteAttr = note ? ` data-note="${note}"` : '';
+  const noteAttr = note ? ` data-note="${panEsc(note)}"` : '';
 
   let textHtml;
   if (isEmpty) {
@@ -68,13 +80,13 @@ function noteSlotSvg(x, y, note, extraClasses, noteId, r = 24, useFlats = false,
     const octY  = y + Math.round(r * 0.40);
     textHtml = `<text x="${x}" y="${nameY}" text-anchor="middle" dominant-baseline="auto"
       font-family="system-ui,sans-serif" font-size="${nameFontSize}" font-weight="600"
-      fill="var(--note-rest-text)">${name}</text>
+      fill="var(--note-rest-text)">${panEsc(name)}</text>
 <text x="${x}" y="${octY}" text-anchor="middle" dominant-baseline="auto"
       font-family="system-ui,sans-serif" font-size="${octFontSize}" font-weight="400"
-      fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+      fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>`;
   }
 
-  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}${panNoteA11y(note, useFlats, useSolfege)}>
   <circle cx="${x}" cy="${y}" r="${r}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
   ${textHtml}
 </g>`;
@@ -101,22 +113,29 @@ function strikeBadgesSvg(placed, strikeMarks) {
   for (const { note, marks } of strikeMarks) {
     const at = placed.find(p => p.note === note);
     if (!at || !marks.length) continue;
-    const label = marks.map(m => `${m.n}${m.hand}`).join(' ');
-    const w = 14 + label.length * 13;
-    const h = 30;
+    const label = marks.map(m => m.label ?? `${m.n}${m.hand}`).join(' ');
+    // A kalimba key's badge is as narrow as the key (keys sit side by side);
+    // combining octave dots take no width.
+    const chars = label.replace(/[\u0300-\u036f]/g, '').length;
+    const w = at.down ? Math.max(Math.round(at.r * 2), 8 + chars * 10) : 14 + label.length * 13;
+    const h = at.down ? 24 : 30;
+    const fs = at.down ? 17 : 23;
     // Just outside the note, away from the pan's centre (above the ding),
     // so the note's name stays readable.
-    const dx = at.x - 250, dy = at.y - 250;
+    // A kalimba key's badge goes straight below the key's end (keys sit side
+    // by side); other notes' away from the middle.
+    const dx = at.down ? 0 : at.x - 250, dy = at.down ? 1 : at.y - 250;
     const d = Math.hypot(dx, dy);
     const ux = d < 1 ? 0 : dx / d, uy = d < 1 ? -1 : dy / d;
     const off = at.r + 3 + Math.max(Math.abs(ux) * w / 2, Math.abs(uy) * h / 2);
     const x = Math.max(2, Math.min(500 - w - 2, Math.round(at.x + ux * off - w / 2)));
     const y = Math.max(2, Math.min(500 - h - 2, Math.round(at.y + uy * off - h / 2)));
-    const hand = marks[0].hand === 'L' ? 'l' : 'r';
-    out += `<g class="pan-strike pan-strike-${hand}" data-note="${note}" aria-hidden="true">
+    // Coloured by hand; a badge with no hand (a ding in a song's tab) is neutral.
+    const hand = marks[0].hand === 'L' ? 'l' : marks[0].hand === 'R' ? 'r' : 'n';
+    out += `<g class="pan-strike pan-strike-${hand}" data-note="${panEsc(note)}" aria-hidden="true">
   <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6"/>
   <text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central"
-    font-family="system-ui,sans-serif" font-size="23" font-weight="700">${label}</text>
+    font-family="system-ui,sans-serif" font-size="${fs}" font-weight="700">${label}</text>
 </g>`;
   }
   return out;
@@ -141,7 +160,7 @@ function tongueAngles(count) {
 function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfege) {
   const deg = Math.round((angle * 180) / Math.PI - 90); // local -y points at the middle
   const allClasses = ['pan-note', 'tongue', ...classes.split(' ').filter(Boolean)].join(' ');
-  const noteAttr = note ? ` data-note="${note}"` : '';
+  const noteAttr = note ? ` data-note="${panEsc(note)}"` : '';
   const cut = `M ${-w / 2 - 5} ${h / 2} L ${-w / 2 - 5} ${-h / 2 + w / 2} A ${w / 2 + 5} ${w / 2 + 5} 0 0 1 ${w / 2 + 5} ${-h / 2 + w / 2} L ${w / 2 + 5} ${h / 2}`;
   let text;
   if (!note) {
@@ -151,10 +170,10 @@ function tongueSvg(x, y, angle, note, classes, noteId, w, h, useFlats, useSolfeg
     const name = shown.replace(/\d+$/, '');
     const oct = (shown.match(/\d+$/) ?? [''])[0];
     const fs = Math.max(9, Math.round((name.length > 1 ? 12 : 14) * w / 40));
-    text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
-<text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>`;
+    text = `<text x="${x}" y="${y - 2}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${panEsc(name)}</text>
+<text x="${x}" y="${y + Math.round(fs * 0.9)}" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.65))}" font-weight="400" fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>`;
   }
-  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}>
+  return `<g class="${allClasses}" data-note-id="${noteId}"${noteAttr}${panNoteA11y(note, useFlats, useSolfege)}>
   <g transform="translate(${x} ${y}) rotate(${deg})">
     <path d="${cut}" fill="none" stroke="var(--pan-groove)" stroke-width="2" stroke-linecap="round"/>
     <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
@@ -238,16 +257,16 @@ function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strike
     const len = Math.round(250 - 130 * t);
     const cx = Math.round(x0 + step * (i + 0.5));
     const y1 = top, y2 = bridgeY + len;
-    if (k.note) placed.push({ x: cx, y: y2 - w, r: w / 2, note: k.note });
+    if (k.note) placed.push({ x: cx, y: y2 - w, r: w / 2, note: k.note, down: true });
     const cls = k.id === 'ding' ? `ding ${noteClass(k.note, true)}` : `ring ${noteClass(k.note, true)}`;
     const shown = k.note ? displayNote(k.note, useFlats, useSolfege) : '+';
     const name = shown.replace(/\d+$/, '');
     const oct = (shown.match(/\d+$/) ?? [''])[0];
     const fs = Math.max(8, Math.min(13, Math.round(w * 0.62)));
-    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${k.note}"` : ''}>
+    svg += `<g class="pan-note kalimba-key ${cls}" data-note-id="${k.id}"${k.note ? ` data-note="${panEsc(k.note)}"` : ''}${panNoteA11y(k.note, useFlats, useSolfege)}>
   <rect x="${cx - w / 2}" y="${y1}" width="${w}" height="${y2 - y1}" rx="${w / 2}" fill="var(--note-rest-bg)" stroke="var(--pan-note-stroke)" stroke-width="1.5"/>
-  <text x="${cx}" y="${y2 - fs * 1.3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${name}</text>
-  ${oct ? `<text x="${cx}" y="${y2 - fs * 0.35}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.7))}" fill="var(--note-rest-text)" opacity="0.5">${oct}</text>` : ''}
+  <text x="${cx}" y="${y2 - fs * 1.3}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${fs}" font-weight="600" fill="var(--note-rest-text)">${panEsc(name)}</text>
+  ${oct ? `<text x="${cx}" y="${y2 - fs * 0.35}" text-anchor="middle" font-family="system-ui,sans-serif" font-size="${Math.max(7, Math.round(fs * 0.7))}" fill="var(--note-rest-text)" opacity="0.5">${panEsc(oct)}</text>` : ''}
 </g>`;
   });
   // The bridge, over the keys' roots.
@@ -261,16 +280,24 @@ function renderKalimba(layout, { noteClass, useFlats, useSolfege, placed, strike
 // rendered without them is exactly as before.
 export function renderPan(layout, opts = {}) {
   const { shellMode = 'both', highlightNotes = [], altHighlightNotes = [], rotated = false, useFlats = false, useSolfege = false,
-    faintNotes = [], strikeMarks = [] } = opts;
+    faintNotes = [], strikeMarks = [], places = null } = opts;
 
   const cx = 250, cy = 250;
   const hlSet = new Set(highlightNotes);
   const altSet = new Set(altHighlightNotes);
   const faintSet = new Set(faintNotes);
-  const placed = []; // { x, y, r, note } of every note drawn, for strike badges
+  // { x, y, r, note } of every note drawn, for strike badges; opts.places
+  // collects them for the caller (panPlaces).
+  const placed = places ?? [];
+  // A handpan whose tone fields were moved to where they are on the real one
+  // (the editor's Move notes): layout.pos = { [place id]: { x, y } }.
+  const moved = layout.instrument ? null : layout.pos;
   const place = (x, y, note, classes, id, r) => {
+    const p = moved?.[id];
+    if (p) ({ x, y } = p);
     if (note) placed.push({ x, y, r, note });
-    return noteSlotSvg(x, y, note, classes, id, r, useFlats, useSolfege);
+    return noteSlotSvg(x, y, note, classes, id, r, useFlats, useSolfege)
+      .replace('<g ', `<g data-x="${x}" data-y="${y}" data-r="${r}" `);
   };
 
   // Assign each unique pitch class in the chord its own color (0-3, root first),
@@ -396,6 +423,14 @@ export function renderPan(layout, opts = {}) {
 }
 
 // Update highlight using full note strings (with octave)
+// Where each note is drawn ({ x, y, r, note }, in the 500 × 500 drawing),
+// as renderPan places it with these options (rotation, moved tone fields).
+export function panPlaces(layout, opts = {}) {
+  const places = [];
+  renderPan(layout, { ...opts, places });
+  return places;
+}
+
 export function updatePanHighlight(noteNames, altNoteNames = []) {
   const svg = document.getElementById(PAN_SVG_ID);
   if (!svg) return;
@@ -440,4 +475,49 @@ export function updatePanPlaying(noteNames, svg = document.getElementById(PAN_SV
     svg.querySelectorAll('.pan-note.playing').forEach(el => el.classList.remove('playing'));
     _playTimer = null;
   }, 2200);
+}
+
+// ── Moving tone fields (the editor's Move notes) ────────────────────────────
+// Handpans are laid out in many ways, so the tone fields of a handpan can be
+// moved on the drawing to where they are on the real one. Places on top stay
+// on the pan, the ones underneath round it, and two never overlap.
+export const PAN_BODY_R = 193;
+const PAN_GAP = 3;
+
+/** Where a place dropped at (x, y) settles, given the other places
+ *  [{ x, y, r }]: inside its area and clear of the others, or null when it
+ *  can't fit there. id: 'ding' / 'ring-N' (on top) or 'gu-N' (underneath). */
+export function settlePanPlace(id, x, y, r, others, { cx = 250, cy = 250, size = 500 } = {}) {
+  const under = id.startsWith('gu-');
+  const into = (px, py) => {
+    let dx = px - cx, dy = py - cy, d = Math.hypot(dx, dy);
+    if (d < 1) { dx = 0; dy = 1; d = 1; } // dropped dead centre: straight down
+    if (!under) {
+      const max = PAN_BODY_R - r - PAN_GAP;
+      return d > max ? [cx + dx / d * max, cy + dy / d * max] : [px, py];
+    }
+    const min = PAN_BODY_R + r + PAN_GAP;
+    let [qx, qy] = d < min ? [cx + dx / d * min, cy + dy / d * min] : [px, py];
+    qx = Math.min(size - r - PAN_GAP, Math.max(r + PAN_GAP, qx));
+    qy = Math.min(size - r - PAN_GAP, Math.max(r + PAN_GAP, qy));
+    return [qx, qy];
+  };
+  const clear = (px, py) => others.every(o => Math.hypot(px - o.x, py - o.y) >= r + o.r + PAN_GAP);
+  // Where it was dropped (kept in its area), else the nearest free spot
+  // round that: rings of candidates further and further out.
+  const [px, py] = into(x, y);
+  if (clear(px, py)) return { x: Math.round(px), y: Math.round(py) };
+  for (let R = 4; R <= size; R += 4) {
+    const steps = Math.max(12, Math.round(R / 3));
+    let best = null;
+    for (let k = 0; k < steps; k++) {
+      const a = (2 * Math.PI * k) / steps;
+      const [qx, qy] = into(px + R * Math.cos(a), py + R * Math.sin(a));
+      if (!clear(qx, qy)) continue;
+      const d = Math.hypot(qx - px, qy - py);
+      if (!best || d < best.d) best = { x: qx, y: qy, d };
+    }
+    if (best) return { x: Math.round(best.x), y: Math.round(best.y) };
+  }
+  return null;
 }

@@ -175,12 +175,14 @@ export function rowToItem(row) {
 
 // One round of sync: pull what other devices wrote, merge it in, then push
 // this device's changes, merging and retrying when another device got there
-// first. Returns { pulled, pushed, copies, pending } (counts, and the
-// names of kept copies for the one-time note).
+// first. Returns { pulled, pushed, copies, pending, rejected } (counts, the
+// names of kept copies for the one-time note, and the items the server
+// refused for good, such as one over the size cap).
 export async function syncRound({ local, bases, api, device = 'device', newId }) {
   const baseMap = await bases.getAll();
   const meta = (await bases.getMeta()) || {};
-  const result = { pulled: 0, pushed: 0, copies: [], pending: 0 };
+  const result = { pulled: 0, pushed: 0, copies: [], pending: 0, rejected: [] };
+  const skipped = new Set(); // refused by the server this round
   const mergeIn = (kind, id, base, mine, row) => {
     const theirs = rowToItem(row);
     const { data, copy } = merge3(kind, base?.data ?? null, mine, theirs, { mineDevice: device, theirsDevice: row.device_kind || 'other device', newId });
@@ -221,7 +223,7 @@ export async function syncRound({ local, bases, api, device = 'device', newId })
 
   // Push the outbox.
   for (let pass = 0; pass < 3; pass++) {
-    const changes = pendingChanges(local.items(), baseMap);
+    const changes = pendingChanges(local.items(), baseMap).filter(ch => !skipped.has(ch.key));
     if (!changes.length) break;
     let conflicted = false;
     for (const ch of changes) {
@@ -241,6 +243,11 @@ export async function syncRound({ local, bases, api, device = 'device', newId })
         baseMap.set(ch.key, rec);
         await bases.put(ch.key, rec);
         conflicted = true;
+      } else if (res?.rejected) {
+        // The server will never take this one as it is (too large): it
+        // stays on the device, and the rest of the outbox still goes.
+        skipped.add(ch.key);
+        result.rejected.push({ kind: ch.kind, id: ch.id, name: ch.data?.name ?? null, why: res.rejected });
       } else {
         // Offline or the server said no: stays in the outbox for next time.
         result.pending = pendingChanges(local.items(), baseMap).length;
