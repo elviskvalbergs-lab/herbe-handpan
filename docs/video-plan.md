@@ -76,6 +76,7 @@ A is the only one that tries to say everything. B, C and D each take one sentenc
 - **Audience:** jammers, any instrument.
 - **Hook (0–3 s):** the question "What can *your* instrument play?" over three instruments, each with a different set of notes.
 - **Folder:** `scripts/demo-video/overview/` (replaces its current six scenes; the scene keys stay `o1`–`o6`, but `o2`–`o5` are all phone scenes now, so its `compose.py` needs four recordings instead of one). Voice: 84 words, about 415 characters.
+- **Built (26 Nov), first cut with the Kokoro voice, 43 s:** `overview/record.js` makes the four phone recordings from the live app (`../phone-recorder.js`), `scenes.js` the hook and the end card, `compose.py` the video. Scene 5's guitar is a stand-in made by `overview/guitar.py` (a plucked-string D minor, then B♭, which Listen recognises); a phone recording of a real guitar replaces `guitar.wav` without other changes. Next: the owner's check, then the ElevenLabs take and the 9:16 cut.
 
 | # | Key · kind | Picture: link and taps | Voice-over | Caption (big / sub) | App sound |
 |---|---|---|---|---|---|

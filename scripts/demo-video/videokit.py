@@ -36,16 +36,24 @@ def mark(tl, prefix):
 
 
 class Phone:
-    """The phone recording made by ../record.js (D Kurd: the scale, then Dm, B flat, F, C)."""
-    def __init__(self):
-        tl = json.load(open(os.path.join(DEMO, 'timeline.json')))
+    """A phone recording: by default the one made by ../record.js (D Kurd: the
+    scale, then Dm, B flat, F, C); or any folder written by ../phone-recorder.js.
+    t: every mark by name (recording clock); first: the first frame's time."""
+    def __init__(self, folder=DEMO):
+        tl = json.load(open(os.path.join(folder, 'timeline.json')))
         self.first, self.audio_offset = mark(tl, 'firstFrame'), tl['audioOffset']
-        self.t = {k: mark(tl, k) for k in ('scale', 'D Minor', 'A# Major', 'F Major', 'C Major')}
-        self.video = os.path.join(DEMO, 'screen.mp4')
-        self.audio = os.path.join(DEMO, 'audio.webm')
-        if not os.path.exists(self.video):  # normally made by ../compose.py
-            run(['-f', 'concat', '-safe', '0', '-i', os.path.join(DEMO, 'frames.ffconcat'), '-vf', f'fps={FPS},format=yuv420p',
+        self.t = {m['name']: m['t'] for m in tl['marks']}
+        if folder == DEMO:  # ../record.js names its chords by the regex it tapped them with
+            self.t.update({k: mark(tl, k) for k in ('scale', 'D Minor', 'A# Major', 'F Major', 'C Major')})
+        self.video = os.path.join(folder, 'screen.mp4')
+        self.audio = os.path.join(folder, 'audio.webm')
+        if not os.path.exists(self.video):  # ../record.js's is normally made by ../compose.py
+            run(['-f', 'concat', '-safe', '0', '-i', os.path.join(folder, 'frames.ffconcat'), '-vf', f'fps={FPS},format=yuv420p',
                  '-c:v', 'libx264', '-crf', '18', self.video])
+
+    def at(self, name, offset=0.0):
+        """Where a moment of the recording is in its video file (seconds)."""
+        return self.t[name] + offset - self.first
 
     def sound(self, at_mark):
         """Where a moment of the recording is in its audio file (seconds)."""
@@ -97,7 +105,8 @@ class Video:
             args += ['-loop', '1', '-i', png]
         n = len(backgrounds)
         args += ['-ss', f'{ss:.3f}', '-t', str(dur), '-i', video, '-loop', '1', '-i', mask]
-        g = f"[{n}:v]scale=420:909,format=rgba[ph];[{n+1}:v]format=gray,scale=420:909[m];[ph][m]alphamerge[phm];"
+        # A recording shorter than the scene holds its last frame (tpad).
+        g = f"[{n}:v]tpad=stop_mode=clone:stop_duration={dur},scale=420:909,format=rgba[ph];[{n+1}:v]format=gray,scale=420:909[m];[ph][m]alphamerge[phm];"
         last = '[0:v]'
         for i in range(1, n):
             g += f"{last}[{i}:v]overlay=enable='gte(t,{backgrounds[i][1]:.2f})'[bg{i}];"
