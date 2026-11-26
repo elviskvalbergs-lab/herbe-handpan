@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { stegaClean } from "next-sanity";
 import { Faq } from "@/components/Faq";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { HandpanDemo } from "@/components/HandpanDemo";
 import { MakersDirectory } from "@/components/MakersDirectory";
 import { Reasons } from "@/components/Reasons";
@@ -63,10 +64,7 @@ export default async function MakersPage() {
         <div className="mx-auto max-w-[960px]">
           <h2 className={`${h2} m-0 mb-3`}>{m.videoTitle ?? seed.makers.videoTitle}</h2>
           <p className="m-0 mb-6 text-body">{m.videoText ?? seed.makers.videoText}</p>
-          <video controls playsInline preload="none" poster={VIDEO.poster} aria-label={m.videoTitle ?? seed.makers.videoTitle}
-            className="block aspect-video h-auto w-full rounded-card bg-dark shadow-[inset_0_0_0_1px_var(--border)]">
-            <source src={VIDEO.src} type="video/mp4" />
-          </video>
+          <VideoPlayer src={VIDEO.src} poster={VIDEO.poster} label={m.videoTitle ?? seed.makers.videoTitle ?? ""} />
         </div>
       </section>
 

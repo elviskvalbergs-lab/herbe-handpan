@@ -11,6 +11,9 @@ describe("the site's words", () => {
     expect(seed.home.heroText.length).toBeLessThanOrEqual(260);
     for (const k of ["heroCta", "heroListen", "requestCta"] as const) expect(seed.home[k]!.length, k).toBeLessThanOrEqual(40);
     expect(seed.home.heroTry!.length).toBeLessThanOrEqual(60);
+    expect(seed.home.heroWatch!.length).toBeLessThanOrEqual(40);
+    expect(seed.home.videoTitle!.length).toBeLessThanOrEqual(60);
+    expect(seed.home.videoText!.length).toBeLessThanOrEqual(200);
     expect(seed.home.songsText!.length).toBeLessThanOrEqual(320);
     for (const p of [...(seed.home.steps ?? []), ...(seed.home.why ?? []), ...(seed.home.memberPoints ?? [])]) { expect(p.title.length).toBeLessThanOrEqual(80); expect(p.text.length).toBeLessThanOrEqual(400); }
     for (const q of [...(seed.home.faqs ?? []), ...seed.instruments.flatMap((i) => i.faqs ?? [])]) { expect(q.question.length).toBeLessThanOrEqual(140); expect(q.answer.length).toBeLessThanOrEqual(900); }

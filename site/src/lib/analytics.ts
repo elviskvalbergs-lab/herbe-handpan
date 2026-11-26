@@ -19,7 +19,8 @@ export type SiteEvent =
   | "app_cta_click" // location (header, hero, demo, …), href
   | "request_submitted" // kind
   | "maker_contact_click" // location
-  | "video_play"; // video
+  | "video_play" // video
+  | "home_view"; // variant: the home page experiment (src/lib/experiment.ts)
 
 type PostHog = { init: (key: string, options: Record<string, unknown>) => void; capture: (name: string, props?: Record<string, unknown>) => void };
 declare global {
@@ -27,6 +28,9 @@ declare global {
 }
 
 const queue: [string, Record<string, unknown>][] = [];
+// The home page experiment's version on this page, sent with every event (src/lib/experiment.ts).
+let homeVariant: string | null = null;
+export function setHomeVariant(v: string | null): void { homeVariant = v; }
 let state: "off" | "loading" | "ready" = "off";
 
 /** Loads PostHog once (called when the page has settled, and by the first event). */
@@ -55,7 +59,7 @@ export function loadAnalytics(): void {
 export function track(name: SiteEvent, props: Record<string, unknown> = {}): void {
   if (!POSTHOG_KEY || typeof window === "undefined") return;
   if (state !== "ready") { if (queue.length < 50) queue.push([name, props]); loadAnalytics(); return; }
-  try { window.posthog!.capture(name, { ...props, surface: "site" }); } catch { /* never in the way */ }
+  try { window.posthog!.capture(name, { ...props, surface: "site", ...(homeVariant ? { home_variant: homeVariant } : {}) }); } catch { /* never in the way */ }
 }
 
 // ── Links into the app ──────────────────────────────────────────────────────

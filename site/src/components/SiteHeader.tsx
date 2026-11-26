@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HOME_B_PATH } from "@/lib/experiment";
 import { APP_URL } from "@/lib/site";
 import { btnCta, btnInk, container } from "@/lib/ui";
 import { Logo } from "./Logo";
@@ -9,7 +10,9 @@ import { Logo } from "./Logo";
 // On the home page the header is a cream band above the hero picture, ink on
 // cream (docs/design/hero-a-reference.webp). Elsewhere it is the ink band.
 export function SiteHeader() {
-  const home = usePathname() === "/";
+  // "/home-b" is the home page too: version b of the home page experiment, served at "/" (src/lib/experiment.ts).
+  const path = usePathname();
+  const home = path === "/" || path === HOME_B_PATH;
   const link = home ? "text-text no-underline hover:text-text hover:underline" : "text-on-dark no-underline hover:text-on-dark hover:underline";
   return (
     <header className={home ? "relative z-10 bg-bg text-text" : "on-dark bg-dark text-on-dark"}>
