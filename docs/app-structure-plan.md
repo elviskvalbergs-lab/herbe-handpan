@@ -55,6 +55,10 @@ Where the build departed from the plan:
 - **File order** follows where each file's load-time statements were in the old file, not the alphabetical order of section 4: `render.js` before `picker.js`, and `install.js`, `prefs.js`, `sync-ui.js`, `account.js` near the end.
 - **Files the plan did not have**: `help.js`, `views/instrument.js` (the shared instrument screen parts from the navigation redesign), `views/song-tab.js`, `views/progression-play.js`, `views/selector.js` (with finding a scale by ear), `instruments/layout-editor.js`. No `instruments/adapter.js` yet (section 3).
 
+The instrument shells, re-measured after the split (section 3's table is older than the navigation redesign):
+- **Already one shared part**: the tabs and app bar (`instrumentTabs`, `instrumentAppBar`), the Playlists and Songs tabs (`playlistsTabHtml`, `songsTabHtml`), the Chords screen frame, card, rows, list line and mode switch (`chordsScreenHtml`, `chordCardHtml`, `chordRowHtml`, `chordListLineHtml`, `chordModeSegHtml`), the Filters and More sheets (`chordFiltersSheet`, `chordMoreSheet`).
+- **Still two**: what goes into those parts (`viewChords` / `viewOcarinaChords` and their helpers), the two chords states (`chordFilter`, `chordCountSet`, `discoverMode`, `hpListen` / `state.oc`) and their action names, links (`stateToHash` / `instUrl`), opening, playing a playlist (Play / Practice). These differ in behaviour, not only in names: a handpan's Chords shows an empty card until a chord is tapped while a wind instrument always shows its first chord; a handpan's Tap notes bookmarks and plays the chords found while a wind instrument's opens them; autoplay is handpan-only, "Not on this ocarina" wind-only. Merging them means choosing one behaviour, which is the owner's call (section 5, pull requests 15–17).
+
 ---
 
 ## The plan, as written before the move
