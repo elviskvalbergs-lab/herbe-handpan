@@ -88,7 +88,7 @@ function renderPlaylistPicker() {
        </div>`
     : uiRow({ lead: `<span class="row-check">${icon('plus')}</span>`, title: 'New playlist', action: 'show-new-progression-input' });
   return uiSheet({
-    key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
+    help: uiHelp('playlists', 'start'), key: 'picker', title: 'Add to playlist', close: 'close-playlist-picker',
     body: `<p class="picker-hint">Adds the chord at the end. The same chord can go in more than once; ✓ marks the playlists it is in already.</p><div class="list">${rows}${create}</div>`,
   });
 }

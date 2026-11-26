@@ -1,5 +1,7 @@
 # Songs, next: links, fit and the player
 
+**Status: built** (status line added 22 Nov 2026), except what "What was built, and what differs from the plan" at the end lists as not built (sharing a playlist, a picture per song page, "loop this line").
+
 Design for the songs work that follows the outside-in review (November 2026). Wireframes: `docs/songs-next-wireframes.html`. Built in four pull requests, listed at the end. This document is the plan; `docs/design-system.md` records what is built.
 
 ## Open questions for the owner

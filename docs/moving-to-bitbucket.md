@@ -1,5 +1,7 @@
 # Moving the repository from GitHub to Bitbucket Cloud
 
+**Status: plan** (status line added 22 Nov 2026). Nothing has been moved.
+
 Checked on **2026-11-21**. Nothing in the session that wrote this could reach Bitbucket itself, so this is a plan, not a record of something done. Every statement about Bitbucket, Vercel, Sentry, Playwright or Claude Code has the documentation page it came from next to it. Where the documentation didn't answer, it says **not verified**: check those in the console before relying on them.
 
 The steps are in the order that avoids downtime. The short version is the checklist in section 12.

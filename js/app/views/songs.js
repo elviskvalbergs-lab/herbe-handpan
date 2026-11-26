@@ -77,7 +77,7 @@ function songsSectionHtml(inst) {
   const what = filter === 'christmas' ? 'Christmas songs' : origin ? `songs from ${SONG_ORIGINS[origin]}` : 'songs';
   return `
     <section class="pl-section" aria-labelledby="pl-sec-songs">
-      <h2 class="list-title" id="pl-sec-songs">Songs to learn</h2>
+      <h2 class="list-title" id="pl-sec-songs">Songs to learn ${uiHelp('songs-to-learn')}</h2>
       <div class="chips songs-filter" role="group" aria-label="Which songs">
         ${nXmas ? chip('christmas', `Christmas · ${nXmas}`, { cls: spotlight ? ' is-spotlight' : '', lead: spotlight ? icon('sparkles') : '' }) : ''}
         ${chip('popular', `Popular · ${nPop}`)}
@@ -90,7 +90,7 @@ function songsSectionHtml(inst) {
             action: 'song-open', data: { id: song.id, inst: inst?.id ?? '' },
           })).join('')}${!state.songsAll && ok.length > SONGS_SHOWN ? uiRow({ lead: 'chevron-down', title: `Show all ${ok.length} ${what}`, action: 'songs-all' }) : ''}</div>`
         : `<p class="pl-section-hint">None of these ${escHtml(what)} fits your ${escHtml(word)} completely${almost.length ? '' : ': each needs notes it doesn’t have'}.</p>`}
-      ${almost.length ? `<h3 class="list-title song-almost-title">Almost fit: one note missing</h3>
+      ${almost.length ? `<h3 class="list-title song-almost-title">Almost fit: one note missing ${uiHelp('songs-to-learn', 'almost')}</h3>
         <div class="list">${(state.songsAlmostAll ? almost : almost.slice(0, SONGS_ALMOST_SHOWN)).map(x => uiRow({
             lead: 'music', title: x.song.title, meta: escHtml(`${songMeta(x.song, x.shift)} · ${songMissingLabel(x)}`), chevron: true,
             action: 'song-open', data: { id: x.song.id, inst: inst?.id ?? '' },
@@ -112,7 +112,7 @@ function songsCountriesSheet() {
     action: 'songs-filter', data: { value: `origin:${o}` }, chevron: true,
   })).join('');
   return uiSheet({
-    key: 'songs-countries', title: 'Songs by country', close: 'songs-countries-close',
+    help: uiHelp('songs-to-learn', 'steps'), key: 'songs-countries', title: 'Songs by country', close: 'songs-countries-close',
     body: `<div class="list">${rows}</div>`,
   });
 }

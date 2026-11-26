@@ -45,7 +45,7 @@ function installHelpSheet() {
     ? ['Open the menu (the three lines at the bottom).', 'Choose <b>Add page to</b>, then <b>Home screen</b>.']
     : ['Open the browser menu (⋮ or ≡).', 'Choose <b>Add to Home screen</b> or <b>Install app</b>.'];
   return uiSheet({
-    key: 'install', title: 'Add Oakhum to your home screen', close: 'install-help-close',
+    help: uiHelp('install'), key: 'install', title: 'Add Oakhum to your home screen', close: 'install-help-close',
     body: `<ol class="install-steps">${steps.map(t => `<li>${t}</li>`).join('')}</ol>
       <p class="sheet-text">Then open Oakhum from its icon: full screen, quicker to reach, and with an account it works offline.</p>`,
     footer: '<button type="button" class="btn btn-primary" data-action="install-help-close">Done</button>',

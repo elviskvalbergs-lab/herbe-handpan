@@ -78,7 +78,7 @@ function goesWithLineHtml() {
   }).join('');
   if (!chips) return '';
   return `<div class="gw-line">
-      <span class="gw-label">Goes well with</span>
+      <span class="gw-label">Goes well with ${uiHelp('goes-well-with')}</span>
       <div class="gw-chips">${chips}</div>
     </div>`;
 }
@@ -103,7 +103,7 @@ function goesWithSheet() {
       <button type="button" class="btn btn-secondary btn-sm" data-action="gw-save" data-i="${i}">Save</button>`,
   })).join('');
   return uiSheet({
-    key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
+    help: uiHelp('goes-well-with', 'progressions'), key: 'goes-with', title: `Goes well with ${gwChordName(ctx.chord)}`, close: 'gw-close',
     body: `<p class="sheet-text">Well-known progressions in ${escHtml(keyName)}, the key of your ${escHtml(state.view === 'instrument' ? windWord(currentInstrument()) : layoutFamilyInfo(layoutInstrument(state.layout)).word)}, all playable on it. ▶ to hear one, Save to keep it as a playlist.</p>
       <div class="list gw-list">${rows}</div>`,
   });
@@ -175,8 +175,10 @@ function chordNotesWord(n) { return `${n} note${n !== 1 ? 's' : ''}`; }
 // All chords · Tap notes · Listen: the three ways to find a chord, the same
 // switch on every instrument.
 function chordModeSegHtml(mode, action) {
-  return uiSeg([{ value: 'browse', label: 'All chords' }, { value: 'identify', label: 'Tap notes' }, { value: 'listen', label: 'Listen' }],
+  const seg = uiSeg([{ value: 'browse', label: 'All chords' }, { value: 'identify', label: 'Tap notes' }, { value: 'listen', label: 'Listen' }],
     mode, { action, label: 'Find a chord' });
+  const help = mode === 'identify' ? uiHelp('identify-a-chord', 'steps') : mode === 'listen' ? uiHelp('listen', 'steps') : uiHelp('chords', 'play');
+  return `<div class="chord-mode-row">${seg}${help}</div>`;
 }
 
 // Main chords (chords.js mainChordsInKey): every Chords list shows the plain
@@ -232,9 +234,9 @@ function chordCountKey(n) { return n >= 5 ? '5+' : String(n); }
 // The Filters sheet of every instrument's Chords: the note the chord starts
 // on, how many notes, the type, then the instrument's own field (a
 // handpan's playlist, an ocarina's or flute's scale).
-function chordFiltersSheet({ key, close, clear, roots, root, rootAction, counts, countAction, category, categoryAction, extra = '' }) {
+function chordFiltersSheet({ key, help = '', close, clear, roots, root, rootAction, counts, countAction, category, categoryAction, extra = '' }) {
   const uf = state.useFlats, us = state.useSolfege;
-  return uiSheet({
+  return uiSheet({ help,
     key, title: 'Filters', close,
     body: `
     <div class="hp-sheet-form">
@@ -258,10 +260,10 @@ function chordFiltersSheet({ key, close, clear, roots, root, rootAction, counts,
 // ⋯ of the chord on top, the same sheet on every instrument: the
 // instrument's own rows, the well-known progressions with this chord, then
 // whatever else the instrument shows (related chords, octaves, the legend).
-function chordMoreSheet({ key, variant = 'menu', title, close, rows = [], extra = '' }) {
+function chordMoreSheet({ key, help = '', variant = 'menu', title, close, rows = [], extra = '' }) {
   const all = [
     ...rows,
     goesWithHasProgressions() ? uiRow({ lead: 'list-ordered', title: 'Progressions with this chord', meta: 'Well-known ones, to hear and to save', chevron: true, action: 'gw-open' }) : '',
   ].join('');
-  return uiSheet({ key, variant, title, close, body: `<div class="list">${all}</div>${extra}` });
+  return uiSheet({ help, key, variant, title, close, body: `<div class="list">${all}</div>${extra}` });
 }

@@ -33,6 +33,7 @@ never changes to existing ones. Name new files `YYYYMMDD_short_name.sql`.
 | `20261122_maker_codes_scans.sql` | Makers, phase 2: `create_maker_codes()` (a code per serial number of a shared instrument), `retire_maker_code()`; `maker_scan_days` (per code, day, country and source: opens, devices, saves, chords, songs), `maker_scan_seen` and `maker_scan_salts` (a daily hash to count a device once, deleted after two days), written only by `log_maker_event()`. No IP address is stored |
 | `20261122_makers_recorder.sql` | Makers can say they make recorders: the `makers.families` check is replaced by the same check with `recorder` added (the one owner-approved exception to additive-only, allowed by name in `tests/makers-sql.test.mjs`) |
 | `20261123_maker_stats.sql` | Makers, phase 3: `maker_stats(days)`, the only way to read the scan counts, and only the caller's own codes: totals, per day, per source, per country (from five devices up) and per code |
+| `20261124_maker_request_notice.sql` | `makers.notified_at` and `claim_maker_request_notice()`: one email to the owner per maker request (the website's `/api/maker-request`) |
 
 Until a migration has been applied, the features that need it fail quietly:
 the app keeps working, instruments and progressions stay on the device and
@@ -128,6 +129,22 @@ shops). Nothing of theirs is public until a request is approved.
    directory entry and "Made by" disappear at once; their codes keep opening
    the instruments.
 
+
+**Email about new requests.** When a maker sends a request, the website
+emails you (one email per request). Set it up once:
+
+1. Make a free account at resend.com with the address you want the emails
+   at (oakhummusic@gmail.com), and create an API key (Sending access).
+2. In Vercel → the **website** project → Settings → Environment Variables,
+   add `RESEND_API_KEY` with that key, for Production. Redeploy.
+3. That's all while the emails go to the address the Resend account was
+   made with: they come from Resend's own sender. To send to another
+   address, verify your domain in Resend and set `MAKER_NOTIFY_FROM`
+   (e.g. `Oakhum <makers@oakhum.com>`) and `MAKER_NOTIFY_EMAIL`.
+
+Without `RESEND_API_KEY` the request becomes a Jira issue (label
+`maker-request`) if Jira is set up for feedback; with neither, only the
+count in the app's Settings tells you.
 ## Testing the SQL
 
 `tests/makers-sql.test.mjs` applies every migration to a throwaway database

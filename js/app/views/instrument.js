@@ -99,7 +99,7 @@ function instrumentAppBar(inst, view, { practice = false } = {}) {
 function playlistsTabHtml(inst) {
   return `
     <section class="pl-section" aria-labelledby="pl-sec-playlists">
-      <h2 class="list-title" id="pl-sec-playlists">Playlists</h2>
+      <h2 class="list-title" id="pl-sec-playlists">Playlists ${uiHelp('playlists')}</h2>
       ${state.progressions.length
         ? `<div class="list">${progressionRowsHtml(inst)}</div>`
         : '<p class="pl-section-hint">Chords in order, the same chord as often as you like (Am – Dm – Am), played in time. Tap the bookmark on any chord to start one, or paste a chord sheet.</p>'}
@@ -115,7 +115,7 @@ function playlistsTabHtml(inst) {
 function songsTabHtml(inst) {
   return `${songsSectionHtml(inst)}
     <section class="pl-section" aria-labelledby="pl-sec-sheet">
-      <h2 class="list-title" id="pl-sec-sheet">Chords of a song</h2>
+      <h2 class="list-title" id="pl-sec-sheet">Chords of a song ${uiHelp('chord-sheets')}</h2>
       <div class="list">${uiRow({ lead: 'clipboard-paste', title: 'Paste a chord sheet', meta: 'Know a song’s chords? Play along with them', chevron: true, action: 'cs-open' })}</div>
     </section>`;
 }

@@ -7,10 +7,10 @@ type: reference
 audience: players
 instruments: all
 features: my-instruments
-verified: 2026-11-21
+verified: 2026-11-25
 order: 60
 ---
-{{my-instruments}} lists every instrument you have saved.
+{{my-instruments}} lists every instrument you have saved, with your playlists below them.
 
 ![My instruments, with one handpan saved](img:my-instruments)
 
@@ -26,7 +26,7 @@ Tap {{add-instrument}} and set it up like the first one. You can have as many as
 
 ## Rename it or add a photo {#edit}
 
-Tap the three dots on its row, then {{edit-instrument}}. A photo of the top of the instrument works best.
+Tap the three dots on its row, then {{edit-instrument}}. A photo of the top of the instrument works best. You can also do this on the instrument's {{set-up-tab}} tab.
 
 ## Remove an instrument {#remove}
 

@@ -14,10 +14,13 @@ function helpScreenKey() {
   if (v === 'chords') return state.hpListen ? 'listen' : state.discoverMode ? 'identify' : 'chords';
   if (v === 'editor') return 'pan';
   if (v === 'hp-playlists') return 'playlists';
+  if (v === 'hp-songs') return 'songs';
   if (v === 'instrument') {
-    const tab = state.oc.tab;
-    if (tab === 'chords') return state.oc.listen ? 'listen' : 'chords';
-    return tab === 'playlists' ? 'playlists' : tab === 'practice' ? 'practice' : 'notes';
+    const oc = state.oc;
+    if (oc.tab === 'chords') return oc.listen ? 'listen' : oc.identify ? 'identify' : 'chords';
+    if (oc.tab === 'songs') return 'songs';
+    if (oc.tab === 'setup') return 'pan';
+    return oc.tab === 'playlists' ? 'playlists' : oc.tab === 'practice' ? 'practice' : 'notes';
   }
   if (v === 'playlist') return 'playlist';
   if (v === 'progression') return 'progression';
@@ -25,6 +28,7 @@ function helpScreenKey() {
   if (v === 'setup' || v === 'wizard') return 'setup';
   if (v === 'play' || v === 'selector') return 'try';
   if (v === 'settings') return 'settings';
+  if (v.startsWith('maker')) return 'makers';
   return 'home';
 }
 

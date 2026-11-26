@@ -41,7 +41,7 @@ function speedBtnHtml() {
 }
 function speedSheet() {
   return uiSheet({
-    key: 'speed', title: 'Speed', close: 'speed-close',
+    help: uiHelp('speed'), key: 'speed', title: 'Speed', close: 'speed-close',
     body: `<p class="sheet-text">How fast chords, scales and fingerings play, on every instrument. Slower is easier to follow.</p>${tempoControlHtml()}`,
     footer: '<button type="button" class="btn btn-primary" data-action="speed-close">Done</button>',
   });

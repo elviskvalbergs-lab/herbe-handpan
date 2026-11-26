@@ -466,7 +466,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'how') {
     return stepFrame({
-      header, stage: 2, title: `Let’s find out which ${word} you have`,
+      header, help: uiHelp('set-up-by-playing', 'before'), stage: 2, title: `Let’s find out which ${word} you have`,
       sub: `No need to know its ${fi.pick}. Play it to your phone and Oakhum works it out.`,
       body: `
         <ol class="setup-how">
@@ -488,7 +488,7 @@ function viewBeginnerSetup() {
     const what = st.family === 'handpan' ? 'Count the notes on top, the ding in the middle too. Then any underneath.'
       : st.family === 'kalimba' ? 'Count every key.' : 'Count every tongue, a round one in the middle too.';
     return stepFrame({
-      header, stage: 3, title: `How many notes does your ${word} have?`, sub: what,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3, title: `How many notes does your ${word} have?`, sub: what,
       body: `
         <div class="setup-count">
           ${st.family === 'handpan'
@@ -509,7 +509,7 @@ function viewBeginnerSetup() {
 
   if (st.step === 'windtype') {
     return stepFrame({
-      header, stage: 2, title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or play it a note.',
+      header, help: uiHelp('set-up-ocarina-or-flute'), stage: 2, title: `Which ${word} do you have?`, sub: 'Then its key: tell Oakhum, or play it a note.',
       body: `<div class="list">${(SETUP_WIND_TYPES[st.family] ?? []).map((t, i) => uiRow({ title: t.name, meta: escHtml(t.group ? (t.hint ?? '') : `${t.hint ? `${t.hint} · ` : ''}${t.noChart ? 'no published chart found yet: ' : ''}set up note by note with the tuner`.replace(/^s/, 'S')), chevron: true, action: 'setup-windtype', data: { i } })).join('')}</div>${st.family === 'ocarina' ? `<p class="wizard-foot">A double or triple ocarina (several chambers)? Their charts aren’t in Oakhum yet. <a class="link-btn" href="${SETUP_REQUEST_URL}">Ask for yours</a>.</p>` : ''}`,
       bar: { left: '<button type="button" class="btn btn-ghost" data-action="setup-listen-free">Not sure · play my notes</button>' },
     });
@@ -521,7 +521,7 @@ function viewBeginnerSetup() {
     const picked = st.windRoot ? keys.find(k => k.root === st.windRoot) : null;
     const rn = r => escHtml(displayNote(r, uf, us));
     return stepFrame({
-      header, stage: 3, title: 'Do you know its key?',
+      header, help: uiHelp('set-up-ocarina-or-flute', 'listen'), stage: 3, title: 'Do you know its key?',
       sub: `It’s usually written on the ${escHtml(word)} or its box. ${keys.length <= 2 ? '' : st.family === 'flute' ? 'A, G and F♯ are the most common.' : st.family === 'recorder' ? 'A soprano (descant) or tenor is in C, an alto (treble) or sopranino in F.' : 'C is the most common.'}`,
       body: `
         <div class="setup-roots setup-wind-roots">
@@ -550,7 +550,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? (g.idx === 0 ? 'Listening' : `${g.idx} of ${g.seq.length} · listening`) : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, stage: 3,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3,
       title: g.idx === 0 ? 'Cover every hole and blow gently' : `Now play ${windNoteName(want + g.offset)}`,
       sub: (g.idx === 0 ? `The lowest note${chart.holes.some(h => h.side === 'bottom') ? ', thumb holes covered too' : ''}. Oakhum works out the key from it.` : 'Open the holes shown open, keep the others covered. Tap a note above to play it again.')
         + (g.chartId.startsWith('naf6') ? ' On a 6-hole Native American flute the third hole from the top stays closed for this whole scale.' : ''),
@@ -575,7 +575,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `${filled} of ${guideTotal(g)} · listening` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, stage: 3,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3,
       title: g.notes[g.active] != null ? `Play ${label} again` : `Play ${label}`,
       sub: `${fi.sound} The one to play is lit; tap another if you’re playing that one instead.`,
       body: `${setupPanHtml({ guide: g, family: st.family })}
@@ -596,7 +596,7 @@ function viewBeginnerSetup() {
     const status = L.error ? `<p class="setup-status is-danger">${escHtml(L.error)}</p>`
       : `<p class="setup-status" aria-live="polite">${L.listening ? '<span class="listen-dot" aria-hidden="true"></span>' : ''}${L.listening ? `Listening · ${n} note${n !== 1 ? 's' : ''} heard` : (L.stopped ? escHtml(L.stopped) : 'Stopped listening.')}</p>`;
     return stepFrame({
-      header, stage: 3,
+      header, help: uiHelp('set-up-by-playing', 'steps'), stage: 3,
       title: n === 0 ? `Play ${fi.firstShort}` : 'Now the next note',
       sub: n === 0 ? fi.sound : `Heard ${escHtml(nn(heardNoteName(L.notes[n - 1])).replace(/-?\d+$/, ''))}. Keep going, any order. ${fi.next}`,
       body: `${setupPanHtml({ heard: L.notes, highlight: n ? [heardNoteName(L.notes[n - 1])] : [], family: st.family })}${status}${L.listening ? `<div class="listen-live" id="listen-live">${listenLiveHtml()}</div>` : ''}`,
@@ -616,7 +616,7 @@ function viewBeginnerSetup() {
     if (!best && st.guide && notes.length >= 3) {
       const closeLinks = sameSize.map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
       return stepFrame({
-        header, stage: 3, title: `We heard ${notes.length} notes`,
+        header, help: uiHelp('set-up-by-playing', 'wrong-note'), stage: 3, title: `We heard ${notes.length} notes`,
         body: `
           <div class="setup-result card">
             <p class="setup-result-lead">Your ${word}</p>
@@ -636,7 +636,7 @@ function viewBeginnerSetup() {
     }
     if (!best) {
       return stepFrame({
-        header, stage: 3, title: `We couldn’t tell which ${fi.pick} that is`,
+        header, help: uiHelp('set-up-by-playing', 'wrong-note'), stage: 3, title: `We couldn’t tell which ${fi.pick} that is`,
         sub: `Try again in a quieter spot, ${fi.again}, or choose it yourself.`,
         body: `${notes.length >= 3 ? `<div class="list">${setupOwnRowHtml(st, notes.length)}</div>` : ''}${listenReportLinkHtml('Is something not right?')}`,
         bar: {
@@ -648,7 +648,7 @@ function viewBeginnerSetup() {
     const s = best.scale;
     const close = ranked.filter(r => r.ding !== 'none' && r.scale.family !== s.family && (!st.guide || r.total === guideTotal(st.guide))).slice(0, 2).map(r => `<button type="button" class="link-btn" data-action="setup-scale" data-id="${escHtml(r.scale.id)}">${escHtml(r.scale.name)}</button>`).join(', ');
     return stepFrame({
-      header, stage: 3, title: `We heard ${notes.length} notes`,
+      header, help: uiHelp('set-up-by-playing', 'wrong-note'), stage: 3, title: `We heard ${notes.length} notes`,
       body: `
         <div class="setup-result card">
           <p class="setup-result-lead">Your ${word} is ${/^[AEIOU]/i.test(s.name) ? 'an' : 'a'}</p>
@@ -674,7 +674,7 @@ function viewBeginnerSetup() {
   if (st.step === 'know') {
     const roots = setupRoots(tunings, { first: fi.firstRoot });
     return stepFrame({
-      header, stage: 3, title: fi.knowTitle,
+      header, help: (fi.wind ? uiHelp('set-up-ocarina-or-flute') : uiHelp('set-up-by-scale', 'steps')), stage: 3, title: fi.knowTitle,
       sub: fi.knowSub,
       body: `
         <div class="setup-roots">
@@ -694,7 +694,7 @@ function viewBeginnerSetup() {
     const shown = st.showAll || fi.wind ? all : setupTopScales(all);
     const root = setupRootName(st.root);
     return stepFrame({
-      header, stage: 3, title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
+      header, help: (fi.wind ? uiHelp('set-up-ocarina-or-flute') : uiHelp('set-up-by-scale', 'steps')), stage: 3, title: fi.wind ? `Which ${root} ${word}?` : `Which ${root} scale?`, sub: 'The most common ones first.',
       body: `
         <div class="list">
           ${shown.map(s => uiRow({
@@ -712,7 +712,7 @@ function viewBeginnerSetup() {
   const chord = setupFirstChord(findAllChords(createLayoutFromScale(s)), setupKeyNote(s), { prefer: s.chartId && !s.chartId.startsWith('naf') ? 'maj' : 'min' });
   const chordName = chord ? `${displayNote(chord.rootName + '4', uf, us).replace(/-?\d+$/, '')} ${chord.type.name.toLowerCase()}` : '';
   return stepFrame({
-    header, stage: 4, title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
+    header, help: uiHelp('set-up-your-instrument', 'account'), stage: 4, title: fi.wind ? `Your ${s.name} is ready` : `Your ${s.name.replace(/ \(\d+\)$/, '')} ${word} is ready`,
     sub: chord ? (fi.wind ? `Start with this chord. Your ${word} plays one note at a time, so Oakhum shows the fingering of each note and plays them in turn.`
       : `Start with this chord. Oakhum lights its notes on your ${word}, and plays them for you.`) : '',
     body: `

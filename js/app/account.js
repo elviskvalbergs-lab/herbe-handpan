@@ -112,7 +112,7 @@ function saveSheetHtml() {
       ${legal}`;
   }
   return uiSheet({
-    key: 'save', title: t.title, close: 'save-not-now', body,
+    help: uiHelp('accounts-and-saving', 'why'), key: 'save', title: t.title, close: 'save-not-now', body,
     footer: `<button type="button" class="btn btn-ghost" data-action="save-not-now">Not now</button>`,
   });
 }

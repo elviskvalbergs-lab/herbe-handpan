@@ -255,7 +255,7 @@ function hpFiltersSheet() {
   const f = state.chordFilter;
   const pl = f.playlist !== 'All' ? state.playlists.find(p => p.id === f.playlist) : null;
   return chordFiltersSheet({
-    key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
+    help: uiHelp('chords', 'filters'), key: 'hp-filters', close: 'hp-filters-close', clear: 'hp-filters-clear',
     roots: chordRootsOf(state.chords), root: f.root, rootAction: 'filter-root',
     counts: state.chordCountSet, countAction: 'toggle-note-count', category: f.category, categoryAction: 'filter-category',
     extra: `${!state.playlists.length ? '' : uiField({ label: 'Playlist', id: 'hp-playlist-filter', control: uiPicker({
@@ -272,7 +272,7 @@ function hpMoreSheet() {
   const chord = state.selectedChord;
   const { pl, canUpdate } = hpSourceEntry();
   return chordMoreSheet({
-    key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
+    help: uiHelp('chords', 'more'), key: 'hp-more', variant: 'hpmore', title: hpChordName(chord), close: 'hp-more-close',
     rows: [
       uiRow({ lead: 'play', title: 'Play the scale', meta: 'Every note, from the lowest up', action: 'play-scale' }),
       canUpdate ? uiRow({ lead: 'save', title: `Save this voicing to "${pl.name}"`, action: 'update-playlist-entry' }) : '',

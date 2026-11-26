@@ -105,7 +105,7 @@ function shareModalHtml() {
   const m = state.shareModal;
   if (!m) return '';
   return uiSheet({
-    key: 'share', title: 'Share this instrument', close: 'share-close',
+    help: uiHelp('sharing', 'code'), key: 'share', title: 'Share this instrument', close: 'share-close',
     body: `
       <p class="sheet-text">${escHtml(m.text)}</p>
       <div class="share-code">${escHtml(m.code)}</div>

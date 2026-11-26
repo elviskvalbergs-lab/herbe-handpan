@@ -1,14 +1,14 @@
 ---
 id: playlists
 title: Playlists: chords in order, played in time
-summary: A playlist is a row of chords that Oakhum plays in time, so you can play along. Start from a ready made one, the heart on a chord, or a chord sheet.
+summary: A playlist is a row of chords that Oakhum plays in time, so you can play along. Start from a ready made one, the bookmark on a chord, or a chord sheet.
 section: songs
 type: howto
 audience: players
 instruments: all
-features: playlists
+features: playlists, add-to-playlist
 app: /handpan/d-kurd/playlists
-verified: 2026-11-21
+verified: 2026-11-25
 order: 20
 ---
 Most songs are a few chords going round and round. A playlist keeps such a row of chords: in order, and the same chord can come back as often as you like.
@@ -19,8 +19,8 @@ Most songs are a few chords going round and round. A playlist keeps such a row o
 
 There are four ways.
 
-1. The quickest: on the {{chords}} tab, tap a chord, then {{ready-progressions}}, then Save on one you like.
-2. Tap the heart next to any chord, then {{new-playlist}}. Later, the heart adds more chords to the end of it.
+1. The quickest: on the {{chords}} tab, tap a chord, then its three dots, then {{ready-progressions}}, then Save on one you like.
+2. Tap the bookmark on the chosen chord ({{add-to-playlist}}), then {{new-playlist}}. Later, the bookmark adds more chords to the end of it.
 3. On the {{playlists}} tab, tap {{new-playlist}}.
 4. Paste the chords of a song. See [Paste a chord sheet](/help/chord-sheets).
 
@@ -30,7 +30,7 @@ The first time, Oakhum asks for your email, because playlists are kept in your f
 
 Open the playlist and tap Play. Oakhum plays the chords in order, in time, and lights the notes on your instrument. Tap a chord in the list to hear just that one. The button next to Play goes back to the first chord.
 
-On an ocarina or flute the button says Practice. It takes you through the fingerings of each chord, note by note.
+On an ocarina, flute or recorder the button says {{practice}}. It takes you through the fingerings of each chord, note by note.
 
 ![A playlist with four chords](img:playlist)
 
@@ -59,7 +59,7 @@ A playlist plays on any of your instruments that has the chords. Playlists with 
 
 ## The list is empty {#empty}
 
-You have no playlists yet. Tap the heart on any chord on the {{chords}} tab, or tap {{chord-sheet}}.
+You have no playlists yet. Tap the bookmark on any chord on the {{chords}} tab, or tap {{chord-sheet}}.
 
 ## What is a bar? {#words}
 

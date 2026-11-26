@@ -25,6 +25,15 @@ function uiData(data = {}) {
     .map(([k, v]) => ` data-${k}="${escHtml(v)}"`).join('');
 }
 
+// "?": opens one help article (help/en/<id>.md) in the help sheet, at a
+// section when an anchor is given. Next to a heading or a control, wherever
+// someone might wonder what it does. Always literal ids: tests/help.test.mjs
+// checks every call against the articles. docs/help-centre.md.
+function uiHelp(id, anchor = '') {
+  return `<button type="button" class="help-q" data-action="help-open" data-id="${escHtml(id)}"${anchor ? ` data-anchor="${escHtml(anchor)}"` : ''}
+    aria-label="Help" title="Help">${icon('help-circle')}</button>`;
+}
+
 // Icon-only button: 44×44, always labelled.
 function uiIconBtn(name, label, { action, data, pressed, cls = '', attrs = '', disabled = false } = {}) {
   return `<button type="button" class="icon-btn ${cls}"${action ? ` data-action="${action}"` : ''}${uiData(data)}
@@ -79,7 +88,7 @@ function uiTabBar(tabs, current) {
 
 // Bottom sheet (phone) / centred modal (≥600px). `close` is the action that
 // closes it (scrim, close button and Esc all use it). variant: '' | 'menu' | 'confirm'.
-function uiSheet({ key, title, body, footer = '', close, closeData, variant = '' }) {
+function uiSheet({ key, title, body, footer = '', close, closeData, variant = '', help = '' }) {
   const id = `sheet-${key}`;
   return `
     <div class="sheet-root${variant ? ' sheet-' + variant : ''}" data-sheet="${escHtml(key)}">
@@ -88,7 +97,7 @@ function uiSheet({ key, title, body, footer = '', close, closeData, variant = ''
         <div class="sheet-handle" aria-hidden="true"></div>
         <div class="sheet-head">
           <h2 class="sheet-title" id="${id}-title">${escHtml(title)}</h2>
-          ${uiIconBtn('x', 'Close', { action: close, data: closeData, attrs: 'data-sheet-close' })}
+          ${help}${uiIconBtn('x', 'Close', { action: close, data: closeData, attrs: 'data-sheet-close' })}
         </div>
         <div class="sheet-body">${body}</div>
         ${footer ? `<div class="sheet-foot">${footer}</div>` : ''}

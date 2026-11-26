@@ -7,7 +7,7 @@ type: faq
 audience: players
 instruments: all
 features: none
-verified: 2026-11-21
+verified: 2026-11-25
 order: 20
 ---
 ## There is no sound {#no-sound}

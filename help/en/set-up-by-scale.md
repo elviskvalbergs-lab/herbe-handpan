@@ -8,7 +8,7 @@ audience: players
 instruments: handpan, tongue-drum, kalimba
 features: setup-know
 app: /play
-verified: 2026-11-21
+verified: 2026-11-25
 order: 30
 ---
 The name of the scale is usually on the sticker, the box or the receipt. It looks like D Kurd, or C major, 17 keys.
@@ -29,4 +29,4 @@ Go back and use {{setup-listen}} instead. Oakhum will listen and use your notes 
 
 ## My instrument has notes underneath {#bottom-notes}
 
-Pick the scale first. Then add the notes underneath on the {{pan}} tab. See [Change the notes of your instrument](/help/change-your-notes).
+Pick the scale first, then make your own copy and add the notes underneath. See [Change the notes of your instrument](/help/change-your-notes#bottom).

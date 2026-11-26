@@ -1,6 +1,6 @@
 # Oakhum messaging
 
-**Status: current** (21 Nov 2026). The one place for how Oakhum is described. The website copy (`site/src/content/seed.ts`, then Sanity), the videos (`docs/video-plan.md`), the launch plan (`docs/launch-campaign.md`) and the maker kit (`docs/maker-kit.md`) all take their words from here. If the product changes so that a line here is no longer true, change it here first.
+**Status: current** (checked against `preview` on 22 Nov 2026: six instruments with the recorder, 114 songs, song links, the help centre, the makers programme and site analytics are all merged). The one place for how Oakhum is described. The website copy (`site/src/content/seed.ts`, then Sanity), the videos (`docs/video-plan.md`), the launch plan (`docs/launch-campaign.md`) and the maker kit (`docs/maker-kit.md`) all take their words from here. If the product changes so that a line here is no longer true, change it here first.
 
 ## 1. Who we talk to
 
@@ -8,7 +8,7 @@ Exactly two public audiences.
 
 | | Jammers | Makers and shops |
 |---|---|---|
-| Who | Adults who own a handpan, tongue drum, kalimba, ocarina or flute. Mostly self-taught. They want to join in when friends play, **and** they want to play songs. | People and small workshops who make or sell these instruments, often to order, often in their own tunings. |
+| Who | Adults who own a handpan, tongue drum, kalimba, ocarina, flute or recorder. Mostly self-taught. They want to join in when friends play, **and** they want to play songs. | People and small workshops who make or sell these instruments, often to order, often in their own tunings. |
 | The moment | "I love the sound, I can play the scale up and down… now what?" | "I shipped it, they were thrilled, and three months later it is on a shelf." |
 | What they want | Something to play today, on the instrument they actually own, without lessons. | Buyers who keep playing, fewer "what can I play?" emails, and an easier sale for unusual tunings. |
 
@@ -26,16 +26,16 @@ Three per audience, in this order. Each one is something a person can check in u
 **Jammers**
 
 1. **It starts from your instrument.** Pick it from the list, or tap "Play my notes" and play each note: Oakhum listens and works out what you have. Custom tunings and bottom notes included.
-2. **Chords and songs your notes can really play.** Every chord drawn on your own instrument, and the Songs tab: 103 folk songs, children's songs and carols, filtered to the ones your notes can play, each with a tab in the way your instrument's players read tabs.
+2. **Chords and songs your notes can really play.** Every chord drawn on your own instrument, and the Songs tab: 114 folk songs, children's songs and carols, filtered to the ones your notes can play, each with a tab in the way your instrument's players read tabs. Every song has its own link.
 3. **You can join in.** Tap "Listen" when a friend plays guitar or piano and Oakhum shows the chord on your instrument. Or paste a song's chord sheet and get its chords in order, fitted to your notes, as a playlist.
 
 **Makers and shops**
 
 1. **Set up once, exactly as built.** Your scale, your layout, every bottom note. Save it with a free account.
-2. **One code per instrument.** Share gives it a code, a link and a QR code. On a card in the case or on the certificate, it opens that exact instrument. For an approved maker it also says "Made by <maker>" (built 21 Nov). *(needs: makers phases 2–3)* The maker sees how often each code is scanned.
-3. **Free for you and for the buyer.** The buyer needs no app store and no sign-up to open and play it.
+2. **One code per instrument.** Each instrument gets a code as a link, a printable QR card or an NFC tag: one per model, or one per serial number. It opens that exact instrument and says "Made by <maker>", with the maker's logo and a link to their site.
+3. **Free for you and for the buyer, and you see it working.** The buyer needs no app store and no sign-up to open and play it. The maker sees scans, saves and chords played for each code: counts, never people.
 
-How many songs fit depends on the instrument, and we say so. Checked on 21 Nov 2026: tin whistle in D 103 of 103, alto C ocarina 102, 17-key kalimba in C 90, D Celtic minor handpan 32, D Kurd handpan or tongue drum 21. Never say "103 songs for your handpan".
+How many songs fit depends on the instrument, and we say so. The **Popular** list, read from the app on 22 Nov 2026: tin whistle in D 101, soprano recorder 101, alto C ocarina 100, 17-key kalimba in C 89, D Celtic minor handpan 34, D Kurd handpan or tongue drum 22, a 6-hole Native American flute in A 2. Never say "114 songs for your handpan", and don't lead with songs for a Native American flute.
 
 ## 4. Vocabulary
 
@@ -62,7 +62,7 @@ One name per thing, the same as in the app (checked against the navigation redes
 | **maker** | Someone who makes or sells instruments | "partner", "vendor", "B2B" |
 | **buyer** (to makers), **player** (everywhere else) | The person with the instrument | "user", "customer", "end user" |
 
-**Naming the instruments.** In text that can be edited later (the website, bios, directory listings) name all five: "handpan, tongue drum, kalimba, ocarina and flute". In anything that can't be edited once it is out (video voice-over, burned-in captions, print, QR cards) say "handpans, kalimbas, flutes and more", swapping in the instrument you are talking to. The recorder is on the way, and a video should not go out of date because of it.
+**Naming the instruments.** Never the whole list (the owner's decision, 22 Nov 2026): the list keeps growing, and the recorder has already joined it. In a sentence say "handpans, kalimbas, flutes and other instruments"; where space is tight (captions, end cards, a card in a case) "handpans, kalimbas, flutes and more". Swap in the instrument you are talking to. A list of all of them belongs only where it is a list: the website's instrument menu and the app's first screen.
 
 **Words to avoid, everywhere**
 
@@ -100,7 +100,7 @@ A person who plays, telling a friend about something that helped. Plain, warm, s
 |---|---|
 | "Play each note once. Oakhum works out which kalimba you have." | "Our intelligent pitch-detection engine identifies your tuning." |
 | "21 songs fit a D Kurd. Here they are." | "Unlock a world of music on your handpan!" |
-| "It's one person's project, made in Latvia, on Oak Street." | "We are a passionate team on a mission to democratise music." |
+| "It's a personal passion project, made in Latvia, on Oak Street." | "We are a passionate team on a mission to democratise music." |
 | "No sign-up to try. A free account keeps your instrument." | "Sign up free today!" |
 | "Tell me what's confusing or wrong. I read every message." | "We'd love your feedback 🙏🔥" |
 | "Your buyer scans the card and their instrument opens." | "Drive post-purchase engagement with our QR solution." |
@@ -113,7 +113,7 @@ Rules of thumb:
 - **Numbers only when they are true for the reader's instrument** (see §3).
 - **Admit the limit.** A 9-note handpan can't play every song. Saying so is why people believe the rest.
 - **The maker is a craftsperson, not a lead.** Write as one maker of things to another.
-- **The story is short:** made in Latvia, on Oak Street; in Latvian folklore the oak is the tree of strength; the hum is the forest. One sentence in a post, never the opening.
+- **The story is short:** a personal passion project, made in Latvia, on Oak Street; in Latvian folklore the oak is the tree of strength; the hum is the forest. One sentence in a post, never the opening.
 
 ## 7. Taglines and headlines
 
@@ -149,41 +149,41 @@ The hook "You fell in love with the sound… you just listen" is kept for handpa
 Oakhum: chords and songs for the instrument you own
 
 **Short (up to 160 characters: meta description, social bio):**
-See the chords and songs your handpan, tongue drum, kalimba, ocarina or flute can play. Free, no sign-up to try.
+See the chords and songs your handpan, kalimba, flute or other instrument can play. Free, no sign-up to try.
 
 **Social bio variants**
-- Instagram / TikTok (150): Chords and songs for the handpan, kalimba, tongue drum, ocarina or flute you own 🌳 Free, opens in your browser. Made in Latvia.
+- Instagram / TikTok (150): Chords and songs for the handpan, kalimba, flute or other instrument you own 🌳 Free, opens in your browser. Made in Latvia.
 - YouTube channel: Oakhum shows what your own instrument can play: every chord, songs with tabs, and help to join in when friends play. Free at oakhum.com.
-- Reddit profile: I make Oakhum, a free web app that shows the chords and songs your handpan, kalimba, tongue drum, ocarina or flute can play. One person, Latvia. Feedback welcome.
+- Reddit profile: I make Oakhum, a free web app that shows the chords and songs your handpan, kalimba, flute or other instrument can play. A personal passion project from Latvia. Feedback welcome.
 
 (The oak emoji is the only one we use, and only in a social bio.)
 
 **Medium (about 60 words: directory listings, "about" boxes, app directories):**
-Oakhum is a free web app for people who own a handpan, tongue drum, kalimba, ocarina or flute. Tell it which instrument you have, or play its notes and it works it out. It then shows every chord your notes can make and the songs they can play, with tabs, and helps you join in when a friend plays guitar. No sign-up to try; a free account keeps your instrument, works offline and syncs.
+Oakhum is a free web app for people who own a handpan, a kalimba, a flute or another instrument with its own set of notes. Tell it which instrument you have, or play its notes and it works it out. It then shows every chord your notes can make and the songs they can play, with tabs, and helps you join in when a friend plays guitar. No sign-up to try; a free account keeps your instrument, works offline and syncs.
 
 **Long (about 150 words: press, a maker's blog, "about Oakhum"):**
 Instruments like the handpan, the tongue drum and the kalimba are sold with a fixed set of notes, and most of the people who buy them never took a music lesson. They learn the scale in a week and then ask the same question: what can I actually play on this?
 
-Oakhum answers it from the instrument itself. You pick your instrument from a list of published tunings, or tap "Play my notes" and play each note once; the app listens and works out exactly what you have, custom tunings and bottom notes included. It then draws every chord on a picture of your own instrument, lists the folk songs, children's songs and carols your notes can play, with a tab for each, and listens to a friend's guitar to show you where to join in. Ocarinas and flutes get their fingering charts, taken from published sources.
+Oakhum answers it from the instrument itself. You pick your instrument from a list of published tunings, or tap "Play my notes" and play each note once; the app listens and works out exactly what you have, custom tunings and bottom notes included. It then draws every chord on a picture of your own instrument, lists the folk songs, children's songs and carols your notes can play, with a tab for each, and listens to a friend's guitar to show you where to join in. Ocarinas, flutes and recorders get their fingering charts, taken from published sources.
 
-It runs in the browser on any phone. It is free, with no sign-up to try; a free account keeps your instruments, works offline and syncs. Oakhum is made by one person in Latvia, on Oak Street.
+It runs in the browser on any phone. It is free, with no sign-up to try; a free account keeps your instruments, works offline and syncs. Oakhum is a personal passion project, made in Latvia, on Oak Street.
 
 ### Makers and shops
 
 **One line:** Oakhum for makers: one code in the case opens the buyer's instrument
 
 **Short (160):**
-Save each instrument once. A QR code in the case opens it on the buyer's phone with every chord and song it can play. Free for you and for them.
+Save each instrument once. A code in the case opens it on the buyer's phone with every chord and song it can play, and your name on it. Free for you and for them.
 
 **Medium (about 60 words):**
-Oakhum helps the people who buy your instruments keep playing them. Set an instrument up once, exactly as you built it, and it gets its own code. Printed on a card in the case, it opens that instrument on the buyer's phone, ready to play, with every chord and the songs its notes can play. Free for makers and players; the buyer needs no app and no sign-up.
+Oakhum helps the people who buy your instruments keep playing them. Set an instrument up once, exactly as you built it, and it gets its own code. Printed on a card in the case, it opens that instrument on the buyer's phone, ready to play, with every chord, the songs its notes can play and your name on it. You see how often each code is used. Free for makers and players; the buyer needs no app and no sign-up.
 
 **Long (about 130 words):**
 Most new owners play the scale for a week and then get stuck. That is when an instrument moves to the shelf, and a buyer who has stopped playing does not recommend the maker.
 
 With Oakhum, a maker sets each instrument up once, exactly as it was built: the scale, the layout, every bottom note. Saved with a free account, it gets its own code, link and QR code. Put the code on a card in the case or on the certificate, and one scan opens that exact instrument on the buyer's phone, ready to play: every chord it can make, drawn on its own layout, the songs its notes can play, and help to join in when a friend plays guitar. The buyer needs no app store and no sign-up. Oakhum is free for makers and for players, and every tuning also has a public page that a shop can link from its product page, so people can hear a scale before they choose it.
 
-Maker profiles are live (21 Nov), so add: "Shared instruments say who made them." *(needs: makers phases 2–3)* Then also: "and the maker sees how often each code is scanned."
+A shared instrument says who made it, with the maker's logo and a link to their site, and the maker has a page on oakhum.com and sees how often each code is scanned, saved and played: counts, never people.
 
 ## 9. Where each line is used
 

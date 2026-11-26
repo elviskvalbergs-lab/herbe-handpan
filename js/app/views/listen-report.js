@@ -108,7 +108,7 @@ function listenReportSheet() {
     : `${uiSwitchRow({ label: `Send the recording (${secs} s)`, help: 'It helps most: we hear what Oakhum heard. It may also catch voices in the room.', on: R.withAudio, action: 'lr-audio' })}
        ${R.withAudio ? `<div class="lr-takes">${R.takes.map(t => `<audio class="lr-audio" controls preload="metadata" src="${t.url}"></audio>`).join('')}</div>` : ''}`;
   return uiSheet({
-    key: 'listen-report', title: 'Help us hear it right', close,
+    help: uiHelp('it-heard-the-wrong-note', 'report'), key: 'listen-report', title: 'Help us hear it right', close,
     body: `
       <p class="sheet-text">Tell us what Oakhum got wrong. We’ll listen, fix it and let you know.</p>
       ${heard ? `<p class="lr-heard"><span class="lr-heard-label">Oakhum heard</span> ${escHtml(heard)}${ctx.a4 !== 440 ? ` <span class="lr-heard-label">· A = ${ctx.a4} Hz</span>` : ''}</p>` : ''}

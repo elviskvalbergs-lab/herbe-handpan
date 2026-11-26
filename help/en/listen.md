@@ -1,21 +1,23 @@
 ---
 id: listen
 title: Listen: hear which chords are being played
-summary: Oakhum listens to an instrument nearby and shows the chords it hears, on your own instrument. Good for joining a jam.
+summary: Oakhum listens to music nearby and shows the chords it hears, on your own instrument. Good for joining a jam.
 section: listening
 type: howto
 audience: players
 instruments: all
 features: listen
 app: /handpan/d-kurd/listen
-verified: 2026-11-21
+verified: 2026-11-25
 order: 10
 ---
 Someone is playing guitar or another handpan, and you want to join in. {{listen}} shows you which chords they play, and where those notes are on your instrument.
 
+In Oakhum, {{listen}} always means music around you. When you play your own notes for set-up it is {{setup-listen}}, and for one note at a time it is the {{tuner}}.
+
 ## Start listening {#steps}
 
-1. Open the {{chords}} tab and tap {{listen}}.
+1. Open the {{chords}} tab and, under the picture, tap {{listen}}.
 2. Tap the Listen button. Your browser asks to use the microphone. Tap Allow.
 3. Put the phone one or two metres from the instrument that is playing.
 4. The chords Oakhum hears show up in order, and their notes light up on your instrument.

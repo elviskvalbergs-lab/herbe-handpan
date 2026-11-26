@@ -290,6 +290,7 @@ function songPracticeRowHtml(S, idx) {
   return `<div class="song-practice">
       <button type="button" class="btn btn-secondary song-wait-btn" data-action="song-wait" aria-pressed="${!!state.songWait}">${icon('mic')} Wait for me</button>
       <button type="button" class="btn btn-secondary song-loop-btn" data-action="song-loop" aria-pressed="${!!loop}">${icon(loop && loop.to != null ? 'x' : 'repeat')} ${loopLabel}</button>
+      ${uiHelp('songs-to-learn', 'wait')}
     </div>
     ${status ? `<p class="song-practice-status" role="status">${status}</p>` : ''}`;
 }

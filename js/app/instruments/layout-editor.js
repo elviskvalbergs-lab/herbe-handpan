@@ -84,7 +84,7 @@ function hpLayoutSaved() {
 function edActionsHtml() {
   const saved = hpLayoutSaved();
   return `
-    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('copy')} Make my own copy</button>` : ''}
+    ${!state.layout.isCustom ? `<button type="button" class="btn btn-secondary" data-action="clone-layout">${icon('copy')} Make my own copy</button>${uiHelp('change-your-notes', 'change')}` : uiHelp('change-your-notes', 'move')}
     ${saved
       ? `<span class="ed-status" role="status">${icon('check')} Saved</span>
          <button type="button" class="btn btn-primary" data-action="save-layout" disabled>Saved</button>`

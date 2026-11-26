@@ -110,7 +110,7 @@ function chordSheetSheet() {
       })
       : '<p class="cs-note">Add an instrument first: the chords are fitted to one.</p>';
     return uiSheet({
-      key: 'chordsheet', title: 'Paste a chord sheet', close: 'cs-cancel',
+      help: uiHelp('chord-sheets', 'formats'), key: 'chordsheet', title: 'Paste a chord sheet', close: 'cs-cancel',
       body: `<div class="hp-sheet-form">
         ${uiField({
           label: 'Chord sheet', id: 'cs-text', error: cs.error,
@@ -146,7 +146,7 @@ function chordSheetSheet() {
     return `${sec}<span class="chip is-static${miss ? ' is-off' : ''}"${miss ? ' title="Not on this instrument"' : ''}>${escHtml(sym)}${miss ? '<span class="sr-only"> (not on this instrument)</span>' : ''}</span>`;
   }).join('') + (sheet.steps.length > 64 ? `<span class="chip is-static">+${sheet.steps.length - 64}</span>` : '');
   return uiSheet({
-    key: 'chordsheet', title: `Fit to ${target?.name ?? 'instrument'}`, close: 'cs-cancel',
+    help: uiHelp('chord-sheets', 'formats'), key: 'chordsheet', title: `Fit to ${target?.name ?? 'instrument'}`, close: 'cs-cancel',
     body: `<div class="hp-sheet-form">
       ${uiField({ label: 'Name', id: 'cs-name', control: `<input class="input" id="cs-name" value="${escHtml(cs.name)}" placeholder="Playlist name" autocomplete="off">` })}
       <p class="cs-facts">${escHtml(facts)}${sheet.sections.length ? `<br>Sections: ${escHtml(sheet.sections.join(', '))}` : ''}</p>

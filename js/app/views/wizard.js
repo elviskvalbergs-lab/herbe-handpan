@@ -115,7 +115,7 @@ function stageDotsHtml(stage) {
         <span aria-hidden="true">${SETUP_STAGES[stage - 1]}</span>
       </div>`;
 }
-function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, title, sub = '', body, bar = {} }) {
+function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, help = '', title, sub = '', body, bar = {} }) {
   // The quiet hero (artwork, then the logo), docs/design-system.md "Brand".
   const heroHtml = hero ? `
       <div class="brand-hero">
@@ -129,7 +129,7 @@ function stepFrame({ header, hero = false, notice = '', count = '', stage = 0, t
     <div class="wizard">
       ${heroHtml}
       ${notice ? `<p class="wizard-notice">${icon('check')} ${escHtml(notice)}</p>` : ''}
-      ${stage ? stageDotsHtml(stage) : count ? `<div class="wizard-count">${escHtml(count)}</div>` : ''}
+      ${stage ? `<div class="wizard-stage-row">${stageDotsHtml(stage)}${help}</div>` : count ? `<div class="wizard-count">${escHtml(count)}</div>` : ''}
       <h2 class="wizard-title">${escHtml(title)}</h2>
       ${sub ? `<p class="wizard-sub">${sub}</p>` : ''}
       ${body}

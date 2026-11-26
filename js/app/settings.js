@@ -34,7 +34,7 @@ function viewSettings() {
   const fams = settingsFamilies();
   return `${backAppBar('Settings')}
     <div class="settings">
-      <h2 class="list-title">Notes and display</h2>
+      <h2 class="list-title">Notes and display ${uiHelp('settings', 'notes')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Theme', control: uiSeg([
           { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'auto', label: 'Auto' },
@@ -47,7 +47,7 @@ function viewSettings() {
         ], state.useSolfege ? 'solfege' : 'letters', { action: 'set-solfege', label: 'Note style' }) })}
       </div>
 
-      <h2 class="list-title">Playing</h2>
+      <h2 class="list-title">Playing ${uiHelp('settings', 'playing')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Speed', help: 'How fast chords, scales and fingerings play, everywhere', wide: true, control: tempoControlHtml() })}
         ${uiSetRow({ label: 'Seconds per chord in auto-play', control: uiStepper({
@@ -56,14 +56,14 @@ function viewSettings() {
         }) })}
       </div>
 
-      ${fams.has('layout') ? `<h2 class="list-title">Handpans and drums</h2>
+      ${fams.has('layout') ? `<h2 class="list-title">Handpans and drums ${uiHelp('settings', 'handpan')}</h2>
       <div class="list">
         ${uiSetRow({ label: 'Ring orientation', help: 'Rotated puts the two lowest notes towards you', control: uiSeg([
           { value: 'standard', label: 'Standard' }, { value: 'rotated', label: 'Rotated' },
         ], state.ringRotated ? 'rotated' : 'standard', { action: 'set-rotation', label: 'Ring orientation' }) })}
       </div>` : ''}
 
-      ${fams.has('wind') ? `<h2 class="list-title">Ocarinas and flutes</h2>
+      ${fams.has('wind') ? `<h2 class="list-title">Ocarinas and flutes ${uiHelp('fingerings', 'fingers')}</h2>
       <div class="list">
         ${uiSwitchRow({ label: 'Finger labels in holes', help: 'R4, L1, LT inside each hole', on: state.showFingers, action: 'oc-toggle-fingers' })}
         ${canBuild() || state.showSizes ? uiSwitchRow({ label: 'Hole sizes in mm', help: 'The builder always shows sizes', on: state.showSizes, action: 'oc-toggle-sizes' }) : ''}
@@ -79,7 +79,7 @@ function viewSettings() {
       </div>` : ''}
       ${makerSettingsHtml()}
 
-      <h2 class="list-title">Account and about</h2>
+      <h2 class="list-title">Account and about ${uiHelp('accounts-and-saving')}</h2>
       <div class="list">
         ${accountSettingsHtml()}
         ${uiRow({ title: featureName('help'), meta: 'How to set up, play, save and share. Works offline', action: 'help-open', data: { id: '' }, lead: 'info', chevron: true })}

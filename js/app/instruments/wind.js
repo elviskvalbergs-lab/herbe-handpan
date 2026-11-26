@@ -290,7 +290,7 @@ function ocFiltersSheet() {
   const oc = state.oc;
   const inst = currentInstrument();
   return chordFiltersSheet({
-    key: 'oc-filters', close: 'oc-filters-close', clear: 'oc-filters-clear',
+    help: uiHelp('chords', 'filters'), key: 'oc-filters', close: 'oc-filters-close', clear: 'oc-filters-clear',
     roots: chordRootsOf(inst ? ocChordModel(inst).chords : []), root: oc.root ?? 'All', rootAction: 'oc-filter-root',
     counts: new Set(oc.counts ?? []), countAction: 'oc-toggle-count', category: oc.category, categoryAction: 'oc-category',
     extra: uiField({ label: 'Scale', id: 'oc-scale-filter', control: ocScaleSelect('Only chords made of this scale\'s notes'), help: 'Only chords made of the scale\'s notes.' }),
@@ -310,7 +310,7 @@ function ocChordMoreSheet() {
   const pairs = inst.chambers.length > 1 ? playablePairs(inst.chambers, card.midis) : [];
   const hasHalf = card.midis.some(m => fingeringFor(inst, m)?.states?.includes('h'));
   return chordMoreSheet({
-    key: 'oc-more', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
+    help: uiHelp('chords', 'more'), key: 'oc-more', title: `${displayNote(card.rootName, uf, us)} ${card.typeName}`, close: 'oc-more-close',
     extra: `
       <div class="field oc-more-octaves">
         <span class="field-label">Octaves</span>
@@ -424,7 +424,7 @@ function viewOcarinaPractice(inst) {
 function handLegendModal() {
   if (!state.oc.handLegend) return '';
   return uiSheet({
-    key: 'hand', title: 'Which finger is which', close: 'oc-hand-close',
+    help: uiHelp('fingerings', 'fingers'), key: 'hand', title: 'Which finger is which', close: 'oc-hand-close',
     body: `<p class="sheet-text">As you hold the instrument, looking at the backs of your hands.</p>${renderHandLegend()}`,
     footer: `<button class="btn btn-secondary" data-action="oc-hand-close">Close</button>`,
   });
@@ -488,7 +488,7 @@ function viewInstrument() {
         ${recordedCentsHtml(inst, oc.selected)}
         ${state.ocLegendSeen ? '' : `
           <div class="fg-legend">
-            <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span><span>${legendHole('h')} half</span>
+            <span>${legendHole('c')} covered</span><span>${legendHole('o')} open</span><span>${legendHole('h')} half</span>${uiHelp('fingerings', 'read')}
             <button type="button" class="btn btn-ghost btn-sm" data-action="oc-legend-dismiss">Got it</button>
           </div>`}
       </div>

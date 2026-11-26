@@ -7,13 +7,13 @@ type: howto
 audience: players
 instruments: all
 features: speed
-verified: 2026-11-21
+verified: 2026-11-25
 order: 40
 ---
 ## Change the speed {#steps}
 
 1. Tap the button marked 1× next to a play button.
-2. Choose 50%, 75%, Normal or 125%, or move the slider.
+2. Choose 25%, 50%, 75%, Normal or 125%, or move the slider.
 3. Tap Done.
 
 The speed is the same everywhere in the app: chords, scales, fingerings and songs. You can also change it in {{settings}}, under {{speed}}.

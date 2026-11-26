@@ -335,3 +335,16 @@ export function logMakerEvent(code, event, { via = null, count = 1, first = fals
 }
 // A maker's totals for the last `days` days (maker_stats), or null.
 export async function fetchMakerStats(days = 30) { return (await makerRpc('maker_stats', { p_days: days })).data ?? null; }
+
+// Tells the owner a maker sent their request: the website emails them
+// (site/src/app/api/maker-request) after checking with the database, with
+// this maker's own sign-in, that there is a request it hasn't told them
+// about. Same domain as the app (it lives at /play). Fails silently: the
+// owner's Settings shows waiting requests either way.
+export function notifyMakerRequest() {
+  const token = _session?.access_token;
+  if (!token || typeof fetch === 'undefined') return;
+  try {
+    fetch('/api/maker-request', { method: 'POST', headers: { authorization: `Bearer ${token}` }, keepalive: true }).catch(() => {});
+  } catch { /* never in the way */ }
+}

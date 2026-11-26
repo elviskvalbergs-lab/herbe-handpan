@@ -99,7 +99,7 @@ function viewProgression() {
             ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
           : `<div class="prog-now-hint">${level === 'chord' ? 'Play runs the chords in order, in time. Tap a chord to hear it.' : 'Play counts in one bar, then shows each chord numbered in strike order with L and R hands, the next chord faint. Tap a chord to see it.'}</div>`}
         </div>
-        <div class="prog-level">${levelSeg}</div>
+        <div class="prog-level">${levelSeg}${uiHelp('playlists', 'levels')}</div>
         <div class="prog-play-row">
           ${uiIconBtn('rewind', 'Back to the first chord', { action: 'prog-restart', cls: 'btn-lg', disabled: !nHere || curIdx <= 0 })}
           ${playing
@@ -139,7 +139,7 @@ function viewProgression() {
             ${playing ? `<div class="prog-beat">${progBeatHtml(prog, cur)}</div>` : ''}`
           : `<div class="prog-now-hint">Play counts in one bar, then goes through the chords in time, one note at a time, with the fingering of each note. Tap a chord to hear it.</div>`}
         </div>
-        <div class="prog-level">${levelSeg}</div>
+        <div class="prog-level">${levelSeg}${uiHelp('playlists', 'levels')}</div>
         <div class="prog-play-row">
           ${uiIconBtn('rewind', 'Back to the first chord', { action: 'prog-restart', cls: 'btn-lg', disabled: !nHere || curIdx <= 0 })}
           ${playing

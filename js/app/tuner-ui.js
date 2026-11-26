@@ -89,6 +89,7 @@ function tunerStripHtml() {
     <div id="tuner-panel" class="tuner" role="region" aria-label="${listening ? 'Listening' : 'Tuner'}">
       <canvas class="mic-wave tuner-wave" aria-hidden="true"></canvas>
       <div id="tuner-parts" class="tuner-parts">${listening ? listenStripInner() : tunerPanelInner()}</div>
+      ${listening ? uiHelp('listen', 'tips') : uiHelp('tuner', 'needle')}
       ${uiIconBtn('x', listening ? 'Stop listening' : 'Stop the tuner', { action: listening ? 'hear-stop' : 'tuner-toggle', cls: 'tuner-close' })}
       <span id="tuner-live" class="sr-only" aria-live="polite"></span>
     </div>`;
