@@ -1,4 +1,4 @@
-// Browser smoke suite: the safety net for js/app.js, which has no unit
+// Browser smoke suite: the safety net for the app (js/app/), which has no unit
 // tests. It opens the built app in a real browser and walks the paths a
 // person takes most; any uncaught error, console error or missing file
 // fails it. Run by scripts/ci.sh on every pull request:
@@ -73,7 +73,7 @@ try {
     assert.equal(await first.getAttribute('role'), 'button');
     assert.equal(await first.getAttribute('tabindex'), '0');
     assert.match(await first.getAttribute('aria-label'), /^[A-G]/);
-    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'Tap notes' }).click();
+    await p.locator('[data-action="chords-mode"]', { hasText: 'Tap notes' }).click();
     await notes.nth(1).focus();
     await p.keyboard.press('Enter');
     await p.keyboard.press('Tab');
@@ -82,7 +82,7 @@ try {
     // Tap notes marks the picked notes; the focus stayed in the picture.
     assert.equal(await p.locator('.pan-wrap .pan-note.highlight').count(), 2, 'Enter and Space each picked a note');
     assert.ok(await p.evaluate(() => document.activeElement?.classList?.contains('pan-note')), 'focus is still on a note');
-    await p.locator('[data-action="toggle-discover-mode"]', { hasText: 'All chords' }).click();
+    await p.locator('[data-action="chords-mode"]', { hasText: 'All chords' }).click();
   });
   await step('the Playlists tab opens, with New playlist', first, async p => {
     await p.click('[data-action="hp-playlists"]');
@@ -218,6 +218,85 @@ try {
     });
     await d.ctx.close();
   }
+
+  // ── Screens behind a tap: filters, sheets, the editor, progressions ───────
+  // Each opens through the action registry (js/app/actions.js), so a handler
+  // that went missing in a move shows up here.
+  const deeper = await guest('deeper screens');
+  await step('handpan: Filters, a note count, the chord\'s More sheet, the Pan tab', deeper, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/chords`);
+    await p.locator('[data-action="select-chord"]').nth(1).click();
+    await p.click('[data-action="chords-filters-open"]');
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-count"]').first().click();
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-filters-close"][data-sheet-close]').click();
+    await p.locator('[data-sheet="chord-filters"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="chords-more-open"]');
+    await p.locator('[data-sheet="chord-more"]').waitFor();
+    await p.keyboard.press('Escape');
+    await p.locator('[data-sheet="chord-more"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="back-editor"]');
+    await p.locator('.ed-pan, .pan-wrap').first().waitFor();
+    await p.click('[data-action="go-chords"]');
+    await p.locator('[data-action="select-chord"]').first().waitFor();
+  });
+  await step('ocarina: a chord, Filters with the scale picker, the More sheet', deeper, async p => {
+    const oc = catalogueLinks().find(l => l.family === 'ocarina');
+    await p.goto(`${app.base}${oc.path}/chords`);
+    await p.locator('[data-action="oc-chord-select"]').nth(1).click();
+    await p.locator('[data-action="oc-play-arp"]').first().click();
+    await p.click('[data-action="chords-filters-open"]');
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-count"]').first().click();
+    await p.locator('[data-sheet="chord-filters"] [data-action="picker-open"]').click();
+    await p.keyboard.type('ma');
+    await p.keyboard.press('Enter');
+    await p.locator('[data-sheet="chord-filters"] [data-action="chords-filters-close"][data-sheet-close]').click();
+    await p.locator('[data-sheet="chord-filters"]').waitFor({ state: 'detached' });
+    await p.click('[data-action="chords-more-open"]');
+    await p.locator('[data-sheet="chord-more"]').waitFor();
+    await p.keyboard.press('Escape');
+    await p.locator('[data-sheet="chord-more"]').waitFor({ state: 'detached' });
+  });
+  await step('a guest\'s New progression opens the save sheet, and Not now closes it', deeper, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/playlists`);
+    await p.click('[data-action="prog-new-open"]');
+    await p.locator('button[data-action="save-not-now"]').last().click();
+    await p.locator('[data-action="save-not-now"]').first().waitFor({ state: 'detached' });
+    await p.locator('[data-action="prog-new-open"]').waitFor();
+  });
+  await step('the ⋯ menu opens and Escape closes it', deeper, async p => {
+    await p.click('[data-action="menu-open"]');
+    await p.locator('[data-sheet="menu"]').waitFor();
+    await p.keyboard.press('Escape');
+    await p.locator('[data-sheet="menu"]').waitFor({ state: 'detached' });
+  });
+  await step('a handpan\'s Chords shows its first chord before one is tapped, as every instrument does', deeper, async p => {
+    await p.goto(`${app.base}/handpan/d-kurd/chords`);
+    await p.locator('.hp-card [data-action="play-chord"]').waitFor();
+    assert.equal(await p.locator('[data-action="select-chord"][aria-current="true"], [data-action="select-chord"].is-current').count(), 1, 'the first chord is the current one');
+  });
+  await step('Play on an ocarina\'s Playlists tab plays the playlist, as on a handpan', deeper, async p => {
+    const oc = catalogueLinks().find(l => l.family === 'ocarina');
+    await p.goto(`${app.base}${oc.path}/songs`);
+    await p.click('[data-action="cs-open"]');
+    await p.fill('.sheet-root textarea', 'C | F | G | C');
+    await p.click('[data-action="cs-next"]');
+    await p.click('[data-action="cs-save"]');
+    await p.locator('[data-action="prog-play"]').waitFor();
+    await p.goto(`${app.base}${oc.path}/playlists`);
+    assert.equal(await p.locator('[data-action="prog-practice"][data-id]').count(), 0, 'the list says Play, not Practice');
+    await p.locator('[data-action="prog-play"][data-id]:not([disabled])').first().click();
+    await p.locator('[data-action="prog-stop"]').first().click();
+  });
+  await step('Tap notes on an ocarina: each chord found has ♡ and ▶, as on a handpan', deeper, async p => {
+    const oc = catalogueLinks().find(l => l.family === 'ocarina');
+    await p.goto(`${app.base}${oc.path}/chords`);
+    await p.click('[data-action="chords-mode"][data-value="identify"]');
+    const notes = p.locator('[data-action="oc-id-note"]');
+    for (const i of [0, 2, 4]) await notes.nth(i).click();
+    await p.locator('[data-action="oc-id-chord-play"]').first().click();
+    assert.ok(await p.locator('[data-action="oc-id-bookmark"]').count() > 0, 'a ♡ on the chord found');
+  });
+  await deeper.ctx.close();
 
   // ── Links that aren't in the catalogue ────────────────────────────────────
   const odd = await guest('odd links');

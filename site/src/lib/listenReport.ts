@@ -1,6 +1,6 @@
 // A listening report: someone set up their instrument by ear, Oakhum heard it
 // wrong, and they sent what it heard (and usually the recording) from the app
-// (listenReportSheet in ../js/app.js). The API route (app/api/listen-report)
+// (listenReportSheet in ../js/app/views/listen-report.js). The API route (app/api/listen-report)
 // keeps it in the Studio and opens a Jira issue, so it can be replayed
 // (scripts/replay-listen.mjs in the repository root), fixed and answered.
 //

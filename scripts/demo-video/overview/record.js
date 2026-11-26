@@ -53,7 +53,7 @@ const RECORDINGS = {
   async o5() {
     await recordPhone(OUT + 'o5/', `${APP}/handpan/d-kurd/chords`, async (page, mark) => {
       await page.waitForTimeout(600);
-      await act(page, 'toggle-discover-mode', '[data-value="listen"]').click();
+      await act(page, 'chords-mode', '[data-value="listen"]').click();
       await page.waitForTimeout(900);
       mark('listen');  // the microphone (guitar.wav) starts about here
       await act(page, 'hear-start').click();

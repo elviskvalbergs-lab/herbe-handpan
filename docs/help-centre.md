@@ -101,7 +101,7 @@ Intro paragraph.
 | JSON for a chatbot or RAG pipeline | `/help/index.json` | `helpExport()` in `site/src/lib/help.ts` |
 | llmstxt.org files | `/llms.txt`, `/llms-full.txt` | `llmsTxt()`, `llmsFullTxt()` |
 | JSON-LD | each article: `HowTo` (type howto) or `FAQPage`, plus `BreadcrumbList` | `helpJsonLd()` |
-| The app's help sheet, offline | every "?", ⋯ › Help, Settings › Help | `build.py` → `HELP_BUNDLE`, `helpSheet()` in `js/app.js` |
+| The app's help sheet, offline | every "?", ⋯ › Help, Settings › Help | `build.py` → `HELP_BUNDLE`, `helpSheet()` in `js/app/help.js` |
 | Sitemap entries | `/sitemap.xml` | `site/src/app/sitemap.ts` |
 
 All of the site's outputs are prerendered at build time.
@@ -150,7 +150,7 @@ is the navigation redesign's call and is a one-line change per label.
 
 ## In the app
 
-- **"?" at each relevant point**: `uiHelp(id, anchor)` in `js/app.js` is a
+- **"?" at each relevant point**: `uiHelp(id, anchor)` in `js/app/ui.js` is a
   small round "?" button (44px tap area) that opens one article at one
   section. It sits next to the heading or control it explains:
   - the set-up frame, next to the stage dots (which article depends on the step);

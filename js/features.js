@@ -94,7 +94,7 @@ export const UI_LABELS = {
   'level-groove':    'Groove',
   'tempo':           'Tempo',
   'order':           'Order',
-  'practice':        'Practice',
+  'practice':        'Practice chord by chord',
   'send-code':       'Send code',
   'not-now':         'Not now',
   'sign-in':         'Sign in',
@@ -109,7 +109,6 @@ export const UI_LABELS = {
   'finger-labels':   'Finger labels in holes',
   'which-finger':    'Which finger is which',
   'send-recording':  'Send us the recording',
-  'auto-play-secs':  'Seconds per chord in auto-play',
   'create-maker':    'Create your maker page',
 };
 

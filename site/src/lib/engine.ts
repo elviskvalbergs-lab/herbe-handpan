@@ -279,7 +279,7 @@ export function windNotes(tuning: Tuning, midis: number[]): string {
 }
 
 /**
- * The notes a tuning has, as the app's song fit takes them (js/app.js songHave,
+ * The notes a tuning has, as the app's song fit takes them (js/app/views/songs.js songHave,
  * songEasy): MIDI numbers, and for an ocarina or flute the ones played without
  * half-covering a hole, which songs are moved to where they can be.
  */
@@ -376,7 +376,7 @@ export type TuningSong = { id: string; title: string; /** The key it is played i
  * every note of the melody is one the instrument has, moved to the key that fits.
  */
 export function tuningSongs(tuning: Tuning): { songs: TuningSong[]; of: number } {
-  // As the app's Songs list does (js/app.js songsFor): an ocarina's or flute's songs are moved
+  // As the app's Songs list does (js/app/views/songs.js songsFor): an ocarina's or flute's songs are moved
   // to keys that keep to notes played without half-covering a hole, where they can.
   const { have, easy } = tuningMidis(tuning);
   type Fit = { song: { id: string; title: string; key: string }; shift: number };

@@ -74,7 +74,7 @@ const OUT = __dirname + '/';
   // page, where the root chips are on screen (they have since moved into the
   // Filters sheet); otherwise the row is scrolled into view and tapped.
   const chord = async (root, label, wait = 4200) => {
-    const chip = page.locator(`[data-action="filter-root"][data-root="${root}"] >> visible=true`);
+    const chip = page.locator(`[data-action="chords-root"][data-root="${root}"] >> visible=true`);
     if (await chip.count()) { await chip.first().click(); await page.waitForTimeout(700); }
     const row = page.locator('[data-action="select-chord"] >> visible=true', { hasText: label }).first();
     await row.scrollIntoViewIfNeeded();

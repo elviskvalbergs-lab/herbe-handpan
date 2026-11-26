@@ -37,7 +37,7 @@ The four **chord colours** are earth tones that stay apart from each other in bo
 
 ### Artwork
 - **The quiet hero:** an oak on a hill over a river valley, a figure playing under the tree. Supplied without a logo (`brand/hero-wide.webp` 1600 × 900, `hero-wide-800.webp`, `hero-tall.webp` for portrait crops).
-- **Instrument pictures:** one per instrument, the same earthy, textured style as the brand (warm clay, aged metal, wood, muted olive): `brand/instruments/handpan.webp`, `ocarina.webp`, `tongue-drum.webp`, `native-american-flute.webp`, `recorder.webp`, `kalimba.webp`, each 512 × 512 with a transparent background. Cut from the owner's sheet (`docs/design/instrument-thumbnails-sheet.webp`) by `scripts/cut-instrument-thumbnails.py`. The website's instrument list (`site/src/lib/pictures.ts`, by slug) and the app's setup tiles (`SETUP_TILES` in `js/app.js`) show them; a new instrument gets its picture in the same style, added to both.
+- **Instrument pictures:** one per instrument, the same earthy, textured style as the brand (warm clay, aged metal, wood, muted olive): `brand/instruments/handpan.webp`, `ocarina.webp`, `tongue-drum.webp`, `native-american-flute.webp`, `recorder.webp`, `kalimba.webp`, each 512 × 512 with a transparent background. Cut from the owner's sheet (`docs/design/instrument-thumbnails-sheet.webp`) by `scripts/cut-instrument-thumbnails.py`. The website's instrument list (`site/src/lib/pictures.ts`, by slug) and the app's setup tiles (`SETUP_TILES` in `js/app/views/setup.js`) show them; a new instrument gets its picture in the same style, added to both.
 - **The website hero (Hero A):** the same landscape redrawn with more sky for words to sit on: `brand/hero-sky-wide.webp` (1774 × 887, from 768px; `hero-sky-wide-900.webp` for small uses) and `brand/hero-sky-tall.webp` (1024 × 1536, phones). The agreed look is `docs/design/hero-a-reference.webp`: the header on a solid cream band above the picture, the picture full bleed, the headline, text and two buttons top left in ink on the open sky (kept clear of the tree, no halo or box behind the words), and "Try it right here: tap a chord below" pointing down to the playable handpan.
 - It is used once, at the top of the first-run Welcome (`.brand-hero`: artwork, then the logo, then one line). Keep it quiet: no text on the picture, no second use on working screens.
 
@@ -93,7 +93,7 @@ Wizard (ocarina and flute, note by note)    full screen, own bottom action bar
 Home = My instruments                        #  (empty hash)
  ├─ Try a scale (catalogue, unsaved)         (existing selector view)
  ├─ Settings                                 #settings
- ├─ Playlist detail                          (existing playlist view)
+ ├─ A playlist's screen                      (#prog/<id>)
  └─ Instrument ─ tabs (bottom tab bar)
      Handpan:  Chords · Songs · Playlists · Pan         /handpan/<slug>[/chords|/songs|/playlists]
      Ocarina:  Chords · Songs · Playlists · Notes · Build | Set up      #i/<id>/<tab>
@@ -107,7 +107,7 @@ Tuner: docked strip, can be switched on from any instrument or builder screen
 
 One sticky bar, `--appbar-h` 56px plus the top safe area, background `--bg`, with a 1px `--border` bottom edge. It has three slots:
 
-| Slot | Home | Instrument (any tab) | Deeper screen (Settings, Playlist detail, Try a scale) |
+| Slot | Home | Instrument (any tab) | Deeper screen (Settings, a playlist, Try a scale) |
 | --- | --- | --- | --- |
 | Left | title "My instruments" | **instrument switcher**: name + chevron-down, opens Home | back icon button (chevron-left) + title |
 | Right | tuner icon button, settings icon button | tuner icon button, ⋯ menu icon button | tuner (except Settings), ⋯ where the screen has actions |
@@ -130,7 +130,7 @@ Breadcrumbs (`.breadcrumb`) are removed everywhere.
 
 **Desktop (≥1024px):** the same tabs move into the app bar as text tabs (40px tall, 2px accent underline on the selected tab), and the bottom bar is hidden. The DOM is the same, and a media query moves it: render the tabs once inside the app bar and position them `fixed; bottom: 0` below 1024px.
 
-Every instrument has the same tabs in the same order (`instrumentTabs` in `js/app.js`, one function for both shells; `docs/navigation-redesign.md` has the reasoning): the three things people come for, then the instrument's own tab.
+Every instrument has the same tabs in the same order (`instrumentTabs` in `js/app/views/instrument.js`, one function for both shells; `docs/navigation-redesign.md` has the reasoning): the three things people come for, then the instrument's own tab.
 
 | Family | Tabs (in order) | Opens on |
 | --- | --- | --- |
@@ -183,7 +183,6 @@ Settings opens from the gear icon on Home and from the ⋯ menu on any instrumen
 | | Note names | segmented: Sharps (C#) · Flats (D♭) | `useFlats` |
 | | Note style | segmented: Letters (C D E) · Solfège (Do Re Mi) | `useSolfege` |
 | **Handpan** | Ring orientation | segmented: Standard · Rotated | `ringRotated` (also on the pan itself, see §6) |
-| | Seconds per chord in autoplay | stepper (3, 4, 5, 6, 8, 10 s) | `autoplaySeconds` (also in the Now playing bar) |
 | **Fingering diagrams** | Finger labels in holes (R4, L1, LT) | switch | `showFingers` |
 | | Hole sizes in mm | switch | `showSizes` |
 | | Which finger is which | row › opens the hand sheet | (`oc-hand-open`) |
@@ -210,17 +209,14 @@ In the brief's terms: scale filter, chord filters, voicing, play and tuner stay 
 | `shell-mode`, `adjust-capacity`, `clone-layout`, `save-layout`, `pick-note`, custom name | Pan tab |
 | `go-chords`, `back-editor`, `back-selector`, `back-home`, `oc-tab` | Tab bar, app bar back and switcher |
 | `copy-url` | ⋯ menu › Copy link to this chord |
-| `toggle-discover-mode`, `discover-*` | Chords › "Identify" segment |
-| `toggle-note-count`, `filter-category`, `select-playlist-filter` (incl. "Edit playlist") | Chords › Filters sheet (plus an "Edit" link in the Now playing bar) |
+| `chords-mode`, `discover-*` (handpan), `oc-id-*` (wind) | Chords › All chords · Tap notes · Listen |
+| `chords-filters-open/close/clear`, `chords-count`, `chords-root`, `chords-category` | Chords › Filters sheet (plus an "Edit" link in the Now playing bar) |
 | `filter-root` | Chords › root chip row |
-| `toggle-autoplay`, `set-autoplay-seconds` | Chords › Now playing bar |
 | `select-chord`, `play-chord`, `play-scale`, `show-playlist-picker`, `update-playlist-entry`, related chips | Chords › selected-chord bar and its "More" sheet (inline on desktop) |
-| `move-chord-up/down`, `remove-playlist-chord`, rename, `delete-playlist`, `open-playlist-chord` | Playlist detail |
 | `toggle-playlist-chord`, `show-new-playlist-input`, `confirm-new-playlist` | Add to playlist sheet |
 | `oc-scale-filter`, `oc-play-scale`, `oc-select-note`, `oc-play-selected`, `oc-legend-dismiss` | Ocarina Notes |
 | `oc-hand-open/close` | ⋯ menu, Settings, and the hand icon beside the moves line when finger labels are on |
 | `oc-category`, `oc-chord-toggle`, `oc-voicing`, `oc-play-arp`, `oc-play-note`, `oc-play-pair`, `oc-show-playlist-picker` | Ocarina Chords |
-| `oc-playlist` (playlist filter on ocarina Chords) | Playlists tab › playlist detail (shows the same chord cards) |
 | `oc-practice-start/next/prev/stop` | Playlists tab ▶ Practice; Practice screen |
 | `share-instrument`, `share-copy`, `share-close`, `shared-add` | ⋯ menu / Home row ⋯ → Share sheet; shared banner |
 | `tuner-toggle` | App bar mic |
@@ -264,7 +260,7 @@ The token **names** and roles below are the system; the **values** live in one p
 
 ## 5. Components
 
-Class names are new, short and unique. Write the render helpers in `js/app.js` under a new `// ── UI primitives` section with `ui`-prefixed names (`uiAppBar`, `uiTabBar`, `uiSheet`, `uiRow`, `uiField`, `uiHzField`, `uiSeg`, `uiEmpty`). They return HTML strings like the rest of the code, and putting them in `app.js` means `build.py` doesn't change. The names must stay unique across `js/`.
+Class names are new, short and unique. Write the render helpers in `js/app/ui.js` with `ui`-prefixed names (`uiAppBar`, `uiTabBar`, `uiSheet`, `uiRow`, `uiField`, `uiHzField`, `uiSeg`, `uiEmpty`). They return HTML strings like the rest of the code, and putting them in `app.js` means `build.py` doesn't change. The names must stay unique across `js/`.
 
 ### 5.1 Button `.btn`
 
@@ -311,7 +307,7 @@ Class names are new, short and unique. Write the render helpers in `js/app.js` u
 - **Field wrapper** `.field`: a column with a 6px gap. Label 13/600 `--text-2`, helper 13/400 `--text-3`, error 13/500 `--danger` (and the input border turns `--danger`).
 - **Input and select** `.input`, `.select`: height `--field-h` (48px; 44px at ≥1024), padding 0 12px, bg `--surface-2`, 1px `--border-strong`, radius `--r-sm`, text `--text-1` 16px (15px at ≥1024). Placeholder `--text-3`. Hover border `--text-3`. Focus: border `--focus` plus the global ring. Disabled: bg `--surface-1`, text `--text-disabled`. A select gets a custom 16px chevron-down at the right (`appearance: none`, `padding-right: 36px`). The name field (currently a bare underline, `.name-input`) becomes a normal `.input`.
 - **Unit suffix** `.input-unit`: the input sits in a wrapper with the unit ("Hz", "mm", "%") absolutely placed at the right in 13px `--text-3`, and the input gets `padding-right: 40px`.
-- **Number stepper** `.stepper-num` (transpose, shell capacity, autoplay seconds): `[−] value [+]`. The buttons are 44×44 `.icon-btn.tonal`, and the value is 20/700 `--text-1`, centred, min-width 56px, tabular. Below that, a 13px helper ("semitones", "9 notes incl. ding · 0 empty"). The − and + buttons are disabled at their limits (existing logic).
+- **Number stepper** `.stepper-num` (transpose, shell capacity): `[−] value [+]`. The buttons are 44×44 `.icon-btn.tonal`, and the value is 20/700 `--text-1`, centred, min-width 56px, tabular. Below that, a 13px helper ("semitones", "9 notes incl. ding · 0 empty"). The − and + buttons are disabled at their limits (existing logic).
 - **Record field** `.rec` (every Hz input: builder readings and Set up). One joined control: `[ input (flex 1, min 96px) Hz ][ mic 48×48 ]`, outer corners `--r-sm`, a shared 1px `--border-strong`, and the button separated by a 1px left border. Render it from `uiHzField(path, value)`, which replaces `hzField`. States:
 
 | State | Look | Behaviour |
@@ -355,7 +351,7 @@ One component replaces `.modal`, `.picker-modal`, `.share-modal`, the note picke
 - **Save** sheet (`saveSheetHtml`, docs/free-to-play.md §3): every save a guest makes opens it. A headline and one line matched to what was tapped (`SAVE_TEXTS` in `js/store.js`), "Free · takes seconds · also lets you play offline", Continue with Google / Apple (only when switched on in Supabase), an email field with Send code, then the code in the same sheet, the privacy line, and Not now. A new save action is one entry in `SAVE_ACTIONS`, never a sheet of its own.
 - **Offline pill** `.offline-pill` (accounts only): a small `cloud-off` "Offline" chip at the start of the app bar's right slot while offline. **Guest offline card** `.offline-card`: sits where toasts do, with "Remind me when I'm back online" and OK.
 
-- **Guided steps** (`stepFrame` in `js/app.js`): the add-instrument wizard and the beginner setup share one frame: app bar, optional brand hero, "Step n of m", title, text, content and the bottom action bar. A new guided flow uses it, not a frame of its own.
+- **Guided steps** (`stepFrame` in `js/app/views/wizard.js`): the add-instrument wizard and the beginner setup share one frame: app bar, optional brand hero, "Step n of m", title, text, content and the bottom action bar. A new guided flow uses it, not a frame of its own.
 - **Setup tiles** `.setup-tile`: the instrument's picture (brand kit), its name and one hint line; and **root buttons** `.setup-root` for "Which note is in the middle?", the most common first and filled.
 
 ### 5.7 Toast `.toast`
@@ -432,7 +428,7 @@ Legend line `.fg-legend` (first time only): a row of three 16px glyphs with labe
 
 ### 5.15 The pan, drum and kalimba picture (`js/pan.js`)
 
-Every note of the picture is a button: `role="button"`, `tabindex="0"` and an `aria-label` with its name ("D3"; "Empty place" for a free slot), given by `renderPan` itself, so every screen that shows the picture gets it, and the website's demo too. Enter or Space is the same as a tap (one `keydown` handler in `js/app.js` turns the key into the click; the website's demo has its own). Focus shows as a ring on the note's own shape in `--focus` (`css/pan-drawing.css`), and stays on the note across a re-render. A new picture (another instrument drawn by `pan.js`) uses `panNoteA11y` the same way.
+Every note of the picture is a button: `role="button"`, `tabindex="0"` and an `aria-label` with its name ("D3"; "Empty place" for a free slot), given by `renderPan` itself, so every screen that shows the picture gets it, and the website's demo too. Enter or Space is the same as a tap (one `keydown` handler in `js/app/main.js` turns the key into the click; the website's demo has its own). Focus shows as a ring on the note's own shape in `--focus` (`css/pan-drawing.css`), and stays on the note across a re-render. A new picture (another instrument drawn by `pan.js`) uses `panNoteA11y` the same way.
 
 ## 6. Screen-by-screen redesign
 
@@ -638,7 +634,7 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
 - **⋯ is one sheet on every instrument** (`chordMoreSheet`): the instrument's rows, "Progressions with this chord" (the Goes well with sheet), then the instrument's extra content. Handpan (`hpMoreSheet`): Play the scale, Save this voicing, Copy link, related chords. Ocarina and flute (`ocChordMoreSheet`): octaves, blown-together pairs, the hole legend, Which finger is which.
 - **The switch says what each way does**: All chords · Tap notes · Listen (`chordModeSegHtml`; was Browse · Identify · Listen). "Listen" keeps one meaning in the app: Oakhum names the chord of music playing around you.
 - **The list head is one line** (`chordListLineHtml`): the count and "Show all" on the left, Filters (with how many are on) on the right.
-- **Filters is one sheet on every instrument** (`chordFiltersSheet`): "Starts on" (the root chips, which used to be a row on the screen), Notes in chord, Type, then the instrument's field (handpan: Playlist; ocarina, flute: Scale). Clear all clears the root too, and the root counts in the button's number.
+- **Filters is one sheet on every instrument** (`chordFiltersSheet`): "Starts on" (the root chips, which used to be a row on the screen), Notes in chord, Type, then the instrument's field (ocarina, flute, recorder: Scale; a handpan has none). Clear all clears the root too, and the root counts in the button's number.
 
 - **Selected-chord bar** with no chord selected: "Tap a chord to see it on the pan" (15 `--text-2`) plus a `[▶ Scale]` secondary button.
 - **More sheet** (with a chord selected), as rows:
@@ -648,8 +644,8 @@ Phone: the pan and the selected chord stay on screen while the chord list scroll
   - Copy link to this chord.
 - **Main chords first**: every Chords list opens on the instrument's main chords, the plain major and minor chords (`mainChordsInKey` in `js/chords.js`), from its home note up (a handpan's ding, an ocarina's or whistle's key note). An instrument with every semitone (more than 7 pitch classes) shows the six of the major key on its home note. The count line says "6 main chords · Show all 61"; "Main chords only" goes back (`chords-scope`, the `chordsAll` preference, synced). A filter, a root chip or a playlist shows every chord they match.
 - **Goes well with** (`js/harmony.js`, on every instrument's chord card): the instrument's key is its home note, major or minor from its third. The chord's role in the key (I, vi, VII…) gives the chords that usually come next, as chips that select them, and "Progressions with this chord" in the ⋯ sheet opens a sheet of well-known progressions with this chord (Pop, Fifties, Epic, Folk…, by role). It only suggests chords the instrument can play. Each progression has ▶ (its chords one after another) and Save (a new progression; the toast's Open goes to it). A chord outside the key gets no line.
-- **Filters sheet** (`chordFiltersSheet`): Starts on, as chips ("Any note", then the roots the chords have; `filter-root`); Notes in chord as count chips (2)(3)(4)(5+) (`toggle-note-count`, multi-select); Type select (`filter-category`); Playlist select (`select-playlist-filter`, with "Edit playlist" as a row link when a playlist is chosen). The footer has [Clear all] ghost and [Done] primary. The Filters button shows the number of active filters, the root included.
-- **Now playing bar** (shown instead of the Filters row when a playlist filter is active, like today's `.autoplay-bar`): `[⏸ Pause | ▶ Auto-play]` primary, a seconds select (3–10 s), "2 / 7" tabular, an "Edit" link (opens the playlist detail), and a ✕ icon button that clears the playlist filter.
+- **Filters sheet** (`chordFiltersSheet`): Starts on, as chips ("Any note", then the roots the chords have; `chords-root`); Notes in chord as count chips (2)(3)(4)(5+) (`chords-count`, multi-select); Type select (`chords-category`); then the instrument's own field. The footer has [Clear all] ghost and [Done] primary. The Filters button shows the number of active filters, the root included.
+- **Now playing bar**: removed (26 Nov 2026). Playlists play from their own screen on every instrument; the Chords screen has no playlist filter or auto-play.
 - **Identify mode:** the list area shows the hint "Tap notes on the pan to build a chord. Tap again to remove one.", the selected notes as static chips, [Clear], and the matches as `.row`s (name, category · notes, the bookmark `discover-bookmark`, ▶ `discover-play`). The custom combination row has the bookmark and ▶ as today. The sticky selected-chord bar hides in this mode.
 - The Starts on chips use the display note naming from Settings.
 - **Tablet (600–1023):** two columns, `grid-template-columns: 300px 1fr`. Left: the list section (its own sticky scroll area, `height: calc(100dvh - appbar - tabbar)`, `overflow: auto`). Right: the pan (max `min(100%, 60dvh)`), then the selected-chord card with Related chips inline (no More sheet).
@@ -684,41 +680,9 @@ Tab bar
 - Desktop: two columns, as today: the pan left and a 320px side panel right (the Shells card and buttons).
 - The note picker (`renderNotePicker`) becomes a sheet titled "Add a note". Its octave rows of note chips (40px) are kept, with in-use notes `.is-static`.
 
-### 6.9 Playlists tab (new) and playlist detail (phone-09, desktop-09)
+### 6.9 Playlists tab and a playlist's screen
 
-Playlists tab, on any instrument:
-
-```
-App bar: Blue D Kurd ▾            🎤  ⋯
-┌ .list ──────────────────────────────┐
-│[≡] Favorites            [▶ Practice]│ ocarina: btn-sm primary "Practice" (oc-practice-start
-│    3 chords here · 7 in total     › │ with this playlist); handpan: "▶ Play"
-├─────────────────────────────────────┤ (open-playlist-chords + autoplay on)
-│[≡] Jam set                 [▶ Play] │ disabled when no entry belongs to this
-│    0 here · 4 in total            › │ instrument (meta says so)
-└─────────────────────────────────────┘
-[+ New playlist]                        ghost
-Empty: "No playlists yet. Tap ♡ on any chord to start one." [Go to Chords]
-```
-
-Playlist detail (opened from a row's › or from Home):
-
-```
-App bar: ← | Favorites                    ⋯  (Rename, Delete playlist (danger → confirm))
-[▶ Practice on Blue D Kurd]  btn-lg primary block (ocarina) / [▶ Play] (handpan)
-                             hidden when no entry belongs to the current instrument
-( Chords | Order )           seg: Order shows reorder controls
-Handpan entries, and ocarina entries in Order mode:
-│ D Minor                               ⋯ │ .row: title; meta "Blue D Kurd · D3 F4 A3";
-│ Blue D Kurd · D3 · F4 · A3              │ tap = open-playlist-chord; ⋯ = Move up / Move down /
-                                          │ Remove
-Order mode: trailing [▲][▼] 44px icon-btns + [✕]
-Ocarina entries in Chords mode: ocChordCard rows (expandable, as in §6.11) for this
-instrument — this replaces the ocarina "All chords ▾" playlist filter.
-```
-
-- Rename is a field in a sheet ("Rename playlist" with an input and Save). The always-visible underline input goes.
-- Delete has a confirm sheet. "Favorites" can't be deleted (unchanged), so its ⋯ shows only Rename.
+**Current (26 Nov 2026).** A playlist is one kind of list (stored as a progression). The Playlists tab lists them with ▶ Play on every instrument (`progressionRowsHtml`, action `prog-play`); a row's › opens the playlist's screen (`viewProgression`, `#prog/<id>`), where Play runs it in time on the instrument on screen and a wind instrument also has "Practice chord by chord". The old playlist detail (`viewPlaylist`, `#pl/<id>`, Chords | Order, ocarina entry cards) and the handpan's playlist filter on Chords are removed; an old `#pl/<id>` link opens the playlist it was turned into.
 
 ### 6.10 Ocarina: Notes tab (phone-10, desktop-10)
 
@@ -1051,11 +1015,11 @@ Handpan, ocarina, flute and any instrument added later share their screens. Each
 
 | Screen | Shared parts | What an instrument supplies |
 |---|---|---|
-| Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml` (▶ Chord, `chordSaveBtn`, ⋯), `chordRowHtml` (no buttons), the switch `chordModeSegHtml` (All chords · Tap notes · Listen), the list line `chordListLineHtml` (main chords / Show all, Filters), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`), the Filters sheet `chordFiltersSheet` (Starts on from `chordRootsOf`, `chordCountField`, `chordTypeField`) and the ⋯ sheet `chordMoreSheet`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows; anything below the card (ocarina/flute: notes in playing order and the move); its field in the Filters sheet (handpan: playlist; ocarina/flute: scale); its rows and extra content in the ⋯ sheet |
+| Chords | `chordsScreenHtml` (picture + card on top, list below), `chordCardHtml` (▶ Chord, `chordSaveBtn`, ⋯), `chordRowHtml` (no buttons), the switch `chordModeSegHtml` (All chords · Tap notes · Listen), the list line `chordListLineHtml` (main chords / Show all, Filters), the Goes well with line and sheet (`goesWithLineHtml` / `goesWithSheet`, from `js/harmony.js`), the Filters sheet `chordFiltersSheet` (Starts on from `chordRootsOf`, `chordCountField`, `chordTypeField`) and the ⋯ sheet `chordMoreSheet`, the `.hp-chords` / `.hp-stage` / `.hp-card` / `.hp-list` CSS | its picture (pan drawing, fingering); its chord rows; anything below the card (ocarina/flute: notes in playing order and the move); its field in the Filters sheet (handpan: playlist; ocarina/flute: scale); its rows and extra content in the ⋯ sheet | One state for every instrument's Chords screen, `state.chordsUi` (`newChordsUi`: mode, filters, which sheet is open), and one set of actions (`chords-mode`, `chords-filters-*`, `chords-count`, `chords-root`, `chords-category`, `chords-more-*`), registered in `js/app/views/chords.js`.
 | App bar and tab bar | `instrumentAppBar` (switcher, badge, banner), `instrumentTabs` / `instrumentTabBar` | its own tab (Pan, Drum, Kalimba or Notes; Build / Set up) |
 | Playlists tab | `playlistsTabHtml` | nothing |
 | Songs tab | `songsTabHtml` | nothing |
-| Playlist page | one row per entry; tapping it opens the chord on its instrument's Chords screen | nothing |
+| A playlist's screen | `viewProgression`: its steps, Play in time on the instrument on screen | nothing (a wind instrument adds Practice chord by chord) |
 | Progression | `viewProgression`: the player (picture, the step now, the Level segment, Play / Stop with a one-bar count-in), tempo, the steps. One timer (`progLevelTick`) for every instrument | its picture (the pan with strike numbers, or the fingering of the note being blown: `.prog-wind`) and its levels: Chord · Roots · Arpeggio · Groove (`strikePattern`), or on one-note instruments Roots · Arpeggio · Melody (`windPattern`) |
 | Set up | the "Your …" card (`instFieldsHtml`), Holes and fingers, Where the holes are | what it needs set up (readings for a bought one) |
 | Sheets, rows, fields | `uiSheet`, `uiRow`, `uiField`, `uiPicker`, `uiStepper`, `uiSeg` | content |
@@ -1116,12 +1080,12 @@ An ocarina with up to four finger holes on top is drawn as a round pendant (`fgI
 - **Songs to learn** (`js/songs.js`, `viewSong`): well-known traditional and public-domain songs from many countries (folk, children's, Christmas), melody only, the most familiar first, as a section of every instrument's Playlists tab (8 shown, then "Show all N songs"), with a **Christmas | All songs** switch that starts on Christmas from 15 November to 6 January (`christmasSeason`; songs tagged `christmas`). Only the songs whose notes the instrument has are listed, each moved to where it has them (`songShift`; on an ocarina or flute, to keys without half-covered holes where possible), with "N more need notes your … doesn't have". A song opens its player: the picture with the note to play lit (the next one faint) or its fingering, the note, Play / Stop at the chosen speed (100 bpm at 100%, the same Speed button), ◀ ▶ a note at a time, every note as a chip to jump to, and **Goes well after it**: songs in the same key on this instrument first, then the same time, then the same country. Data: each melody was read from the score in its Wikipedia article (de, en or fr) by a LilyPond reader (relative and absolute pitches; Dutch, German, English and solfège note names, German assumed when a score uses `h` without saying so; rests written at a pitch; repeats with endings, ties, triplets, grace notes skipped) and its opening checked; songs whose score gives only the first line, the harmony instead of the tune, or a different tune from the familiar one were left out; the file is CC BY-SA 4.0 with that attribution, shown on the list and in the player. Pentatonic instruments (a Pygmy handpan, a pentatonic Native American flute) fit none of the first songs yet.
 - **Lyrics** (`songLyrics` in `js/songs.js`; songs with `lyrics`): a **Lyrics** toggle in the song player (on by default, remembered and synced as `showLyrics`) shows the first verse: the words around the current note under the note, with the current syllable in the accent colour; a syllable under each note chip in the Notes view; and a fourth row under the tab (lines of the tab hold fewer columns so the words fit), printed with it. Data: one syllable per note with a trailing - when the word goes on, _ for a note that carries on the syllable before; read from the same score as the melody, with its slurs, and only where the score's lyrics line up note for note (46 Wikipedia songs); the 13 Latvian songs' first verses read from the Vītols scan in today's spelling. The credit line then reads "Melody and words from …".
 - **The tab follows the music under the instrument** (`songTabFollow`): with the tab on screen, the picture, the current note and the words are a framed block (`.song-top.is-framed`) that sticks under the app bar, a little smaller, so the instrument stays in view; the tab moves beneath it as in a frame. When the current note moves to another line (playing, stepping, tapping, rewinding) or Play is pressed, the page turns at once so that line sits just under the block; a scroll by hand is left alone until the next change of line, and opening a song doesn't scroll. The player's controls (rewind, back, Play/Stop, next, speed) are the shared bottom `.actionbar`.
-- **Song tab on flutes and ocarinas** (`songTabRows` in `js/app.js`): the same grid (bars, counts, the lyrics row, the current note, print), with the note's name above each note and, instead of the R and L rows, the instrument's own tab. A flute (tin whistle, Native American flute) gets Grey Larsen's staff-based tablature (https://greylarsen.com/FreeDownloads/Tablature_System_Explanation.pdf): a line per finger hole, the mouthpiece end on top (as Flutopedia's "foot-end down" NAF diagrams), a gap between the hands, a dot on a line closes that hole, half a dot half-covers it, a ring with a tail opens them all, and a + row marks the second octave (blow harder). An ocarina gets the ocarina tab's picture of the fingering (filled holes closed) on the beat each note starts on, two columns wide, a second level where notes are closer than that, drawn back from a line's end. Ocarina lines hold 8 columns. The print hides the big picture (the tab has every fingering).
+- **Song tab on flutes and ocarinas** (`songTabRows` in `js/app/views/song-tab.js`): the same grid (bars, counts, the lyrics row, the current note, print), with the note's name above each note and, instead of the R and L rows, the instrument's own tab. A flute (tin whistle, Native American flute) gets Grey Larsen's staff-based tablature (https://greylarsen.com/FreeDownloads/Tablature_System_Explanation.pdf): a line per finger hole, the mouthpiece end on top (as Flutopedia's "foot-end down" NAF diagrams), a gap between the hands, a dot on a line closes that hole, half a dot half-covers it, a ring with a tail opens them all, and a + row marks the second octave (blow harder). An ocarina gets the ocarina tab's picture of the fingering (filled holes closed) on the beat each note starts on, two columns wide, a second level where notes are closer than that, drawn back from a line's end. Ocarina lines hold 8 columns. The print hides the big picture (the tab has every fingering).
 - **Song tab** (handpan, tongue drum, kalimba; `songTabHtml`, `songBars` / `songHands` in `js/songs.js`): the song player's **Tab | Notes** switch (Tab by default) shows the song like a handpan tab sheet: bars of columns counted "1 + 2 +" (every eighth a count in x/8; extra unlabelled columns where a note starts between counts), a dashed bar line on a pickup bar (the song's `pickup`), the new time above a bar where it changes (a song's `meters`, e.g. 3/4 and 4/4; the meta line then reads "3/4 · 4/4", `songTimeLabel`), an **R** row and an **L** row with each note's number in a pill coloured like the pan's strike badges (R cream, L teal), a line after a note while it rings; tapping a number goes to that note, and the current note is ringed. Numbers: a handpan's ding is 0, then its tone fields by pitch, bottom notes after the top ones; a tongue drum's tongues 1, 2, … by pitch. A kalimba uses kalimba (numbered) notation instead (`kalimbaNumbers` in `js/kalimbas.js`): 1–7 up the major scale from the key's first note, a dot above per octave up and below per octave down, # before a note outside the scale; the key is the one the tuning is sold in, or the major key that holds all its notes; R and L are the thumbs, and the picture's badges sit straight under each key, number only, coloured by thumb. The hand is the side of the drawing the note is on (`panPlaces`, so moved tone fields and rotation count), a middle note (a ding) the other hand from the note before. The picture shows the same numbers as badges on the notes the song uses (`strikeMarks`, a badge with no hand neutral). The printer button prints a clean sheet: title, the numbered picture and the tab, nothing lit.
 - **Setting up an ocarina or flute:** its own steps in the shared setup (`#setup`, the same frame), not the drums' "play your notes". Which type (hole counts), then **Do you know its key?** (written on it or its box): the key notes as tiles, the common ones first (flute A, G, F♯, E, D, C; ocarina C, G, F), then which size if it comes in more ("The usual size" first). Knowing it is two taps and no microphone. "I don't know: listen" plays the lowest note to find the key and checks the scale fingering by fingering; "play it my own way" is free listening; Ready offers "Check it by playing". A type with one key (a tin whistle in D) goes straight to Ready. `setupWindKeys` builds the list from the type's charts.
 - **Close to a known scale:** when the guided round's notes aren't a tuning Oakhum knows, the result names the common scale they are or are closest to, in any key (`scaleFits` in `js/setup.js`: minor and major pentatonic, Akebono, Kumoi, Egyptian, minor, major; the root preferably the lowest note, even over one note fewer off; a note off the scale heard in two octaves is the instrument's, not a slip). With one or two notes off it names them, says which note each may be (a semitone away, the way it sounded, one the drum doesn't already have), and offers "Play those two again", which clears just those places and listens again.
 - **Did we hear it right?** Every screen that shows what Oakhum heard asks: the setup's match ("Yes, that's it" / "Not quite, let me choose"), the "couldn't tell" screen, the end of the wind round and the Listen panel ("Send us the recording"). The answer is a PostHog event, `listen_check` with `result` right / wrong / reported / skipped, so the share of setups heard right can be watched.
-- **The listening report** (`listenReportSheet` in `js/app.js`): one shared sheet for every instrument. It shows what was heard, asks what was wrong, plays back the recording (switch on by default, with a note that it may catch voices) lets them add a photo of the instrument (shrunk to 1600 px, about 300 KB, stored with the report and attached in Jira) and asks for an email to hear back. While Listen is on, `js/tuner.js` records the microphone (`recordMic`, `micTakes`: the last three takes, five minutes each, in memory only). The sheet posts to the website's `/api/listen-report`. The report is kept in the Studio (Listening reports, under the `listenReports.` id path, so the public can't read it) and, when the `JIRA_*` variables are set, opened as a Jira issue with the recordings attached.
+- **The listening report** (`listenReportSheet` in `js/app/views/listen-report.js`): one shared sheet for every instrument. It shows what was heard, asks what was wrong, plays back the recording (switch on by default, with a note that it may catch voices) lets them add a photo of the instrument (shrunk to 1600 px, about 300 KB, stored with the report and attached in Jira) and asks for an email to hear back. While Listen is on, `js/tuner.js` records the microphone (`recordMic`, `micTakes`: the last three takes, five minutes each, in memory only). The sheet posts to the website's `/api/listen-report`. The report is kept in the Studio (Listening reports, under the `listenReports.` id path, so the public can't read it) and, when the `JIRA_*` variables are set, opened as a Jira issue with the recordings attached.
 - **Ocarinas and flutes by ear:** the guided round takes each note relative to how the lowest one sounded, within two thirds of a semitone (`SETUP_WIND_TOLERANCE`): a Native American flute blown softly, or one tuned to 432, plays a quarter tone flat.
 - **Fixing a report:** `node scripts/replay-listen.mjs <recording> --family <family>` runs the recording through exactly what the app does (`collectHeardNote` is shared), prints each note as it's taken and the best matches. Turn the measured pitches into a test, fix, then write back to the email on the report.
 

@@ -30,7 +30,7 @@ if os.environ.get('DATABASE_URL'):
 css = read('css/fingering.css') + '\n' + read('styles.css') + '\n' + read('css/pan-drawing.css')
 
 # JS files in dependency order
-js_files = ['js/data.js', 'js/features.js', 'js/helpdoc.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/harmony.js', 'js/songs.js', 'js/scalefinder.js', 'js/setup.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/tonguedrums.js', 'js/kalimbas.js', 'js/layoutfamilies.js', 'js/links.js', 'js/makers.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/makers-ui.js', 'js/app.js']
+js_files = ['js/data.js', 'js/features.js', 'js/helpdoc.js', 'js/pickmatch.js', 'js/icons.js', 'js/brand.js', 'js/chords.js', 'js/harmony.js', 'js/songs.js', 'js/scalefinder.js', 'js/setup.js', 'js/chordsheet.js', 'js/ocarina.js', 'js/tuner.js', 'js/listen-detect.js', 'js/listen-audio.js', 'js/charts.js', 'js/tonguedrums.js', 'js/kalimbas.js', 'js/layoutfamilies.js', 'js/links.js', 'js/makers.js', 'js/datastore.js', 'js/sync.js', 'js/instruments.js', 'js/builder.js', 'js/audio.js', 'js/pan.js', 'js/ocarina-ui.js', 'js/storage.js', 'js/auth.js', 'js/localdb.js', 'js/offline.js', 'js/store.js', 'js/makers-ui.js', 'js/app/state.js', 'js/app/actions.js', 'js/app/render.js', 'js/app/util.js', 'js/app/ui.js', 'js/app/picker.js', 'js/app/router.js', 'js/app/measure.js', 'js/app/help.js', 'js/app/share.js', 'js/app/settings.js', 'js/app/tuner-ui.js', 'js/app/views/chords.js', 'js/app/views/home.js', 'js/app/views/instrument.js', 'js/app/views/listen.js', 'js/app/views/listen-report.js', 'js/app/views/selector.js', 'js/app/views/setup.js', 'js/app/views/songs.js', 'js/app/views/song-tab.js', 'js/app/views/wizard.js', 'js/app/views/playlists.js', 'js/app/views/progression-play.js', 'js/app/views/progression.js', 'js/app/views/sheet-import.js', 'js/app/views/builder.js', 'js/app/views/inst-edit.js', 'js/app/instruments/layout-editor.js', 'js/app/instruments/layout.js', 'js/app/instruments/wind.js', 'js/app/install.js', 'js/app/prefs.js', 'js/app/sync-ui.js', 'js/app/account.js', 'js/app/main.js']
 js_parts = []
 for f in js_files:
     raw = read(f)
@@ -42,12 +42,26 @@ js_bundle = '\n\n'.join(js_parts)
 # The bundle is one script scope, so a top-level name used in two files would
 # break the whole app (a duplicate const stops the script; a duplicate function
 # silently replaces the first). Checked here so it never deploys.
+# A `let a = 1, b = 2;` line declares both names: brackets and strings are
+# taken out first, so only the names the declaration itself lists are read.
+def _top_names(part):
+    for m in re.finditer(r'^(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)(.*)$', part, flags=re.MULTILINE):
+        yield m.group(1)
+        if not re.match(r'(?:const|let)\s', m.group(0)):
+            continue
+        rest = re.sub(r"'[^']*'|\"[^\"]*\"|`[^`]*`", '', m.group(2))
+        while True:
+            flat = re.sub(r'\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}', '', rest)
+            if flat == rest:
+                break
+            rest = flat
+        yield from re.findall(r',\s*([A-Za-z_$][\w$]*)\s*=', rest)
 _seen = {}
 for f, part in zip(js_files, js_parts):
-    for m in re.finditer(r'^(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)', part, flags=re.MULTILINE):
-        if m.group(1) in _seen and _seen[m.group(1)] != f:
-            raise SystemExit(f'Build stopped: top-level name "{m.group(1)}" is in both {_seen[m.group(1)]} and {f}.')
-        _seen.setdefault(m.group(1), f)
+    for name in _top_names(part):
+        if name in _seen and _seen[name] != f:
+            raise SystemExit(f'Build stopped: top-level name "{name}" is in both {_seen[name]} and {f}.')
+        _seen.setdefault(name, f)
 
 # Preview builds can point at a separate Supabase test project (see
 # supabase/README.md). Only set these for Vercel's Preview environment.

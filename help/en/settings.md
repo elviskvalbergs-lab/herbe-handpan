@@ -7,7 +7,7 @@ type: reference
 audience: players
 instruments: all
 features: settings
-verified: 2026-11-25
+verified: 2026-11-26
 order: 40
 ---
 Open {{settings}} from the three dots menu at the top right of an instrument, or the cog on {{my-instruments}}. You only see the parts for the kinds of instrument you have or are trying.
@@ -26,7 +26,6 @@ Open {{settings}} from the three dots menu at the top right of an instrument, or
 ## Playing {#playing}
 
 - {{speed}}: how fast chords, scales and fingerings play, everywhere in the app. See [Make it play slower or faster](/help/speed).
-- {{auto-play-secs}}: how long each chord stays when Oakhum plays through chords by itself.
 
 ## Handpans and drums {#handpan}
 
