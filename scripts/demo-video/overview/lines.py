@@ -4,17 +4,23 @@ Used by ../voiceover.py; the video's compose.py fits each scene to its line.
 First cuts are voiced with Kokoro (free); once the owner agrees the words and
 timing, the same lines go to ElevenLabs "Liam" (eleven_v4), one take each,
 kept in takes-elevenlabs/ like the makers video's.
+The ElevenLabs takes (26 Nov, "Liam", one take each) are in takes-elevenlabs/;
+the last line was sent as "... Oakhum. [excited] Find the music hiding in your
+instrument!". Rebuild without spending credits:
+  python3 ../voiceover.py --from takes-elevenlabs --out vo-elevenlabs
+  python3 compose.py vo-elevenlabs
 
 These lines replace the first cut's (19 Nov), which opened with "It started
-with a sound". Scenes o2-o5 are phone scenes now, so scenes.js and compose.py
-in this folder still need changing to match (see the plan).
+with a sound". Scene 1 opens with the owner's line (26 Nov): "You don't need
+to be a musician to make music."
 """
 
 # One line per scene. A line is a list of phrases, so a pause is a real pause.
 # Captions on screen in brackets, so the voice can add to them, not repeat them.
 LINES = {
     # [What can your instrument play?]
-    'o1':   ['Every one of these has its own notes.',
+    'o1':   ["You don't need to be a musician to make music.",
+             'And every one of these has its own notes.',
              'So what can yours actually play?'],
     # [It starts from your instrument · Pick it, or play its notes]
     'o2':   ['Tell Oakhum which one you have.',
